@@ -143,7 +143,7 @@ Serious contradictions from red-flag search:
 
 - `candidate_factory_spec.md` simultaneously says batch factory is backend/advanced/research and labels `default_v1` as “Standard product comparison arena.”
 - Active root docs still use “Optimization Terminal” in top identity lines.
-- Code comments/docs contain mojibake in a few places (`вЂ”`, `в†’`), which is readability risk but not an architecture contradiction.
+- Code comments/docs contain mojibake in a few places (`—`, `→`), which is readability risk but not an architecture contradiction.
 
 ## 6. Code Architecture Audit
 
@@ -276,7 +276,7 @@ Output conflict highlight: `OUTPUTS.md` says new product artifacts are part of o
 
 ## 9. Specs vs Code vs Product Contradictions
 
-| Product doc claim | Spec claim | Code behavior | Contradiction? | Severity | Recommended fix |
+| Product doc claim | Spec claim | Code behavior | Contradiction... | Severity | Recommended fix |
 | --- | --- | --- | --- | --- | --- |
 | Target modules are target/TBD or require verification (`PRODUCT.md`, `ARCHITECTURE.md`, `docs/DIAGNOSTIC_PRODUCT_CONCEPT.md`). | `SPEC.md` status matrix and new specs claim Problem Classification, Launchpad, Current-vs-Candidate, Verdict, AI grounding, Light Monitoring are implemented. | Current working tree contains modules and wiring. | Yes: status timing mismatch. | High | Update product/architecture implementation relationship after migration files are accepted. |
 | Routine core review uses `core_v1`. | `portfolio_review_workflow_spec.md` says core uses `core_fast`. | `REVIEW_MODE_PROFILES['core'] = core_fast`. | Yes. | High | Patch `README.md` and `OUTPUTS.md` command matrices. |
@@ -450,11 +450,11 @@ Dirty tree makes the audit harder because “current codebase” includes untrac
 
 ## 15. Final Verdict
 
-Is the project now conceptually aligned? **Mostly yes.** The active product philosophy is diagnosis-first and decision-support oriented. The old black-box optimizer identity is no longer the main product narrative in the most important product docs.
+Is the project now conceptually aligned... **Mostly yes.** The active product philosophy is diagnosis-first and decision-support oriented. The old black-box optimizer identity is no longer the main product narrative in the most important product docs.
 
-Is the implementation aligned? **Partially.** The current working tree contains good additive modules for the new architecture, but runtime still goes through the old batch/comparison/score/Selection package. The new modules are adapters/projections over that technical chain, not yet a full product UX flow. Also, the migration implementation is dirty/untracked and generated outputs are stale.
+Is the implementation aligned... **Partially.** The current working tree contains good additive modules for the new architecture, but runtime still goes through the old batch/comparison/score/Selection package. The new modules are adapters/projections over that technical chain, not yet a full product UX flow. Also, the migration implementation is dirty/untracked and generated outputs are stale.
 
-Is documentation aligned? **Partially.** Product docs are aligned philosophically, but implementation-status and command-profile contradictions remain. Specs are mostly strong, but a few technical docs still have wording that can reintroduce old framing.
+Is documentation aligned... **Partially.** Product docs are aligned philosophically, but implementation-status and command-profile contradictions remain. Specs are mostly strong, but a few technical docs still have wording that can reintroduce old framing.
 
 Next highest-leverage improvement: **cleanly resolve the dirty-tree migration baseline and then patch the source-of-truth contradictions (`core_fast` vs `core_v1`, implemented vs Target/TBD status, and factory full-batch product boundary).**
 

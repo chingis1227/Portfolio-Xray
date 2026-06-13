@@ -711,6 +711,7 @@ LAUNCHPAD_KNOWN_GOALS = frozenset(
         "Improve return/risk balance",
         "Compare against simple benchmark",
         "Keep current portfolio and monitor",
+        "Review objectives and risk limits",
         "Review data quality",
         "Do not act yet",
     }
@@ -734,6 +735,7 @@ PROBLEM_CLASSIFICATION_V3_IDS = frozenset(
         "credit_liquidity_fragility",
         "duration_rates_vulnerability",
         "low_return_risk_efficiency",
+        "goal_risk_conflict",
         "current_portfolio_acceptable",
         "evidence_insufficient_data_quality",
         "mixed_evidence_no_action",
@@ -750,6 +752,7 @@ RECOMMENDED_NEXT_STEPS = frozenset(
         "rerun_diagnostics",
         "resolve_data",
         "compare_reference_benchmarks",
+        "review_client_objectives",
     }
 )
 
@@ -768,6 +771,7 @@ BLOCK_4_V3_ACTION_PATH_IDS = frozenset(
         "improve_return_risk_balance",
         "compare_against_simple_benchmark",
         "keep_current_portfolio_and_monitor",
+        "revise_objectives",
         "test_another_candidate",
         "evidence_insufficient_do_not_act_yet",
     }
@@ -777,7 +781,7 @@ STRESS_CONFIRMATION_VALUES = frozenset(
     {"confirmed", "contradicted", "pre_stress_only", "unavailable"}
 )
 MATERIALITY_VALUES = frozenset({"high", "medium", "low", "none"})
-EVIDENCE_PATH_VALUES = frozenset({"primary", "legacy_fallback", "pre_stress_only"})
+EVIDENCE_PATH_VALUES = frozenset({"primary", "legacy_fallback", "pre_stress_only", "client_fit_context"})
 
 LAUNCHPAD_V3_DISCLAIMER_PREFIX = "This card suggests a hypothesis to test, not a buy or sell instruction."
 

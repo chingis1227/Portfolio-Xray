@@ -381,7 +381,7 @@ Severity: Medium
 
 Evidence:
 
-- Source docs and code comments contain mojibake patterns such as `вЂ`, `Sigma`, `delta`, `beta`, `*`, and unreadable Russian text in at least `docs/specs/production_workflow.md` and parts of other source docs/specs.
+- Source docs and code comments contain mojibake patterns such as `mojibake-marker`, `Sigma`, `delta`, `beta`, `*`, and unreadable Russian text in at least `docs/specs/production_workflow.md` and parts of other source docs/specs.
 - Generated outputs also contain encoding artifacts, but generated outputs are not source and should not drive source edits.
 
 Impact:

@@ -17,12 +17,12 @@ Related:
 
 | Question | Verdict |
 | --- | --- |
-| Is Block 2.4 implemented as Core MVP product block? | **Yes** — `block_2_4_hidden_exposure` on `portfolio_xray.json`; 6 alerts; `heuristic_v1`. |
-| Does it read only Blocks 2.1–2.3? | **Yes** — module docstring + `diagnostics_meta.does_not_run_stress_lab: true`. |
-| Is legacy `sections.hidden_risk_detector` preserved? | **Yes** — parallel 11-category legacy section in `portfolio_xray.py`. |
-| Are focused tests green? | **Yes** — **13 passed** (`test_block_2_4_hidden_exposure.py` + contract subset). |
-| Critical schema bug? | **Yes — confirmed** — duplicate exposure reads wrong keys; `combined_weight=0.18` → score `0.0`. |
-| Institutional v2 complete? | **No** — ~35% matrix rows at v1; Session 01+ required. |
+| Is Block 2.4 implemented as Core MVP product block... | **Yes** — `block_2_4_hidden_exposure` on `portfolio_xray.json`; 6 alerts; `heuristic_v1`. |
+| Does it read only Blocks 2.1–2.3... | **Yes** — module docstring + `diagnostics_meta.does_not_run_stress_lab: true`. |
+| Is legacy `sections.hidden_risk_detector` preserved... | **Yes** — parallel 11-category legacy section in `portfolio_xray.py`. |
+| Are focused tests green... | **Yes** — **13 passed** (`test_block_2_4_hidden_exposure.py` + contract subset). |
+| Critical schema bug... | **Yes — confirmed** — duplicate exposure reads wrong keys; `combined_weight=0.18` → score `0.0`. |
+| Institutional v2 complete... | **No** — ~35% matrix rows at v1; Session 01+ required. |
 
 **Bottom line:** Block 2.4 v1 scaffold is sound and test-covered, but **not institutional-grade**. Session 00 closes with a signed baseline matrix; **Session 01** starts with duplicate bugfix + contract fields.
 
@@ -161,7 +161,7 @@ b21 = {"duplicate_exposure_flags": [{"combined_weight": 0.18, ...}]}
 
 ## 7. Stress Lab Boundary (verified)
 
-| Component | Reads stress? | Role |
+| Component | Reads stress... | Role |
 | --- | --- | --- |
 | `block_2_4_hidden_exposure` core | **No** | Pre-stress hypotheses from 2.1–2.3 |
 | `sections.hidden_risk_detector` | **Yes** | Legacy 11 categories, PCA, stress PnL |

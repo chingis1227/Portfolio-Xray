@@ -10,11 +10,11 @@ Prerequisite: [Session 02 problem taxonomy](2026-05-29_block_4_v2_session_02_pro
 
 | Question | Verdict |
 | --- | --- |
-| `extract_evidence_signals()` implemented? | **Yes** — `src/block_4/evidence_extraction.py` |
-| Canonical Blocks 2.1–2.6 readers? | **Yes** — primary `evidence_path` |
-| Blocks 3.3–3.4 readers? | **Yes** — hedge gap + stress scorecard with legacy fallback |
-| Legacy `sections.*` fallback? | **Yes** — tagged `legacy_fallback`; sets `legacy_sections_fallback_used` |
-| Session 03 tests? | **Yes** — `tests/test_block_4_evidence_extraction.py` (**6 passed**) |
+| `extract_evidence_signals()` implemented... | **Yes** — `src/block_4/evidence_extraction.py` |
+| Canonical Blocks 2.1–2.6 readers... | **Yes** — primary `evidence_path` |
+| Blocks 3.3–3.4 readers... | **Yes** — hedge gap + stress scorecard with legacy fallback |
+| Legacy `sections.*` fallback... | **Yes** — tagged `legacy_fallback`; sets `legacy_sections_fallback_used` |
+| Session 03 tests... | **Yes** — `tests/test_block_4_evidence_extraction.py` (**6 passed**) |
 
 **Session 03 verdict:** **PASS**
 

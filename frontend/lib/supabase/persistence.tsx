@@ -26,6 +26,7 @@ export type SavedReviewRecord = {
   portfolioId?: string;
   portfolioSnapshot: { investorCurrency?: string; holdings?: ReviewHolding[] };
   compactSummary: Record<string, unknown>;
+  clientFit?: NonNullable<ReviewSummary["clientFit"]>;
   stages: Partial<Record<ReviewStageName, Record<string, unknown>>>;
   stageStatuses: Partial<Record<ReviewStageName, string>>;
   startedAt?: string;
@@ -287,6 +288,8 @@ async function fetchSavedReviewsForUser(userId: string): Promise<SavedReviewReco
       stageStatuses[stageRow.stage] = stageRow.status ?? "saved";
     });
     const snapshot = row.portfolio_snapshot ?? {};
+    const compactSummary = row.compact_summary ?? {};
+    const diagnosisStage = stages.diagnosis ?? {};
     return {
       id: row.id,
       reviewId: row.review_id,
@@ -298,7 +301,8 @@ async function fetchSavedReviewsForUser(userId: string): Promise<SavedReviewReco
         investorCurrency: typeof snapshot.investorCurrency === "string" ? snapshot.investorCurrency : undefined,
         holdings: reviewHoldingsFromSnapshot(snapshot)
       },
-      compactSummary: row.compact_summary ?? {},
+      compactSummary,
+      clientFit: clientFitFromCloud(compactSummary.clientFit ?? diagnosisStage.clientFit),
       stages,
       stageStatuses,
       startedAt: row.started_at ?? undefined,
@@ -427,6 +431,7 @@ function compactReviewSummaryForCloud(reviewSummary: ReviewSummary, activeReview
     diagnosisHeadline: reviewSummary.diagnosis.headline,
     diagnosisStatus: reviewSummary.diagnosis.status,
     evidenceQuality: reviewSummary.diagnosis.evidenceQuality,
+    clientFit: compactClientFitForCloud(reviewSummary.clientFit),
     primaryProblem: reviewSummary.primaryProblem,
     problemSeverity: reviewSummary.problemSeverity,
     problemConfidence: reviewSummary.problemConfidence,
@@ -439,6 +444,60 @@ function compactReviewSummaryForCloud(reviewSummary: ReviewSummary, activeReview
     activeCloudPortfolioName: activeReview.cloudPortfolio?.name
   };
 }
+
+function clientFitFromCloud(value: unknown): NonNullable<ReviewSummary["clientFit"]> | undefined {
+  if (!isRecord(value)) return undefined;
+  const rawRows = Array.isArray(value.targetRows) ? value.targetRows : Array.isArray(value.target_rows) ? value.target_rows : [];
+  const statusTone = value.statusTone === "green" || value.statusTone === "amber" || value.statusTone === "red"
+    ? value.statusTone
+    : value.status_tone === "green" || value.status_tone === "amber" || value.status_tone === "red"
+      ? value.status_tone
+      : "amber";
+  return {
+    status_label: typeof value.statusLabel === "string" ? value.statusLabel : typeof value.status_label === "string" ? value.status_label : "Client Fit not provided",
+    status_tone: statusTone,
+    profile_label: typeof value.profileLabel === "string" ? value.profileLabel : typeof value.profile_label === "string" ? value.profile_label : null,
+    source_quality_label: typeof value.sourceQualityLabel === "string" ? value.sourceQualityLabel : typeof value.source_quality_label === "string" ? value.source_quality_label : null,
+    main_explanation: typeof value.mainExplanation === "string" ? value.mainExplanation : typeof value.main_explanation === "string" ? value.main_explanation : null,
+    decision_boundary: typeof value.decisionBoundary === "string" ? value.decisionBoundary : typeof value.decision_boundary === "string" ? value.decision_boundary : "Client Fit is non-binding decision support.",
+    next_best_test: typeof value.nextBestTest === "string" ? value.nextBestTest : typeof value.next_best_test === "string" ? value.next_best_test : null,
+    target_rows: rawRows.filter(isRecord).slice(0, 6).map((row) => ({
+      dimension_label: typeof row.dimensionLabel === "string" ? row.dimensionLabel : typeof row.dimension_label === "string" ? row.dimension_label : "Client Fit check",
+      portfolio_value_label: typeof row.portfolioValueLabel === "string" ? row.portfolioValueLabel : typeof row.portfolio_value_label === "string" ? row.portfolio_value_label : null,
+      target_or_limit_label: typeof row.targetOrLimitLabel === "string" ? row.targetOrLimitLabel : typeof row.target_or_limit_label === "string" ? row.target_or_limit_label : null,
+      status_label: typeof row.statusLabel === "string" ? row.statusLabel : typeof row.status_label === "string" ? row.status_label : "Not evaluated",
+      status_tone: row.statusTone === "green" || row.statusTone === "amber" || row.statusTone === "red"
+        ? row.statusTone
+        : row.status_tone === "green" || row.status_tone === "amber" || row.status_tone === "red"
+          ? row.status_tone
+          : "amber",
+      explanation: typeof row.explanation === "string" ? row.explanation : null
+    }))
+  };
+}
+
+function compactClientFitForCloud(clientFit: ReviewSummary["clientFit"] | ComparisonResultSummaryClientFit | undefined) {
+  if (!clientFit) return undefined;
+  return {
+    statusLabel: clientFit.status_label,
+    statusTone: clientFit.status_tone,
+    profileLabel: clientFit.profile_label ?? undefined,
+    sourceQualityLabel: clientFit.source_quality_label ?? undefined,
+    mainExplanation: clientFit.main_explanation ?? undefined,
+    decisionBoundary: clientFit.decision_boundary,
+    nextBestTest: clientFit.next_best_test ?? undefined,
+    targetRows: (clientFit.target_rows ?? []).slice(0, 6).map((row) => ({
+      dimensionLabel: row.dimension_label,
+      portfolioValueLabel: row.portfolio_value_label ?? undefined,
+      targetOrLimitLabel: row.target_or_limit_label ?? undefined,
+      statusLabel: row.status_label,
+      statusTone: row.status_tone,
+      explanation: row.explanation ?? undefined
+    }))
+  };
+}
+
+type ComparisonResultSummaryClientFit = NonNullable<ActiveReviewState["comparisonResult"]>["clientFit"];
 
 function compactEvidenceForCloud(evidence: EvidenceSummary | undefined) {
   if (!evidence) return undefined;
@@ -507,6 +566,7 @@ function buildDiagnosisStageSummary(activeReview: ActiveReviewState) {
       totalWeight: reviewSummary.totalWeight,
       cashWeight: reviewSummary.cashWeight
     },
+    clientFit: compactClientFitForCloud(reviewSummary.clientFit),
     diagnosis: compactDiagnosisForCloud(reviewSummary.diagnosis),
     evidence: compactEvidenceForCloud(reviewSummary.evidence),
     primaryProblem: reviewSummary.primaryProblem,
@@ -631,6 +691,7 @@ function buildComparisonStageSummary(activeReview: ActiveReviewState) {
     status: activeReview.comparisonResult.status,
     reviewId: activeReview.reviewId,
     comparison: activeReview.comparisonResult,
+    clientFit: compactClientFitForCloud(activeReview.comparisonResult.clientFit ?? activeReview.reviewSummary?.clientFit),
     selectedCardId: activeReview.comparisonResult.selectedCardId,
     candidateId: activeReview.comparisonResult.candidateId
   };
@@ -643,6 +704,7 @@ function buildVerdictStageSummary(activeReview: ActiveReviewState) {
     status: activeReview.verdictResult.status,
     reviewId: activeReview.reviewId,
     verdict: activeReview.verdictResult,
+    clientFit: compactClientFitForCloud(activeReview.verdictResult.clientFit ?? activeReview.reviewSummary?.clientFit),
     selectedCardId: activeReview.verdictResult.selectedCardId,
     candidateId: activeReview.verdictResult.candidateId
   };
@@ -655,6 +717,7 @@ function buildReportStageSummary(activeReview: ActiveReviewState) {
     status: activeReview.reportResult.status,
     reviewId: activeReview.reviewId,
     report: activeReview.reportResult,
+    clientFit: compactClientFitForCloud(activeReview.reportResult.clientFit ?? activeReview.reviewSummary?.clientFit),
     selectedCardId: activeReview.reportResult.selectedCardId,
     candidateId: activeReview.reportResult.candidateId
   };

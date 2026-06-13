@@ -4,10 +4,10 @@
 
 **Overall verdict:** the frontend - API - Python bridge - Python pipeline - product JSON outputs - frontend screen flow is logically connected and mostly coherent for a local scripted demo.
 
-- **Project flow coherent?** Yes, with one important workflow caveat: the backend bridge has a safe `--prepare-builder` step, but the live frontend currently exposes only candidate generation, not a separate prepare-builder API/button. In practice, the user can generate a candidate only for a Launchpad card whose Builder setup already matches the selected card.
-- **Frontend/backend integration logically connected?** Yes. The API routes call `scripts/run_review_from_payload.py`; the bridge writes and consumes isolated `runs/frontend_review_*` artifacts; downstream stages re-check selected card/candidate lineage.
-- **Current state demo-ready locally?** Yes for a guided local demo if the operator selects the card that has matching Builder setup and follows the runbook cautiously. A manual browser click-through was not run in this audit.
-- **Production-ready?** No. This is a local demo/prototype integration: no production auth, database-backed run retrieval, deployment hardening, API route integration tests, or robust multi-user state model.
+- **Project flow coherent...** Yes, with one important workflow caveat: the backend bridge has a safe `--prepare-builder` step, but the live frontend currently exposes only candidate generation, not a separate prepare-builder API/button. In practice, the user can generate a candidate only for a Launchpad card whose Builder setup already matches the selected card.
+- **Frontend/backend integration logically connected...** Yes. The API routes call `scripts/run_review_from_payload.py`; the bridge writes and consumes isolated `runs/frontend_review_*` artifacts; downstream stages re-check selected card/candidate lineage.
+- **Current state demo-ready locally...** Yes for a guided local demo if the operator selects the card that has matching Builder setup and follows the runbook cautiously. A manual browser click-through was not run in this audit.
+- **Production-ready...** No. This is a local demo/prototype integration: no production auth, database-backed run retrieval, deployment hardening, API route integration tests, or robust multi-user state model.
 
 No Python calculation logic, root `config.yml`, generated run folders, staging, or commits were changed by this audit. This report is documentation-only.
 
@@ -23,7 +23,7 @@ No Python calculation logic, root `config.yml`, generated run folders, staging, 
 | Candidate zoo prevention | OK | Frontend candidate route calls one selected candidate path; bridge asserts `candidate_factory_run.steps` contains exactly one candidate. | `generate_selected_candidate()` and `_assert_factory_run_scoped_to_one_candidate()`. | Add a JS/API smoke test for route arguments. |
 | Builder handoff | Warning | Backend supports `--prepare-builder`, but frontend has no prepare-builder API route/button. Generation is enabled only when an existing Builder setup matches the selected card. | `prepare_selected_builder_setup()` exists; candidate API calls only `--generate-candidate`; Hypothesis page gates on `builderMatches`. | P1: add explicit prepare-builder API/UI or document that only the prebuilt matching card can be generated. |
 | Diagnosis outputs | OK | Diagnosis reads `portfolio_xray`, `stress_report`, `problem_classification`, `candidate_launchpad`, and Builder setup from `analysis_subject/`. | `expected_output_paths()` / `read_outputs()`. | Keep required-output failures safe. |
-| Evidence screen | OK | Uses compact real evidence summary after reload; demo evidence is only explicit `?sample=1`. | `frontend/app/evidence/page.tsx` `sampleMode`; `reviewSummary.evidence`. | Good current behavior. |
+| Evidence screen | OK | Uses compact real evidence summary after reload; demo evidence is only explicit `...sample=1`. | `frontend/app/evidence/page.tsx` `sampleMode`; `reviewSummary.evidence`. | Good current behavior. |
 | Hypothesis screen | Warning | Real Launchpad can render from compact state after reload, but selected non-matching cards cannot generate. | `compactLaunchpadCards`; `builderMatches`; `canGenerateCandidate`. | Same P1 Builder handoff fix. |
 | Comparison screen | OK | No silent demo fallback; calls comparison API; only matching candidate summaries unlock verdict. | `frontend/app/comparison/page.tsx`. | Good current behavior. |
 | Verdict screen | OK | No demo fallback; calls verdict API; wording supports no-trade / evidence-insufficient. | `frontend/app/verdict/page.tsx`; `recordVerdictResult()`. | Good current behavior. |
@@ -76,11 +76,11 @@ The command uses `run_portfolio_review.py --skip-candidates --output-profile sit
 
 ### Evidence outputs
 
-The Evidence page uses real compact evidence from `reviewSummary.evidence` after reload. If raw outputs are still in memory during the current tab, it can also derive evidence directly from `portfolio_xray` and `stress_report`. Static demo evidence is gated behind explicit `?sample=1`; there is no silent demo fallback after a real run.
+The Evidence page uses real compact evidence from `reviewSummary.evidence` after reload. If raw outputs are still in memory during the current tab, it can also derive evidence directly from `portfolio_xray` and `stress_report`. Static demo evidence is gated behind explicit `...sample=1`; there is no silent demo fallback after a real run.
 
 ### Hypothesis / Launchpad
 
-The Hypothesis page renders real Launchpad cards from raw `reviewResult.outputs.candidate_launchpad` or compact `reviewSummary.launchpadCards`. Static demo Launchpad is gated behind explicit `?sample=1`.
+The Hypothesis page renders real Launchpad cards from raw `reviewResult.outputs.candidate_launchpad` or compact `reviewSummary.launchpadCards`. Static demo Launchpad is gated behind explicit `...sample=1`.
 
 Product language is correct: Launchpad cards are hypothesis tests, not recommendations.
 
@@ -169,7 +169,7 @@ Potential demo-breaking issue if the operator behaves naturally:
 | File | Section / text | Mismatch | Suggested correction |
 | --- | --- | --- | --- |
 | `docs/demo/frontend_backend_vertical_runbook.md` | Manual click-through step 4: “Generate Builder setup first.” | There is no frontend prepare-builder API/button in the visible UI. The Python CLI has `--prepare-builder`, but frontend candidate route calls `--generate-candidate` directly. | Either add a frontend prepare-builder step or change runbook to say candidate generation is available only for the card whose Builder setup is already active. |
-| `../../frontend/README.md` | `data/demo/` used by pages during prototype phase. | Could be read as silent demo fallback, though later screens mostly avoid silent fallback. | Clarify: demo data is used for initial Portfolio Input defaults and explicit `?sample=1`, not normal post-run stages. |
+| `../../frontend/README.md` | `data/demo/` used by pages during prototype phase. | Could be read as silent demo fallback, though later screens mostly avoid silent fallback. | Clarify: demo data is used for initial Portfolio Input defaults and explicit `...sample=1`, not normal post-run stages. |
 | `docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md` | Session 02/04 narrative. | The plan correctly records both backend prepare-builder and frontend generation gating, but final operator outcome can sound like any selected hypothesis works from UI. | Add a final note: current UI generation depends on a matching Builder setup unless/until prepare-builder is wired to frontend. |
 | User-facing audit command | `..\.venv\Scripts\python.exe` from repo root. | Actual project venv is `.\.venv\Scripts\python.exe`. | Use project-local `.venv` in docs/commands. |
 

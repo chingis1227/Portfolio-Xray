@@ -10,12 +10,12 @@ Prerequisite: [Session 05 severity/confidence](2026-05-29_block_4_v2_session_05_
 
 | Question | Verdict |
 | --- | --- |
-| `prioritize_problems()` implemented? | **Yes** — `src/block_4/problem_prioritization.py` |
-| Primary / secondary / rejected split? | **Yes** — 1 primary, max 2 secondary, explicit `rejected_problems[]` |
-| Uses `decision_score`, severity, confidence? | **Yes** — ranked tuple with tie-breakers |
-| Root-cause elevation rules applied? | **Yes** — `ROOT_CAUSE_ELEVATION_RULES` with demotion + score boost |
-| Special primaries (data quality / conflict / acceptable)? | **Yes** |
-| Session 06 tests? | **Yes** — `tests/test_block_4_problem_prioritization.py` (**7 passed**) |
+| `prioritize_problems()` implemented... | **Yes** — `src/block_4/problem_prioritization.py` |
+| Primary / secondary / rejected split... | **Yes** — 1 primary, max 2 secondary, explicit `rejected_problems[]` |
+| Uses `decision_score`, severity, confidence... | **Yes** — ranked tuple with tie-breakers |
+| Root-cause elevation rules applied... | **Yes** — `ROOT_CAUSE_ELEVATION_RULES` with demotion + score boost |
+| Special primaries (data quality / conflict / acceptable)... | **Yes** |
+| Session 06 tests... | **Yes** — `tests/test_block_4_problem_prioritization.py` (**7 passed**) |
 
 **Session 06 verdict:** **PASS**
 

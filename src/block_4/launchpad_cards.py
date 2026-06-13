@@ -85,6 +85,10 @@ _SUCCESS_CRITERIA_BY_ACTION_PATH: dict[str, tuple[str, ...]] = {
         "No material deterioration in monitored risks.",
         "Re-open candidate testing only if a root-cause diagnosis becomes material.",
     ),
+    "revise_objectives": (
+        "Clarify the stated return, volatility, drawdown, and horizon trade-offs.",
+        "Re-run Client Fit after the profile conflict is resolved.",
+    ),
     "evidence_insufficient_do_not_act_yet": (
         "Resolve data-quality blockers or monitor mixed evidence before any rebalance test.",
         "Confirm that a root-cause diagnosis is material before launching candidates.",
@@ -99,6 +103,7 @@ _MONITOR_ACTION_PATH_IDS = frozenset(
     {
         "keep_current_portfolio_and_monitor",
         "compare_against_simple_benchmark",
+        "revise_objectives",
         "evidence_insufficient_do_not_act_yet",
         "test_another_candidate",
     }
@@ -107,6 +112,7 @@ _MONITOR_ACTION_PATH_IDS = frozenset(
 _NO_USER_ACTION_PATH_IDS = frozenset(
     {
         "keep_current_portfolio_and_monitor",
+        "revise_objectives",
         "evidence_insufficient_do_not_act_yet",
     }
 )
@@ -151,6 +157,7 @@ def build_launchpad_cards(
     no_trade_gate: NoTradeGateResult | None = None,
     launchpad_outcome: str | None = None,
     launchpad_suppressed: bool | None = None,
+    client_fit_context: dict[str, Any] | None = None,
 ) -> LaunchpadCardsResult:
     """Build v3 launchpad cards from action-path mapping output."""
     primary_id = str(mapping.primary_problem["problem_id"])
@@ -179,13 +186,20 @@ def build_launchpad_cards(
             problem_rows_by_id=problem_rows_by_id,
             priority_rank=rank,
             launchpad_suppressed=suppressed,
+            client_fit_context=client_fit_context,
         )
         if card is not None:
             cards.append(card)
 
     if not cards:
         warnings.append("no_cards_from_suggested_actions")
-        cards.append(_fallback_monitor_card(primary_id, mapping.primary_problem))
+        cards.append(
+            _fallback_monitor_card(
+                primary_id,
+                mapping.primary_problem,
+                client_fit_context=client_fit_context,
+            )
+        )
 
     return LaunchpadCardsResult(
         cards=tuple(cards),
@@ -214,14 +228,22 @@ def build_candidate_launchpad_v3_document(
     gate = no_trade_gate
     if gate is None and scoring is not None and evidence is not None:
         gate = evaluate_no_trade_gate(mapping, scoring, evidence)
+    client_fit_context = _client_fit_launchpad_context(mapping, evidence)
     cards_result = build_launchpad_cards(
         mapping,
         no_trade_gate=gate,
         launchpad_outcome=launchpad_outcome,
         launchpad_suppressed=launchpad_suppressed,
+        client_fit_context=client_fit_context,
     )
     outcome = launchpad_outcome or cards_result.launchpad_outcome
     summary = cards_result.to_summary_dict(launchpad_outcome=outcome)
+    if client_fit_context:
+        summary["client_fit_status"] = client_fit_context.get("client_fit_status")
+        summary["diagnostic_quality_hint"] = client_fit_context.get("diagnostic_quality_hint")
+        summary["client_fit_did_not_suppress_diagnosis"] = client_fit_context.get(
+            "client_fit_did_not_suppress_diagnosis"
+        )
 
     return {
         "schema_version": CANDIDATE_LAUNCHPAD_V3_VERSION,
@@ -231,6 +253,7 @@ def build_candidate_launchpad_v3_document(
         "analysis_end": analysis_end,
         "source_artifacts": {"problem_classification": "problem_classification.json"},
         "launchpad_outcome": outcome,
+        "client_fit_context": client_fit_context,
         "cards": list(cards_result.cards),
         "summary": summary,
         "warnings": list(cards_result.warnings),
@@ -265,6 +288,7 @@ def _build_card(
     problem_rows_by_id: dict[str, dict[str, Any]],
     priority_rank: int,
     launchpad_suppressed: bool,
+    client_fit_context: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     action_path = get_action_path(action.action_path_id)
     if action_path is None:
@@ -324,6 +348,13 @@ def _build_card(
         ),
         "priority_rank": priority_rank,
     }
+    if client_fit_context:
+        card["client_fit_context"] = dict(client_fit_context)
+        card["client_fit_relevance_en"] = _client_fit_relevance_en(
+            client_fit_context,
+            problem_row,
+            action.action_path_id,
+        )
     if method_ids:
         card["default_method"] = method_ids[0]
     return card
@@ -477,13 +508,81 @@ def _default_tradeoff(action_path_id: str) -> str:
     return "Risk improvement vs expected return and implementation turnover."
 
 
+def _client_fit_launchpad_context(
+    mapping: ActionPathMappingResult,
+    evidence: EvidenceExtractionResult | None,
+) -> dict[str, Any] | None:
+    if evidence is None:
+        return None
+    status_signal = next(iter(evidence.get_signals("client_fit_status")), None)
+    if status_signal is None:
+        return None
+
+    primary = mapping.primary_problem
+    primary_id = str(primary.get("problem_id") or "")
+    scoring = primary.get("scoring") if isinstance(primary.get("scoring"), dict) else {}
+    severity = str(primary.get("severity") or "")
+    materiality = str(scoring.get("materiality") or "")
+    is_material_issue = (
+        primary_id
+        not in {
+            "current_portfolio_acceptable",
+            "mixed_evidence_no_action",
+            "evidence_insufficient_data_quality",
+            "goal_risk_conflict",
+        }
+        and (severity in {"high", "medium"} or materiality in {"high", "medium"})
+    )
+    status = str(status_signal.value or "not_provided")
+    diagnostic_hint = "material_issue" if is_material_issue else "watch_or_clean"
+    return {
+        "schema_version": "launchpad_client_fit_context_v1",
+        "source_artifact": "client_fit_check.json",
+        "client_fit_status": status,
+        "diagnostic_quality_hint": diagnostic_hint,
+        "primary_problem_id": primary_id,
+        "client_fit_did_not_suppress_diagnosis": bool(status == "fit" and is_material_issue),
+        "boundary_en": (
+            "Client Fit status is shown as context for the hypothesis test; it does not suppress "
+            "a material portfolio diagnosis and does not create a rebalance instruction."
+        ),
+    }
+
+
+def _client_fit_relevance_en(
+    client_fit_context: dict[str, Any],
+    problem_row: dict[str, Any] | None,
+    action_path_id: str,
+) -> str:
+    status = str(client_fit_context.get("client_fit_status") or "not_provided")
+    label = str((problem_row or {}).get("label_en") or "the selected diagnosis")
+    if action_path_id in _NO_USER_ACTION_PATH_IDS:
+        return (
+            f"Client Fit status is {status}; this card remains a monitor or review step rather "
+            "than an allocation action."
+        )
+    if status == "fit" and client_fit_context.get("client_fit_did_not_suppress_diagnosis"):
+        return (
+            f"Client Fit status is fit, but {label} remains material diagnostic evidence, so this "
+            "card stays a review/test path."
+        )
+    if status in {"breach", "watch", "conflict", "evidence_insufficient"}:
+        return (
+            f"Client Fit status is {status}; use it as context for why this hypothesis matters, "
+            "not as trade advice."
+        )
+    return "Client Fit status is available only as context for this diagnostic hypothesis."
+
+
 def _fallback_monitor_card(
     primary_problem_id: str,
     primary_row: dict[str, Any],
+    *,
+    client_fit_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     action_path = get_action_path("keep_current_portfolio_and_monitor")
     defn = get_problem_definition(primary_problem_id)
-    return {
+    card = {
         "card_id": "launchpad_01_keep_current_portfolio_and_monitor",
         "title": defn.launchpad_card_title_en if defn else "Keep Current Portfolio and Monitor",
         "goal": action_path.goal_label if action_path else "Keep current portfolio and monitor",
@@ -524,6 +623,14 @@ def _fallback_monitor_card(
         ),
         "priority_rank": 1,
     }
+    if client_fit_context:
+        card["client_fit_context"] = dict(client_fit_context)
+        card["client_fit_relevance_en"] = _client_fit_relevance_en(
+            client_fit_context,
+            primary_row,
+            "keep_current_portfolio_and_monitor",
+        )
+    return card
 
 
 def _card_id(action_path_id: str, rank: int) -> str:

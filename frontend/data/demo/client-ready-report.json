@@ -8,7 +8,7 @@
     },
     {
       "title": "Evidence",
-      "body": "The X-Ray and Stress evidence is suitable for a sample review discussion. It should not be treated as conclusive advice or as a substitute for client-specific suitability review."
+      "body": "The X-Ray and Stress evidence is usable for a sample review discussion. It should not be treated as conclusive advice or as a substitute for client-specific profile review."
     },
     {
       "title": "Candidate hypothesis",
@@ -24,6 +24,6 @@
     }
   ],
   "monitoring": "Monitor concentration, evidence quality, and mandate changes before reopening the decision.",
-  "boundaryNote": "This report explains decision-support evidence. It is not advice, suitability review, or a trading instruction."
+  "boundaryNote": "This report explains decision-support evidence. It is not advice, profile approval, or a trading instruction."
 }
 

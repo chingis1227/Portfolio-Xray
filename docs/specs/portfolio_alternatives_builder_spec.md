@@ -8,7 +8,7 @@ Status: implemented as Block 6 setup: strict `BuilderPrefill`, public Launchpad-
 
 ## Scope
 
-The Portfolio Alternatives Builder converts a selected Launchpad card into editable, validated setup state. The setup step keeps the diagnosis, hypothesis, success criteria, tradeoff, skip rule, and decision boundary visible before any candidate is generated. A separate legacy/explicit delegation helper can still prepare one-candidate factory commands, but that helper is not the canonical Block 6 output.
+The Portfolio Alternatives Builder converts a selected Launchpad card into editable, validated setup state. The setup step keeps the diagnosis, hypothesis, success criteria, optional Client Fit display/test criteria, tradeoff, skip rule, and decision boundary visible before any candidate is generated. A separate legacy/explicit delegation helper can still prepare one-candidate factory commands, but that helper is not the canonical Block 6 output.
 
 It reads:
 
@@ -18,6 +18,7 @@ It reads:
 It returns:
 
 - a `BuilderPrefill` setup object copied from one selected Launchpad card;
+- optional `client_fit_test_criteria` copied from `client_fit_check.json` as display/test rows only;
 - a Strategy Selector object that maps the Builder goal to a guided default method and preserves user method changes;
 - a Simple Mode parameter setup containing only the editable setup choices `goal`, `method`, `mode`, and `constraint_preset`, plus the only user-adjustable optimization fields `min_asset_weight` and `max_asset_weight`;
 - validation output with one explicit setup status and `can_generate_candidate`;
@@ -34,6 +35,8 @@ It does not:
 - recommend a rebalance;
 - decide whether action is justified;
 - change candidate factory profiles;
+- convert Client Fit target return, volatility, drawdown, or horizon into optimizer objectives,
+  constraints, mandate gates, factory command changes, analysis-window changes, or weights;
 - change candidate comparison schema;
 - change CLI behavior;
 - apply advanced constraints in V1.
@@ -102,10 +105,10 @@ justified.
 The helper lives in `src/portfolio_alternatives_builder.py` and returns a plain dictionary:
 
 ```text
-launchpad_card_to_builder_prefill(card, *, next_diagnostic_step=None) -> dict
+launchpad_card_to_builder_prefill(card, *, next_diagnostic_step=None, client_fit_check=None) -> dict
 ```
 
-`build_builder_prefill_from_launchpad_card(card, *, next_diagnostic_step=None)` remains as a backward-compatible wrapper for existing callers.
+`build_builder_prefill_from_launchpad_card(card, *, next_diagnostic_step=None, client_fit_check=None)` remains as a backward-compatible wrapper for existing callers.
 
 The strict Block 6 `BuilderPrefill` contract is Launchpad-derived prefill only. It is not the final user-confirmed `CandidateSetup`, and it is not a candidate portfolio. It must contain these fields:
 
@@ -138,6 +141,11 @@ The strict Block 6 `BuilderPrefill` contract is Launchpad-derived prefill only. 
 | `status` | Prefill state: `ready_for_user_confirmation`, `blocked`, `monitor_only`, or `custom_draft`. |
 | `warnings` | List of setup warnings; empty when no warning applies. |
 
+When a valid `client_fit_check.json` is supplied, `success_criteria` is extended with plain-English
+Client Fit test criteria such as comparing return, volatility, historical drawdown, and worst stress
+loss against the stated profile. These entries are hypothesis-test criteria for later comparison,
+not optimization rules.
+
 The strict `BuilderPrefill` contract must never contain `candidate_id`, `weights`, `candidate_status`, or `comparison_status`. Those fields belong to downstream candidate generation, candidate artifacts, or comparison layers, not Block 6 prefill.
 
 For compatibility with the current handoff and validators, the prefill dictionary also contains these stable helper keys:
@@ -148,6 +156,10 @@ For compatibility with the current handoff and validators, the prefill dictionar
 | `source` | Provenance string, normally `candidate_launchpad_v3`. |
 | `suggested_methods` | Method rows copied from the Launchpad card so role/rationale are not lost. |
 | `candidate_generation_allowed` | `true` only when the Builder may show an explicit generate-candidate action; `false` for data-quality blockers and monitor-only cards. This flag never means auto-generation. |
+| `client_fit_context` | Optional compact Client Fit status context copied from Launchpad. |
+| `client_fit_relevance_en` | Optional plain-English relevance boundary copied from Launchpad. |
+| `client_fit_test_criteria` | Optional structured target rows derived from `client_fit_check.json`; rows use `display_test_criterion` or `display_context_only`. |
+| `client_fit_optimizer_boundary` | Plain-English guardrail stating that Client Fit targets do not change optimizer objectives, constraints, mandate gates, analysis windows, candidate weights, or factory commands. |
 
 Targeted diagnosis cards use `builder_mode: guided_from_diagnosis`, preserve the source diagnosis fields, and expose a guided MVP method such as `minimum_cvar`, `minimum_variance`, `maximum_diversification`, `risk_parity`, or `equal_weight`. Reference benchmark cards use `card_type: reference_benchmark_test`, keep Equal Weight and Risk Parity as reference methods, set `method_role: reference_benchmark`, and keep `is_rebalance_recommendation: false`. Monitor-only and data-quality cards use `builder_mode: monitor_only` or `blocked_data_quality`, set `candidate_generation_allowed: false`, and must not prepare an unreliable candidate factory plan.
 
@@ -187,7 +199,12 @@ build_simple_builder_parameters(prefill, *, overrides=None) -> dict
 
 The editable setup fields are `goal`, `method`, `mode`, `constraint_preset`, `max_asset_weight`, and `min_asset_weight`. The only user-adjustable optimization fields are `min_asset_weight` and `max_asset_weight`. The allowed presets are `conservative`, `balanced`, `aggressive`, `custom`, `basic_reference`, and `uncapped`. Numeric fields are copied from preset defaults, Launchpad/Strategy Selector hints, or user overrides; preset labels are visible setup labels and do not secretly apply optimizer formulas.
 
-The Simple Mode object preserves `builder_prefill_id`, source card/diagnosis/problem ids, `method_role`, `original_suggested_method`, `selected_method`, `method_changed_by_user`, hypothesis, success criteria, tradeoff, skip rule, decision boundary, and `is_rebalance_recommendation: false`. It also exposes `parameters` and `constraints` sub-objects for UI/API convenience.
+The Simple Mode object preserves `builder_prefill_id`, source card/diagnosis/problem ids, `method_role`, `original_suggested_method`, `selected_method`, `method_changed_by_user`, hypothesis, success criteria, optional Client Fit context/test criteria, tradeoff, skip rule, decision boundary, and `is_rebalance_recommendation: false`. It also exposes `parameters` and `constraints` sub-objects for UI/API convenience.
+
+Client Fit target rows must not appear in `parameters` or `constraints`. They are displayed beside
+the setup as success criteria and passed downstream so Current vs Candidate can evaluate them as
+evidence. They must not alter the selected method, constraint preset, min/max weight, mode,
+analysis window, candidate id, or generated weights.
 
 Simple Mode must not expose advanced settings such as tax-aware optimization, turnover-aware objective, asset-class bounds, custom risk budgets, Robust MV lambda, advanced CVaR settings, covariance selector, expected-return model selector, volatility target, rebalancing frequency, transaction-cost controls, leverage, or shorting. If these appear in overrides, the helper raises `PortfolioAlternativesBuilderError` instead of silently accepting them.
 
@@ -226,7 +243,7 @@ The public helper is:
 builder_prefill_to_candidate_setup(prefill, *, edits=None) -> dict | None
 ```
 
-The setup contains `candidate_setup_id`, `builder_prefill_id`, source card/diagnosis ids, source Launchpad card type, `goal`, `hypothesis_to_test`, `selected_method`, `original_suggested_method`, `method_changed_by_user`, `parameters`, `constraints`, success criteria, tradeoff, skip rule, decision boundary, `is_rebalance_recommendation: false`, `can_generate_candidate`, validation status/warnings, and `created_at`.
+The setup contains `candidate_setup_id`, `builder_prefill_id`, source card/diagnosis ids, source Launchpad card type, `goal`, `hypothesis_to_test`, `selected_method`, `original_suggested_method`, `method_changed_by_user`, `parameters`, `constraints`, success criteria, optional Client Fit test criteria, tradeoff, skip rule, decision boundary, `is_rebalance_recommendation: false`, `can_generate_candidate`, validation status/warnings, and `created_at`.
 
 `CandidateSetup` is emitted only when validation is `valid`. Blocked data quality, unsupported methods, missing setup, invalid constraints, feasibility risk, and reference-boundary violations leave `candidate_setup: null`.
 

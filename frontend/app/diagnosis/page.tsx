@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -64,7 +64,7 @@ export default function DiagnosisPage() {
   return (
     <div>
       <PageHeader
-        kicker="Investment Decision Room"
+        kicker="Step 02 / Portfolio X-Ray"
         title="Portfolio X-Ray Diagnosis"
         description="Current-portfolio review before any candidate test."
       />

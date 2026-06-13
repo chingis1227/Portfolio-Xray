@@ -9,21 +9,21 @@ from typing import Iterable
 
 # Common UTF-8 read as cp1251 artifacts (em dash, quotes, bullets).
 MOJIBAKE_SUBSTRINGS: tuple[str, ...] = (
-    "вЂ",
+    "\u0432\u0402",
     "\u0432\u0402",
     "\u00e2\u20ac",
-    "вЂ",
-    "О”",
-    "â€”",
-    "Î",
-    "Ð",
+    "\u0432\u0402",
+    "\u041e\u201d",
+    "\u00e2\u20ac\u201d",
+    "\u00ce",
+    "\u00d0",
     "\ufffd",
 )
 
 # Cyrillic letters in prose (exclude path-only lines).
 _CYRILLIC_RE = re.compile(r"[\u0400-\u04ff]")
 _PATH_LIKE_RE = re.compile(
-    r"(?:^[A-Za-z]:\\)|(?:^Source:\s)|(?:weight_source=)|(?:[/\\][\w.\- ]+[/\\])|(?:OneDrive\\)|(?:\\\\)",
+    r"(...:^[A-Za-z]:\\)|(...:^Source:\s)|(...:weight_source=)|(...:[/\\][\w.\- ]+[/\\])|(...:OneDrive\\)|(...:\\\\)",
     re.IGNORECASE,
 )
 
@@ -137,7 +137,7 @@ def _scan_stress_report(rel_path: str, data: object) -> list[ScanFinding]:
 
     def walk(obj: object, prefix: str) -> None:
         if isinstance(obj, dict):
-            if "assessment_ru" in obj and "assessment_en" not in obj:
+            if "assessment_en_legacy" in obj and "assessment_en" not in obj:
                 findings.append(
                     ScanFinding(
                         rel_path,

@@ -129,7 +129,7 @@ the existing NaN-safe return path (0% return contribution, no `cash_proxy_ticker
 ## Context and Orientation
 
 Portfolio MRI is diagnosis-first. Block 2.2 answers: **how has this portfolio behaved as a whole
-investment organism?** It follows Block 2.1 (what you own) in the X-Ray stack.
+investment organism...** It follows Block 2.1 (what you own) in the X-Ray stack.
 
 Pipeline today (portfolio-first):
 
@@ -167,7 +167,7 @@ truth is **`analysis_subject/`** per [product_flow_operator_guide.md](../product
 
 ### 2. Existing JSON / output inventory
 
-| Artifact | Location | Product-ready? | Notes |
+| Artifact | Location | Product-ready... | Notes |
 | --- | --- | --- | --- |
 | `portfolio_xray.json` | `{output_dir_final}/analysis_subject/` | **Partial** | Has `block_2_1`; 2.2 only via `sections.risk_diagnostics` |
 | `sections.risk_diagnostics` | inside above | Internal | `portfolio_metrics`, `multi_window_metrics`, `tail_risk`, `rolling_metrics`, `drawdown_structure` items |

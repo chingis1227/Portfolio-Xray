@@ -10,7 +10,7 @@ The next implementation chat must begin with Session 01 only. Session 00 is comp
 If Session 01 succeeds, the implementer must stop at the end of Session 01 and leave later sessions
 for later chats unless the user explicitly approves continuing. The Session 00 stop rule from the
 originating request was: after Session 00 is fully complete, report
-`Session 00 Р·Р°РІРµСЂС€РµРЅР° СѓСЃРїРµС€РЅРѕ. РћСЃС‚Р°РЅР°РІР»РёРІР°СЋСЃСЊ РїРµСЂРµРґ Session 01.` and stop.
+Legacy note normalized to English-only text.
 
 ## Purpose / Big Picture
 
@@ -448,7 +448,7 @@ unavailable until candidate comparison metrics exist.
 
 ## Context and Orientation
 
-Portfolio MRI / Portfolio X-Ray is currently aligned around the "Р”РРђР“РќРћРЎРўРРљРђ 2" product truth. The
+Portfolio MRI / Portfolio X-Ray is currently aligned around the "Diagnosis 2" product truth. The
 current product is diagnosis-first, current-portfolio-first, and not optimizer-first.
 
 The block names used in this plan are:
@@ -878,7 +878,7 @@ What not to touch: do not broaden scope into deferred features.
 
 All commands assume the working directory is:
 
-    D:\Р Р°Р±РѕС‡РёР№ СЃС‚РѕР»\РљРЈР РЎРћР  РўРЈР›Рђ Р”РРђР“РќРћРЎРўРРљРђ
+    D:\Desktop\CURSOR TULA DIAGNOSTICS
 
 Session 00 commands actually run:
 

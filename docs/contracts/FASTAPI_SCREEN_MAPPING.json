@@ -12,14 +12,22 @@
     "frontend/README.md"
   ],
   "allowed_screen_routes": [
+    "/",
+    "/client-profile",
+    "/onboarding/sign-in",
+    "/onboarding/name",
+    "/onboarding/investor-type",
+    "/onboarding/loading",
     "/portfolio-input",
     "/diagnosis",
     "/evidence",
+    "/client-fit",
     "/hypothesis",
     "/comparison",
     "/verdict",
     "/report"
   ],
+  "deferred_screen_routes": [],
   "operations": [
     {
       "operation_id": "getHealth",
@@ -51,6 +59,7 @@
       "public_data_fields": [
         "artifact_refs",
         "diagnosis",
+        "client_fit",
         "launchpad",
         "next_allowed_actions",
         "review_summary"
@@ -59,11 +68,12 @@
         "/portfolio-input",
         "/diagnosis",
         "/evidence",
+        "/client-fit",
         "/hypothesis"
       ],
       "screen_mapping_status": "current",
-      "screen_contract_section": "Portfolio Input -> Portfolio X-Ray / Diagnosis -> Stress Test Lab -> Hypothesis Builder",
-      "mapping_note": "Creates diagnosis-first review state. Fields may unlock only diagnosis, evidence, and hypothesis setup; no candidate/comparison/verdict/report state is active."
+      "screen_contract_section": "Onboarding context -> Portfolio Input -> Portfolio X-Ray / Diagnosis -> Stress Test Lab -> Client Fit -> Hypothesis Builder",
+      "mapping_note": "Creates diagnosis-first review state from portfolio input plus Client Fit context prepared by onboarding or the advanced manual editor. Backend/CLI compatibility still supports missing Client Fit. Public client_fit is a bounded display summary, not raw client_fit_check.json."
     },
     {
       "operation_id": "recoverReview",
@@ -76,6 +86,7 @@
       "public_data_fields": [
         "artifact_refs",
         "diagnosis",
+        "client_fit",
         "downstream_artifacts_restored_as_active",
         "launchpad",
         "next_allowed_actions",
@@ -86,11 +97,12 @@
         "/portfolio-input",
         "/diagnosis",
         "/evidence",
+        "/client-fit",
         "/hypothesis"
       ],
       "screen_mapping_status": "current",
       "screen_contract_section": "Portfolio Input recovery and conservative downstream reset",
-      "mapping_note": "Recovery restores diagnosis/evidence/hypothesis setup only and must keep downstream candidate/comparison/verdict/report inactive unless regenerated."
+      "mapping_note": "Recovery restores diagnosis/evidence/Client Fit/hypothesis setup only and must keep downstream candidate/comparison/verdict/report inactive unless regenerated. Client Fit is exposed only as a bounded display summary, not as raw client_fit_check.json."
     },
     {
       "operation_id": "prepareBuilder",
@@ -143,6 +155,7 @@
       "response_schema": "ComparisonResponse",
       "data_schema": "ComparisonData",
       "public_data_fields": [
+        "client_fit",
         "comparison",
         "evidence_chain_context",
         "next_allowed_actions"
@@ -154,7 +167,7 @@
       ],
       "screen_mapping_status": "current",
       "screen_contract_section": "Current vs Candidate Comparison",
-      "mapping_note": "Comparison is trade-off evidence and may unlock Verdict; it carries bounded diagnosis-to-hypothesis context, but must not crown a winner or issue action advice."
+      "mapping_note": "Comparison is trade-off evidence and may unlock Verdict; it carries bounded diagnosis-to-hypothesis context and bounded Client Fit target context, but must not crown a winner or issue action advice. Client Fit is exposed only as a bounded display summary, not as raw client_fit_check.json."
     },
     {
       "operation_id": "generateVerdict",
@@ -165,6 +178,7 @@
       "response_schema": "VerdictResponse",
       "data_schema": "VerdictData",
       "public_data_fields": [
+        "client_fit",
         "next_allowed_actions",
         "evidence_chain_context",
         "verdict"
@@ -175,7 +189,7 @@
       ],
       "screen_mapping_status": "current",
       "screen_contract_section": "Decision Verdict",
-      "mapping_note": "Verdict is non-binding decision support over same-run evidence-chain context. No-trade, test-another, failed/infeasible, and evidence-insufficient remain valid outcomes."
+      "mapping_note": "Verdict is non-binding decision support over same-run evidence-chain context. No-trade, test-another, failed/infeasible, and evidence-insufficient remain valid outcomes. Client Fit is exposed only as a bounded display summary and cannot by itself clear material diagnostic issues."
     },
     {
       "operation_id": "generateReport",
@@ -186,6 +200,7 @@
       "response_schema": "ReportResponse",
       "data_schema": "ReportData",
       "public_data_fields": [
+        "client_fit",
         "evidence_chain_context",
         "grounding",
         "llm_generated",
@@ -196,7 +211,7 @@
       ],
       "screen_mapping_status": "current",
       "screen_contract_section": "Report / AI Commentary Grounding",
-      "mapping_note": "Report is a grounded deterministic preview over diagnosis, hypothesis, comparison, and verdict context. It must not imply LLM generation, PDF generation, or unsupported conclusions."
+      "mapping_note": "Report is a grounded deterministic preview over diagnosis, hypothesis, comparison, and verdict context. It must not imply LLM generation, PDF generation, or unsupported conclusions. Client Fit is exposed only as a bounded display summary, not as raw client_fit_check.json."
     }
   ]
 }

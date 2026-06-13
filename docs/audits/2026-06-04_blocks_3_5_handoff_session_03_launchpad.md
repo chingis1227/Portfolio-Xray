@@ -7,7 +7,7 @@ Plan: `docs/exec_plans/2026-06-04_blocks_3_5_integration_readiness_audit_plan.md
 ## Question
 
 Does Block 4 diagnosis become safe, testable Candidate Launchpad cards, with the right card types
-and launch statuses, and without implying a rebalance recommendation?
+and launch statuses, and without implying a rebalance recommendation...
 
 ## Result
 

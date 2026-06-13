@@ -53,7 +53,8 @@ def test_golden_fixture_assigns_severity_and_confidence() -> None:
     assert hedge is not None
     assert hedge.activated
     assert hedge.scoring.stress_confirmation == "confirmed"
-    assert hedge.confidence in {"high", "medium"}
+    assert hedge.confidence == "low"
+    assert hedge.scoring.materiality == "high"
 
 
 def test_data_quality_problem_gets_high_severity_low_confidence() -> None:

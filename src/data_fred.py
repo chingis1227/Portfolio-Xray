@@ -75,7 +75,7 @@ def _fetch_fred_series_api(
         query["observation_start"] = str(pd.Timestamp(start).date())
     if end:
         query["observation_end"] = str(pd.Timestamp(end).date())
-    url = FRED_API_OBSERVATIONS_URL + "?" + urlencode(query)
+    url = FRED_API_OBSERVATIONS_URL + "..." + urlencode(query)
     raw = _read_url(url, timeout=timeout)
     import json
 
@@ -99,7 +99,7 @@ def _fetch_fred_series_csv(
         query["cosd"] = str(pd.Timestamp(start).date())
     if end:
         query["coed"] = str(pd.Timestamp(end).date())
-    url = FRED_CSV_GRAPH_URL + "?" + urlencode(query)
+    url = FRED_CSV_GRAPH_URL + "..." + urlencode(query)
     try:
         raw = _read_url(url, timeout=timeout)
     except Exception as ex:

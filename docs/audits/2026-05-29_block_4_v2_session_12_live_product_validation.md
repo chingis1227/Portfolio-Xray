@@ -10,10 +10,10 @@ Prerequisite: [Session 11 archetype fixtures](2026-05-29_block_4_v2_session_11_a
 
 | Question | Verdict |
 | --- | --- |
-| Live v2 JSON on root `config.yml` subject? | **Yes** — refreshed via `validate_block_4_live.py --refresh-diagnosis` |
-| v2 product + handoff contracts on live book? | **Yes** |
-| `live_core_e2e` switched to v2 Block 4 gates? | **Yes** — `check_problem_classification_v2`, `check_candidate_launchpad_v2`, `check_block_4_v2_diagnosis_handoff` |
-| Operator validator script? | **Yes** — `scripts/validate_block_4_live.py` |
+| Live v2 JSON on root `config.yml` subject... | **Yes** — refreshed via `validate_block_4_live.py --refresh-diagnosis` |
+| v2 product + handoff contracts on live book... | **Yes** |
+| `live_core_e2e` switched to v2 Block 4 gates... | **Yes** — `check_problem_classification_v2`, `check_candidate_launchpad_v2`, `check_block_4_v2_diagnosis_handoff` |
+| Operator validator script... | **Yes** — `scripts/validate_block_4_live.py` |
 | Session 12 gate | **PASS** |
 
 **Session 12 verdict:** **PASS**

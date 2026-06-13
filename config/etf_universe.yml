@@ -3949,7 +3949,7 @@
 - {asset_class: fixed_income, canonical_ticker: TIPX, credit_quality: Treasury, currency_exposure: USD,
   data_source: [public_listing_ingestion], duplicate_group_id: ingestion_tipx, duration_bucket: intermediate,
   issuer: State Street, main_risk_factor: inflation, name: 'State Street SPDR Bloomberg
-    1a??10 Year TIPS ETF', notes: Ingested from public listing sources (otherlisted).
+    1a......10 Year TIPS ETF', notes: Ingested from public listing sources (otherlisted).
     Rule-based classification; review before merge to production., region: US, risk_role: [
     inflation_hedge, duration], secondary_risk_factors: [real_rates], sector: none,
   subtype: tips, thematic_primary: none, thematic_tags: [], ticker: TIPX}

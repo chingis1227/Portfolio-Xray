@@ -1,8 +1,18 @@
-﻿import type { ReactNode } from "react";
+"use client";
+
+import type { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { TopJourneyProgress } from "./TopJourneyProgress";
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const publicExperience = pathname === "/" || pathname.startsWith("/onboarding");
+
+  if (publicExperience) {
+    return <div className="min-h-screen bg-pmri-bg">{children}</div>;
+  }
+
   return (
     <div className="min-h-screen bg-decision-radial">
       <div className="flex min-h-screen">

@@ -10,12 +10,12 @@ Prerequisite: [Session 01 contract spec](2026-05-29_block_4_v2_session_01_contra
 
 | Question | Verdict |
 | --- | --- |
-| 15-problem registry implemented? | **Yes** — `src/block_4/problem_taxonomy.py` |
-| Action paths (15) + Launchpad goals? | **Yes** — `ACTION_PATH_REGISTRY` |
-| Block 2.6 v2 mapping? | **Yes** — `BLOCK_2_6_RISK_TYPE_TO_PROBLEM_IDS_V2` |
-| V1 legacy id mapping? | **Yes** — `PROBLEM_ID_V1_TO_V2` |
-| Root-cause elevation hints? | **Yes** — `ROOT_CAUSE_ELEVATION_RULES` (Session 06 input) |
-| Contract SSOT alignment? | **Yes** — registry keys match `PROBLEM_CLASSIFICATION_V2_IDS` and `BLOCK_4_V2_ACTION_PATH_IDS` |
+| 15-problem registry implemented... | **Yes** — `src/block_4/problem_taxonomy.py` |
+| Action paths (15) + Launchpad goals... | **Yes** — `ACTION_PATH_REGISTRY` |
+| Block 2.6 v2 mapping... | **Yes** — `BLOCK_2_6_RISK_TYPE_TO_PROBLEM_IDS_V2` |
+| V1 legacy id mapping... | **Yes** — `PROBLEM_ID_V1_TO_V2` |
+| Root-cause elevation hints... | **Yes** — `ROOT_CAUSE_ELEVATION_RULES` (Session 06 input) |
+| Contract SSOT alignment... | **Yes** — registry keys match `PROBLEM_CLASSIFICATION_V2_IDS` and `BLOCK_4_V2_ACTION_PATH_IDS` |
 
 **Session 02 verdict:** **PASS**
 

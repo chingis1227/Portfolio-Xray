@@ -90,7 +90,7 @@ Fifth, add focused tests. Tests should prove that default optimization mode stil
 
 Work from the repository root:
 
-    C:\Users\ShumeikoYe\OneDrive\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА
+    C:\Users\ShumeikoYe\OneDrive\Desktop\CURSOR TULA DIAGNOSTICS
 
 Use `apply_patch` for manual edits. After implementation, run:
 

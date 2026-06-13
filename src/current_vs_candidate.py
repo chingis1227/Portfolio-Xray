@@ -16,6 +16,11 @@ CURRENT_VS_CANDIDATE_VERSION = "current_vs_candidate_v1"
 CURRENT_VS_CANDIDATE_FILENAME = "current_vs_candidate.json"
 DEFAULT_TRANSACTION_COST_BPS = 10
 DEFAULT_TRANSACTION_COST_MODEL = "bps_on_turnover_half_sum"
+CLIENT_TARGET_COMPARISON_VERSION = "current_vs_candidate_client_targets_v1"
+CLIENT_TARGET_BOUNDARY_EN = (
+    "Client targets are comparison references only. They do not crown a winner, "
+    "issue a verdict, or create a rebalance instruction."
+)
 
 _MATERIALITY_THRESHOLDS: dict[str, float] = {
     "cagr": 0.005,
@@ -584,6 +589,158 @@ def _success_criteria_result(
     return {"overall_status": overall, "criteria": rows}
 
 
+def _range_target_status(value: float | None, target_range: Mapping[str, Any] | None) -> str:
+    if value is None or not isinstance(target_range, Mapping):
+        return "evidence_insufficient"
+    lo = _as_float(target_range.get("min"))
+    hi = _as_float(target_range.get("max"))
+    if lo is None or hi is None:
+        return "evidence_insufficient"
+    if value < lo:
+        return "below_target"
+    if value > hi:
+        return "above_target"
+    return "within_target"
+
+
+def _limit_target_status(value: float | None, limit: Any) -> str:
+    threshold = _as_float(limit)
+    if value is None or threshold is None:
+        return "evidence_insufficient"
+    return "within_limit" if value >= threshold else "worse_than_limit"
+
+
+def _client_target_rows(
+    *,
+    baseline: dict[str, Any],
+    candidate: dict[str, Any],
+    primary_window: str,
+    client_fit_check: Mapping[str, Any] | None,
+) -> list[dict[str, Any]]:
+    if not isinstance(client_fit_check, Mapping):
+        return []
+    profile = client_fit_check.get("profile")
+    if not isinstance(profile, Mapping):
+        return []
+
+    rows: list[dict[str, Any]] = []
+    target_return = profile.get("target_return_range")
+    if isinstance(target_return, Mapping):
+        b = _metric_value(baseline, "cagr", primary_window)
+        c = _metric_value(candidate, "cagr", primary_window)
+        rows.append(
+            {
+                "dimension": "return",
+                "metric_field": "cagr",
+                "label": "Return vs stated target range",
+                "baseline_value": b,
+                "candidate_value": c,
+                "target_range": dict(target_return),
+                "baseline_target_status": _range_target_status(b, target_return),
+                "candidate_target_status": _range_target_status(c, target_return),
+                "usage": "comparison_reference_only",
+            }
+        )
+    target_vol = profile.get("target_vol_range")
+    if isinstance(target_vol, Mapping):
+        b = _metric_value(baseline, "vol_annual", primary_window)
+        c = _metric_value(candidate, "vol_annual", primary_window)
+        rows.append(
+            {
+                "dimension": "volatility",
+                "metric_field": "vol_annual",
+                "label": "Volatility vs stated comfort range",
+                "baseline_value": b,
+                "candidate_value": c,
+                "target_range": dict(target_vol),
+                "baseline_target_status": _range_target_status(b, target_vol),
+                "candidate_target_status": _range_target_status(c, target_vol),
+                "usage": "comparison_reference_only",
+            }
+        )
+    drawdown_limit = profile.get("target_max_drawdown_pct")
+    if drawdown_limit is not None:
+        b_dd = _metric_value(baseline, "max_drawdown", primary_window)
+        c_dd = _metric_value(candidate, "max_drawdown", primary_window)
+        rows.append(
+            {
+                "dimension": "historical_drawdown",
+                "metric_field": "max_drawdown",
+                "label": "Historical drawdown vs stated maximum temporary loss",
+                "baseline_value": b_dd,
+                "candidate_value": c_dd,
+                "target_limit": drawdown_limit,
+                "baseline_target_status": _limit_target_status(b_dd, drawdown_limit),
+                "candidate_target_status": _limit_target_status(c_dd, drawdown_limit),
+                "usage": "comparison_reference_only",
+            }
+        )
+        b_stress = _worst_stress_loss(baseline)
+        c_stress = _worst_stress_loss(candidate)
+        rows.append(
+            {
+                "dimension": "stress_loss",
+                "metric_field": "worst_stress_loss",
+                "label": "Worst stress loss vs stated maximum temporary loss",
+                "baseline_value": b_stress,
+                "candidate_value": c_stress,
+                "target_limit": drawdown_limit,
+                "baseline_target_status": _limit_target_status(b_stress, drawdown_limit),
+                "candidate_target_status": _limit_target_status(c_stress, drawdown_limit),
+                "usage": "comparison_reference_only",
+            }
+        )
+    if profile.get("horizon_years") is not None:
+        rows.append(
+            {
+                "dimension": "horizon",
+                "metric_field": None,
+                "label": "Stated horizon",
+                "horizon_years": profile.get("horizon_years"),
+                "usage": "display_context_only",
+            }
+        )
+    return rows
+
+
+def _client_target_comparison(
+    *,
+    baseline: dict[str, Any],
+    candidate: dict[str, Any],
+    primary_window: str,
+    client_fit_check: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    if not isinstance(client_fit_check, Mapping):
+        return {
+            "schema_version": CLIENT_TARGET_COMPARISON_VERSION,
+            "status": "not_provided",
+            "target_rows": [],
+            "boundary_en": CLIENT_TARGET_BOUNDARY_EN,
+            "does_not_issue_verdict": True,
+            "does_not_crown_winner": True,
+        }
+    profile = client_fit_check.get("profile")
+    profile = profile if isinstance(profile, Mapping) else {}
+    return {
+        "schema_version": CLIENT_TARGET_COMPARISON_VERSION,
+        "status": str(client_fit_check.get("client_fit_status") or "not_provided"),
+        "profile": {
+            "preset_id": profile.get("preset_id"),
+            "source_quality": profile.get("source_quality"),
+            "horizon_years": profile.get("horizon_years"),
+        },
+        "target_rows": _client_target_rows(
+            baseline=baseline,
+            candidate=candidate,
+            primary_window=primary_window,
+            client_fit_check=client_fit_check,
+        ),
+        "boundary_en": CLIENT_TARGET_BOUNDARY_EN,
+        "does_not_issue_verdict": True,
+        "does_not_crown_winner": True,
+    }
+
+
 def _materiality_for_decision_review(
     *,
     dimensions: list[dict[str, Any]],
@@ -636,6 +793,7 @@ def _comparison_row(
     baseline: dict[str, Any],
     primary_window: str,
     candidate_generation: dict[str, Any] | None = None,
+    client_fit_check: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     generation_candidate = _candidate_generation_candidate(
         candidate_generation,
@@ -814,6 +972,12 @@ def _comparison_row(
             generation_candidate=generation_candidate,
         ),
         "success_criteria_result": success_result,
+        "client_fit_target_comparison": _client_target_comparison(
+            baseline=baseline,
+            candidate=candidate,
+            primary_window=primary_window,
+            client_fit_check=client_fit_check,
+        ),
         "materiality_for_decision_review": _materiality_for_decision_review(
             dimensions=dimensions,
             success_criteria_result=success_result,
@@ -838,6 +1002,7 @@ def build_current_vs_candidate(
     selection: dict[str, Any] | None = None,
     candidate_ids: Iterable[str] | None = None,
     candidate_generation: dict[str, Any] | None = None,
+    client_fit_check: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Project canonical comparison into current-vs-candidate view."""
 
@@ -876,6 +1041,7 @@ def build_current_vs_candidate(
                     baseline=baseline,
                     primary_window=primary_window,
                     candidate_generation=candidate_generation,
+                    client_fit_check=client_fit_check,
                 )
             )
     comparable_selected = tuple(
@@ -923,6 +1089,9 @@ def build_current_vs_candidate(
             "candidate_generation": "candidate_generation.json"
             if isinstance(candidate_generation, dict)
             else None,
+            "client_fit_check": "client_fit_check.json"
+            if isinstance(client_fit_check, Mapping)
+            else None,
         },
         "comparison_questions_answered": [
             "what_improved",
@@ -933,8 +1102,14 @@ def build_current_vs_candidate(
             "turnover_required",
             "transaction_cost_assumption",
             "success_criteria_result",
+            "current_vs_candidate_vs_client_targets",
             "materiality_for_decision_review",
         ],
+        "guardrails": {
+            "diagnostic_only": True,
+            "does_not_issue_verdict": True,
+            "does_not_crown_winner": True,
+        },
         "warnings": warnings,
     }
 
@@ -946,6 +1121,7 @@ def write_current_vs_candidate_outputs(
     selection: dict[str, Any] | None = None,
     candidate_ids: Iterable[str] | None = None,
     candidate_generation: dict[str, Any] | None = None,
+    client_fit_check: Mapping[str, Any] | None = None,
 ) -> dict[str, Path]:
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -954,6 +1130,7 @@ def write_current_vs_candidate_outputs(
         selection=selection,
         candidate_ids=candidate_ids,
         candidate_generation=candidate_generation,
+        client_fit_check=client_fit_check,
     )
     path = out / CURRENT_VS_CANDIDATE_FILENAME
     with open(path, "w", encoding="utf-8") as f:

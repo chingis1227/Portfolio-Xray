@@ -1,4 +1,4 @@
-﻿import type { ComparisonMetric } from "@/lib/types";
+import type { ComparisonMetric } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatUnknownValue, normalizeDisplaySentence } from "@/lib/displayLabels";
 

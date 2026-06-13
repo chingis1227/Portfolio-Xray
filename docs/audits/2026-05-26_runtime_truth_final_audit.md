@@ -2,7 +2,7 @@
 
 Date: 2026-05-26
 
-Purpose: Close [Runtime Truth Reset ExecPlan](../exec_plans/2026-05-26_runtime_truth_reset_plan.md) **Session 09** and state whether runtime behavior now matches canonical **«ДИАГНОСТИКА 2»** product truth after Sessions 01–08.
+Purpose: Close [Runtime Truth Reset ExecPlan](../exec_plans/2026-05-26_runtime_truth_reset_plan.md) **Session 09** and state whether runtime behavior now matches canonical **«Diagnosis 2»** product truth after Sessions 01–08.
 
 Related:
 
@@ -17,12 +17,12 @@ Related:
 
 | Question | Verdict |
 | --- | --- |
-| Does runtime match «ДИАГНОСТИКА 2» at the product boundary? | **Yes — accepted.** |
-| Is the ExecPlan acceptance criteria met? | **Yes — 6/6** (see §3). |
-| Can we demo diagnosis-first without batch candidates? | **Yes** — `run_portfolio_review.py` default → `product_diagnosis_only`. |
-| Can we demo one selected hypothesis honestly? | **Yes** — `--candidates equal_weight` → product adapters and verdict scoped to `equal_weight` (validated live + on-disk validator). |
-| Is research / backend batch still available? | **Yes** — `--with-candidates`, `--mode full`, factory profiles; advanced package preserved in tests. |
-| Are there residual operator caveats? | **Yes — documented** (§6): technical `candidate_comparison.json` may list many disk folders; UI must use product bundle + `product_discovery`. |
+| Does runtime match «Diagnosis 2» at the product boundary... | **Yes — accepted.** |
+| Is the ExecPlan acceptance criteria met... | **Yes — 6/6** (see §3). |
+| Can we demo diagnosis-first without batch candidates... | **Yes** — `run_portfolio_review.py` default → `product_diagnosis_only`. |
+| Can we demo one selected hypothesis honestly... | **Yes** — `--candidates equal_weight` → product adapters and verdict scoped to `equal_weight` (validated live + on-disk validator). |
+| Is research / backend batch still available... | **Yes** — `--with-candidates`, `--mode full`, factory profiles; advanced package preserved in tests. |
+| Are there residual operator caveats... | **Yes — documented** (§6): technical `candidate_comparison.json` may list many disk folders; UI must use product bundle + `product_discovery`. |
 
 **Bottom line:** Runtime truth reset is **complete**. The backend implements diagnosis-first product routing, selected-candidate scoping, product-first manifest discovery, and advanced gating without removing research batch or legacy paths. Stakeholders should present the **six-file product bundle** and `product_discovery` paths — not raw Selection Engine ranking or full comparison row counts.
 
@@ -138,7 +138,7 @@ python scripts/validate_one_candidate_demo.py
 | Scope | Verdict |
 | --- | --- |
 | Runtime Truth Reset ExecPlan (Sessions 01–09) | **COMPLETE — ACCEPTED** |
-| Runtime aligns with «ДИАГНОСТИКА 2» product truth | **YES** at product boundary |
+| Runtime aligns with «Diagnosis 2» product truth | **YES** at product boundary |
 | Safe to proceed to UI/integration consuming product bundle | **YES**, following §6 operator rules |
 
 **Signed closure:** 2026-05-26 — Session 09 final audit. No further runtime-truth sessions required unless product truth or CLI contracts change.

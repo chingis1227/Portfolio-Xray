@@ -12,11 +12,11 @@ Operator contract: [runtime_artifact_contract.md](../runtime_artifact_contract.m
 
 | Question | Answer |
 | --- | --- |
-| Are Blocks 1–3 analytics present and test-backed? | **Yes** — unchanged from pre-decision audit; institutional 3.3/3.4 v1 primary. |
-| Are three canonical runtime modes operational with predictable artifacts? | **Yes** — live re-run 2026-05-29 on demo `config.yml` / `Main portfolio/`. |
-| Does `validate_live_core_artifacts` pass per mode? | **Yes** — `core_blocks_1_3`, `diagnosis_only`, `product_one_candidate` all `ok=True`. |
-| Is one-candidate `candidate_comparison.json` product-scoped? | **Yes** — **3** rows (baseline + scoped peers), not 19; `product_candidate_scope.candidate_ids: ["equal_weight"]`. |
-| Ready for Decision Workflow (Phase D)? | **Yes** — verdict **`READY_FOR_DECISION_WORKFLOW`**. |
+| Are Blocks 1–3 analytics present and test-backed... | **Yes** — unchanged from pre-decision audit; institutional 3.3/3.4 v1 primary. |
+| Are three canonical runtime modes operational with predictable artifacts... | **Yes** — live re-run 2026-05-29 on demo `config.yml` / `Main portfolio/`. |
+| Does `validate_live_core_artifacts` pass per mode... | **Yes** — `core_blocks_1_3`, `diagnosis_only`, `product_one_candidate` all `ok=True`. |
+| Is one-candidate `candidate_comparison.json` product-scoped... | **Yes** — **3** rows (baseline + scoped peers), not 19; `product_candidate_scope.candidate_ids: ["equal_weight"]`. |
+| Ready for Decision Workflow (Phase D)... | **Yes** — verdict **`READY_FOR_DECISION_WORKFLOW`**. |
 
 **Bottom line:** Runtime artifact contract gaps R1–R5 from the pre-decision audit are closed. Operators can trust the three canonical CLIs plus `scripts/verify_live_core_e2e.py` on a refreshed tree. Residual P2 items (2.6 `recession_severe` availability vs 3.2, scorecard `block_status: partial`) remain optional polish (ExecPlan Sessions 07–08) and do not block Decision Workflow entry.
 

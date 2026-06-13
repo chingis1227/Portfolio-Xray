@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { type MouseEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -42,7 +42,7 @@ function cleanLabel(value?: string | number | null, fallback = "Unavailable") {
 function formatEmbeddedPercent(value: string) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return value;
-  return `${numeric.toFixed(2).replace(/\.?0+$/, "")}%`;
+  return `${numeric.toFixed(2).replace(/\.0+$/, "")}%`;
 }
 
 function formatEmbeddedRatio(value: string) {
@@ -74,7 +74,7 @@ function pct(value?: number) {
 
 function numberText(value?: number) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "Unavailable";
-  return value.toFixed(2).replace(/\.?0+$/, "");
+  return value.toFixed(2).replace(/\.0+$/, "");
 }
 
 function scoreText(score?: number) {

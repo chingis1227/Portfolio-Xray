@@ -10,12 +10,12 @@ Scope: Session 04 only - retry the fresh product-one-candidate path after Sessio
 
 | Question | Verdict |
 | --- | --- |
-| Does `.venv` still match the repaired dependency state? | **Yes** - Python 3.12.13, `pandas 2.1.4`, `numpy 1.26.4`, `pandas_datareader 0.10.0`, and `FredReader import ok`. |
-| Did direct `fetch_fred_series("DTB3", ...)` succeed? | **No** - it still ended in `TimeoutError: The read operation timed out`. |
-| Did the canonical one-candidate command reach the intended product mode? | **Yes** - it printed `Mode: product_one_candidate`, selected `equal_weight`, and showed the flow through `Decision Verdict`. |
-| Did the canonical command refresh the subject and complete Blocks 3-5 live? | **No** - it failed during `analysis_subject` materialization while loading FRED `DTB3`. |
-| Did the existing one-candidate product bundle remain validator-clean? | **Yes** - `scripts/verify_live_core_e2e.py --profile product_one_candidate` returned OK. |
-| Did Session 04 change implementation behavior, formulas, schemas, or generated product outputs intentionally? | **No** - documentation/audit updates only; the failed canonical run did not complete subject refresh. |
+| Does `.venv` still match the repaired dependency state... | **Yes** - Python 3.12.13, `pandas 2.1.4`, `numpy 1.26.4`, `pandas_datareader 0.10.0`, and `FredReader import ok`. |
+| Did direct `fetch_fred_series("DTB3", ...)` succeed... | **No** - it still ended in `TimeoutError: The read operation timed out`. |
+| Did the canonical one-candidate command reach the intended product mode... | **Yes** - it printed `Mode: product_one_candidate`, selected `equal_weight`, and showed the flow through `Decision Verdict`. |
+| Did the canonical command refresh the subject and complete Blocks 3-5 live... | **No** - it failed during `analysis_subject` materialization while loading FRED `DTB3`. |
+| Did the existing one-candidate product bundle remain validator-clean... | **Yes** - `scripts/verify_live_core_e2e.py --profile product_one_candidate` returned OK. |
+| Did Session 04 change implementation behavior, formulas, schemas, or generated product outputs intentionally... | **No** - documentation/audit updates only; the failed canonical run did not complete subject refresh. |
 
 **Session 04 verdict:** **FRED_NETWORK_BLOCKER_RECONFIRMED_AFTER_ENV_REPAIR**. The local environment remains aligned and the previous compatibility blocker is gone, but live FRED `DTB3` access still times out. Fresh `analysis_subject` materialization is therefore still unproven. Existing `product_one_candidate` artifacts remain contract-valid but are not proof of a fresh refresh.
 

@@ -118,7 +118,7 @@ user's acceptance checklist.
 
 ## Concrete Steps
 
-Work from repository root `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`.
+Work from repository root `D:\Desktop\CURSOR TULA DIAGNOSTICS`.
 
 Run focused searches and artifact inspection with `rg` and small Python one-liners when needed.
 Run focused pytest files around changed modules before the final CLI proof. Run the proof command:

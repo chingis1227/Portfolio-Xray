@@ -10,7 +10,7 @@ generated artifact contracts.
 ## Question
 
 What is already present in the current project for a deterministic, dynamic interpretation layer,
-and what must the new plan strengthen without disrupting the active FastAPI migration?
+and what must the new plan strengthen without disrupting the active FastAPI migration...
 
 ## Baseline Findings
 

@@ -12,10 +12,10 @@ Specs: [problem_classification_spec.md](../specs/problem_classification_spec.md)
 
 | Question | Verdict |
 | --- | --- |
-| Are Problem Classification and Launchpad implemented? | **Yes** — `src/problem_classification.py`, `src/candidate_launchpad.py`; written from `run_report.py` on diagnosis materialize. |
-| Is Block 4 product contract enforced in tests? | **Yes** — `scripts/core_mvp_validation_contract.py` + `tests/test_block_4_decision_entry_contract.py`. |
-| Does live E2E validate Block 4 on diagnosis-only runs? | **Yes** — `validate_live_core_artifacts` (`diagnosis_only`, `product_one_candidate`) calls Block 4 contract + handoff checks. |
-| Live demo portfolio (2026-05-29)? | **Pass** — `block_4_n_problems: 3`, `block_4_n_cards: 5`, primary problem `weak_hedge_behavior`. |
+| Are Problem Classification and Launchpad implemented... | **Yes** — `src/problem_classification.py`, `src/candidate_launchpad.py`; written from `run_report.py` on diagnosis materialize. |
+| Is Block 4 product contract enforced in tests... | **Yes** — `scripts/core_mvp_validation_contract.py` + `tests/test_block_4_decision_entry_contract.py`. |
+| Does live E2E validate Block 4 on diagnosis-only runs... | **Yes** — `validate_live_core_artifacts` (`diagnosis_only`, `product_one_candidate`) calls Block 4 contract + handoff checks. |
+| Live demo portfolio (2026-05-29)... | **Pass** — `block_4_n_problems: 3`, `block_4_n_cards: 5`, primary problem `weak_hedge_behavior`. |
 
 **Bottom line:** Block 4 decision entry is **accepted for Phase D continuation**. Operators can run `python run_portfolio_review.py` and trust `analysis_subject/problem_classification.json` + `candidate_launchpad.json` when `verify_live_core_e2e.py --profile diagnosis_only` reports `ok=True`.
 

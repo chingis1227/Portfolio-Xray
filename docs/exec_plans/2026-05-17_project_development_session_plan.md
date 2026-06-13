@@ -469,7 +469,7 @@ assumptions, preferred approach, or trade-offs. These questions are mandatory ev
 contains a default path, because they give the user a clear control point before implementation. The
 questions should be specific to the current session, not generic process questions. The user may answer
 the questions, and Codex must use those answers as context for the session. If the proposed defaults are
-acceptable, the user may simply answer "continue the plan", "continue", or "продолжай"; after that,
+acceptable, the user may simply answer "continue the plan", "continue", or "continue"; after that,
 Codex should proceed using the documented defaults and record any relevant assumption in this ExecPlan
 or the owning spec when appropriate.
 
@@ -534,7 +534,7 @@ Expected work:
 
 Clarifying question before work:
 
-- Ask: "Should the durable roadmap file be `docs/ROADMAP.md` or `docs/product_backlog.md`?"
+- Ask: "Should the durable roadmap file be `docs/ROADMAP.md` or `docs/product_backlog.md`..."
 - If the user does not answer, use `docs/ROADMAP.md`, because the audit named it first and it is
   clearer for future sessions.
 
@@ -614,7 +614,7 @@ Expected work:
 
 Clarifying question before work:
 
-- Ask: "Should the old RC cap field be removed entirely, or kept as read-only diagnostic context?"
+- Ask: "Should the old RC cap field be removed entirely, or kept as read-only diagnostic context..."
 - If the user does not answer, remove it entirely. Silent ignored inputs are worse than a missing field.
 
 Kickoff text:
@@ -660,7 +660,7 @@ Expected work:
 Clarifying question before work:
 
 - Ask: "Should the config UI support both optimize-from-universe and analyze-current-weights in the
-  same screen, or should current-weight diagnostics be a separate mode panel?"
+  same screen, or should current-weight diagnostics be a separate mode panel..."
 - If the user does not answer, implement a clear mode control on the same screen.
 
 Kickoff text:
@@ -699,7 +699,7 @@ Expected work:
 
 Clarifying question before work:
 
-- Ask: "Should this session only correct the docstring, or should it add real turnover-threshold logic?"
+- Ask: "Should this session only correct the docstring, or should it add real turnover-threshold logic..."
 - If the user does not answer, do the smaller safe fix: correct the docstring and leave product
   turnover logic for Action/No-Trade sessions.
 
@@ -730,7 +730,7 @@ Session-specific docs to read:
 
 Expected work:
 
-- Search source docs for mojibake patterns such as `Р`, `вЂ`, `Sigma`, and broken symbols.
+- Legacy note normalized to English-only text.
 - Fix source documentation only. Do not edit generated report outputs in this session.
 - Preserve technical meaning; where exact intended symbol is uncertain, prefer plain ASCII terms such
   as `Sigma_base` instead of guessing a mathematical glyph.
@@ -821,7 +821,7 @@ Expected work:
 Clarifying question before work:
 
 - Ask: "Which candidate set must be first-class in V1: policy, current, equal weight, risk parity,
-  robust scenario, robust MV, min variance, max diversification, and min CVaR; or a smaller launch set?"
+  robust scenario, robust MV, min variance, max diversification, and min CVaR; or a smaller launch set..."
 - If the user does not answer, specify the broader set but allow candidates to be `unavailable` when
   artifacts are missing.
 
@@ -981,7 +981,7 @@ Expected work:
 
 Clarifying question before work:
 
-- Ask: "Should Health Score apply first to current/policy only, or to every candidate?"
+- Ask: "Should Health Score apply first to current/policy only, or to every candidate..."
 - If no answer, specify it for every candidate but allow report surfaces to show current/policy first.
 
 Kickoff text:

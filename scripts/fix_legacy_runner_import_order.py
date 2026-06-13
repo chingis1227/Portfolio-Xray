@@ -22,7 +22,7 @@ def fix_file(path: Path) -> None:
     while lines and lines[0].startswith("from __future__"):
         future_lines.append(lines.pop(0))
     body = "".join(lines)
-    doc_match = re.search(r'("""[\s\S]*?""")', body)
+    doc_match = re.search(r'("""[\s\S]*...""")', body)
     if not doc_match:
         text = "".join(future_lines) + PATHS_LINE + body
     else:

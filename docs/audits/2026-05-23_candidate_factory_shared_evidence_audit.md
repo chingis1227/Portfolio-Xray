@@ -28,7 +28,7 @@ After Session 4 `CandidateRunContext` and Session 3 `lightweight_comparison`, Ph
 
 ## Repeated-Heavy-Calculation Map
 
-| ID | Computation | Location | Weights? | Shared today? | ×16? |
+| ID | Computation | Location | Weights... | Shared today... | ×16... |
 | --- | --- | --- | --- | --- | --- |
 | R1 | `portfolio_factor_regression_weekly` ×4 + `factor_variance_decomposition_weekly` | `run_report.py:1003–1041`, `1506`; `stress_factors.py:1750–1784` | y = R·w | No | Yes — **dominant** |
 | R2 | Diagnostic extended asset OLS (`FACTOR_COLUMN_ORDER`) | `run_report.py:741–761`; `stress_factors.py:3107` | slice | Partial | Yes |

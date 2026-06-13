@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -254,7 +254,7 @@ export default function ReportPage() {
   return (
     <div>
       <PageHeader
-        kicker="Step 07 / Report"
+        kicker="Step 08 / Report"
         title="Client-ready report preview"
         description="A concise narrative grounded in the active review: diagnosis, candidate test, comparison, verdict, limitations, and next observation points."
       >

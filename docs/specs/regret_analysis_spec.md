@@ -30,7 +30,7 @@ The Regret Analysis layer:
 
 ## Product Boundary
 
-- Answers: *If we commit to profile R, how much return (in stress PnL terms) do we give up versus the best other candidate in each named scenario? Where is regret largest?*
+- Answers: *If we commit to profile R, how much return (in stress PnL terms) do we give up versus the best other candidate in each named scenario... Where is regret largest...*
 - Does **not** answer: *automatically switch selection*, *predict future scenarios*, or *guarantee ex-post optimality*.
 - Forbidden in exported text: imperative buy/sell, performance guarantees, presenting regret as automatic investment truth.
 

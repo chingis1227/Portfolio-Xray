@@ -31,7 +31,7 @@ The Assumption Sensitivity layer:
 
 ## Product Boundary
 
-- Answers: *If we stress how much Health vs Robustness matter, or ignore the policy default, does the same profile still look favored? Do simpler metric-window rankings agree?*
+- Answers: *If we stress how much Health vs Robustness matter, or ignore the policy default, does the same profile still look favored... Do simpler metric-window rankings agree...*
 - Does **not** answer: *re-optimize under new covariance*, *change expected-return forecasts*, *execute trades*, or *override selection because stability is low*.
 - Forbidden in exported text: imperative buy/sell, performance guarantees, presenting stability % as automatic truth.
 

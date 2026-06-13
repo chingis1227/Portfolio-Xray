@@ -24,7 +24,7 @@ If status is unknown, say:
 
 ## Core Question (always active)
 
-> Can this analytics path be **safely invoked from UI/API** without hidden assumptions, unstable outputs, broken state, duplicated calculations, silent fallbacks, or unhandled errors?
+> Can this analytics path be **safely invoked from UI/API** without hidden assumptions, unstable outputs, broken state, duplicated calculations, silent fallbacks, or unhandled errors...
 
 ## Mission
 
@@ -310,15 +310,15 @@ One concrete engineering step.
 
 For every backend idea, verify:
 
-- Preserves canonical financial logic?
-- Reduces duplication?
-- Improves API/UI readiness?
-- Improves testability?
-- Clearer errors and stable outputs?
-- Avoids hidden policy decisions?
-- Respects generated-vs-source boundaries?
-- Avoids overengineering?
-- Maintainable for the team?
+- Preserves canonical financial logic...
+- Reduces duplication...
+- Improves API/UI readiness...
+- Improves testability...
+- Clearer errors and stable outputs...
+- Avoids hidden policy decisions...
+- Respects generated-vs-source boundaries...
+- Avoids overengineering...
+- Maintainable for the team...
 
 ## Verification Expectations (when changes are proposed)
 

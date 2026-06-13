@@ -5,7 +5,8 @@ This spec owns the deterministic screen-copy hierarchy contract for Portfolio MR
 ## Status
 
 Status: **backend copy rules implemented and runtime-integrated; frontend consumes the hierarchy
-for diagnosis, evidence, hypothesis/candidate, comparison, verdict, and report screens**.
+for diagnosis, evidence, Client Fit, hypothesis/candidate, comparison, verdict, and report
+screens**.
 
 Target module: `src/site_explanation_bundle.py`.
 
@@ -39,6 +40,8 @@ Runtime integration:
 
 - `run_report.py` writes diagnosis-sidecar `site_explanation_bundle.json` for analysis-subject
   materialization, including core-diagnostics-only runs when only X-Ray and stress evidence exist.
+  When `client_fit_check.json` exists, the bundle adds Client Fit and report-hierarchy rows that
+  keep provided-profile fit separate from portfolio diagnostic quality.
 - `src/candidate_comparison.py` writes or refreshes root `site_explanation_bundle.json` after
   Block 8-only comparison and after the full compare/verdict/monitoring package.
 - `scripts/run_review_from_payload.py` exposes the bundle to the local frontend bridge during
@@ -54,6 +57,7 @@ workflow:
 
 - `portfolio_xray.json`
 - `stress_report.json`
+- `client_fit_check.json`
 - `problem_classification.json`
 - `candidate_launchpad.json`
 - `portfolio_alternatives_builder.json`
@@ -94,6 +98,7 @@ The required screen keys are:
 
 - `diagnosis`
 - `evidence`
+- `client_fit`
 - `hypothesis`
 - `candidate`
 - `comparison`
@@ -293,6 +298,9 @@ decision-support outcomes.
 
 The bundle must not emit these terms or phrases in generated product copy:
 
+- `suitable`
+- `suitability approved`
+- `approved`
 - `buy`
 - `sell`
 - `must rebalance`

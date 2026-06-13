@@ -86,7 +86,10 @@ def build_mvp_workflow_plan(
 
     mode = (cfg.analysis_mode or "optimize_from_universe").strip().lower()
 
-    if workflow == WORKFLOW_DIAGNOSIS_ONLY or mode == "analyze_current_weights":
+    if workflow == WORKFLOW_DIAGNOSIS_ONLY or (
+        mode == "analyze_current_weights"
+        and workflow not in (WORKFLOW_POLICY_CURRENT, WORKFLOW_FULL_DECISION)
+    ):
         add(
             "diagnosis",
             "Policy/current diagnostics (run_report)",

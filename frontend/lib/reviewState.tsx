@@ -5,6 +5,8 @@ import type { ComparisonMetric, EvidenceItem, Metric, SiteExplanationBundle, Sit
 import type { JourneyFlags } from "@/lib/journey";
 import type {
   CandidateResponse,
+  ClientFitInput,
+  ClientFitDisplaySummary,
   ComparisonResponse,
   CreateReviewResponse,
   DiagnosisSummary as FastApiDiagnosisSummary,
@@ -101,6 +103,7 @@ export type ComparisonResultSummary = {
   materiality: string;
   warnings: string[];
   evidenceChainContext?: EvidenceChainContextSummary;
+  clientFit?: ClientFitDisplaySummary;
   path?: string;
   generatedAt: string;
 };
@@ -126,6 +129,7 @@ export type VerdictResultSummary = {
   evidenceUsed: string[];
   whatWouldChangeVerdict: string[];
   evidenceChainContext?: EvidenceChainContextSummary;
+  clientFit?: ClientFitDisplaySummary;
   path?: string;
   generatedAt: string;
 };
@@ -143,6 +147,7 @@ export type ReportResultSummary = {
   nextObservation: string;
   boundaryNote: string;
   warnings: string[];
+  clientFit?: ClientFitDisplaySummary;
   generatedAt: string;
 };
 
@@ -316,6 +321,7 @@ export type ReviewSummary = {
   diagnosis: DiagnosisState;
   xraySummary?: XRaySummary;
   evidence?: EvidenceSummary;
+  clientFit?: ClientFitDisplaySummary;
   stressLabModel?: StressLabModel;
   siteExplanation?: SiteExplanationBundle;
   primaryProblem?: string;
@@ -334,6 +340,7 @@ export type ReviewSummary = {
 export type ActiveReviewState = {
   investorCurrency: string;
   holdings: ReviewHolding[];
+  clientFitProfile?: ClientFitInput;
   cloudPortfolio?: {
     id: string;
     name: string;
@@ -376,6 +383,7 @@ export type DiagnosisState = {
 type ReviewStateContextValue = {
   activeReview: ActiveReviewState | null;
   hydrated: boolean;
+  saveClientFitProfile: (profile: ClientFitInput) => void;
   savePortfolioInput: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings">) => void;
   submitPortfolioInput: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings" | "reviewResult">) => void;
   recordReviewError: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings"> & { message: string; details?: string }) => void;
@@ -536,6 +544,82 @@ function cleanEvidenceChainContextSummary(value: unknown): EvidenceChainContextS
   return Object.values(summary).some((item) => Array.isArray(item) ? item.length : Boolean(item)) ? summary : undefined;
 }
 
+function cleanClientFitDisplaySummary(value: unknown): ClientFitDisplaySummary | undefined {
+  if (!isRecord(value)) return undefined;
+  const tone = value.status_tone === "green" || value.status_tone === "amber" || value.status_tone === "red"
+    ? value.status_tone
+    : "amber";
+  const targetRows = Array.isArray(value.target_rows)
+    ? value.target_rows.filter(isRecord).map((row) => {
+      const rowTone: "green" | "amber" | "red" = row.status_tone === "green" || row.status_tone === "amber" || row.status_tone === "red" ? row.status_tone : "amber";
+      return {
+        dimension_label: textValue(row.dimension_label, "Client Fit check"),
+        portfolio_value_label: firstText(row.portfolio_value_label) ?? null,
+        target_or_limit_label: firstText(row.target_or_limit_label) ?? null,
+        status_label: textValue(row.status_label, "Client Fit not evaluated"),
+        status_tone: rowTone,
+        explanation: firstText(row.explanation) ? normalizeDisplaySentence(firstText(row.explanation)) : null
+      };
+    })
+    : [];
+  return {
+    status_label: textValue(value.status_label, "Client Fit not provided"),
+    status_tone: tone,
+    profile_label: firstText(value.profile_label) ?? null,
+    source_quality_label: firstText(value.source_quality_label) ?? null,
+    target_rows: targetRows.slice(0, 6),
+    main_explanation: firstText(value.main_explanation) ? normalizeDisplaySentence(firstText(value.main_explanation)) : null,
+    decision_boundary: normalizeDisplaySentence(value.decision_boundary, "Client Fit is non-binding decision support."),
+    next_best_test: firstText(value.next_best_test) ? normalizeDisplaySentence(firstText(value.next_best_test)) : null
+  };
+}
+
+function cleanClientFitProfileInput(value: unknown): ClientFitInput | undefined {
+  if (!isRecord(value)) return undefined;
+  const source = ["questionnaire", "preset_override", "manual_override", "imported", "missing"].includes(String(value.source))
+    ? String(value.source) as ClientFitInput["source"]
+    : undefined;
+  const sourceQuality = ["high", "medium", "low", "missing"].includes(String(value.source_quality))
+    ? String(value.source_quality) as ClientFitInput["source_quality"]
+    : undefined;
+  if (!source || !sourceQuality || source === "missing" || sourceQuality === "missing") return undefined;
+
+  const presetId = ["ultra_conservative", "conservative", "balanced", "growth", "aggressive"].includes(String(value.preset_id))
+    ? String(value.preset_id) as NonNullable<ClientFitInput["preset_id"]>
+    : null;
+  const rangeInput = (raw: unknown) => {
+    if (!isRecord(raw)) return undefined;
+    const min = numericValue(raw.min);
+    const max = numericValue(raw.max);
+    if (min === null || max === null || min < 0 || max > 1 || min >= max) return undefined;
+    return { min, max };
+  };
+  const targetReturnRange = rangeInput(value.target_return_range);
+  const targetVolRange = rangeInput(value.target_vol_range);
+  const drawdown = numericValue(value.target_max_drawdown_pct);
+  const horizonYears = numericValue(value.horizon_years);
+  if (!presetId && (!targetReturnRange || !targetVolRange || drawdown === null || !(horizonYears !== null && horizonYears > 0))) {
+    return undefined;
+  }
+
+  return {
+    preset_id: presetId,
+    source,
+    source_quality: sourceQuality,
+    source_quality_reason: firstText(value.source_quality_reason) ?? null,
+    horizon_years: horizonYears !== null && horizonYears > 0 ? horizonYears : null,
+    target_return_range: targetReturnRange ?? null,
+    target_vol_range: targetVolRange ?? null,
+    target_max_drawdown_pct: drawdown !== null && drawdown <= 0 && drawdown >= -1 ? drawdown : null
+  };
+}
+
+function hasProvidedClientFitSummary(value: ClientFitDisplaySummary | undefined) {
+  if (!value) return false;
+  const label = (value.status_label ?? "").trim().toLowerCase();
+  return Boolean(label && !label.includes("not provided"));
+}
+
 function cleanComparisonResultSummary(value: unknown): ComparisonResultSummary | undefined {
   if (!isRecord(value)) return undefined;
   if (value.stage !== "current_vs_candidate") return undefined;
@@ -570,6 +654,7 @@ function cleanComparisonResultSummary(value: unknown): ComparisonResultSummary |
     materiality: formatUnknownValue(value.materiality, "Materiality not evaluated"),
     warnings: stringArray(value.warnings).map((item) => normalizeDisplaySentence(item)),
     evidenceChainContext: cleanEvidenceChainContextSummary(value.evidenceChainContext),
+    clientFit: cleanClientFitDisplaySummary(value.clientFit),
     path: typeof value.path === "string" ? value.path : undefined,
     generatedAt: textValue(value.generatedAt, nowIso())
   };
@@ -608,6 +693,7 @@ function cleanVerdictResultSummary(value: unknown): VerdictResultSummary | undef
     evidenceUsed: stringArray(value.evidenceUsed).map((item) => normalizeDisplaySentence(item)),
     whatWouldChangeVerdict: stringArray(value.whatWouldChangeVerdict).map((item) => normalizeDisplaySentence(item)),
     evidenceChainContext: cleanEvidenceChainContextSummary(value.evidenceChainContext),
+    clientFit: cleanClientFitDisplaySummary(value.clientFit),
     path: typeof value.path === "string" ? value.path : undefined,
     generatedAt: textValue(value.generatedAt, nowIso())
   };
@@ -635,6 +721,7 @@ function cleanReportResultSummary(value: unknown): ReportResultSummary | undefin
     nextObservation: normalizeDisplaySentence(value.nextObservation, "Retest if diagnosis, comparison, or verdict evidence changes."),
     boundaryNote: normalizeDisplaySentence(value.boundaryNote, "Decision-support only."),
     warnings: stringArray(value.warnings).map((item) => normalizeDisplaySentence(item)),
+    clientFit: cleanClientFitDisplaySummary(value.clientFit),
     generatedAt: textValue(value.generatedAt, nowIso())
   };
 }
@@ -649,6 +736,7 @@ function comparisonResultCanGenerateVerdict(value: ComparisonResultSummary | und
 function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
   const reviewResult = cleanReviewResult(value.reviewResult);
   const reviewSummary = cleanReviewSummary(value.reviewSummary);
+  const clientFitProfile = cleanClientFitProfileInput(value.clientFitProfile);
   const runStatus: ReviewRunStatus = value.runStatus === "failed" ? "failed" : isCompletedReviewResult(reviewResult) || reviewSummary?.status === "completed" ? "completed" : "draft";
   const builderSetup = compactBuilderSetup(value.builderSetup) ?? reviewSummary?.builderSetup;
   const candidateGenerationRaw = cleanCandidateGenerationSummary(value.candidateGeneration);
@@ -695,6 +783,7 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
           currency: holding.currency
         }))
       : [],
+    clientFitProfile,
     cloudPortfolio: value.cloudPortfolio?.id && value.cloudPortfolio?.name
       ? {
         id: value.cloudPortfolio.id,
@@ -789,10 +878,41 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     writeStoredReview(activeReview);
   }, [activeReview, hydrated]);
 
+  const saveClientFitProfile = useCallback((profile: ClientFitInput) => {
+    const cleaned = cleanClientFitProfileInput(profile);
+    if (!cleaned) return;
+    setActiveReview((current) => ({
+      investorCurrency: current?.investorCurrency || "USD",
+      holdings: current?.holdings ?? [],
+      clientFitProfile: cleaned,
+      cloudPortfolio: current?.cloudPortfolio,
+      reviewId: undefined,
+      reviewResult: undefined,
+      reviewSummary: undefined,
+      builderSetup: undefined,
+      candidateGeneration: undefined,
+      comparisonResult: undefined,
+      verdictResult: undefined,
+      reportResult: undefined,
+      runMode: "sample_demo",
+      runStatus: "draft",
+      reviewError: undefined,
+      submitted: false,
+      diagnosisReady: false,
+      evidenceReady: false,
+      improvementPathsReady: false,
+      candidateReady: false,
+      comparisonReady: false,
+      verdictReady: false,
+      updatedAt: nowIso()
+    }));
+  }, []);
+
   const savePortfolioInput = useCallback((input: Pick<ActiveReviewState, "investorCurrency" | "holdings">) => {
     setActiveReview((current) => ({
       investorCurrency: input.investorCurrency || "USD",
       holdings: input.holdings,
+      clientFitProfile: current?.clientFitProfile,
       cloudPortfolio: undefined,
       reviewId: undefined,
       reviewResult: undefined,
@@ -833,6 +953,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     setActiveReview((current) => ({
       investorCurrency: input.investorCurrency || "USD",
       holdings: input.holdings,
+      clientFitProfile: current?.clientFitProfile,
       cloudPortfolio: current?.cloudPortfolio,
       reviewId,
       reviewResult,
@@ -864,6 +985,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     setActiveReview((current) => ({
       investorCurrency: input.investorCurrency || "USD",
       holdings: input.holdings,
+      clientFitProfile: current?.clientFitProfile,
       cloudPortfolio: current?.cloudPortfolio,
       reviewId: undefined,
       reviewResult: undefined,
@@ -900,9 +1022,10 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadCloudPortfolioInput = useCallback((input: { portfolioId: string; name: string; investorCurrency: string; holdings: ReviewHolding[] }) => {
-    setActiveReview({
+    setActiveReview((current) => ({
       investorCurrency: input.investorCurrency || "USD",
       holdings: input.holdings,
+      clientFitProfile: current?.clientFitProfile,
       cloudPortfolio: {
         id: input.portfolioId,
         name: input.name
@@ -926,7 +1049,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       comparisonReady: false,
       verdictReady: false,
       updatedAt: nowIso()
-    });
+    }));
   }, []);
 
 
@@ -972,6 +1095,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
         rationaleRefs: stringArray(diagnosis.rationaleRefs)
       },
       evidence: undefined,
+      clientFit: cleanClientFitDisplaySummary(savedReview.clientFit) ?? cleanClientFitDisplaySummary(compact.clientFit),
       primaryProblem: typeof compact.primaryProblem === "string" ? compact.primaryProblem : undefined,
       problemSeverity: typeof compact.problemSeverity === "string" ? compact.problemSeverity : undefined,
       problemConfidence: typeof compact.problemConfidence === "string" ? compact.problemConfidence : undefined,
@@ -996,6 +1120,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     setActiveReview(cleanReviewState({
       investorCurrency: reviewSummary.investorCurrency,
       holdings: portfolio.holdings ?? [],
+      clientFitProfile: undefined,
       cloudPortfolio: savedReview.portfolioId && typeof compact.activeCloudPortfolioName === "string" ? {
         id: savedReview.portfolioId,
         name: compact.activeCloudPortfolioName
@@ -1123,6 +1248,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const apiData = getRecord(apiEnvelope.data);
     const apiComparison = getRecord(apiData.comparison);
     const evidenceContext = fastApiEvidenceChainContext(resultRecord);
+    const apiClientFit = cleanClientFitDisplaySummary(apiData.client_fit);
     const currentVsCandidate = getRecord(resultRecord.current_vs_candidate);
     const comparisons = getArray(currentVsCandidate.comparisons).map(getRecord);
     const row = comparisons[0] ?? {};
@@ -1164,6 +1290,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
         ...stringArray(currentVsCandidate.warnings).map((item) => normalizeDisplaySentence(item))
       ],
       evidenceChainContext: evidenceContext,
+      clientFit: apiClientFit,
       path: typeof paths.current_vs_candidate === "string" ? paths.current_vs_candidate : undefined,
       generatedAt: nowIso()
     };
@@ -1219,6 +1346,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const apiData = getRecord(apiEnvelope.data);
     const apiVerdict = getRecord(apiData.verdict);
     const evidenceContext = fastApiEvidenceChainContext(resultRecord);
+    const apiClientFit = cleanClientFitDisplaySummary(apiData.client_fit);
     const verdict = getRecord(resultRecord.decision_verdict);
     const evidence = getRecord(verdict.evidence_summary);
     const noTrade = getRecord(verdict.no_trade);
@@ -1281,6 +1409,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       evidenceUsed: apiEvidenceUsed,
       whatWouldChangeVerdict: whatWouldChange,
       evidenceChainContext: evidenceContext,
+      clientFit: apiClientFit,
       path: typeof resultRecord.path === "string" ? resultRecord.path : undefined,
       generatedAt: nowIso()
     };
@@ -1327,6 +1456,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       nextObservation: display.nextObservation,
       boundaryNote: display.boundaryNote,
       warnings: display.warnings,
+      clientFit: display.clientFit,
       generatedAt: display.generatedAt ?? nowIso()
     });
     if (!summary) return;
@@ -1408,9 +1538,11 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   }, [activeReview, authStatus, cloudEnabled, hydrated, setCloudNotice, user?.id]);
 
   const journeyFlags = useMemo<JourneyFlags>(() => ({
+    clientProfileCompleted: Boolean(activeReview?.clientFitProfile || hasProvidedClientFitSummary(activeReview?.reviewSummary?.clientFit)),
     inputCompleted: Boolean(activeReview?.submitted),
     diagnosisGenerated: Boolean(activeReview?.diagnosisReady),
     evidenceGenerated: Boolean(activeReview?.evidenceReady),
+    clientFitReady: hasProvidedClientFitSummary(activeReview?.reviewSummary?.clientFit),
     improvementPathsAvailable: Boolean(activeReview?.improvementPathsReady),
     candidateReady: Boolean(activeReview?.candidateReady),
     comparisonReady: Boolean(activeReview?.comparisonReady),
@@ -1420,6 +1552,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   const value = useMemo<ReviewStateContextValue>(() => ({
     activeReview,
     hydrated,
+    saveClientFitProfile,
     savePortfolioInput,
     submitPortfolioInput,
     recordReviewError,
@@ -1436,7 +1569,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     markVerdictReady,
     clearActiveReview,
     journeyFlags
-  }), [activeReview, clearActiveReview, hydrated, journeyFlags, linkCloudPortfolio, loadCloudPortfolioInput, markCandidateReady, markComparisonReady, markVerdictReady, recordBuilderSetup, recordCandidateGeneration, recordComparisonResult, recordReportResult, recordReviewError, recordVerdictResult, savePortfolioInput, submitPortfolioInput]);
+  }), [activeReview, clearActiveReview, hydrated, journeyFlags, linkCloudPortfolio, loadCloudPortfolioInput, markCandidateReady, markComparisonReady, markVerdictReady, recordBuilderSetup, recordCandidateGeneration, recordComparisonResult, recordReportResult, recordReviewError, recordVerdictResult, saveClientFitProfile, savePortfolioInput, submitPortfolioInput]);
 
   return <ReviewStateContext.Provider value={value}>{children}</ReviewStateContext.Provider>;
 }
@@ -1450,7 +1583,7 @@ export function useReviewState() {
 }
 
 function formatPercent(value: number) {
-  return `${value.toFixed(2).replace(/\.?0+$/, "")}%`;
+  return `${value.toFixed(2).replace(/\?.0+$/, "")}%`;
 }
 
 function formatDecimalPercent(value: unknown) {
@@ -1628,7 +1761,7 @@ function formatSignedDelta(value: unknown, field?: string) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "Delta unavailable";
   const sign = value > 0 ? "+" : "";
   if (field && percentLikeField(field)) return `${sign}${formatDecimalPercent(value)}`;
-  return `${sign}${value.toFixed(3).replace(/\.?0+$/, "")}`;
+  return `${sign}${value.toFixed(3).replace(/\?.0+$/, "")}`;
 }
 
 function percentLikeField(field: string) {
@@ -1645,7 +1778,7 @@ function percentLikeField(field: string) {
 function formatComparisonValue(value: unknown, field?: string) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "Evidence unavailable";
   if (field && percentLikeField(field)) return formatDecimalPercent(value);
-  return value.toFixed(3).replace(/\.?0+$/, "");
+  return value.toFixed(3).replace(/\?.0+$/, "");
 }
 
 function toneFromDirection(direction: string): StatusTone {
@@ -2785,6 +2918,7 @@ export function buildCompactReviewSummary({
   const siteExplanation = cleanSiteExplanationBundle(outputs.site_explanation_bundle);
   const compactProblem = compactProblemFieldsFromFastApi(fastApiData.diagnosis) ?? compactProblemFields(problemClassification);
   const compactLaunchpad = compactLaunchpadFields(candidateLaunchpad);
+  const clientFit = cleanClientFitDisplaySummary(fastApiData.client_fit);
   const rawBytes = estimateJsonBytes(reviewResult);
   const activeReviewForCompaction: ActiveReviewState = {
     investorCurrency,
@@ -2827,6 +2961,7 @@ export function buildCompactReviewSummary({
     diagnosis,
     xraySummary,
     evidence,
+    clientFit,
     stressLabModel: stressLabModel ?? undefined,
     siteExplanation,
     primaryProblem: compactProblem.primaryProblem,

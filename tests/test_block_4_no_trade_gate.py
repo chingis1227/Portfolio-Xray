@@ -45,7 +45,11 @@ def test_golden_fixture_proceeds_to_launchpad() -> None:
     assert gate.recommended_next_step == STEP_SELECT_LAUNCHPAD
     assert gate.launchpad_suppressed is False
     assert gate.headline_en
-    assert "Primary confidence is high" in gate.reasons
+    assert "Primary problem materiality is high" in gate.reasons
+    assert (
+        "Primary confidence is low because one or more X-Ray blocks are partial"
+        in gate.reasons
+    )
     assert "Stress evidence confirms the primary diagnosis" in gate.reasons
 
     launchpad = build_candidate_launchpad_v3_document(

@@ -1333,7 +1333,7 @@ HTML_HEAD = """<!DOCTYPE html>
 <title>Portfolio Snapshot Report</title>
 <!-- Aligned with DESIGN.md + config_ui/static/design.css: Inter/DM Sans, RUI tokens, flat, pill nav. -->
 <style>
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@9..40,400;500&family=Inter:ital,opsz,wght@0,14..32,400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2...family=DM+Sans:ital,opsz,wght@9..40,400;500&family=Inter:ital,opsz,wght@0,14..32,400;500;600&display=swap");
 :root {
   --rui-dark: #191c1f;
   --rui-white: #ffffff;

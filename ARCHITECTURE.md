@@ -5,7 +5,7 @@ This document is part of the active project documentation after the documentatio
 ## 1. Architecture Status
 
 Portfolio MRI currently has a Python, CLI/file-driven, site/API-first backend architecture. The
-canonical current product architecture is **“ДИАГНОСТИКА 2”**: a diagnosis-first, current-portfolio-first decision-support workflow.
+canonical current product architecture is **“Diagnosis 2”**: a diagnosis-first, current-portfolio-first decision-support workflow.
 
 This document uses four labels:
 
@@ -71,7 +71,7 @@ migration plan.
 
 ## 3. Canonical Product Architecture
 
-Canonical “ДИАГНОСТИКА 2” product architecture:
+Canonical “Diagnosis 2” product architecture:
 
 ```text
 Input portfolio
@@ -269,7 +269,7 @@ Current implementation mapping:
 
 Architecture boundary:
 
-- Verdict answers "should the user act?"
+- Verdict answers "should the user act..."
 - It does not always pick a winner.
 - No-trade and evidence-insufficient are valid outcomes.
 - It should disclose data/model limits.
@@ -341,7 +341,7 @@ implemented unless verified in `SPEC.md`, `docs/specs/*.md`, or code.
 - Full multi-candidate ranking / advanced research comparison.
 - Out-of-sample / walk-forward analysis.
 - Full Crisis Replay UI.
-- What Happens If? Simulator.
+- What Happens If... Simulator.
 - Portfolio Health Score / Robustness Scorecard as standalone/current primary product modules (not current Core MVP; advanced/backend/backlog only).
 - Assumption Sensitivity / Assumption Testing Mode.
 - Pareto Frontier / Dominance Check.

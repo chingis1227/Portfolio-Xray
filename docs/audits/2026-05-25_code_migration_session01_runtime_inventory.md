@@ -219,17 +219,17 @@ These artifacts are evidence and generated outputs, not source files.
 
 ### Candidate factory
 
-Current factory answers: what did the last factory orchestration attempt, reuse, skip, or fail?
+Current factory answers: what did the last factory orchestration attempt, reuse, skip, or fail...
 
-It does not answer: what should the product suggest as a user-facing improvement path?
+It does not answer: what should the product suggest as a user-facing improvement path...
 
 This distinction matters because target Candidate Launchpad cards are not portfolios and are not the same as factory profiles.
 
 ### Candidate comparison
 
-Current comparison answers: what candidate evidence exists on disk and how does it compare under the canonical comparison contract?
+Current comparison answers: what candidate evidence exists on disk and how does it compare under the canonical comparison contract...
 
-It does not directly answer: what single current-vs-selected-candidate MVP view should the user see first?
+It does not directly answer: what single current-vs-selected-candidate MVP view should the user see first...
 
 The migration should add a focused adapter/view rather than changing `candidate_comparison_v1`.
 

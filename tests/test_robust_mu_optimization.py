@@ -1,5 +1,5 @@
 """
-Robust optimization (maximin) по box-неопределённости μ — тест на синтетике.
+Robust optimization (maximin) over box uncertainty in mu - synthetic test.
 """
 
 from __future__ import annotations

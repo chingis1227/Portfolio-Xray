@@ -41,7 +41,7 @@ Block 5 answers:
 
 **How are optimized portfolios built, what assumptions drive them, what constraints bind them, what
 can fail, how robust are the weights, and can these optimized candidates be fairly tested,
-compared, and explained?**
+compared, and explained...**
 
 The current Optimization Engine is not one unified production allocator. It is a set of distinct
 paths:
@@ -90,7 +90,7 @@ distributed across scripts and artifacts.
 ### 5.1 Optimization Role and Boundary
 
 **User question:** What is the Optimization Engine responsible for, and when are optimized weights
-production policy versus comparison candidates?
+production policy versus comparison candidates...
 
 | Element | Current rule | Provenance |
 | --- | --- | --- |
@@ -172,7 +172,7 @@ defensible even if it is uncapped, diagnostic-only, stale, or built from fallbac
 ### 5.2 Optimization Inputs and Data Preparation
 
 **User question:** What data enters optimization, at what frequency/window, and is it the same data
-used later for reporting and comparison?
+used later for reporting and comparison...
 
 | Input/rule | Current behavior | Provenance |
 | --- | --- | --- |
@@ -242,7 +242,7 @@ some artifacts make that obvious.
 
 ### 5.3 Expected Return Estimation
 
-**User question:** Are expected returns used, how are they estimated, and are the assumptions visible?
+**User question:** Are expected returns used, how are they estimated, and are the assumptions visible...
 
 | Path/objective | Expected return usage | Estimator | Provenance |
 | --- | --- | --- | --- |
@@ -309,7 +309,7 @@ that created weights.
 ### 5.4 Covariance / Risk Model Estimation
 
 **User question:** What risk model drives weights, and what happens when covariance is weak,
-singular, young, or unstable?
+singular, young, or unstable...
 
 | Estimator/path | Method | Provenance |
 | --- | --- | --- |
@@ -376,7 +376,7 @@ relaxed bounds, not because its objective is intrinsically superior.
 
 ### 5.5 Objective Functions
 
-**User question:** What exactly is minimized or maximized, by which solver, and can it fail?
+**User question:** What exactly is minimized or maximized, by which solver, and can it fail...
 
 #### Objective audit table
 
@@ -450,9 +450,9 @@ status/objective/bounds can make them look equally certain.
 ### 5.6 Constraints and Mandate Rules
 
 **User question:** Which limits bind the optimizer, which are only diagnostics, and how are
-infeasible limits handled?
+infeasible limits handled...
 
-| Constraint/rule | Binding where? | Current implementation | Provenance |
+| Constraint/rule | Binding where... | Current implementation | Provenance |
 | --- | --- | --- | --- |
 | Long-only | All shipped optimizers | Bounds non-negative; no short selling despite config flags | **C** **S** |
 | Fully invested risk sleeve | All optimizer/candidate weight builders | `sum(w)=1` for risk candidate universe | **C** |
@@ -520,7 +520,7 @@ summary status; weights text may include client-fit line after report.
 ### 5.7 Feasibility and Failure Handling
 
 **User question:** What statuses can occur, how are reasons detected, and can failures silently
-produce misleading weights?
+produce misleading weights...
 
 #### Current status taxonomy
 
@@ -591,7 +591,7 @@ unless the metadata/status is surfaced.
 
 ### 5.8 Optimizer Variants
 
-**User question:** For every implemented optimizer path, what exactly constructs weights?
+**User question:** For every implemented optimizer path, what exactly constructs weights...
 
 #### Variant matrix
 
@@ -639,7 +639,7 @@ MV missing lambda (`FAIL_CONFIG`).
 ### 5.9 Robust / Scenario-Aware Optimization
 
 **User question:** How is uncertainty represented, how is lambda selected, and does robust
-optimization change production policy weights?
+optimization change production policy weights...
 
 | Topic | Current behavior | Provenance |
 | --- | --- | --- |
@@ -703,7 +703,7 @@ stress-aware language; current spec says it is comparison-only.
 
 ### 5.10 Optimizer Outputs and Diagnostics
 
-**User question:** Are outputs sufficient to reproduce, audit, and explain optimized weights?
+**User question:** Are outputs sufficient to reproduce, audit, and explain optimized weights...
 
 #### Current generated outputs
 
@@ -780,7 +780,7 @@ proves release gate passed, not that all assumptions are visible.
 ### 5.11 Optimization Readiness for Candidate Comparison
 
 **User question:** After weights are produced, are optimized portfolios valid, fresh, diagnosed, and
-fairly comparable?
+fairly comparable...
 
 | Readiness requirement | Current behavior | Provenance |
 | --- | --- | --- |

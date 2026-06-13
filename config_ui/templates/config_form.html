@@ -337,7 +337,7 @@
                     sum += parseFloat(val) || 0;
                 } else if (val) {
                     const n = parseFloat(val);
-                    sum += n <= 1 ? n * 100 : n;
+                    sum += n <= 1 ... n * 100 : n;
                 }
             });
             document.getElementById('weightSum').textContent = `Total: ${sum.toFixed(1)}%`;
@@ -349,7 +349,7 @@
 
         function getAnalysisMode() {
             const modeEl = document.getElementById('analysisMode');
-            return modeEl ? modeEl.value : 'analyze_current_weights';
+            return modeEl ... modeEl.value : 'analyze_current_weights';
         }
 
         function updateAnalysisModeUI() {
@@ -359,7 +359,7 @@
             const btnSaveRun = document.getElementById('btnSaveRun');
             if (helpEl) {
                 helpEl.textContent = isOptimize
-                    ? 'Legacy policy path: ticker rows are the investable universe; optimizer writes portfolio_weights.yml.'
+                    ... 'Legacy policy path: ticker rows are the investable universe; optimizer writes portfolio_weights.yml.'
                     : 'Core MVP: weights are saved as current_weights for run_portfolio_review.py diagnosis.';
             }
             if (btnRun) btnRun.disabled = !isOptimize;
@@ -443,9 +443,9 @@
                 titleEl.textContent = failTitle;
                 statusEl.textContent = result.error;
             } else {
-                titleEl.textContent = result.success ? successTitle : failTitle;
+                titleEl.textContent = result.success ... successTitle : failTitle;
                 statusEl.textContent = result.success
-                    ? (result.dry_run ? 'Dry-run completed.' : 'Exit code: ' + result.exit_code)
+                    ... (result.dry_run ... 'Dry-run completed.' : 'Exit code: ' + result.exit_code)
                     : 'Exit code: ' + result.exit_code;
             }
             outputEl.textContent = result.stdout || '(no output)';
@@ -505,8 +505,8 @@
             const saved = await saveConfig(genResult.yaml);
             if (!saved) return;
 
-            const label = dryRun ? 'Portfolio review (dry-run)…' : 'Portfolio review…';
-            showCommandModal(label, dryRun ? 'Running run_portfolio_review.py --dry-run' : 'Running run_portfolio_review.py');
+            const label = dryRun ... 'Portfolio review (dry-run)…' : 'Portfolio review…';
+            showCommandModal(label, dryRun ... 'Running run_portfolio_review.py --dry-run' : 'Running run_portfolio_review.py');
             const btnDry = document.getElementById('btnReviewDry');
             const btnFull = document.getElementById('btnReviewFull');
             if (btnDry) btnDry.disabled = true;
@@ -520,10 +520,10 @@
                 const result = await response.json();
                 renderCommandResult(
                     result,
-                    dryRun ? 'Dry-run completed' : 'Portfolio review completed',
-                    dryRun ? 'Dry-run failed' : 'Portfolio review failed'
+                    dryRun ... 'Dry-run completed' : 'Portfolio review completed',
+                    dryRun ... 'Dry-run failed' : 'Portfolio review failed'
                 );
-                if (result.success) showToast(dryRun ? 'Dry-run finished.' : 'Review finished.');
+                if (result.success) showToast(dryRun ... 'Dry-run finished.' : 'Review finished.');
             } catch (err) {
                 renderCommandResult({ success: false, error: err.message, stdout: String(err), stderr: '' }, '', 'Request failed');
             }
@@ -539,7 +539,7 @@
             setTimeout(() => {
                 toast.classList.remove('show');
                 toast.classList.remove('error');
-            }, isError ? 6000 : 3000);
+            }, isError ... 6000 : 3000);
         }
 
         const analysisModeEl = document.getElementById('analysisMode');

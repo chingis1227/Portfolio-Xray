@@ -1,12 +1,12 @@
 """
-Сравнение Main-оптимизации: выборочная Sigma vs Ledoit–Wolf vs робастная (MinCovDet) на config.yml.
+Main optimization comparison: sample Sigma vs Ledoit-Wolf vs robust (MinCovDet) on config.yml.
 
-Не пишет portfolio_weights.yml и run_result.json. Запуск из корня:
+Does not write portfolio_weights.yml or run_result.json. Run from the repository root:
   python compare_covariance_shrinkage_main.py
   python compare_covariance_shrinkage_main.py --variants sample,lw
   python compare_covariance_shrinkage_main.py --no-cache
 
-Только sample vs MCD: python compare_robust_cov_main.py
+Sample vs MCD only: python compare_robust_cov_main.py
 """
 from __future__ import annotations
 
@@ -44,9 +44,9 @@ def _primary_optimization_branch(
     cov_mode: str = "sample",
 ) -> dict:
     """
-    Тот же путь cov + run_max_return_optimization, что в run_optimization.py (без RC-постобработки).
+    Same cov + run_max_return_optimization path as run_optimization.py, without RC post-processing.
 
-    cov_mode: "sample" | "lw" | "robust" (MinCovDet на ядре dual или на full join).
+    cov_mode: "sample" | "lw" | "robust" (MinCovDet on the dual core or on full join).
     """
     if cov_mode not in ("sample", "lw", "robust"):
         return {"error": f"unknown cov_mode: {cov_mode}"}
@@ -57,7 +57,7 @@ def _primary_optimization_branch(
     risk_tickers_all = get_risk_portfolio_tickers(list(cfg.tickers), cfg.cash_proxy_ticker)
     cols_primary = [t for t in risk_tickers_all if t in monthly_returns.columns]
     if not cols_primary:
-        return {"error": "FAIL_DATA: нет доходностей по risk-тикерам"}
+        return {"error": "FAIL_DATA: no returns for risk tickers"}
 
     young_pol = getattr(cfg, "young_etf_optimization_policy", None) or {}
     dual_enabled = bool(young_pol.get("enabled", True))
@@ -102,7 +102,7 @@ def _primary_optimization_branch(
                 ret_primary = ret_primary.iloc[-min(window_months, len(ret_primary)) :]
         cols_primary = list(ret_primary.columns)
         if not cols_primary:
-            return {"error": "FAIL_DATA: пустое окно после inner join"}
+            return {"error": "FAIL_DATA: empty window after inner join"}
         if use_robust:
             cov_df = cov_matrix_monthly_robust(ret_primary, ddof=1)
         else:
@@ -174,13 +174,13 @@ def main() -> None:
             pass
 
     parser = argparse.ArgumentParser(description="Sample vs LW vs robust (MCD) covariance — Main path")
-    parser.add_argument("--config", type=str, default=None, help="Путь к config.yml")
-    parser.add_argument("--no-cache", action="store_true", help="Без кэша данных")
+    parser.add_argument("--config", type=str, default=None, help="Path to config.yml")
+    parser.add_argument("--no-cache", action="store_true", help="Do not use cached data")
     parser.add_argument(
         "--variants",
         type=str,
         default="sample,lw,robust",
-        help="Через запятую: sample, lw, robust (подмножество)",
+        help="Comma-separated subset: sample, lw, robust",
     )
     args = parser.parse_args()
     setup_logging()
@@ -189,7 +189,7 @@ def main() -> None:
         cfg_path = __import__("pathlib").Path(args.config).resolve() if args.config else None
         cfg = load_validated_config(cfg_path)
     except ConfigValidationError as e:
-        logger.error("Конфиг: %s", e)
+        logger.error("Config: %s", e)
         raise SystemExit(1)
 
     ns = SimpleNamespace(no_cache=args.no_cache)
@@ -200,7 +200,7 @@ def main() -> None:
     allowed = {"sample", "lw", "robust"}
     bad = set(want) - allowed
     if bad or not want:
-        logger.error("--variants: ожидаются sample, lw, robust; получено %s", args.variants)
+        logger.error("--variants: expected sample, lw, robust; got %s", args.variants)
         raise SystemExit(1)
 
     common_kw = dict(
@@ -216,12 +216,12 @@ def main() -> None:
     for mode in want:
         r = results[mode]
         if r.get("error"):
-            print(f"[{labels.get(mode, mode)}] ОШИБКА: {r['error']}")
+            print(f"[{labels.get(mode, mode)}] ERROR: {r['error']}")
             raise SystemExit(1)
 
     base = results[want[0]]
-    print("=== Сравнение ковариации (оптимизационная Sigma) ===")
-    print(f"analysis_end={analysis_end_str}, окно={window_months} мес., dual_cov={base['dual_enabled']}")
+    print("=== Covariance comparison (optimization Sigma) ===")
+    print(f"analysis_end={analysis_end_str}, window={window_months} months, dual_cov={base['dual_enabled']}")
     print(f"variants={want}")
     for i, a in enumerate(want):
         for b in want[i + 1 :]:
@@ -239,7 +239,7 @@ def main() -> None:
         w0, w1 = results[a]["weights"], results[b]["weights"]
         l1 = sum(abs(w0.get(t, 0.0) - w1.get(t, 0.0)) for t in tickers)
         max_abs = max(abs(w0.get(t, 0.0) - w1.get(t, 0.0)) for t in tickers)
-        print("=== Веса после RC post-process (как в Main) ===")
+        print("=== Weights after RC post-process (as in Main) ===")
         print(f"L1 |dw| ({a} vs {b}) = {l1:.6f}, max |dw_i| = {max_abs:.6f}")
         print()
 
@@ -258,23 +258,23 @@ def main() -> None:
         print(" ".join(row))
     print()
 
-    print("=== Вола (месячная cov -> год), Sigma_opt ===")
+    print("=== Volatility (monthly cov -> annual), Sigma_opt ===")
     parts = [f"{labels.get(m, m)}={results[m]['vol_on_optim_cov']:.4f}" for m in want]
     print("  " + "  |  ".join(parts))
-    print("=== Вола на Sigma_hist (выборочная), по весам каждого варианта ===")
+    print("=== Volatility on Sigma_hist (sample), by each variant weights ===")
     for m in want:
         print(f"  {labels.get(m, m)}: {results[m]['vol_on_sample_cov']:.4f}")
     print()
 
-    print("=== RC по активам на Sigma_opt (доля дисперсии) ===")
+    print("=== Asset RC on Sigma_opt (variance share) ===")
     for m in want:
         print(f"  {labels.get(m, m)}: ", results[m]["rc_asset_on_optim_cov"])
-    print("=== RC по активам на Sigma_hist ===")
+    print("=== Asset RC on Sigma_hist ===")
     for m in want:
         print(f"  {labels.get(m, m)}: ", results[m]["rc_asset_on_sample_cov"])
     print()
 
-    print("=== Статусы оптимизатора ===")
+    print("=== Optimizer statuses ===")
     for m in want:
         st = results[m]["status"]
         print(f"{labels.get(m, m)}:", st[:220] + ("..." if len(st) > 220 else ""))

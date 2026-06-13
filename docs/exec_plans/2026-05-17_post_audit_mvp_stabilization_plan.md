@@ -343,7 +343,7 @@ workspace-local `--basetemp`, representative CLI smoke checks, and update roadma
 
 Run commands from the repository root:
 
-    C:\Users\ShumeikoYe\OneDrive\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА
+    C:\Users\ShumeikoYe\OneDrive\Desktop\CURSOR TULA DIAGNOSTICS
 
 For Session 01, run:
 

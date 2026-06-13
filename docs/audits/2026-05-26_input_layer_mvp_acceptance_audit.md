@@ -2,7 +2,7 @@
 
 Date: 2026-05-26
 
-Purpose: Close [Input Layer MVP Migration ExecPlan](../exec_plans/2026-05-26_input_layer_mvp_migration.md) **Session 10** and record whether Core MVP input behavior (three-field surface, USD system defaults, real cash, disclosure export, portfolio-first integration) is accepted for «ДИАГНОСТИКА 2».
+Purpose: Close [Input Layer MVP Migration ExecPlan](../exec_plans/2026-05-26_input_layer_mvp_migration.md) **Session 10** and record whether Core MVP input behavior (three-field surface, USD system defaults, real cash, disclosure export, portfolio-first integration) is accepted for «Diagnosis 2».
 
 Related:
 
@@ -17,12 +17,12 @@ Related:
 
 | Question | Verdict |
 | --- | --- |
-| Can Core MVP run with tickers + weights + `investor_currency` only? | **Yes** — `config.yml` demo + fixtures validate without mandate/liquidity/portfolio value. |
-| Are USD RF / cash proxy / benchmark resolved without user entry? | **Yes** — live materialize logged `FRED:DTB3`, `BIL`, `SPY`; `analysis_setup.cash_handling.cash_proxy_ticker` = `BIL`. |
-| Is real cash distinct from cash proxy? | **Yes** — normative rule in spec; `src/real_cash.py` + offline fixture `minimal_usd_with_cash.yml` covered in pytest (36 passed). |
-| Is disclosure exported on diagnosis path? | **Yes** — post-materialize `run_metadata.json` includes `input_assumptions`, `input_surface`, `field_tiers`. |
-| Does product one-candidate path still hold? | **Yes** — dry-run + on-disk `validate_one_candidate_demo.py` **PASS** (8 checks). |
-| Is the full ExecPlan accepted? | **Yes — 10/10** criteria (see §3). |
+| Can Core MVP run with tickers + weights + `investor_currency` only... | **Yes** — `config.yml` demo + fixtures validate without mandate/liquidity/portfolio value. |
+| Are USD RF / cash proxy / benchmark resolved without user entry... | **Yes** — live materialize logged `FRED:DTB3`, `BIL`, `SPY`; `analysis_setup.cash_handling.cash_proxy_ticker` = `BIL`. |
+| Is real cash distinct from cash proxy... | **Yes** — normative rule in spec; `src/real_cash.py` + offline fixture `minimal_usd_with_cash.yml` covered in pytest (36 passed). |
+| Is disclosure exported on diagnosis path... | **Yes** — post-materialize `run_metadata.json` includes `input_assumptions`, `input_surface`, `field_tiers`. |
+| Does product one-candidate path still hold... | **Yes** — dry-run + on-disk `validate_one_candidate_demo.py` **PASS** (8 checks). |
+| Is the full ExecPlan accepted... | **Yes — 10/10** criteria (see §3). |
 
 **Bottom line:** Input Layer MVP migration is **complete**. Operators can use the slim Core MVP config and `config_ui` first screen; legacy/advanced keys remain in schema under `field_tiers` but are not required for `run_portfolio_review.py` diagnosis or one-candidate demo.
 

@@ -17,12 +17,12 @@ Related:
 
 | Question | Verdict |
 | --- | --- |
-| Is `block_2_6_portfolio_weakness_map` on live diagnosis path? | **Yes** — `run_portfolio_review.py --skip-candidates` refreshed `Main portfolio/analysis_subject/portfolio_xray.json` with Block 2.6 (`status` **partial**, nine risk rows). |
-| Is Block 2.6 present after one-candidate demo? | **Yes** — subject X-Ray refreshed after `--candidates equal_weight`; product validator **PASS** (8 checks). |
-| Does the product block exclude Stress Lab PnL fields? | **Yes** — no `stress_report`, `scenario_results`, `pnl_by_asset_pct`, or `worst_stress` keys in the block envelope (§5.2). |
-| Are nine MVP risk types emitted? | **Yes** — eight scored + `usd_shock` **Unavailable** (insufficient evidence; contract-allowed). |
-| Does legacy `sections.weakness_map` remain? | **Yes** — legacy section present on full X-Ray build (§5.3). |
-| Is the full ExecPlan accepted (Sessions 00–08)? | **Yes — 9/9** sessions complete (see §3). |
+| Is `block_2_6_portfolio_weakness_map` on live diagnosis path... | **Yes** — `run_portfolio_review.py --skip-candidates` refreshed `Main portfolio/analysis_subject/portfolio_xray.json` with Block 2.6 (`status` **partial**, nine risk rows). |
+| Is Block 2.6 present after one-candidate demo... | **Yes** — subject X-Ray refreshed after `--candidates equal_weight`; product validator **PASS** (8 checks). |
+| Does the product block exclude Stress Lab PnL fields... | **Yes** — no `stress_report`, `scenario_results`, `pnl_by_asset_pct`, or `worst_stress` keys in the block envelope (§5.2). |
+| Are nine MVP risk types emitted... | **Yes** — eight scored + `usd_shock` **Unavailable** (insufficient evidence; contract-allowed). |
+| Does legacy `sections.weakness_map` remain... | **Yes** — legacy section present on full X-Ray build (§5.3). |
+| Is the full ExecPlan accepted (Sessions 00–08)... | **Yes — 9/9** sessions complete (see §3). |
 
 **Bottom line:** Block 2.6 Portfolio Weakness Map MVP is **complete**. Operators read pre-stress vulnerability hypotheses and `next_tests` from `block_2_6_portfolio_weakness_map` on `analysis_subject/portfolio_xray.json`; Stress Lab continues to own scenario losses and pass/fail.
 

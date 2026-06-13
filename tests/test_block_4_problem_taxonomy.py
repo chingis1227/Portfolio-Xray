@@ -23,8 +23,8 @@ from src.block_4.problem_taxonomy import (
 )
 
 
-def test_registry_has_fifteen_problems() -> None:
-    assert len(PROBLEM_REGISTRY) == 15
+def test_registry_has_sixteen_problems() -> None:
+    assert len(PROBLEM_REGISTRY) == 16
     assert set(all_problem_ids()) == PROBLEM_CLASSIFICATION_V3_IDS
 
 

@@ -124,7 +124,7 @@ Session 8 validates behavior, updates documentation, and records outcomes. Docum
 
 ## Concrete Steps
 
-From the repository root `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`, implement sessions in order. Do not skip the Session 1 disabled-mode test before enabling cloud behavior.
+From the repository root `D:\Desktop\CURSOR TULA DIAGNOSTICS`, implement sessions in order. Do not skip the Session 1 disabled-mode test before enabling cloud behavior.
 
 For Session 1, add frontend helpers under `frontend/lib/supabase/` and a `frontend/.env.example` containing only public keys and the optional flag. Run:
 

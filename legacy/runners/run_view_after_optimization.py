@@ -7,14 +7,14 @@ Per docs/docs/view_after_optimization_spec.md. Baseline weights from portfolio_w
 Usage:
   python run_view_after_optimization.py --asset VOO --delta 2
 """
-from legacy.runners._paths import REPO_ROOT
-
 from __future__ import annotations
 
 import argparse
 import json
 import sys
 from pathlib import Path
+
+from legacy.runners._paths import REPO_ROOT
 
 from src.config import (
     load_validated_config,
@@ -46,7 +46,7 @@ def main() -> int:
     try:
         cfg = load_validated_config()
     except ConfigValidationError as e:
-        logger.error("Ошибка конфигурации: %s", e)
+        logger.error("Configuration error: %s", e)
         return 1
 
     # Baseline weights
@@ -58,11 +58,11 @@ def main() -> int:
         # Fallback: config may have weights
         baseline_weights = getattr(cfg, "weights", None) or {}
     if not baseline_weights:
-        logger.error("Нет базовых весов: укажите --weights-file или выполните оптимизацию (portfolio_weights.yml)")
+        logger.error("No base weights: provide --weights-file or run optimization (portfolio_weights.yml)")
         return 1
 
     if args.asset not in cfg.tickers and args.asset not in baseline_weights:
-        logger.warning("Тикер %s не в конфиге/весах; tilt всё равно будет применён к весам", args.asset)
+        logger.warning("Ticker %s is not in config/weights; tilt will still be applied to weights", args.asset)
 
     baseline_stress = None
     if args.run_result_file:
@@ -89,7 +89,7 @@ def main() -> int:
     )
     monthly_returns = data.monthly_returns
     if monthly_returns is None or monthly_returns.empty:
-        logger.error("Нет месячных доходностей")
+        logger.error("No monthly returns")
         return 1
 
     report = run_view_after_optimization(
@@ -109,7 +109,7 @@ def main() -> int:
     if not out_path:
         out_path = Path.cwd() / "view_execution_report.json"
     write_view_execution_report(report, out_path)
-    logger.info("Отчёт записан: %s", out_path)
+    logger.info("Report written: %s", out_path)
 
     status = report.get("outcome_status", "TILT_REJECTED")
     print("\nView After Optimization: %s" % status)

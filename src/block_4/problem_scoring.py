@@ -178,6 +178,8 @@ def score_problems(
         defn = PROBLEM_REGISTRY[problem_id]
         if problem_id == "evidence_insufficient_data_quality":
             rows[problem_id] = _score_data_quality_problem(evidence, defn, cfg)
+        elif problem_id == "goal_risk_conflict":
+            rows[problem_id] = _score_goal_risk_conflict_problem(evidence, defn, cfg)
         elif problem_id == "mixed_evidence_no_action":
             rows[problem_id] = _score_conflicting_problem(evidence, defn, conflicting, cfg)
         elif problem_id == "current_portfolio_acceptable":
@@ -212,6 +214,8 @@ def score_problems(
     activated: list[str] = []
     if rows["evidence_insufficient_data_quality"].activated:
         activated.append("evidence_insufficient_data_quality")
+    elif rows["goal_risk_conflict"].activated:
+        activated.append("goal_risk_conflict")
     elif conflicting and not root_cause_activated:
         activated.append("mixed_evidence_no_action")
     else:
@@ -399,6 +403,37 @@ def _score_conflicting_problem(
         evidence_refs=refs,
         required_met=required_met,
         activated=activated,
+    )
+
+
+def _score_goal_risk_conflict_problem(
+    evidence: EvidenceExtractionResult,
+    defn: ProblemDefinition,
+    thresholds: Block4Thresholds,
+) -> ProblemScoreRow:
+    """Score the Client Fit objective-consistency exception.
+
+    This is deliberately separate from standard portfolio-structure scoring: a Client Fit
+    breach can support or contradict existing diagnoses, but only the explicit
+    ``goal_risk_conflict`` signal can activate this primary outcome.
+    """
+
+    required = _collect_signals(evidence, defn.required_evidence_signals)
+    support = _collect_signals(evidence, defn.supporting_evidence_signals)
+    required_met = bool(required)
+    raw = 0.9 if required_met else 0.0
+    refs = _build_evidence_refs(required + support, defn.problem_id, role="supporting", thresholds=thresholds)
+    return ProblemScoreRow(
+        problem_id=defn.problem_id,
+        scoring=ProblemScoringBlock(
+            raw_score=raw,
+            decision_score=raw,
+            stress_confirmation="unavailable",
+            materiality="high" if required_met else "none",
+        ),
+        evidence_refs=refs,
+        required_met=required_met,
+        activated=required_met,
     )
 
 
@@ -617,6 +652,21 @@ def _signal_strength(signal: EvidenceSignal, thresholds: Block4Thresholds) -> fl
         return 0.65
     if name in {"data_trust_failure", "partial_sections", "stress_block_unavailable"}:
         return 0.9
+    if name == "goal_risk_conflict":
+        return 0.9
+    if name.startswith("client_fit_"):
+        status = ""
+        if isinstance(value, dict):
+            status = str(value.get("status") or "").lower()
+        elif isinstance(value, str):
+            status = value.lower()
+        if status in {"conflict", "breach"}:
+            return 0.85 + severity_boost
+        if status == "watch":
+            return 0.65 + severity_boost
+        if status == "fit":
+            return 0.35
+        return 0.45 + severity_boost
     if name in {"no_material_problem", "conflicting_signal_bundle"}:
         return 0.85
     return 0.45 + severity_boost

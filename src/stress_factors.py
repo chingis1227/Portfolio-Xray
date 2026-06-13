@@ -6227,7 +6227,7 @@ def factor_covariance_analytics(
 ) -> dict[str, Any]:
     """Build explicit base / stress_empirical / stress_overlay factor covariance analytics."""
     end_ts = pd.Timestamp(analysis_end_str)
-    if factor_returns is None or factor_returns.empty:
+    if factor_returns is None:
         start = (end_ts - pd.DateOffset(years=20)).strftime("%Y-%m-%d")
         factors_raw = build_factor_matrix(start, (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d"))
     else:
@@ -6397,7 +6397,7 @@ def write_rolling_betas_plot_html(
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Rolling Factor Betas</title>
   <!-- Styling per DESIGN.md (project root): Inter/DM Sans, RUI tokens, flat (no chart chrome shadows in layout). -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@9..40,500&family=Inter:ital,opsz,wght@0,14..32,400;500&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2...family=DM+Sans:ital,opsz,wght@9..40,500&family=Inter:ital,opsz,wght@0,14..32,400;500&display=swap" />
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
     :root {{

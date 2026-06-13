@@ -150,6 +150,15 @@ ACTION_PATH_REGISTRY: dict[str, ActionPathDefinition] = {
             "Do not generate a candidate yet; track changes and warnings."
         ),
     ),
+    "revise_objectives": ActionPathDefinition(
+        action_path_id="revise_objectives",
+        label_en="Review objectives and risk limits",
+        goal_label="Review objectives and risk limits",
+        candidate_method_ids=(),
+        launchpad_description_en=(
+            "Review the stated return, drawdown, volatility, and horizon trade-offs before candidate testing."
+        ),
+    ),
     "test_another_candidate": ActionPathDefinition(
         action_path_id="test_another_candidate",
         label_en="Test another candidate",
@@ -232,8 +241,12 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
             "Volatility alone does not prove a bad portfolio — it must be weighed against return and stress behavior."
         ),
         required_evidence_signals=("vol_annual",),
-        supporting_evidence_signals=("rolling_volatility", "block_2_6_equity_shock"),
-        negative_evidence_signals=("low_stress_loss_with_high_vol",),
+        supporting_evidence_signals=(
+            "rolling_volatility",
+            "block_2_6_equity_shock",
+            "client_fit_volatility_vs_target",
+        ),
+        negative_evidence_signals=("low_stress_loss_with_high_vol", "client_fit_within_profile"),
         primary_action_path_id="reduce_volatility",
         secondary_action_path_ids=("compare_against_simple_benchmark",),
         default_candidate_method_ids=_methods_for("reduce_volatility"),
@@ -271,8 +284,10 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
             "worst_historical_scenario",
             "time_underwater",
             "block_2_6_recession_severe",
+            "client_fit_historical_max_drawdown_vs_limit",
+            "client_fit_worst_stress_loss_vs_limit",
         ),
-        negative_evidence_signals=("drawdown_recovered_quickly",),
+        negative_evidence_signals=("drawdown_recovered_quickly", "client_fit_within_profile"),
         primary_action_path_id="reduce_drawdown_risk",
         secondary_action_path_ids=("improve_crisis_resilience",),
         default_candidate_method_ids=_methods_for("reduce_drawdown_risk", "improve_crisis_resilience"),
@@ -489,8 +504,9 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
             "offset_coverage_ratio",
             "block_2_6_recession_severe",
             "stress_diagnosis",
+            "client_fit_worst_stress_loss_vs_limit",
         ),
-        negative_evidence_signals=("immaterial_stress_loss",),
+        negative_evidence_signals=("immaterial_stress_loss", "client_fit_within_profile"),
         primary_action_path_id="improve_crisis_resilience",
         secondary_action_path_ids=("reduce_drawdown_risk",),
         default_candidate_method_ids=_methods_for("improve_crisis_resilience"),
@@ -553,7 +569,7 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
         ),
         portfolio_manager_interpretation_en=(
             "Carry and credit-like exposures may fail in spread or liquidity stress. "
-            "Illiquidity amplifies drawdowns when investors need to sell."
+            "Illiquidity amplifies drawdowns when investors need liquidity."
         ),
         required_evidence_signals=("credit_liquidity_risk_alert", "block_2_6_credit_shock"),
         supporting_evidence_signals=("beta_credit", "liquidity_shock_stress"),
@@ -623,7 +639,7 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
             "Efficiency problems justify exploration, not automatic rejection of the current book."
         ),
         required_evidence_signals=("sharpe", "sortino"),
-        supporting_evidence_signals=("vol_annual", "cagr"),
+        supporting_evidence_signals=("vol_annual", "cagr", "client_fit_return_target_gap"),
         negative_evidence_signals=("high_stress_resilience_with_low_sharpe",),
         primary_action_path_id="improve_return_risk_balance",
         secondary_action_path_ids=("compare_against_simple_benchmark",),
@@ -644,6 +660,45 @@ PROBLEM_REGISTRY: dict[str, ProblemDefinition] = {
         common_false_negative_en="High return from concentrated bet masking poor risk-adjusted profile.",
         downstream_comparison_focus_en="Compare Sharpe, vol, and return vs benchmark candidates.",
         diagnosis_role="symptom",
+    ),
+    "goal_risk_conflict": ProblemDefinition(
+        problem_id="goal_risk_conflict",
+        label_en="Goal-risk conflict",
+        problem_id_legacy=None,
+        technical_definition_en=(
+            "Client Fit V1 indicates that the provided return objective, volatility range, drawdown "
+            "limit, or horizon are internally inconsistent before portfolio action is evaluated."
+        ),
+        portfolio_manager_interpretation_en=(
+            "The client's stated goals and risk limits should be clarified before treating portfolio "
+            "changes as the answer. This is an objective-profile consistency issue, not a portfolio "
+            "optimizer promise."
+        ),
+        required_evidence_signals=("goal_risk_conflict",),
+        supporting_evidence_signals=("client_fit_horizon_risk_mismatch", "client_fit_status"),
+        negative_evidence_signals=(),
+        primary_action_path_id="revise_objectives",
+        secondary_action_path_ids=("keep_current_portfolio_and_monitor",),
+        default_candidate_method_ids=(),
+        launchpad_card_title_en="Review Objectives Before Candidate Testing",
+        launchpad_what_this_tests_en=(
+            "Whether the stated return target, risk limits, and horizon describe a feasible diagnostic frame."
+        ),
+        launchpad_tradeoff_en="Clarifying objectives before testing candidates vs delaying portfolio comparison.",
+        launchpad_skip_when_en="Skip only after the Client Fit profile is corrected or the conflict is resolved.",
+        do_not_overreact_reason_en=(
+            "A goal-risk conflict does not prove the current portfolio is broken; it shows that the "
+            "stated objectives need review before interpreting fit."
+        ),
+        when_not_to_select_as_primary_en=(
+            "When no Client Fit profile was provided, when the profile is internally clear, or when a "
+            "data-quality blocker prevents reliable diagnosis."
+        ),
+        common_false_positive_en="Temporary questionnaire mismatch that is corrected by updating the profile.",
+        common_false_negative_en="Legacy target fields supplied without a Client Fit V1 profile.",
+        downstream_comparison_focus_en="Clarify target return, volatility, drawdown, and horizon before comparing candidates.",
+        suppress_launchpad_methods=True,
+        diagnosis_role="outcome",
     ),
     "current_portfolio_acceptable": ProblemDefinition(
         problem_id="current_portfolio_acceptable",

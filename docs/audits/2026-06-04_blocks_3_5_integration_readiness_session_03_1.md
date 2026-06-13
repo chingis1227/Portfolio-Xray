@@ -10,13 +10,13 @@ Scope: Session 03.1 only - repair the local Python environment so the FRED loade
 
 | Question | Verdict |
 | --- | --- |
-| Does the local `.venv` now match the project pandas constraint? | **Yes** - `pandas 2.1.4` is installed, satisfying `requirements.txt` (`pandas>=2.0,<2.2`). |
-| Is `pandas_datareader` aligned and importable? | **Yes** - `pandas_datareader 0.10.0`; `FredReader import ok`. |
-| Did the direct FRED probe avoid the prior import-time compatibility error? | **Yes** - no `deprecate_kwarg()` / pandas compatibility error appeared. |
-| Did the direct FRED probe fetch `DTB3` successfully? | **No** - it still ended in a live network `TimeoutError`. |
-| Could the canonical one-candidate refresh be retried under the repaired venv? | **Yes** - it entered `product_one_candidate` mode under the repaired venv, then failed on FRED timeout. |
-| Did the existing one-candidate product bundle remain validator-clean? | **Yes** - `scripts/verify_live_core_e2e.py --profile product_one_candidate` returned OK. |
-| Did Session 03.1 change implementation behavior or formulas? | **No** - environment alignment plus audit/plan documentation only. |
+| Does the local `.venv` now match the project pandas constraint... | **Yes** - `pandas 2.1.4` is installed, satisfying `requirements.txt` (`pandas>=2.0,<2.2`). |
+| Is `pandas_datareader` aligned and importable... | **Yes** - `pandas_datareader 0.10.0`; `FredReader import ok`. |
+| Did the direct FRED probe avoid the prior import-time compatibility error... | **Yes** - no `deprecate_kwarg()` / pandas compatibility error appeared. |
+| Did the direct FRED probe fetch `DTB3` successfully... | **No** - it still ended in a live network `TimeoutError`. |
+| Could the canonical one-candidate refresh be retried under the repaired venv... | **Yes** - it entered `product_one_candidate` mode under the repaired venv, then failed on FRED timeout. |
+| Did the existing one-candidate product bundle remain validator-clean... | **Yes** - `scripts/verify_live_core_e2e.py --profile product_one_candidate` returned OK. |
+| Did Session 03.1 change implementation behavior or formulas... | **No** - environment alignment plus audit/plan documentation only. |
 
 **Session 03.1 verdict:** **ENVIRONMENT_REPAIRED_FRED_NETWORK_BLOCKER_REMAINS**. The local dependency mismatch is fixed, and the FRED loader now reaches the compatible `pandas_datareader` request path. The remaining blocker is live FRED network timeout, not the previous pandas/pandas-datareader compatibility error.
 

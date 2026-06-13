@@ -59,6 +59,8 @@ Primary report responsibilities:
 - `stress_report.json`
 - `run_metadata.json`
 - `portfolio_xray.json`
+- `client_fit_check.json` when the report run has Client Fit input; backend/CLI-compatible runs
+  without Client Fit still write a `not_provided` Client Fit check on the portfolio-first subject path
 - window snapshots (`snapshot_3y.json`, `snapshot_5y.json`, `snapshot_10y.json`, …)
 - `scenario_library.json` / `scenario_library_normalized.json` when inputs allow
 
@@ -85,6 +87,7 @@ evidence. This categorization does not rename files, fields, schemas, or owning 
 | Category | Artifacts | Intended consumer |
 | --- | --- | --- |
 | **Core MVP product bundle** | `problem_classification.json`, `candidate_launchpad.json`, `current_vs_candidate.json`, `decision_verdict.json`, `ai_commentary_context.json`, `what_changed_summary.json` | Product/UI/API surfaces that explain the diagnosis-first flow. `ai_commentary_context.json` is deterministic grounding for a future commentary generator only; it is not generated AI prose and does not replace `commentary.txt` / PDF report text. |
+| **Client Fit context** | `client_fit_check.json`, plus Client Fit rows inside `site_explanation_bundle.json` / `ai_commentary_context.json` | Provided-profile context shown after Stress Lab and before Problem Classification. It must keep Client Fit status separate from diagnostic quality and must not introduce suitability, approval, best-portfolio, buy/sell, or must-rebalance language. |
 | **Technical contracts** | `candidate_comparison.json`, `selection_decision.json`, `candidate_factory_run.json`, `candidate_factory_manifest.json`, `candidate_manifest.json`, `output_manifest.json` | Pipeline orchestration, API indexing, and deterministic evidence joins. |
 | **Advanced / research evidence** | `portfolio_health_score.json`, `robustness_scorecard.json`, `assumption_sensitivity.json`, `pareto_dominance.json`, `regret_analysis.json`, `tradeoff_explanation.json`, `model_risk_diagnostics.json` | Drill-down review, robustness/research analysis, and confidence diagnostics. |
 | **Action / monitoring / journal evidence** | `action_plan.json`, `monitoring_diff.json`, `decision_journal.json`, `decision_package_summary.json` | Implementation review, audit trail, reporting projection, and change tracking. |

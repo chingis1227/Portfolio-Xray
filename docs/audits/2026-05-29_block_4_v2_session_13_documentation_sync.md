@@ -10,10 +10,10 @@ Prerequisite: [Session 12 live product validation](2026-05-29_block_4_v2_session
 
 | Question | Verdict |
 | --- | --- |
-| SPEC / OUTPUTS updated for v2 writers? | **Yes** |
-| Operator guide Block 4 v2 section? | **Yes** — `docs/product_flow_operator_guide.md` |
-| TESTING.md regression bundle? | **Yes** |
-| `diagnostic_journey` v2 field mapping? | **Yes** — `suggested_methods`, v2 copy fields, primary diagnosis callout |
+| SPEC / OUTPUTS updated for v2 writers... | **Yes** |
+| Operator guide Block 4 v2 section... | **Yes** — `docs/product_flow_operator_guide.md` |
+| TESTING.md regression bundle... | **Yes** |
+| `diagnostic_journey` v2 field mapping... | **Yes** — `suggested_methods`, v2 copy fields, primary diagnosis callout |
 | Session 13 gate | **PASS** |
 
 **Session 13 verdict:** **PASS**

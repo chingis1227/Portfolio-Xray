@@ -499,22 +499,28 @@ def load_diagnosis_bundle_docs(output_dir_final: Path) -> dict[str, Any]:
     )
     xray_path, xray_resolution = _resolve_artifact_path(output_dir_final, "portfolio_xray.json")
     stress_path, stress_resolution = _resolve_artifact_path(output_dir_final, "stress_report.json")
+    client_fit_path, client_fit_resolution = _resolve_artifact_path(
+        output_dir_final, "client_fit_check.json"
+    )
     return {
         "problem_classification": _load_json(problem_path),
         "candidate_launchpad": _load_json(launchpad_path),
         "portfolio_alternatives_builder": _load_json(builder_path),
         "portfolio_xray": _load_json(xray_path),
         "stress_report": _load_json(stress_path),
+        "client_fit_check": _load_json(client_fit_path),
         "problem_classification_path": problem_path,
         "candidate_launchpad_path": launchpad_path,
         "portfolio_alternatives_builder_path": builder_path,
         "portfolio_xray_path": xray_path,
         "stress_report_path": stress_path,
+        "client_fit_check_path": client_fit_path,
         "problem_classification_resolution": problem_resolution,
         "candidate_launchpad_resolution": launchpad_resolution,
         "portfolio_alternatives_builder_resolution": builder_resolution,
         "portfolio_xray_resolution": xray_resolution,
         "stress_report_resolution": stress_resolution,
+        "client_fit_check_resolution": client_fit_resolution,
     }
 
 

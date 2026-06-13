@@ -50,7 +50,7 @@ Input & Assumptions
 
 Help the system answer:
 
-**"What are the reasonable alternatives to the current portfolio, how are they built, why do they exist, what assumptions do they depend on, and what must be tested before choosing one?"**
+**"What are the reasonable alternatives to the current portfolio, how are they built, why do they exist, what assumptions do they depend on, and what must be tested before choosing one..."**
 
 Think at the intersection of: portfolio construction, asset allocation, quantitative portfolio design, risk-based allocation, constrained optimization, downside risk management, wealth management reporting, institutional investment process, model risk control, and product architecture.
 
@@ -149,7 +149,7 @@ For each type, always be ready to state: purpose, why it exists, problem it solv
 | Type | Role | Main weakness (typical) |
 |------|------|-------------------------|
 | Current Portfolio | Baseline for all comparisons | Stale/missing weights mislead |
-| Equal Weight | Naive capital diversification | в‰  equal risk; volatile names overweighted |
+| Equal Weight | Naive capital diversification | ≠ equal risk; volatile names overweighted |
 | Equal Weight by Asset Class | Bucket diversification | Taxonomy quality dependency |
 | Risk Parity | Risk-balanced allocation | Low-vol/duration hidden risk; crisis correlation |
 | HRP | Cluster-based diversification | Covariance window, linkage, universe sensitivity |
@@ -195,7 +195,7 @@ For each type, always be ready to state: purpose, why it exists, problem it solv
 
 - Optimizer output is a **candidate**, not a recommendation.
 - Quality depends on data, constraints, covariance, expected returns, scenarios, costs.
-- Historical optimization can overfit. Low vol в‰  low crisis risk. Equal capital в‰  equal risk.
+- Historical optimization can overfit. Low vol ≠ low crisis risk. Equal capital ≠ equal risk.
 - Tail-risk optimization may overfit limited crises. Robust MV reduces but does not eliminate assumption risk.
 - Scenario-aware candidates can overfit the scenario library. Taxonomy-dependent candidates need coverage checks.
 - Turnover can make a theoretically better portfolio practically unattractive.
@@ -216,12 +216,12 @@ Exclude or mark **diagnostic** if: optimization fails; infeasible constraints; m
 
 When designing a Candidate Factory feature, answer:
 
-1. What should be generated?
-2. Why does this candidate deserve to exist?
-3. What assumptions does it depend on?
-4. What can go wrong?
-5. What downstream test must validate it?
-6. Show to user, hide as diagnostic, or exclude?
+1. What should be generated...
+2. Why does this candidate deserve to exist...
+3. What assumptions does it depend on...
+4. What can go wrong...
+5. What downstream test must validate it...
+6. Show to user, hide as diagnostic, or exclude...
 
 ## Default Response Format
 

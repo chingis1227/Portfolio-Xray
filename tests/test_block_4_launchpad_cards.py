@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+
 from scripts.core_mvp_validation_contract import (
     BLOCK_4_V3_RULESET_VERSION,
     CANDIDATE_LAUNCHPAD_V3_VERSION,
@@ -10,6 +12,7 @@ from scripts.core_mvp_validation_contract import (
     candidate_launchpad_v3_product_contract_violations,
     check_candidate_launchpad_v3,
 )
+from src.block_4.diagnosis_builder import build_block_4_diagnosis
 from src.block_4.action_path_mapping import map_action_paths
 from src.block_4.evidence_extraction import extract_evidence_signals
 from src.block_4.launchpad_cards import (
@@ -20,6 +23,8 @@ from src.block_4.launchpad_cards import (
 )
 from src.block_4.problem_prioritization import prioritize_problems
 from src.block_4.problem_scoring import score_problems
+from src.client_fit import build_client_fit_check
+from block_4_fixtures import archetype_concentrated_equity
 from block_4_fixtures import hedge_gap_stress as _hedge_gap_stress
 from block_4_fixtures import load_golden_xray as _load_golden_xray
 
@@ -230,6 +235,49 @@ def test_cards_include_v2_narrative_fields() -> None:
     assert card["not_a_recommendation_disclaimer_en"].startswith(
         "This card suggests a hypothesis to test, not a buy or sell instruction."
     )
+
+
+def test_client_fit_pass_with_material_issue_still_routes_to_review_test_path() -> None:
+    case = archetype_concentrated_equity()
+    xray = deepcopy(case.portfolio_xray)
+    xray["block_2_2_portfolio_metrics"]["return_risk_metrics"]["portfolio_cagr"] = 0.06
+    fit = build_client_fit_check(
+        client_fit={
+            "preset_id": "growth",
+            "source": "questionnaire",
+            "source_quality": "medium",
+            "horizon_years": 8,
+            "target_return_range": {"min": 0.04, "max": 0.08},
+            "target_vol_range": {"min": 0.05, "max": 0.20},
+            "target_max_drawdown_pct": -0.30,
+        },
+        portfolio_xray=xray,
+        stress_report=case.stress_report,
+    )
+
+    diagnosis = build_block_4_diagnosis(
+        portfolio_xray=xray,
+        stress_report=case.stress_report,
+        client_fit_check=fit,
+        analysis_end="2026-06-12",
+    )
+    pc = diagnosis.problem_classification
+    launchpad = diagnosis.candidate_launchpad
+    first_card = launchpad["cards"][0]
+
+    assert fit["client_fit_status"] == "fit"
+    assert pc["client_fit_status"] == "fit"
+    assert pc["diagnostic_quality_status"] in {"issue", "material_issue"}
+    assert pc["primary_problem"]["problem_id"] == "high_concentration"
+    assert launchpad["launchpad_outcome"] == "proceed_to_launchpad"
+    assert launchpad["summary"]["client_fit_did_not_suppress_diagnosis"] is True
+    assert first_card["card_type"] == "targeted_hypothesis_test"
+    assert first_card["launch_status"] == "hypothesis_test"
+    assert first_card["requires_user_action"] is True
+    assert first_card["suggested_methods"]
+    assert first_card["client_fit_context"]["client_fit_status"] == "fit"
+    assert "remains material diagnostic evidence" in first_card["client_fit_relevance_en"]
+    assert first_card["is_rebalance_recommendation"] is False
 
 
 def test_launchpad_build_ruleset_version_constant() -> None:

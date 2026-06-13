@@ -858,7 +858,7 @@ report is the evidence for full-plan acceptance; Session 16 did not refresh gene
 
 Work from the repository root:
 
-    D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА
+    D:\Desktop\CURSOR TULA DIAGNOSTICS
 
 Session 00 created:
 

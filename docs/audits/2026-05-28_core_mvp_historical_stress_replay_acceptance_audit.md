@@ -18,12 +18,12 @@ Related:
 
 | Question | Verdict |
 | --- | --- |
-| Is `historical_stress_replay_v1` on live portfolio-first diagnosis? | **Yes** — `run_portfolio_review.py --skip-candidates` refreshed `Main portfolio/analysis_subject/stress_report.json`. |
-| Is policy `direct_history_only` with five canonical episodes? | **Yes** — dotcom, 2008, 2020, 2022, banking_2023 in registry order. |
-| Are proxy product fields absent? | **Yes** — no `used_proxies` / `proxy_coverage_weight_pct` on replay or Block 3.2 historical rows. |
-| Does Block 3.2 honor replay coverage for portfolio metrics? | **Yes** — loss/DD only when `portfolio_level_result_available`; dotcom/2008 cleared despite legacy paths. |
-| Are English `user_note` / `diagnosis_summary_en` present on all episodes? | **Yes** — 5/5 replay episodes; partial/unavailable narratives in `data_trust_summary`. |
-| Is the full ExecPlan accepted (Sessions 01–07)? | **Yes — 7/7** sessions complete (see §3). |
+| Is `historical_stress_replay_v1` on live portfolio-first diagnosis... | **Yes** — `run_portfolio_review.py --skip-candidates` refreshed `Main portfolio/analysis_subject/stress_report.json`. |
+| Is policy `direct_history_only` with five canonical episodes... | **Yes** — dotcom, 2008, 2020, 2022, banking_2023 in registry order. |
+| Are proxy product fields absent... | **Yes** — no `used_proxies` / `proxy_coverage_weight_pct` on replay or Block 3.2 historical rows. |
+| Does Block 3.2 honor replay coverage for portfolio metrics... | **Yes** — loss/DD only when `portfolio_level_result_available`; dotcom/2008 cleared despite legacy paths. |
+| Are English `user_note` / `diagnosis_summary_en` present on all episodes... | **Yes** — 5/5 replay episodes; partial/unavailable narratives in `data_trust_summary`. |
+| Is the full ExecPlan accepted (Sessions 01–07)... | **Yes — 7/7** sessions complete (see §3). |
 
 **Bottom line:** Core MVP historical stress replay is **complete**. Operators read honest per-episode coverage from `historical_stress_replay_v1` and merged Block 3.2 `historical_episodes[]` on subject `stress_report.json`. Early episodes (dotcom, 2008) correctly show **unavailable** full-book replay when the aligned monthly panel does not cover the episode window (2014+ book on this run), rather than implying full-portfolio precision.
 
@@ -118,7 +118,7 @@ Forbidden keys (`used_proxies`, `proxy_coverage_weight_pct`, …): **absent** on
 
 ### 5.3 Block 3.2 merge (`stress_results_v1.historical_episodes[]`)
 
-| episode | replay_status | availability | portfolio_loss_pct | Matches replay loss? |
+| episode | replay_status | availability | portfolio_loss_pct | Matches replay loss... |
 | --- | --- | --- | ---: | --- |
 | dotcom | unavailable | unavailable | — | cleared (replay unavailable) |
 | 2008 | unavailable | unavailable | — | cleared |

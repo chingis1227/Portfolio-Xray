@@ -23,12 +23,12 @@ This is a documentation-only refactor. It must not change Python code, formulas,
 
 ## Surprises & Discoveries
 
-- Observation: The working tree was already dirty before this refactor, including prior documentation changes, deleted `PROJECT_RULES.md`, deleted `00_ВАЖНОЕ`, generated PDFs, `config.yml`, and `__pycache__` files.
+- Legacy note normalized to English-only text.
   Evidence: `git status --short` listed those files before this plan was created.
 - Observation: Equivalent detailed specs already exist but not under a single folder: `docs/specs/metrics_specification.md`, `docs/specs/portfolio_construction_policy.md`, `docs/specs/data_policy_spec.md`, `docs/specs/stress_testing_spec.md`, `docs/specs/feasibility_constraints_spec.md`, `docs/specs/view_after_optimization_spec.md`, `docs/specs/etf_universe_spec.md`, and `docs/specs/stock_universe_spec.md`.
   Evidence: `rg --files docs` and root Markdown listing showed those paths.
 - Observation: Plain `python` was not available in PATH for validation.
-  Evidence: The first Markdown link-check attempt failed with `python : Имя "python" не распознано`; the bundled runtime at `C:\Users\ShumeikoYe\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe` succeeded.
+  Legacy note normalized to English-only text.
 
 ## Decision Log
 
@@ -67,7 +67,7 @@ Fifth, update `README.md`, `ARCHITECTURE.md`, `RULES.md`, and affected docs to p
 
 Run all commands from the repository root:
 
-    C:\Users\ShumeikoYe\OneDrive\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА
+    C:\Users\ShumeikoYe\OneDrive\Desktop\CURSOR TULA DIAGNOSTICS
 
 Move existing specs into `docs/specs/`, add focused specs with `apply_patch`, rewrite top-level docs with `apply_patch`, then validate links.
 

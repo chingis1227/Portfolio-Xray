@@ -19,14 +19,14 @@ Related:
 
 | Question | Verdict |
 | --- | --- |
-| Is Block 3.3 implemented as Core MVP on `stress_report.json`? | **Yes** — `hedge_gap_analysis_v1`, eight protection rows, contribution-based offset coverage. |
-| Is wiring correct (after Block 3.2, before Block 3.4)? | **Yes** — `attach_hedge_gap_analysis_v1` in `run_stress`, `_empty_report`, `run_report.py`, `run_optimization.py`. |
-| Is the Phase 2 product contract complete? | **No** — missing `block_status`, `ruleset_version`, `protection_status`, row bridges, `client_diagnosis_en`, AI/candidate/problem-classification v1 paths. |
-| Is main hedge gap selection institutional-grade? | **Partial** — min `offset_coverage_ratio` + loss tie-break only; no severity-weighted scoring. |
-| Is Block 2.4 connected? | **Partial** — stress enrichment reads v1 summary; coarse `confirmation_status` on alert; no dedicated `hidden_exposure_confirmation` bridge object on v1. |
-| Is Block 2.6 connected? | **No** — by design 2.6 does not read stress; no `weakness_map_confirmation` on v1 yet. |
-| Are downstream consumers on v1? | **No** — Problem Classification and Candidate Comparison use legacy; AI Commentary has no hedge gap refs. |
-| Session 01 code changes? | **None** (audit + ExecPlan registration only). |
+| Is Block 3.3 implemented as Core MVP on `stress_report.json`... | **Yes** — `hedge_gap_analysis_v1`, eight protection rows, contribution-based offset coverage. |
+| Is wiring correct (after Block 3.2, before Block 3.4)... | **Yes** — `attach_hedge_gap_analysis_v1` in `run_stress`, `_empty_report`, `run_report.py`, `run_optimization.py`. |
+| Is the Phase 2 product contract complete... | **No** — missing `block_status`, `ruleset_version`, `protection_status`, row bridges, `client_diagnosis_en`, AI/candidate/problem-classification v1 paths. |
+| Is main hedge gap selection institutional-grade... | **Partial** — min `offset_coverage_ratio` + loss tie-break only; no severity-weighted scoring. |
+| Is Block 2.4 connected... | **Partial** — stress enrichment reads v1 summary; coarse `confirmation_status` on alert; no dedicated `hidden_exposure_confirmation` bridge object on v1. |
+| Is Block 2.6 connected... | **No** — by design 2.6 does not read stress; no `weakness_map_confirmation` on v1 yet. |
+| Are downstream consumers on v1... | **No** — Problem Classification and Candidate Comparison use legacy; AI Commentary has no hedge gap refs. |
+| Session 01 code changes... | **None** (audit + ExecPlan registration only). |
 
 **Bottom line:** Block 3.3 v1 MVP is **shipped and test-green**, but **not productized** for the full Core MVP decision path. Phase 2 Sessions 02–12 close contract, scoring, bridges, and downstream migration.
 

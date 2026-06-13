@@ -27,7 +27,7 @@ git diff --cached --name-only
 | --- | --- |
 | Total dirty entries | **347** |
 | Modified tracked (`M`) | **319** |
-| Untracked (`??`) | **28** |
+| Untracked (`......`) | **28** |
 | Staged (`git diff --cached --name-only`) | **0** |
 | `git diff --stat` | **315 files**, +107 867 / −656 429 lines (dominated by generated `stress_report.json` shrink/rewrite and portfolio reruns) |
 

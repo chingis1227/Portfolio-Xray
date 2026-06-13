@@ -12,10 +12,10 @@ Specs: [current_vs_candidate_spec.md](../specs/current_vs_candidate_spec.md), [d
 
 | Question | Verdict |
 | --- | --- |
-| Are Current vs Candidate and Decision Verdict implemented? | **Yes** — `src/current_vs_candidate.py`, `src/decision_verdict.py`; written from `write_candidate_comparison_outputs()` in `src/candidate_comparison.py`. |
-| Is Block 5 product contract enforced in tests? | **Yes** — `scripts/core_mvp_validation_contract.py` + `tests/test_block_5_decision_compare_contract.py`. |
-| Does live E2E validate Block 5 on one-candidate runs? | **Yes** — `validate_live_core_artifacts` (`product_one_candidate`) calls Block 5 contract + handoff checks when compare artifacts exist. |
-| Live demo portfolio (2026-05-29)? | **Pass** — `block_5_view_mode: one_candidate`, `block_5_n_comparisons: 1`, `block_5_verdict_id: rebalance_to_selected_candidate`. |
+| Are Current vs Candidate and Decision Verdict implemented... | **Yes** — `src/current_vs_candidate.py`, `src/decision_verdict.py`; written from `write_candidate_comparison_outputs()` in `src/candidate_comparison.py`. |
+| Is Block 5 product contract enforced in tests... | **Yes** — `scripts/core_mvp_validation_contract.py` + `tests/test_block_5_decision_compare_contract.py`. |
+| Does live E2E validate Block 5 on one-candidate runs... | **Yes** — `validate_live_core_artifacts` (`product_one_candidate`) calls Block 5 contract + handoff checks when compare artifacts exist. |
+| Live demo portfolio (2026-05-29)... | **Pass** — `block_5_view_mode: one_candidate`, `block_5_n_comparisons: 1`, `block_5_verdict_id: rebalance_to_selected_candidate`. |
 
 **Bottom line:** Block 5 compare/verdict layer is **accepted for Phase D continuation**. Operators can run `python run_portfolio_review.py --candidates equal_weight` and trust root `current_vs_candidate.json` + `decision_verdict.json` when `verify_live_core_e2e.py --profile product_one_candidate` reports `ok=True`.
 

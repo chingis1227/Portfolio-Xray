@@ -1,4 +1,4 @@
-﻿import type { Metric } from "@/lib/types";
+import type { Metric } from "@/lib/types";
 import { DecisionHeroCard } from "@/components/ui/DecisionHeroCard";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";

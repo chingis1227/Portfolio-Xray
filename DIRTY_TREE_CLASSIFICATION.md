@@ -345,36 +345,36 @@ Every changed or untracked path reported by `git status --short` is listed below
 | Status | Path | Recommendation | Notes |
 | --- | --- | --- | --- |
 | `M` | `run_report.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
-| `??` | `src/ai_commentary_context.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
+| `......` | `src/ai_commentary_context.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
 | `M` | `src/candidate_comparison.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
 | `M` | `src/candidate_factory.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
-| `??` | `src/candidate_launchpad.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
-| `??` | `src/current_vs_candidate.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
-| `??` | `src/decision_verdict.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
-| `??` | `src/light_monitoring_summary.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
-| `??` | `src/portfolio_alternatives_builder.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
+| `......` | `src/candidate_launchpad.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
+| `......` | `src/current_vs_candidate.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
+| `......` | `src/decision_verdict.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
+| `......` | `src/light_monitoring_summary.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
+| `......` | `src/portfolio_alternatives_builder.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
 | `M` | `src/portfolio_review_workflow.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
-| `??` | `src/problem_classification.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
-| `??` | `src/workflow_state.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
+| `......` | `src/problem_classification.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
+| `......` | `src/workflow_state.py` | keep; stage later with migration code | Belongs to diagnosis-first Portfolio MRI code migration. |
 
 ### 2. Documentation/ExecPlan changes to keep
 
 | Status | Path | Recommendation | Notes |
 | --- | --- | --- | --- |
-| `??` | `CODE_MIGRATION_PLAN.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
-| `??` | `docs/audits/2026-05-25_code_migration_session01_runtime_inventory.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
-| `??` | `docs/exec_plans/2026-05-25_code_migration_to_diagnosis_first_portfolio_mri.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
-| `??` | `docs/specs/ai_commentary_grounding_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
+| `......` | `CODE_MIGRATION_PLAN.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
+| `......` | `docs/audits/2026-05-25_code_migration_session01_runtime_inventory.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
+| `......` | `docs/exec_plans/2026-05-25_code_migration_to_diagnosis_first_portfolio_mri.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
+| `......` | `docs/specs/ai_commentary_grounding_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
 | `M` | `docs/specs/candidate_factory_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
-| `??` | `docs/specs/candidate_launchpad_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
-| `??` | `docs/specs/current_vs_candidate_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
-| `??` | `docs/specs/decision_verdict_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
-| `??` | `docs/specs/light_monitoring_summary_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
-| `??` | `docs/specs/portfolio_alternatives_builder_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
+| `......` | `docs/specs/candidate_launchpad_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
+| `......` | `docs/specs/current_vs_candidate_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
+| `......` | `docs/specs/decision_verdict_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
+| `......` | `docs/specs/light_monitoring_summary_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
+| `......` | `docs/specs/portfolio_alternatives_builder_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
 | `M` | `docs/specs/portfolio_review_workflow_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
-| `??` | `docs/specs/problem_classification_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
+| `......` | `docs/specs/problem_classification_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
 | `M` | `docs/specs/README.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
-| `??` | `docs/specs/workflow_state_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
+| `......` | `docs/specs/workflow_state_spec.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
 | `M` | `OUTPUTS.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
 | `M` | `SPEC.md` | keep; stage later as docs/planning commit or with matching code | Migration documentation/spec/output-contract update. |
 
@@ -382,26 +382,26 @@ Every changed or untracked path reported by `git status --short` is listed below
 
 | Status | Path | Recommendation | Notes |
 | --- | --- | --- | --- |
-| `??` | `tests/test_ai_commentary_context.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
+| `......` | `tests/test_ai_commentary_context.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
 | `M` | `tests/test_candidate_factory.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
-| `??` | `tests/test_candidate_launchpad.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
-| `??` | `tests/test_current_vs_candidate.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
-| `??` | `tests/test_decision_verdict.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
-| `??` | `tests/test_light_monitoring_summary.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
-| `??` | `tests/test_portfolio_alternatives_builder.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
+| `......` | `tests/test_candidate_launchpad.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
+| `......` | `tests/test_current_vs_candidate.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
+| `......` | `tests/test_decision_verdict.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
+| `......` | `tests/test_light_monitoring_summary.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
+| `......` | `tests/test_portfolio_alternatives_builder.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
 | `M` | `tests/test_portfolio_review_workflow.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
-| `??` | `tests/test_problem_classification.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
-| `??` | `tests/test_workflow_state.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
+| `......` | `tests/test_problem_classification.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
+| `......` | `tests/test_workflow_state.py` | keep; stage later with related migration code | Supports migration behavior or regression coverage. |
 
 ### 3. Generated outputs / artifacts
 
 | Status | Path | Recommendation | Notes |
 | --- | --- | --- | --- |
-| `??` | `candidate_factory_session9_smoke.log` | do not commit unless explicitly requested | Generated report/cache/artifact/log output. |
-| `??` | `candidate_factory_stderr.log` | do not commit unless explicitly requested | Generated report/cache/artifact/log output. |
-| `??` | `candidate_factory_stdout.log` | do not commit unless explicitly requested | Generated report/cache/artifact/log output. |
-| `??` | `portfolio_review_stderr.log` | do not commit unless explicitly requested | Generated report/cache/artifact/log output. |
-| `??` | `portfolio_review_stdout.log` | do not commit unless explicitly requested | Generated report/cache/artifact/log output. |
+| `......` | `candidate_factory_session9_smoke.log` | do not commit unless explicitly requested | Generated report/cache/artifact/log output. |
+| `......` | `candidate_factory_stderr.log` | do not commit unless explicitly requested | Generated report/cache/artifact/log output. |
+| `......` | `candidate_factory_stdout.log` | do not commit unless explicitly requested | Generated report/cache/artifact/log output. |
+| `......` | `portfolio_review_stderr.log` | do not commit unless explicitly requested | Generated report/cache/artifact/log output. |
+| `......` | `portfolio_review_stdout.log` | do not commit unless explicitly requested | Generated report/cache/artifact/log output. |
 | `M` | `src/__pycache__/__init__.cpython-313.pyc` | do not commit unless explicitly requested | Generated report/cache/artifact/log output. |
 | `M` | `src/__pycache__/cache.cpython-313.pyc` | do not commit unless explicitly requested | Generated report/cache/artifact/log output. |
 | `M` | `src/__pycache__/client_profiles.cpython-313.pyc` | do not commit unless explicitly requested | Generated report/cache/artifact/log output. |
@@ -436,26 +436,26 @@ Every changed or untracked path reported by `git status --short` is listed below
 | --- | --- | --- | --- |
 | `M` | `docs/audits/README.md` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
 | `M` | `docs/exec_plans/README.md` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
-| `??` | `run_ibkr_market_data.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
+| `......` | `run_ibkr_market_data.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
 | `M` | `src/action_engine.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
 | `M` | `src/cache.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
 | `M` | `src/config_schema.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
-| `??` | `src/data_ibkr.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
+| `......` | `src/data_ibkr.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
 | `M` | `src/data_loader.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
-| `??` | `src/data_provider.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
+| `......` | `src/data_provider.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
 | `M` | `src/data_trust_signals.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
 | `M` | `src/live_core_e2e.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
 | `M` | `src/selection_engine.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
 | `M` | `tests/test_data_cache_key.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
-| `??` | `tests/test_data_ibkr.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
-| `??` | `tests/test_data_provider.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
+| `......` | `tests/test_data_ibkr.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
+| `......` | `tests/test_data_provider.py` | do not stage with migration; review separately | Known unrelated/pre-existing dirty source/docs/test/provider work. |
 
 ### 7. Unknown / requires human review
 
 | Status | Path | Recommendation | Notes |
 | --- | --- | --- | --- |
 | `M` | `"hierarchical risk parity portfolio/baseline_weights_metadata.json"` | review before staging | Path does not match known migration/generated/config buckets. |
-| `??` | `"hierarchical risk parity portfolio/candidate_manifest.json"` | review before staging | Path does not match known migration/generated/config buckets. |
+| `......` | `"hierarchical risk parity portfolio/candidate_manifest.json"` | review before staging | Path does not match known migration/generated/config buckets. |
 | `M` | `"hierarchical risk parity portfolio/commentary.txt"` | review before staging | Path does not match known migration/generated/config buckets. |
 | `M` | `"hierarchical risk parity portfolio/data_policy.json"` | review before staging | Path does not match known migration/generated/config buckets. |
 | `M` | `"hierarchical risk parity portfolio/drawdown_structure_3y.json"` | review before staging | Path does not match known migration/generated/config buckets. |
@@ -626,7 +626,7 @@ Every changed or untracked path reported by `git status --short` is listed below
 | `M` | `"pdf_md_sources/robust mean variance constrained portfolio__stress_commentary.md"` | review before staging | Path does not match known migration/generated/config buckets. |
 | `M` | `"pdf_md_sources/robust mean variance uncapped portfolio__commentary.md"` | review before staging | Path does not match known migration/generated/config buckets. |
 | `M` | `"pdf_md_sources/robust mean variance uncapped portfolio__stress_commentary.md"` | review before staging | Path does not match known migration/generated/config buckets. |
-| `??` | `"risk budget by asset portfolio/candidate_manifest.json"` | review before staging | Path does not match known migration/generated/config buckets. |
+| `......` | `"risk budget by asset portfolio/candidate_manifest.json"` | review before staging | Path does not match known migration/generated/config buckets. |
 | `M` | `"risk budget by asset portfolio/commentary.txt"` | review before staging | Path does not match known migration/generated/config buckets. |
 | `M` | `"risk budget by asset portfolio/data_policy.json"` | review before staging | Path does not match known migration/generated/config buckets. |
 | `M` | `"risk budget by asset portfolio/portfolio_xray.json"` | review before staging | Path does not match known migration/generated/config buckets. |
@@ -651,7 +651,7 @@ Every changed or untracked path reported by `git status --short` is listed below
 | `M` | `"risk budget by asset portfolio/stress_report.json"` | review before staging | Path does not match known migration/generated/config buckets. |
 | `M` | `"risk budget by asset portfolio/summary.json"` | review before staging | Path does not match known migration/generated/config buckets. |
 | `M` | `"risk budget by asset portfolio/summary.txt"` | review before staging | Path does not match known migration/generated/config buckets. |
-| `??` | `"risk budget by asset-class portfolio/candidate_manifest.json"` | review before staging | Path does not match known migration/generated/config buckets. |
+| `......` | `"risk budget by asset-class portfolio/candidate_manifest.json"` | review before staging | Path does not match known migration/generated/config buckets. |
 | `M` | `"risk budget by asset-class portfolio/commentary.txt"` | review before staging | Path does not match known migration/generated/config buckets. |
 | `M` | `"risk budget by asset-class portfolio/data_policy.json"` | review before staging | Path does not match known migration/generated/config buckets. |
 | `M` | `"risk budget by asset-class portfolio/portfolio_xray.json"` | review before staging | Path does not match known migration/generated/config buckets. |

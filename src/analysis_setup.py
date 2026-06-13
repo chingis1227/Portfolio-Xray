@@ -142,7 +142,7 @@ def _core_mvp_input_surface(
         "excluded_legacy_advanced_fields": list(LEGACY_ADVANCED_MANDATE_FIELDS),
         "notes": [
             "Core MVP Blocks 1-3 consume this minimal input surface for portfolio-first diagnostics.",
-            "Client profile, mandate targets, liquidity, portfolio value, and horizon remain legacy/advanced context only.",
+            "Core MVP Blocks 1-3 do not consume Client Fit/client profile targets; the web Client Fit check is evaluated after Stress Lab, while legacy mandate fields remain advanced context.",
         ],
     }
 
@@ -719,7 +719,8 @@ def build_analysis_setup(
                 "not_required_for_core_mvp": True,
                 "description": (
                     "Client profile, mandate targets, liquidity, portfolio value, and horizon are "
-                    "legacy/advanced context. Core MVP Blocks 1-3 use core_mvp_input_surface instead."
+                    "outside the Blocks 1-3 calculation surface. Client Fit is evaluated after Stress Lab; "
+                    "legacy mandate fields remain advanced context."
                 ),
             },
             "client_profile": cfg.client_profile,

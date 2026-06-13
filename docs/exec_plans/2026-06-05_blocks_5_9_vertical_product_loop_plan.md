@@ -10,7 +10,7 @@ The user-facing Portfolio MRI product should not feel like an optimizer cockpit.
 
 After this plan is complete, a real demo should be able to produce this chain from the current portfolio: `problem_classification.json`, `candidate_launchpad.json`, `portfolio_alternatives_builder.json`, `candidate_generation.json`, `current_vs_candidate.json`, `decision_verdict.json`, and `ai_commentary_context.json`. The demo must use one selected candidate by default, not a candidate zoo, not a full research optimizer menu, and not a hidden recommendation engine.
 
-The next implementation chat must begin with Session 00 only. If Session 00 succeeds, the implementer must stop, not start Session 01 in the same chat, and report: `Session 00 Р·Р°РІРµСЂС€РµРЅР° СѓСЃРїРµС€РЅРѕ` plus readiness status or blockers.
+Legacy note normalized to English-only text.
 
 ## Progress
 
@@ -235,7 +235,7 @@ Session 10 status: `BLOCK_6_READY BLOCK_7_READY BLOCK_8_READY BLOCK_9_READY READ
 
 ## Context and Orientation
 
-Portfolio MRI / Portfolio X-Ray is a Python CLI/file-driven portfolio diagnostics system moving toward the product truth called `Р”РРђР“РќРћРЎРўРРљРђ 2`. Current product direction is diagnosis-first, current-portfolio-first, and decision-support-first. It must not become optimizer-first, scorecard-first, or a black-box portfolio recommender.
+Portfolio MRI / Portfolio X-Ray is a Python CLI/file-driven portfolio diagnostics system moving toward the product truth called `Diagnosis 2`. Current product direction is diagnosis-first, current-portfolio-first, and decision-support-first. It must not become optimizer-first, scorecard-first, or a black-box portfolio recommender.
 
 The current canonical blocks for this plan are:
 

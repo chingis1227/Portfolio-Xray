@@ -10,12 +10,12 @@ Prerequisite: [Session 07 action path mapping](2026-05-29_block_4_v2_session_07_
 
 | Question | Verdict |
 | --- | --- |
-| `build_launchpad_cards()` implemented? | **Yes** — `src/block_4/launchpad_cards.py` |
-| V2 card fields populated? | **Yes** — narrative, disclaimer, methods, priority_rank |
-| Max 4 cards / suppressed monitor cap? | **Yes** — 4 default; 2 when launchpad suppressed |
-| `build_candidate_launchpad_v2_document()`? | **Yes** — top-level v2 JSON shape |
-| Contract + handoff tests? | **Yes** — golden fixture passes v2 validator |
-| Session 08 tests? | **Yes** — `tests/test_block_4_launchpad_cards.py` (**6 passed**) |
+| `build_launchpad_cards()` implemented... | **Yes** — `src/block_4/launchpad_cards.py` |
+| V2 card fields populated... | **Yes** — narrative, disclaimer, methods, priority_rank |
+| Max 4 cards / suppressed monitor cap... | **Yes** — 4 default; 2 when launchpad suppressed |
+| `build_candidate_launchpad_v2_document()`... | **Yes** — top-level v2 JSON shape |
+| Contract + handoff tests... | **Yes** — golden fixture passes v2 validator |
+| Session 08 tests... | **Yes** — `tests/test_block_4_launchpad_cards.py` (**6 passed**) |
 
 **Session 08 verdict:** **PASS**
 

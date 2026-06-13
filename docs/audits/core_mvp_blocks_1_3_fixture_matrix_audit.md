@@ -17,7 +17,7 @@ Evidence sources:
 
 Final product verdict for the requested question:
 
-**Can Blocks 1–3 be trusted as the Core MVP diagnostic foundation across realistic portfolios?**  
+**Can Blocks 1–3 be trusted as the Core MVP diagnostic foundation across realistic portfolios...**
 **Yes, with limitations**
 
 Rationale:

@@ -32,8 +32,8 @@ not be read as the same scope:
 
 | Artifact | Question it answers | Typical pitfall |
 | --- | --- | --- |
-| `candidate_factory_run.json` | What did the **last factory orchestration** attempt (profile, steps, reuse)? | Assuming six `core_v1` steps mean comparison contains only six scored families |
-| `candidate_comparison.json` | What candidate evidence exists **on disk** for this `analysis_end` / bundle context? | Treating 16+ rows as proof the last run was `--mode full` when optimizers were reused from disk |
+| `candidate_factory_run.json` | What did the **last factory orchestration** attempt (profile, steps, reuse)... | Assuming six `core_v1` steps mean comparison contains only six scored families |
+| `candidate_comparison.json` | What candidate evidence exists **on disk** for this `analysis_end` / bundle context... | Treating 16+ rows as proof the last run was `--mode full` when optimizers were reused from disk |
 
 The comparison builder scans the product registry and existing variant folders; it does **not** limit
 rows to the last factory `steps[]` unless freshness/unavailability rules mark them unavailable.

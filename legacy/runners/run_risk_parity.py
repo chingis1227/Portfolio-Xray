@@ -99,7 +99,7 @@ def main() -> None:
                 weights_df = pd.DataFrame(index=ret_slice.index, data={t: w_df.get(t, 0.0) for t in cols})
                 rc_series = rc_vol_window(ret_slice, weights_df, ddof=1)
     except Exception as e:
-        logger.warning(f"Не удалось посчитать RC_vol для Risk-Parity baseline: {e}")
+        logger.warning(f"Failed to calculate RC_vol for Risk-Parity baseline: {e}")
         rc_series = None
 
     export_baseline_weights_txt(rp_result.weights, rc_series=rc_series, label=BASELINE_RP_LABEL, output_dir=out_dir)

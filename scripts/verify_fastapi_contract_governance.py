@@ -91,14 +91,14 @@ ADVICE_LIKE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("winner", re.compile(r"\bwinner\b", re.IGNORECASE)),
     ("must rebalance", re.compile(r"\bmust\s+rebalance\b", re.IGNORECASE)),
     ("trade now", re.compile(r"\btrade\s+now\b", re.IGNORECASE)),
-    ("execute trade", re.compile(r"\bexecute\s+(?:a\s+)?trade\b", re.IGNORECASE)),
+    ("execute trade", re.compile(r"\bexecute\s+(...:a\s+)...trade\b", re.IGNORECASE)),
     ("guaranteed improvement", re.compile(r"\bguaranteed\s+improvement\b", re.IGNORECASE)),
     ("suitability approved", re.compile(r"\bsuitability\s+approved\b", re.IGNORECASE)),
     ("client suitability approved", re.compile(r"\bclient\s+suitability\s+approved\b", re.IGNORECASE)),
 )
 
 BOUNDARY_CONTEXT_PATTERN = re.compile(
-    r"\b(?:not|no|never|must\s+not|does\s+not|do\s+not|is\s+not|without|instead\s+of)\b",
+    r"\b(...:not|no|never|must\s+not|does\s+not|do\s+not|is\s+not|without|instead\s+of)\b",
     re.IGNORECASE,
 )
 

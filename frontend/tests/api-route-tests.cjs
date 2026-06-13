@@ -1,4 +1,4 @@
-﻿const assert = require("node:assert/strict");
+const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
@@ -10,6 +10,11 @@ const candidateGenerateRoutePath = path.resolve(frontendRoot, "app", "api", "por
 const diagnoseRoutePath = path.resolve(frontendRoot, "app", "api", "portfolio", "diagnose", "route.ts");
 const reportGenerateRoutePath = path.resolve(frontendRoot, "app", "api", "portfolio", "report", "generate", "route.ts");
 const reviewRecoverRoutePath = path.resolve(frontendRoot, "app", "api", "portfolio", "review", "recover", "route.ts");
+const journeyPath = path.resolve(frontendRoot, "lib", "journey.ts");
+const clientFitContextCardPath = path.resolve(frontendRoot, "components", "client-fit", "ClientFitContextCard.tsx");
+const hypothesisPagePath = path.resolve(frontendRoot, "app", "hypothesis", "page.tsx");
+const comparisonPagePath = path.resolve(frontendRoot, "app", "comparison", "page.tsx");
+const verdictPagePath = path.resolve(frontendRoot, "app", "verdict", "page.tsx");
 
 function makeJsonRequest(body, url = "http://localhost/api/portfolio/builder/prepare") {
   return new Request(url, {
@@ -300,6 +305,107 @@ test("diagnosis route maps instrument and cash rows into the FastAPI create-revi
       }
     });
   });
+});
+
+test("diagnosis route forwards completed Client Fit profile into the FastAPI create-review contract", async () => {
+  const root = path.resolve(process.cwd(), "..");
+  const expectedPath = path.join(root, "runs", "frontend_review_client_fit", "review_result.json");
+  const calls = [];
+  const route = loadRoute({
+    routePath: diagnoseRoutePath,
+    async readFileImpl(filePath, encoding) {
+      assert.equal(filePath, expectedPath);
+      assert.equal(encoding, "utf8");
+      return JSON.stringify({
+        review_id: "frontend_review_client_fit",
+        status: "completed",
+        portfolio_input: { investor_currency: "USD", holdings: [] },
+        outputs: {}
+      });
+    }
+  });
+
+  const clientFit = {
+    preset_id: "balanced",
+    source: "questionnaire",
+    source_quality: "medium",
+    source_quality_reason: "Questionnaire confirmed.",
+    horizon_years: 7,
+    target_return_range: { min: 0.05, max: 0.07 },
+    target_vol_range: { min: 0.07, max: 0.10 },
+    target_max_drawdown_pct: -0.20
+  };
+
+  await withMockFetch(async (url, options) => {
+    calls.push({ url, options });
+    return Response.json(fastApiEnvelope({ review_id: "frontend_review_client_fit", lineage: { review_id: "frontend_review_client_fit" } }));
+  }, async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      investor_currency: "USD",
+      holdings: [
+        { type: "instrument", ticker: "SPY", weight: 80 },
+        { type: "cash", currency: "USD", weight: 20 }
+      ],
+      client_fit: clientFit
+    }, "http://localhost/api/portfolio/diagnose")));
+
+    assert.equal(result.status, 200);
+    const body = JSON.parse(calls[0].options.body);
+    assert.deepEqual(body.client_fit, clientFit);
+    assert.equal(body.options.mode, "diagnosis_only");
+  });
+});
+
+test("journey route order requires Client Fit before Hypothesis", () => {
+  const journey = loadTsModule(journeyPath);
+  assert.deepEqual(journey.journeySteps.map((step) => step.href), [
+    "/portfolio-input",
+    "/diagnosis",
+    "/evidence",
+    "/client-fit",
+    "/hypothesis",
+    "/comparison",
+    "/verdict",
+    "/report"
+  ]);
+  assert.equal(journey.isStepUnlocked("portfolio-input", journey.emptyJourneyFlags), true);
+  assert.equal(journey.isStepUnlocked("hypothesis", {
+    ...journey.emptyJourneyFlags,
+    clientProfileCompleted: true,
+    inputCompleted: true,
+    diagnosisGenerated: true,
+    evidenceGenerated: true,
+    improvementPathsAvailable: true,
+    clientFitReady: false
+  }), false);
+  assert.equal(journey.isStepUnlocked("hypothesis", {
+    ...journey.emptyJourneyFlags,
+    clientProfileCompleted: true,
+    inputCompleted: true,
+    diagnosisGenerated: true,
+    evidenceGenerated: true,
+    improvementPathsAvailable: true,
+    clientFitReady: true
+  }), true);
+});
+
+test("Hypothesis, Comparison, and Verdict keep Client Fit separate from structural diagnosis", () => {
+  const clientFitCard = fs.readFileSync(clientFitContextCardPath, "utf8");
+  const hypothesisPage = fs.readFileSync(hypothesisPagePath, "utf8");
+  const comparisonPage = fs.readFileSync(comparisonPagePath, "utf8");
+  const verdictPage = fs.readFileSync(verdictPagePath, "utf8");
+  const combined = [clientFitCard, hypothesisPage, comparisonPage, verdictPage].join("\n");
+
+  assert.match(hypothesisPage, /ClientFitContextCard/);
+  assert.match(comparisonPage, /ClientFitContextCard/);
+  assert.match(verdictPage, /ClientFitContextCard/);
+  assert.match(combined, /Client Fit pass does not clear concentration, stress, drawdown, or other structural issues/);
+  assert.match(combined, /Separate from diagnosis/);
+  assert.match(combined, /does not clear a material issue|does not clear concentration|does not clear.*structural/i);
+
+  const forbiddenAdvice = /\b(suitable|approved|buy|must rebalance|best portfolio)\b/i;
+  assert.doesNotMatch(combined, forbiddenAdvice);
+  assert.doesNotMatch(combined, /\bsell\b/i);
 });
 
 test("review recovery route validates review id and path separators", async () => {

@@ -1,11 +1,11 @@
 """
-Resampled (bootstrap) оптимизация vs одна обычная на config.yml.
+Resampled (bootstrap) optimization vs one standard run on config.yml.
 
-На каждой репликации: bootstrap строк ret_primary с возвращением, заново
-cov_matrix_monthly(ret_boot), затем run_max_return_optimization с precomputed Σ.
-Веса усредняются по успешным прогонам; финальные веса без RC-постобработки.
+For each replication: bootstrap ret_primary rows with replacement, rebuild
+cov_matrix_monthly(ret_boot), then run_max_return_optimization with precomputed Sigma.
+Weights are averaged across successful runs; final weights have no RC post-processing.
 
-Не пишет portfolio_weights.yml.
+Does not write portfolio_weights.yml.
 
   python compare_resampled_optimization_main.py
   python compare_resampled_optimization_main.py -B 200 --seed 42
@@ -50,7 +50,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Bootstrap resampled optimization vs single run")
     parser.add_argument("--config", type=str, default=None)
     parser.add_argument("--no-cache", action="store_true")
-    parser.add_argument("-B", "--bootstrap-replications", type=int, default=100, help="Число bootstrap-прогонов")
+    parser.add_argument("-B", "--bootstrap-replications", type=int, default=100, help="Number of bootstrap replications")
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
     setup_logging()
@@ -63,7 +63,7 @@ def main() -> None:
         cfg_path = __import__("pathlib").Path(args.config).resolve() if args.config else None
         cfg = load_validated_config(cfg_path)
     except ConfigValidationError as e:
-        logger.error("Конфиг: %s", e)
+        logger.error("Config: %s", e)
         raise SystemExit(1)
 
     ns = SimpleNamespace(no_cache=args.no_cache)
@@ -77,7 +77,7 @@ def main() -> None:
     )
     r_single = _primary_optimization_branch(**common_kw, cov_mode="sample")
     if r_single.get("error"):
-        print("Baseline ОШИБКА:", r_single["error"])
+        print("Baseline ERROR:", r_single["error"])
         raise SystemExit(1)
 
     ret_primary = r_single["ret_primary"]
@@ -140,7 +140,7 @@ def main() -> None:
             n_fail += 1
 
     if not pre_rc_list:
-        logger.error("Все bootstrap-прогоны вернули пустые веса")
+        logger.error("All bootstrap replications returned empty weights")
         raise SystemExit(1)
 
     w_avg_pre = _average_weights(pre_rc_list)
@@ -157,16 +157,16 @@ def main() -> None:
     vol_r = portfolio_vol_annual(w_res_final, cov_ref)
 
     print("=== Resampled optimization (bootstrap rows, fresh Sigma each step) ===")
-    print(f"analysis_end={analysis_end_str}, окно={window_months}, B={args.bootstrap_replications}, seed={args.seed}")
-    print(f"успешных прогонов: {len(pre_rc_list)}, пустых/ошибок: {n_fail}")
+    print(f"analysis_end={analysis_end_str}, window={window_months}, B={args.bootstrap_replications}, seed={args.seed}")
+    print(f"successful runs: {len(pre_rc_list)}, empty/errors: {n_fail}")
     print(f"dual_cov (baseline path): {r_single['dual_enabled']}")
-    print("Примечание: внутри bootstrap используется выборочная Sigma по ret_boot; dual-cov не пересобирается.")
+    print("Note: bootstrap uses sample Sigma from ret_boot; dual-cov is not rebuilt.")
     print()
     print(f"L1 |w_baseline - w_resampled| = {l1:.6f}, max |dw| = {mx:.6f}")
-    print(f"Вола на Sigma baseline (cov_optim): baseline={vol_b:.4f}, resampled={vol_r:.4f}")
+    print(f"Vol on baseline Sigma (cov_optim): baseline={vol_b:.4f}, resampled={vol_r:.4f}")
     print()
-    print("RC по активам (Sigma baseline): baseline ", rc_by_asset_from_weights(w_base, cov_ref))
-    print("RC по активам (Sigma baseline): resampled", rc_by_asset_from_weights(w_res_final, cov_ref))
+    print("RC by asset (Sigma baseline): baseline ", rc_by_asset_from_weights(w_base, cov_ref))
+    print("RC by asset (Sigma baseline): resampled", rc_by_asset_from_weights(w_res_final, cov_ref))
     print()
     print("RC post baseline:", r_single["rc_postprocess_ok"], " resampled:", rc_ok_res)
     print()

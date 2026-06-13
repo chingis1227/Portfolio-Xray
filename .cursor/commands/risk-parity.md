@@ -1,52 +1,52 @@
 ---
-description: Full Risk-Parity baseline run — metrics, stress, EW vs RP comparison + PDF
+description: Full Risk-Parity baseline run, metrics, stress, EW vs RP comparison, and PDF refresh
 ---
 
-Сделай **полный прогон Risk-Parity baseline** строго по правилам проекта (один вариант за запрос — не пересчитывай Main / Equal-Weight без отдельной просьбы).
+Run the **full Risk-Parity baseline** strictly under the project rules. Handle one variant per request; do not recalculate Main or Equal-Weight unless the user explicitly asks.
 
-### 1) Запуск (единственная обязательная команда)
+### 1) Run command (the only required command)
 
-Из **корня репозитория** (где лежат `config.yml` и скрипты):
+From the **repository root** where `config.yml` and the scripts live:
 
 ```bash
 python run_risk_parity.py
 ```
 
-Этот скрипт уже:
-- строит risk-parity веса по той же eligible-вселенной и данным, что baseline-политика (без RC caps / policy-оверлеев — см. docstring скрипта);
-- при статусе **OK** или **APPROXIMATE** прогоняет **полный** отчёт через `run_portfolio_report_for_weights` (метрики, стресс, CSV, JSON, `commentary.txt` / stress commentary по пайплайну);
-- при **infeasible** baseline пишет только `summary.json` / `summary.txt` и **завершается** без полного отчёта — не ожидай полного набора метрик/stress/CSV;
-- в конце вызывает **`try_rebuild_pdfs_after_variant`**: обновляет сравнение **EW vs RP** (`run_compare_ew_rp.py`) и пересобирает PDF в `pdf files/`.
+This script already:
+- builds risk-parity weights from the same eligible universe and data as the baseline policy, without RC caps or policy overlays; see the script docstring;
+- when status is **OK** or **APPROXIMATE**, runs the **full** report through `run_portfolio_report_for_weights` (metrics, stress, CSV, JSON, `commentary.txt`, and stress commentary through the pipeline);
+- when the baseline is **infeasible**, writes only `summary.json` / `summary.txt` and stops without a full report; do not expect a full metrics/stress/CSV package;
+- calls **`try_rebuild_pdfs_after_variant`** at the end: it refreshes **EW vs RP** comparison (`run_compare_ew_rp.py`) and rebuilds PDFs in `pdf files/`.
 
-**Не** добавляй ручных правок весов в `config.yml`.
+**Do not** add manual weight edits to `config.yml`.
 
-### 2) После успеха — прочитай и кратко покажи ключевые результаты
+### 2) After a successful run, read and briefly report the key results
 
-Каталог артефактов: **`risk parity portfolio/`** в корне репозитория (не `ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ/` и не другие корни).
+Artifact directory: **`risk parity portfolio/`** in the repository root. Do not use any legacy final-results directory or another root.
 
-Обязательно проверь наличие и смысл:
+Always check existence and meaning of:
 - `risk parity portfolio/summary.txt`, `risk parity portfolio/summary.json`
-- `risk parity portfolio/weights.json`, `weights.txt` (если есть)
+- `risk parity portfolio/weights.json`, `weights.txt` if present
 - `risk parity portfolio/stress_report.json`
-- `risk parity portfolio/commentary.txt`, `stress_commentary.txt` (если сгенерированы)
-- `risk parity portfolio/results_csv/` — rolling factor betas, матрицы корреляций и пр. по правилам стресс-факторов
+- `risk parity portfolio/commentary.txt`, `stress_commentary.txt` if generated
+- `risk parity portfolio/results_csv/` for rolling factor betas, correlation matrices, and other stress-factor outputs
 
-В ответе пользователю выведи:
-- статус baseline и солвера (`summary.json` / `summary.txt`: `status`, при **APPROXIMATE** — заметка из summary)
-- **топ-10 весов** по убыванию
-- **RC_vol по активам** — из `weights.txt`; **RC source:** solver / target parity (диагностика солвера; при fallback см. логику в `run_risk_parity.py`)
-- **solver_status**, **max_rc_error** (если есть в `summary.json`)
-- ключевые метрики окна: CAGR, Vol, MaxDD, Sharpe, Sortino, Beta (`beta_portfolio`), Corr_base — что есть в summary
-- stress: `status` из `stress_report.json` / summary, fail/skip reason, **Client-fit (MaxDD gate)** / `portfolio_valid` из summary или meta
-- подтверждение, что лог/вывод не показал падения `run_compare_ew_rp.py` или PDF (если были — цитируй warning)
+In the user-facing answer, include:
+- baseline and solver status from `summary.json` / `summary.txt`; for **APPROXIMATE**, include the summary note
+- **top 10 weights** in descending order
+- **RC_vol by asset** from `weights.txt`; **RC source:** solver / target parity, with fallback logic in `run_risk_parity.py`
+- **solver_status** and **max_rc_error** if present in `summary.json`
+- key window metrics that exist in summary: CAGR, Vol, MaxDD, Sharpe, Sortino, Beta (`beta_portfolio`), Corr_base
+- stress `status` from `stress_report.json` / summary, fail or skip reason, **Client-fit (MaxDD gate)** / `portfolio_valid` from summary or meta
+- confirmation that the log/output did not show failures in `run_compare_ew_rp.py` or PDF rebuild; if failures occurred, quote the warning
 
-### 3) Если прогон упал или baseline infeasible
+### 3) If the run fails or the baseline is infeasible
 
-- Покажи точную причину и этап (валидация конфига / данные / infeasible RP / стресс / PDF).
-- Если **infeasible**: опиши `reason` из summary; укажи, что полный пайплайн не запускался.
-- Укажи, какие файлы в `risk parity portfolio/` всё же созданы.
-- Предложи следующий шаг (например, проверка `config.yml`, кэш, число eligible активов, pandoc/xelatex для PDF).
+- Show the exact reason and stage: config validation, data, infeasible RP, stress, or PDF.
+- If **infeasible**, describe `reason` from summary and state that the full pipeline did not run.
+- List which files were still created in `risk parity portfolio/`.
+- Suggest the next step, such as checking `config.yml`, cache, eligible asset count, or pandoc/xelatex for PDF generation.
 
-### 4) Опционально (только если пользователь явно просит)
+### 4) Optional only when the user explicitly asks
 
-- **Триплет Policy vs EW vs RP** обновляется после полного отчёта Main (`run_report` / оптимизация с отчётом), не этим скриптом. Не запускай `run_compare_variants.py` без явной просьбы обновить сравнение с Policy.
+- The **Policy vs EW vs RP** triplet is refreshed after the full Main report (`run_report` / optimization with report), not by this script. Do not run `run_compare_variants.py` unless the user explicitly asks to refresh the Policy comparison.

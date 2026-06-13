@@ -25,6 +25,7 @@ Default output folder: `{output_dir_final}` from `config.yml` (demo: `Main portf
 | `run_metadata.json` | **Required** | **Required** | **Required** |
 | `portfolio_xray.json` (Blocks 2.1–2.6) | **Required** | **Required** | **Required** |
 | `stress_report.json` (3.2–3.4 v1 primary) | **Required** | **Required** | **Required** |
+| `client_fit_check.json` | **Required** after Client Fit V1 foundation; writes `client_fit_status=not_provided` when no profile exists | **Required** after Client Fit V1 foundation; writes fit/watch/breach/conflict/evidence_insufficient when profile evidence exists, otherwise `not_provided` | **Required** after Client Fit V1 foundation; same analysis-subject check is used as bounded context for Builder/Comparison display criteria |
 | `snapshot_10y.json`, `snapshot_index.json` | **Required** | **Required** | **Required** |
 | `output_manifest.json` | **Required** | **Required** | **Required** |
 | `problem_classification.json` | **Absent** (pruned on core-only — Session 04) | **Required** (`problem_classification_v3` with `next_diagnostic_step`) | **Required** |
@@ -32,6 +33,14 @@ Default output folder: `{output_dir_final}` from `config.yml` (demo: `Main portf
 | `ai_commentary_context.json` | **Absent** (pruned on core-only — Session 04) | **Required** (diagnosis phase) | **Required** (post-compare refresh) |
 
 Core-only runs invoke `apply_core_blocks_product_bundle_hygiene` after materialize (Session 04).
+
+Client Fit V1 is a non-binding interpretation overlay with active web onboarding/display routes and
+backend/CLI missing-profile compatibility. The artifact is generated after X-Ray/Stress and before
+Problem Classification. The frontend route chain includes `/client-profile` before Portfolio Input
+and `/client-fit` before Hypothesis. Client Fit target return, volatility, maximum drawdown, and
+horizon values may appear only as display/test references in Builder and Comparison; they must not
+change optimizer objectives, constraints, mandate gates, analysis windows, factory method selection,
+or candidate weights.
 
 ---
 

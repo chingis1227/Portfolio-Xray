@@ -1153,8 +1153,8 @@ def build_block_2_3_factor_exposure(
             "warnings": _naming_warnings(stress),
         },
         "stress_lab_separation": {
-            "block_2_3_answers": "What factors is the portfolio sensitive to?",
-            "stress_lab_answers": "What happens if those factors receive a stress shock?",
+            "block_2_3_answers": "What factors is the portfolio sensitive to...",
+            "stress_lab_answers": "What happens if those factors receive a stress shock...",
             "no_scenario_shocks_in_this_block": True,
             "no_rebalance_recommendations": True,
         },

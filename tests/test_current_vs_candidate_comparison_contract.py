@@ -141,3 +141,65 @@ def test_current_vs_candidate_answers_block8_tradeoff_questions() -> None:
     assert row["materiality_for_decision_review"]["is_material_enough"] is True
     assert doc["source_artifacts"]["candidate_generation"] == "candidate_generation.json"
     assert "turnover_required" in doc["comparison_questions_answered"]
+
+
+def test_current_vs_candidate_shows_client_targets_without_verdict_or_winner() -> None:
+    comparison = {
+        "schema_version": "candidate_comparison_v1",
+        "comparison_baseline_candidate_id": "analysis_subject",
+        "analysis_end": "2026-04-30",
+        "primary_window": "10y",
+        "candidates": [
+            _candidate(
+                "analysis_subject",
+                cagr=0.06,
+                vol=0.14,
+                dd=-0.24,
+                stress=-0.22,
+                beta=0.85,
+            ),
+            _candidate(
+                "equal_weight",
+                cagr=0.055,
+                vol=0.10,
+                dd=-0.16,
+                stress=-0.14,
+                beta=0.65,
+            ),
+        ],
+    }
+    client_fit_check = {
+        "schema_version": "client_fit_check_v1",
+        "client_fit_status": "breach",
+        "profile": {
+            "preset_id": "balanced",
+            "source_quality": "high",
+            "horizon_years": 7,
+            "target_return_range": {"min": 0.05, "max": 0.07},
+            "target_vol_range": {"min": 0.07, "max": 0.10},
+            "target_max_drawdown_pct": -0.20,
+        },
+    }
+
+    doc = build_current_vs_candidate(
+        comparison,
+        candidate_ids=["equal_weight"],
+        client_fit_check=client_fit_check,
+    )
+
+    row = doc["comparisons"][0]
+    target_comparison = row["client_fit_target_comparison"]
+    by_dimension = {
+        item["dimension"]: item for item in target_comparison["target_rows"]
+    }
+    assert target_comparison["status"] == "breach"
+    assert by_dimension["volatility"]["baseline_target_status"] == "above_target"
+    assert by_dimension["volatility"]["candidate_target_status"] == "within_target"
+    assert by_dimension["stress_loss"]["baseline_target_status"] == "worse_than_limit"
+    assert by_dimension["stress_loss"]["candidate_target_status"] == "within_limit"
+    assert target_comparison["does_not_issue_verdict"] is True
+    assert target_comparison["does_not_crown_winner"] is True
+    assert doc["guardrails"]["does_not_issue_verdict"] is True
+    assert doc["source_artifacts"]["client_fit_check"] == "client_fit_check.json"
+    assert "verdict" not in row
+    assert "winner" not in row

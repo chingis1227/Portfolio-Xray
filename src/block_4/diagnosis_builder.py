@@ -74,14 +74,16 @@ def build_block_4_diagnosis(
     *,
     portfolio_xray: dict[str, Any] | None,
     stress_report: dict[str, Any] | None,
+    client_fit_check: dict[str, Any] | None = None,
     analysis_end: str | None = None,
     generated_at: str | None = None,
 ) -> Block4DiagnosisResult:
     """Run the Block 4 v3 evidence-to-diagnosis pipeline and return both JSON documents."""
     xray = portfolio_xray if isinstance(portfolio_xray, dict) else {}
     stress = stress_report if isinstance(stress_report, dict) else {}
+    client_fit = client_fit_check if isinstance(client_fit_check, dict) else {}
 
-    evidence = extract_evidence_signals(xray, stress)
+    evidence = extract_evidence_signals(xray, stress, client_fit)
     scoring = score_problems(evidence)
     evidence_bundle = build_diagnosis_evidence_bundle(evidence, scoring)
     prioritization = prioritize_problems(scoring, evidence)
@@ -107,7 +109,12 @@ def build_block_4_diagnosis(
         scoring=scoring,
         prioritization=prioritization,
         next_diagnostic_step=next_diagnostic_step,
+        evidence=evidence,
+        client_fit_check=client_fit,
+        diagnostic_quality_status=_diagnostic_quality_status(scoring, prioritization, evidence),
     )
+    diagnostic_quality_status = interpretation_chain["diagnostic_quality_status"]
+    client_fit_context = interpretation_chain["client_fit_context"]
 
     cfg = get_block_4_thresholds()
     problem_classification: dict[str, Any] = {
@@ -121,7 +128,11 @@ def build_block_4_diagnosis(
         "source_artifacts": {
             "portfolio_xray": "portfolio_xray.json" if xray else None,
             "stress_report": "stress_report.json" if stress else None,
+            "client_fit_check": "client_fit_check.json" if client_fit else None,
         },
+        "client_fit_status": client_fit_context["client_fit_status"],
+        "diagnostic_quality_status": diagnostic_quality_status,
+        "client_fit_context": client_fit_context,
         "primary_diagnosis": primary_diagnosis,
         "root_cause": primary_diagnosis.get("root_cause"),
         "supporting_symptoms": primary_diagnosis.get("supporting_symptoms", []),
@@ -203,6 +214,7 @@ def write_block_4_diagnosis_outputs(
     output_dir: str | Path,
     portfolio_xray: dict[str, Any] | None,
     stress_report: dict[str, Any] | None,
+    client_fit_check: dict[str, Any] | None = None,
     analysis_end: str | None = None,
 ) -> Block4DiagnosisWriteResult:
     """Write v3 ``problem_classification.json`` and ``candidate_launchpad.json``."""
@@ -212,6 +224,7 @@ def write_block_4_diagnosis_outputs(
     diagnosis = build_block_4_diagnosis(
         portfolio_xray=portfolio_xray,
         stress_report=stress_report,
+        client_fit_check=client_fit_check,
         analysis_end=analysis_end,
     )
 
@@ -226,6 +239,7 @@ def write_block_4_diagnosis_outputs(
         out,
         candidate_launchpad=diagnosis.candidate_launchpad,
         problem_classification=diagnosis.problem_classification,
+        client_fit_check=client_fit_check,
     )
 
     return Block4DiagnosisWriteResult(
@@ -440,6 +454,9 @@ def _build_interpretation_chain(
     scoring: ProblemScoringResult,
     prioritization: ProblemPrioritizationResult,
     next_diagnostic_step: dict[str, Any],
+    evidence: EvidenceExtractionResult,
+    client_fit_check: dict[str, Any],
+    diagnostic_quality_status: str,
 ) -> dict[str, Any]:
     """Build additive source-backed interpretation fields for ``problem_classification_v3``.
 
@@ -460,19 +477,29 @@ def _build_interpretation_chain(
     )
     rationale_refs = _professional_rationale_refs(primary_id)
     rejected_alternatives = _rejected_alternative_items(prioritization, limit=5)
+    client_fit_context = _client_fit_context(
+        evidence=evidence,
+        client_fit_check=client_fit_check,
+        diagnostic_quality_status=diagnostic_quality_status,
+        selected_diagnosis_id=primary_id,
+    )
+    source_artifacts = {
+        str(item.get("source_artifact"))
+        for item in evidence_items
+        if item.get("source_artifact")
+    }
+    if client_fit_context.get("source_artifact"):
+        source_artifacts.add(str(client_fit_context["source_artifact"]))
 
     return {
         "schema_version": DIAGNOSIS_INTERPRETATION_CHAIN_VERSION,
         "diagnostic_only": True,
         "selected_diagnosis_id": primary_id,
         "selected_diagnosis_role": primary.get("diagnosis_role"),
-        "source_artifacts": sorted(
-            {
-                str(item.get("source_artifact"))
-                for item in evidence_items
-                if item.get("source_artifact")
-            }
-        ),
+        "source_artifacts": sorted(source_artifacts),
+        "client_fit_status": client_fit_context["client_fit_status"],
+        "diagnostic_quality_status": diagnostic_quality_status,
+        "client_fit_context": client_fit_context,
         "diagnosis_evidence_items": evidence_items,
         "root_cause_narrative": root_cause_narrative,
         "metric_to_diagnosis_trace": metric_trace,
@@ -552,6 +579,76 @@ def _diagnosis_evidence_items(
             break
 
     return items
+
+
+def _client_fit_context(
+    *,
+    evidence: EvidenceExtractionResult,
+    client_fit_check: dict[str, Any],
+    diagnostic_quality_status: str,
+    selected_diagnosis_id: str,
+) -> dict[str, Any]:
+    status_signal = next(iter(evidence.get_signals("client_fit_status")), None)
+    conflict_signal = next(iter(evidence.get_signals("goal_risk_conflict")), None)
+    status = str(
+        (status_signal.value if status_signal is not None else None)
+        or client_fit_check.get("client_fit_status")
+        or "not_provided"
+    )
+    conflict = client_fit_check.get("goal_risk_conflict") if isinstance(client_fit_check, dict) else {}
+    conflict_status = str(
+        (conflict.get("status") if isinstance(conflict, dict) else None)
+        or ("conflict" if conflict_signal is not None else "not_evaluated")
+    )
+    fit_signals = sorted(
+        name
+        for name in evidence.signals
+        if name == "goal_risk_conflict" or name == "client_fit_status" or name.startswith("client_fit_")
+    )
+    return {
+        "schema_version": "client_fit_interpretation_context_v1",
+        "source_artifact": "client_fit_check.json" if client_fit_check else None,
+        "client_fit_status": status,
+        "goal_risk_conflict_status": conflict_status,
+        "diagnostic_quality_status": diagnostic_quality_status,
+        "selected_diagnosis_id": selected_diagnosis_id,
+        "diagnosis_selection_boundary_en": (
+            "Client Fit status is interpreted separately from diagnostic quality; only an explicit "
+            "goal-risk conflict can become the selected Problem Classification outcome."
+        ),
+        "client_fit_signal_names": fit_signals,
+    }
+
+
+def _diagnostic_quality_status(
+    scoring: ProblemScoringResult,
+    prioritization: ProblemPrioritizationResult,
+    evidence: EvidenceExtractionResult,
+) -> str:
+    if evidence.has_signal("data_trust_failure") or prioritization.primary_problem_id == "evidence_insufficient_data_quality":
+        return "evidence_insufficient"
+
+    actionable_rows = [
+        scoring.rows[pid]
+        for pid in scoring.actionable_activated_ids
+        if pid in scoring.rows and scoring.rows[pid].activated
+    ]
+    if not actionable_rows:
+        if scoring.conflicting_signal_bundle:
+            return "watch"
+        return "clean"
+
+    def _rank(row: Any) -> int:
+        severity = {"high": 3, "medium": 2, "low": 1}.get(str(row.severity), 0)
+        materiality = {"high": 3, "medium": 2, "low": 1}.get(str(row.scoring.materiality), 0)
+        return max(severity, materiality)
+
+    max_rank = max(_rank(row) for row in actionable_rows)
+    if max_rank >= 3:
+        return "material_issue"
+    if max_rank == 2:
+        return "issue"
+    return "watch"
 
 
 def _metric_to_diagnosis_trace(
@@ -727,6 +824,17 @@ def _next_diagnostic_step(primary: dict[str, Any], gate: NoTradeGateResult) -> d
                 "Diagnostic evidence is not reliable enough to compare Equal Weight, Risk Parity, "
                 "or any other candidate."
             ),
+            "decision_boundary": DECISION_BOUNDARY_EN,
+        }
+    if primary_id == "goal_risk_conflict":
+        return {
+            "type": "client_objective_review",
+            "label": "Review objectives and risk limits before candidate testing",
+            "reason": (
+                "Client Fit found an internal goal-risk conflict; clarify return, volatility, "
+                "drawdown, and horizon trade-offs before interpreting candidate tests."
+            ),
+            "candidate_method_ids": [],
             "decision_boundary": DECISION_BOUNDARY_EN,
         }
     if primary_id in {"mixed_evidence_no_action", "current_portfolio_acceptable"}:

@@ -10,10 +10,10 @@ Prerequisite: [Session 00 gap audit](2026-05-29_block_4_v2_session_00_gap_audit.
 
 | Question | Verdict |
 | --- | --- |
-| V2 JSON contract documented? | **Yes** — [block_4_diagnosis_v2_spec.md](../specs/block_4_diagnosis_v2_spec.md) |
-| Contract validators implemented? | **Yes** — `scripts/core_mvp_validation_contract.py` (v2 section) |
-| Contract tests? | **Yes** — `tests/test_block_4_v2_contract.py` (**7 passed**) |
-| V1 still authoritative at runtime? | **Yes** — builder unchanged until Session 10 |
+| V2 JSON contract documented... | **Yes** — [block_4_diagnosis_v2_spec.md](../specs/block_4_diagnosis_v2_spec.md) |
+| Contract validators implemented... | **Yes** — `scripts/core_mvp_validation_contract.py` (v2 section) |
+| Contract tests... | **Yes** — `tests/test_block_4_v2_contract.py` (**7 passed**) |
+| V1 still authoritative at runtime... | **Yes** — builder unchanged until Session 10 |
 
 **Session 01 verdict:** **PASS**
 

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -7,6 +7,7 @@ import type { Holding } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { instrumentByTicker, instrumentUniverse, type Instrument } from "@/data/instrumentUniverse";
 import { useReviewState, type ReviewHolding, type ReviewResult } from "@/lib/reviewState";
+import type { ClientFitInput } from "@/lib/generated/api-types";
 import { useSupabaseAuth } from "@/lib/supabase/auth";
 import { useSupabasePersistence } from "@/lib/supabase/persistence";
 
@@ -28,6 +29,16 @@ type ValidationSummary = {
 
 const currencies = ["USD", "EUR"];
 const WEIGHT_TOLERANCE = 0.01;
+const DEFAULT_CLIENT_FIT_PROFILE: ClientFitInput = {
+  preset_id: "balanced",
+  source: "questionnaire",
+  source_quality: "medium",
+  source_quality_reason: "Default balanced planning profile prepared before portfolio diagnosis.",
+  horizon_years: 7,
+  target_return_range: { min: 0.05, max: 0.07 },
+  target_vol_range: { min: 0.07, max: 0.10 },
+  target_max_drawdown_pct: -0.20
+};
 
 function normalizeTicker(value: string) {
   return value.trim().toUpperCase();
@@ -98,11 +109,35 @@ function cleanWeightInput(value: string) {
 }
 
 function formatWeight(value: number) {
-  return Number.isFinite(value) ? value.toFixed(2).replace(/\.?0+$/, "") : "0";
+  return Number.isFinite(value) ? value.toFixed(2).replace(/\?.0+$/, "") : "0";
 }
 
 function formatTotalWeight(value: number) {
   return Math.abs(value - 100) <= WEIGHT_TOLERANCE ? "100" : formatWeight(value);
+}
+
+function pctRangeLabel(range: { min: number; max: number } | null | undefined) {
+  if (!range) return "Not set";
+  return `${formatWeight(range.min * 100)}-${formatWeight(range.max * 100)}%`;
+}
+
+function drawdownLabel(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? `${formatWeight(value * 100)}%` : "Not set";
+}
+
+function pctInputFromDecimal(value: number | null | undefined, fallback: number) {
+  const numeric = typeof value === "number" && Number.isFinite(value) ? value : fallback;
+  return formatWeight(Math.abs(numeric * 100));
+}
+
+function decimalFromPctInput(value: string) {
+  const parsed = Number(value.trim().replace(",", "."));
+  return Number.isFinite(parsed) ? parsed / 100 : Number.NaN;
+}
+
+function profileLabel(value: string | null | undefined) {
+  if (!value) return "Custom profile";
+  return value.split("_").map((part) => part ? `${part[0].toUpperCase()}${part.slice(1)}` : part).join(" ");
 }
 
 function isKnownInstrument(row: EditableHolding) {
@@ -433,11 +468,18 @@ function InstrumentCombobox({
 
 export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInputTableProps) {
   const router = useRouter();
-  const { activeReview, hydrated, savePortfolioInput, submitPortfolioInput, recordReviewError, linkCloudPortfolio, loadCloudPortfolioInput } = useReviewState();
+  const { activeReview, hydrated, saveClientFitProfile, savePortfolioInput, submitPortfolioInput, recordReviewError, linkCloudPortfolio, loadCloudPortfolioInput } = useReviewState();
   const { enabled: cloudEnabled, status: authStatus } = useSupabaseAuth();
   const { savedPortfolios, portfoliosLoading, savePortfolio, deletePortfolio } = useSupabasePersistence();
   const [currency, setCurrency] = useState(investorCurrency || "");
   const [rows, setRows] = useState<EditableHolding[]>(() => holdings.map(toEditableHolding));
+  const [intakeModalOpen, setIntakeModalOpen] = useState(false);
+  const [intakeReturnMin, setIntakeReturnMin] = useState(pctInputFromDecimal(DEFAULT_CLIENT_FIT_PROFILE.target_return_range?.min, 0.05));
+  const [intakeReturnMax, setIntakeReturnMax] = useState(pctInputFromDecimal(DEFAULT_CLIENT_FIT_PROFILE.target_return_range?.max, 0.07));
+  const [intakeVolMin, setIntakeVolMin] = useState(pctInputFromDecimal(DEFAULT_CLIENT_FIT_PROFILE.target_vol_range?.min, 0.07));
+  const [intakeVolMax, setIntakeVolMax] = useState(pctInputFromDecimal(DEFAULT_CLIENT_FIT_PROFILE.target_vol_range?.max, 0.10));
+  const [intakeDrawdown, setIntakeDrawdown] = useState(pctInputFromDecimal(DEFAULT_CLIENT_FIT_PROFILE.target_max_drawdown_pct, -0.20));
+  const [intakeHorizonYears, setIntakeHorizonYears] = useState(String(DEFAULT_CLIENT_FIT_PROFILE.horizon_years ?? 7));
   const [isRunningDiagnosis, setIsRunningDiagnosis] = useState(false);
   const [diagnosisError, setDiagnosisError] = useState<string | null>(null);
   const [recoverReviewId, setRecoverReviewId] = useState("");
@@ -473,6 +515,17 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
   }, [activeReview?.cloudPortfolio?.name, cloudPortfolioName]);
 
   useEffect(() => {
+    if (!intakeModalOpen) return;
+    const profile = activeReview?.clientFitProfile ?? DEFAULT_CLIENT_FIT_PROFILE;
+    setIntakeReturnMin(pctInputFromDecimal(profile.target_return_range?.min, DEFAULT_CLIENT_FIT_PROFILE.target_return_range?.min ?? 0.05));
+    setIntakeReturnMax(pctInputFromDecimal(profile.target_return_range?.max, DEFAULT_CLIENT_FIT_PROFILE.target_return_range?.max ?? 0.07));
+    setIntakeVolMin(pctInputFromDecimal(profile.target_vol_range?.min, DEFAULT_CLIENT_FIT_PROFILE.target_vol_range?.min ?? 0.07));
+    setIntakeVolMax(pctInputFromDecimal(profile.target_vol_range?.max, DEFAULT_CLIENT_FIT_PROFILE.target_vol_range?.max ?? 0.10));
+    setIntakeDrawdown(pctInputFromDecimal(profile.target_max_drawdown_pct, DEFAULT_CLIENT_FIT_PROFILE.target_max_drawdown_pct ?? -0.20));
+    setIntakeHorizonYears(String(profile.horizon_years ?? DEFAULT_CLIENT_FIT_PROFILE.horizon_years ?? 7));
+  }, [activeReview?.clientFitProfile, intakeModalOpen]);
+
+  useEffect(() => {
     if (!hydrated || !inputEdited.current) return;
 
     savePortfolioInput({
@@ -493,8 +546,17 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
   const instrumentsComplete = rows.length > 0 && rows.every(isKnownInstrument);
   const weightsComplete = rows.length > 0 && rows.every(isValidWeight);
   const weightsAddTo100 = Math.abs(totalWeight - 100) <= WEIGHT_TOLERANCE;
+  const clientProfileReady = Boolean(activeReview?.clientFitProfile);
 
   const validationSummary: ValidationSummary = useMemo(() => {
+    if (!clientProfileReady) {
+      return {
+        title: "Profile required",
+        text: "Complete Client Profile before running the web diagnosis.",
+        tone: "amber"
+      };
+    }
+
     if (!instrumentsComplete) {
       return {
         title: "Select an instrument",
@@ -532,10 +594,44 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
         text: `${rows.length} holdings · 100% allocated`,
       tone: "green"
     };
-  }, [instrumentsComplete, rows.length, totalWeight, weightsComplete]);
+  }, [clientProfileReady, instrumentsComplete, rows.length, totalWeight, weightsComplete]);
 
-  const ready = instrumentsComplete && weightsComplete && weightsAddTo100;
+  const ready = instrumentsComplete && weightsComplete && weightsAddTo100 && clientProfileReady;
   const cloudReady = cloudEnabled && authStatus === "signed_in";
+  const intakeValues = useMemo(() => {
+    const returnMin = decimalFromPctInput(intakeReturnMin);
+    const returnMax = decimalFromPctInput(intakeReturnMax);
+    const volMin = decimalFromPctInput(intakeVolMin);
+    const volMax = decimalFromPctInput(intakeVolMax);
+    const drawdown = -Math.abs(decimalFromPctInput(intakeDrawdown));
+    const horizonYears = Number(intakeHorizonYears.trim().replace(",", "."));
+    const valid = returnMin >= 0
+      && returnMax <= 1
+      && returnMin < returnMax
+      && volMin >= 0
+      && volMax <= 1
+      && volMin < volMax
+      && drawdown <= 0
+      && drawdown >= -1
+      && Number.isFinite(horizonYears)
+      && horizonYears > 0;
+    return { returnMin, returnMax, volMin, volMax, drawdown, horizonYears, valid };
+  }, [intakeDrawdown, intakeHorizonYears, intakeReturnMax, intakeReturnMin, intakeVolMax, intakeVolMin]);
+
+  const saveAdjustedIntake = () => {
+    if (!intakeValues.valid) return;
+    saveClientFitProfile({
+      preset_id: activeReview?.clientFitProfile?.preset_id ?? DEFAULT_CLIENT_FIT_PROFILE.preset_id,
+      source: "manual_override",
+      source_quality: "high",
+      source_quality_reason: "Manual intake targets adjusted from the Portfolio Input screen.",
+      horizon_years: intakeValues.horizonYears,
+      target_return_range: { min: intakeValues.returnMin, max: intakeValues.returnMax },
+      target_vol_range: { min: intakeValues.volMin, max: intakeValues.volMax },
+      target_max_drawdown_pct: intakeValues.drawdown
+    });
+    setIntakeModalOpen(false);
+  };
 
   const updateInstrument = (id: string, instrument: Instrument | null) => {
     inputEdited.current = true;
@@ -607,11 +703,22 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
         },
         body: JSON.stringify({
           investor_currency: currency || "USD",
-          holdings: reviewHoldings.map(reviewHoldingToPayload)
+          holdings: reviewHoldings.map(reviewHoldingToPayload),
+          client_fit: activeReview?.clientFitProfile
         })
       });
 
-      const result = await response.json() as ReviewResult & { error?: string; details?: unknown };
+      const responseText = await response.text();
+      let result: ReviewResult & { error?: string; details?: unknown };
+      try {
+        result = responseText ? JSON.parse(responseText) as ReviewResult & { error?: string; details?: unknown } : { status: "failed", error: "Portfolio diagnosis failed." } as ReviewResult & { error?: string };
+      } catch (_error) {
+        result = {
+          status: "failed",
+          error: response.ok ? "Portfolio diagnosis returned an unreadable response." : `Portfolio diagnosis failed with HTTP ${response.status}.`,
+          details: responseText.slice(0, 500)
+        } as ReviewResult & { error?: string; details?: unknown };
+      }
 
       if (!response.ok || result.status !== "completed") {
         const detailText = Array.isArray(result.details)
@@ -702,7 +809,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
   const deleteSavedPortfolioFromCloud = async (portfolioId: string) => {
     const saved = savedPortfolios.find((item) => item.id === portfolioId);
     if (!saved) return;
-    if (typeof window !== "undefined" && !window.confirm(`Delete "${saved.name}" from optional cloud storage?`)) return;
+    if (typeof window !== "undefined" && !window.confirm(`Delete "${saved.name}" from optional cloud storage...`)) return;
 
     setActiveCloudDeleteId(portfolioId);
     try {
@@ -765,6 +872,39 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
 
   return (
     <div className="space-y-5">
+    <section className="pmri-card rounded-2xl p-5 md:p-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="pmri-label">Client Fit profile</p>
+          <h2 className="pmri-heading-section mt-2 text-lg text-pmri-text">
+            {clientProfileReady ? profileLabel(activeReview?.clientFitProfile?.preset_id) : "Complete Client Profile before diagnosis"}
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-pmri-muted">
+            The web journey runs diagnosis only after the planning profile is captured. These limits are used as display and hypothesis-test context, not optimizer instructions.
+          </p>
+          {activeReview?.clientFitProfile ? (
+            <div className="mt-4 flex flex-wrap gap-2 text-xs text-pmri-text2">
+              <span className="rounded-full border border-pmri-border/55 bg-white/[0.025] px-3 py-1.5">Return {pctRangeLabel(activeReview.clientFitProfile.target_return_range)}</span>
+              <span className="rounded-full border border-pmri-border/55 bg-white/[0.025] px-3 py-1.5">Volatility {pctRangeLabel(activeReview.clientFitProfile.target_vol_range)}</span>
+              <span className="rounded-full border border-pmri-border/55 bg-white/[0.025] px-3 py-1.5">Temporary loss {drawdownLabel(activeReview.clientFitProfile.target_max_drawdown_pct)}</span>
+              <span className="rounded-full border border-pmri-border/55 bg-white/[0.025] px-3 py-1.5">Horizon {activeReview.clientFitProfile.horizon_years ?? "not set"} years</span>
+            </div>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 flex-col items-start gap-3 sm:flex-row sm:items-center">
+          <StatusBadge tone={clientProfileReady ? "green" : "amber"}>
+            {clientProfileReady ? "Profile ready" : "Profile required"}
+          </StatusBadge>
+          <button
+            type="button"
+            onClick={() => setIntakeModalOpen(true)}
+            className="pmri-focus rounded-full border border-pmri-border/60 bg-white/[0.025] px-4 py-2 text-sm font-medium text-pmri-text2 transition hover:border-pmri-blue/35 hover:text-pmri-text"
+          >
+            {clientProfileReady ? "Adjust intake" : "Create intake"}
+          </button>
+        </div>
+      </div>
+    </section>
     <section className="pmri-card overflow-hidden rounded-2xl">
       <div className="border-b border-pmri-border/45 p-5 md:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -796,7 +936,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="pmri-heading-section text-xl text-pmri-text">Holdings and weights</h2>
-            <p className="mt-1 text-sm text-pmri-muted">What portfolio are we diagnosing?</p>
+            <p className="mt-1 text-sm text-pmri-muted">What portfolio are we diagnosing...</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -926,6 +1066,11 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
                 </>
               ) : "Run diagnosis"}
             </button>
+            {!clientProfileReady ? (
+              <p className="mt-3 rounded-xl border border-pmri-amber/35 bg-pmri-amber/10 px-4 py-3 text-sm leading-6 text-pmri-amber">
+                Complete Client Profile first. The backend and CLI remain compatible with missing profile data, but this web journey requires it before diagnosis.
+              </p>
+            ) : null}
             {diagnosisError ? (
               <p className="mt-3 rounded-xl border border-pmri-risk/35 bg-pmri-risk/10 px-4 py-3 text-sm leading-6 text-pmri-risk">
                 {diagnosisError}
@@ -946,7 +1091,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
         </div>
       </div>
     </section>
-    {cloudEnabled ? (
+    {false ? (
       <section className="pmri-card rounded-2xl p-5 md:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
@@ -995,7 +1140,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
                 </button>
                 {activeReview?.cloudPortfolio?.name ? (
                   <p className="text-xs leading-5 text-pmri-muted">
-                    Active cloud portfolio: <span className="font-medium text-pmri-text2">{activeReview.cloudPortfolio.name}</span>
+                    Active cloud portfolio: <span className="font-medium text-pmri-text2">{activeReview?.cloudPortfolio?.name}</span>
                   </p>
                 ) : (
                   <p className="text-xs leading-5 text-pmri-muted">Save this input if you want to reload it across browser sessions.</p>
@@ -1066,6 +1211,78 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
         )}
       </section>
     ) : null}
+    {intakeModalOpen && typeof document !== "undefined" ? createPortal((
+      <div className="fixed inset-0 z-[90] flex items-center justify-center px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="adjust-intake-title">
+        <button
+          type="button"
+          className="absolute inset-0 bg-black/72 backdrop-blur-sm transition-opacity motion-safe:animate-[pmri-section-reveal_260ms_ease-out]"
+          aria-label="Close intake editor"
+          onClick={() => setIntakeModalOpen(false)}
+        />
+        <section className="pmri-card relative z-10 w-full max-w-3xl rounded-[2rem] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.52)] motion-safe:animate-[pmri-section-reveal_320ms_cubic-bezier(0.2,0.8,0.2,1)] md:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="pmri-label text-pmri-blueSoft">Planning targets</p>
+              <h2 id="adjust-intake-title" className="pmri-heading-section mt-2 text-2xl text-pmri-text">Adjust intake</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-pmri-muted">
+                Change the display targets after the five-question preset. These values are context for diagnosis and later tests, not trade instructions.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIntakeModalOpen(false)}
+              className="pmri-focus rounded-full border border-pmri-border/60 bg-white/[0.025] px-4 py-2 text-sm font-medium text-pmri-text2 transition hover:border-pmri-blue/35 hover:text-pmri-text"
+            >
+              Close
+            </button>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <label>
+              <span className="pmri-label block">Desired return min %</span>
+              <input className="pmri-focus mt-2 w-full rounded-2xl border border-pmri-border/55 bg-pmri-secondary/85 px-4 py-3 text-sm text-pmri-text" value={intakeReturnMin} onChange={(event) => setIntakeReturnMin(cleanWeightInput(event.target.value))} />
+            </label>
+            <label>
+              <span className="pmri-label block">Desired return max %</span>
+              <input className="pmri-focus mt-2 w-full rounded-2xl border border-pmri-border/55 bg-pmri-secondary/85 px-4 py-3 text-sm text-pmri-text" value={intakeReturnMax} onChange={(event) => setIntakeReturnMax(cleanWeightInput(event.target.value))} />
+            </label>
+            <label>
+              <span className="pmri-label block">Volatility comfort min %</span>
+              <input className="pmri-focus mt-2 w-full rounded-2xl border border-pmri-border/55 bg-pmri-secondary/85 px-4 py-3 text-sm text-pmri-text" value={intakeVolMin} onChange={(event) => setIntakeVolMin(cleanWeightInput(event.target.value))} />
+            </label>
+            <label>
+              <span className="pmri-label block">Volatility comfort max %</span>
+              <input className="pmri-focus mt-2 w-full rounded-2xl border border-pmri-border/55 bg-pmri-secondary/85 px-4 py-3 text-sm text-pmri-text" value={intakeVolMax} onChange={(event) => setIntakeVolMax(cleanWeightInput(event.target.value))} />
+            </label>
+            <label>
+              <span className="pmri-label block">Maximum temporary loss %</span>
+              <input className="pmri-focus mt-2 w-full rounded-2xl border border-pmri-border/55 bg-pmri-secondary/85 px-4 py-3 text-sm text-pmri-text" value={intakeDrawdown} onChange={(event) => setIntakeDrawdown(cleanWeightInput(event.target.value))} />
+            </label>
+            <label>
+              <span className="pmri-label block">Decision horizon years</span>
+              <input className="pmri-focus mt-2 w-full rounded-2xl border border-pmri-border/55 bg-pmri-secondary/85 px-4 py-3 text-sm text-pmri-text" value={intakeHorizonYears} onChange={(event) => setIntakeHorizonYears(cleanWeightInput(event.target.value))} />
+            </label>
+          </div>
+
+          <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <StatusBadge tone={intakeValues.valid ? "green" : "amber"}>{intakeValues.valid ? "Targets ready" : "Check targets"}</StatusBadge>
+              <p className="mt-2 text-xs leading-5 text-pmri-muted">
+                Ranges must increase, percentages must stay realistic, and horizon must be above zero.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={!intakeValues.valid}
+              onClick={saveAdjustedIntake}
+              className="pmri-focus pmri-primary-action rounded-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-pmri-muted"
+            >
+              Save intake
+            </button>
+          </div>
+        </section>
+      </div>
+    ), document.body) : null}
     <details className="hidden">
       <summary className="pmri-focus cursor-pointer list-none text-sm font-medium text-pmri-text2 transition hover:text-pmri-text">
         Advanced: recover an existing review

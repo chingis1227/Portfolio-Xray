@@ -17,7 +17,7 @@ def fetch_estr(start: str, end: str) -> pd.Series:
     Fetch €STR historical rates. Returns Series with DatetimeIndex and annual percent (e.g. 3.9 for 3.9%).
     """
     params = urllib.parse.urlencode({"from": start, "to": end})
-    url = f"{ESTR_API}?{params}"
+    url = f"{ESTR_API}...{params}"
     req = urllib.request.Request(url, headers={"User-Agent": "PortfolioMetrics/1.0 (python)"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         data = resp.read().decode("utf-8")

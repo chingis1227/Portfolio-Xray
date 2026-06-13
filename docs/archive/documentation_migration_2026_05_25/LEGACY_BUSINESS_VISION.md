@@ -18,7 +18,7 @@ Portfolio MRI helps investors and advisors understand real portfolio risk, compa
 
 The product helps investors and advisors answer a practical question:
 
-> What is really inside this portfolio, where can it break, and what better allocation choices are available?
+> What is really inside this portfolio, where can it break, and what better allocation choices are available...
 
 The system should not behave like a black-box optimizer that claims to know the perfect portfolio. It should behave like a professional portfolio research terminal: diagnose the current allocation, generate candidate portfolios, stress-test them, compare robustness, explain trade-offs, and support a disciplined final decision.
 
@@ -285,13 +285,13 @@ The final business goal is to create a trusted portfolio decision platform that 
 
 Success means the product can consistently answer:
 
-- What is inside the portfolio?
-- Where is the real risk?
-- How does the portfolio behave under stress?
-- Which alternatives are better or worse?
-- What trade-off does the user accept?
-- What action should be taken, if any?
-- How can the decision be explained professionally?
+- What is inside the portfolio...
+- Where is the real risk...
+- How does the portfolio behave under stress...
+- Which alternatives are better or worse...
+- What trade-off does the user accept...
+- What action should be taken, if any...
+- How can the decision be explained professionally...
 
 ## Success Indicators
 

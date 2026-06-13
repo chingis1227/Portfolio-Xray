@@ -752,7 +752,7 @@ Do not include in the MVP UI:
 
 This specification and the companion mockup are aligned to
 `docs/design/portfolio_mri_design_system.md` as the canonical UI/UX direction for
-Portfolio MRI / Portfolio X-Ray / ДИАГНОСТИКА 2.
+Portfolio MRI / Portfolio X-Ray / Diagnosis 2.
 
 ### Applied design thesis
 

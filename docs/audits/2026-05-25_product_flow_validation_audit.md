@@ -20,7 +20,7 @@ Related evidence:
 
 | Question | Answer after remediation |
 | --- | --- |
-| Demo-ready MVP backend? | **Yes** — with documented operator discipline (see caveats). |
+| Demo-ready MVP backend... | **Yes** — with documented operator discipline (see caveats). |
 | Official one-hypothesis CLI | `python run_portfolio_review.py --candidates equal_weight` (or another factory id); routine `--mode core` stays six-candidate regression. |
 | Six-file product bundle | **Offline gate:** `tests/test_product_bundle_integration.py`. **Live disk:** [demo baseline snapshot](2026-05-25_product_flow_demo_baseline_snapshot.md) — six JSON PASS under gitignored `Main portfolio/`. |
 | `RM-ARCH-011` sidecar wiring | **Done** — `src/product_bundle_paths.py`; compare passes diagnosis bundle into AI commentary and What Changed; tests in `tests/test_product_bundle_paths.py` + integration gate. |
@@ -40,10 +40,10 @@ Related evidence:
 
 | Question | Answer |
 | --- | --- |
-| Does the end-to-end product flow exist today? | **Partially.** The portfolio-first orchestrator and additive diagnosis-first adapters exist in source; the documented journey is implementable as a **CLI/file backend**, not as a single product UI. |
-| Usable as coherent MVP backend flow? | **Yes, with caveats.** `python run_portfolio_review.py` chains subject diagnosis → factory → compare → decision package. Consumers must filter technical artifacts and resolve `analysis_subject/` paths for the six-file product bundle. |
-| Only partially implemented? | **Yes.** Target UX (diagnosis-only default, one selected candidate, builder as front door, LLM commentary, formal workflow state on disk) is **not** the default runtime behavior. |
-| What blocks “one product” feel? | (1) Default `--mode core` runs **six** candidates (`core_fast`), not one hypothesis. (2) Compare still emits the **full technical decision package** (health, robustness, Pareto, regret, etc.). (3) **RM-ARCH-011** wiring gaps (sidecar paths, `ai_commentary` inputs). (4) **Portfolio Alternatives Builder** is a plan generator, not wired into `run_portfolio_review.py`. (5) **No product-bundle JSON in the repo** (`Main portfolio/` is gitignored; workspace search found **zero** `problem_classification.json` / `decision_verdict.json` files). (6) Large **dirty tree** (~346 entries per Session 12) complicates reproducible demo baselines. (7) **~9 min** default core E2E (Blocks 1–5 timing audit) is heavy for a live demo without offline fixtures. |
+| Does the end-to-end product flow exist today... | **Partially.** The portfolio-first orchestrator and additive diagnosis-first adapters exist in source; the documented journey is implementable as a **CLI/file backend**, not as a single product UI. |
+| Usable as coherent MVP backend flow... | **Yes, with caveats.** `python run_portfolio_review.py` chains subject diagnosis → factory → compare → decision package. Consumers must filter technical artifacts and resolve `analysis_subject/` paths for the six-file product bundle. |
+| Only partially implemented... | **Yes.** Target UX (diagnosis-only default, one selected candidate, builder as front door, LLM commentary, formal workflow state on disk) is **not** the default runtime behavior. |
+| What blocks “one product” feel... | (1) Default `--mode core` runs **six** candidates (`core_fast`), not one hypothesis. (2) Compare still emits the **full technical decision package** (health, robustness, Pareto, regret, etc.). (3) **RM-ARCH-011** wiring gaps (sidecar paths, `ai_commentary` inputs). (4) **Portfolio Alternatives Builder** is a plan generator, not wired into `run_portfolio_review.py`. (5) **No product-bundle JSON in the repo** (`Main portfolio/` is gitignored; workspace search found **zero** `problem_classification.json` / `decision_verdict.json` files). (6) Large **dirty tree** (~346 entries per Session 12) complicates reproducible demo baselines. (7) **~9 min** default core E2E (Blocks 1–5 timing audit) is heavy for a live demo without offline fixtures. |
 
 **Bottom line (2026-05-25):** The backend **can** tell the product story after a successful portfolio-first run, but the **default command is a research batch path**, not the target “one hypothesis” MVP. Demo readiness requires **runtime verification** on a fresh run plus consumer discipline (or `RM-ARCH-011` fixes).
 
@@ -74,7 +74,7 @@ Classification key:
 | **Expected output** | `analysis_setup` / `input_assumptions` in `analysis_subject/run_metadata.json`; weights in materialization |
 | **Produced today** | **Requires runtime verification** on disk (`Main portfolio/analysis_subject/` gitignored) |
 | **Connected prev/next** | Yes → X-Ray/stress in same materialization pass |
-| **Product question** | “What portfolio am I diagnosing?” |
+| **Product question** | “What portfolio am I diagnosing...” |
 | **Gaps** | Legacy `weights` / root policy artifacts still coexist ([OUTPUTS.md](../../OUTPUTS.md) two-tree rule). No interactive input UI. |
 
 ### 2.2 Portfolio X-Ray
@@ -86,7 +86,7 @@ Classification key:
 | **Expected output** | `{output_dir_final}/analysis_subject/portfolio_xray.json` (seven sections) |
 | **Produced today** | **Requires runtime verification** (subject sidecar gitignored) |
 | **Connected** | Feeds Problem Classification at report write time |
-| **Product question** | “What do I own and where is risk concentrated?” |
+| **Product question** | “What do I own and where is risk concentrated...” |
 | **Gaps** | Export TXT/HTML/PDF not default under `site_api`. |
 
 ### 2.3 Stress Test Lab
@@ -98,7 +98,7 @@ Classification key:
 | **Expected output** | `analysis_subject/stress_report.json` (scorecard, conclusions, hedge gap, factor blocks per rules) |
 | **Produced today** | **Requires runtime verification** |
 | **Connected** | Feeds Problem Classification; subject row in `candidate_comparison.json` |
-| **Product question** | “How does the portfolio behave under stress and crises?” |
+| **Product question** | “How does the portfolio behave under stress and crises...” |
 | **Gaps** | Dominant factory time in macro/tail blocks (~9 min core path). |
 
 ### 2.4 Problem Classification
@@ -110,7 +110,7 @@ Classification key:
 | **Expected output** | `problem_classification.json` under report `output_dir` → **`analysis_subject/problem_classification.json`** after materialization |
 | **Produced today** | **Blocked by stale/generated output** in repo (no JSON found); code writes on successful materialization |
 | **Connected** | → Launchpad in `run_report.py`; **weak** link to compare: `write_what_changed_summary_outputs` loads `out_dir / "problem_classification.json"` (root), not sidecar ([src/candidate_comparison.py](../../src/candidate_comparison.py) ~2210) — **RM-ARCH-011** |
-| **Product question** | “What is wrong with this portfolio and what should we test?” |
+| **Product question** | “What is wrong with this portfolio and what should we test...” |
 | **Gaps** | Path mismatch root vs `analysis_subject/`. Not in offline decision-package E2E fixture list. |
 
 ### 2.5 Candidate Launchpad
@@ -122,7 +122,7 @@ Classification key:
 | **Expected output** | `analysis_subject/candidate_launchpad.json` |
 | **Produced today** | **Blocked by stale/generated output** in repo |
 | **Connected** | Depends on Problem Classification; not passed into `write_ai_commentary_context_outputs` from compare (**RM-ARCH-011**) |
-| **Product question** | “Which hypotheses are reasonable to try next?” |
+| **Product question** | “Which hypotheses are reasonable to try next...” |
 | **Gaps** | Cards are not portfolios; no UI selection surface; compare/commentary grounding incomplete. |
 
 ### 2.6 Portfolio Alternatives Builder
@@ -158,7 +158,7 @@ Classification key:
 | **Expected output** | `{output_dir_final}/current_vs_candidate.json` (`view_mode`: `one_candidate` \| `shortlist` \| `diagnosis_only`) |
 | **Produced today** | **Requires runtime verification** after compare |
 | **Connected** | After `candidate_comparison.json` + `selection_decision.json`; feeds Decision Verdict |
-| **Product question** | “What improves and what worsens vs my portfolio?” |
+| **Product question** | “What improves and what worsens vs my portfolio...” |
 | **Gaps** | Selection still drives favored candidate in batch mode; shortlist not the target “single selected hypothesis” UX. |
 
 ### 2.9 Decision Verdict
@@ -170,7 +170,7 @@ Classification key:
 | **Expected output** | `decision_verdict.json` (maps `selection_decision.json`) |
 | **Produced today** | **Requires runtime verification** |
 | **Connected** | Compare chain; → AI grounding, What Changed |
-| **Product question** | “Keep, rebalance, review, no-trade, or insufficient evidence?” |
+| **Product question** | “Keep, rebalance, review, no-trade, or insufficient evidence...” |
 | **Gaps** | Product language ≠ schema rename (`selection_decision.json` still authoritative). |
 
 ### 2.10 AI Commentary / grounding context
@@ -182,7 +182,7 @@ Classification key:
 | **Expected output** | `ai_commentary_context.json` (grounding-only, **no LLM**) |
 | **Produced today** | **Requires runtime verification** |
 | **Connected** | Compare writes after verdict; **does not** receive `problem_classification` / `candidate_launchpad` in current compare call |
-| **Product question** | “What evidence may an explainer use without inventing metrics?” |
+| **Product question** | “What evidence may an explainer use without inventing metrics...” |
 | **Gaps** | No generated natural-language AI Commentary (`RM-ARCH-010`). Deterministic `commentary.txt` is separate. |
 
 ### 2.11 Monitoring / What Changed
@@ -194,7 +194,7 @@ Classification key:
 | **Expected output** | `monitoring_diff.json`, `what_changed_summary.json`, snapshots under `monitoring/` |
 | **Produced today** | **Requires runtime verification**; first run often `no_prior_snapshot` |
 | **Connected** | After compare; uses verdict + optional problem (path gap) |
-| **Product question** | “What changed since the last review?” |
+| **Product question** | “What changed since the last review...” |
 | **Gaps** | Needs prior snapshot for meaningful diff; sidecar problem path (**RM-ARCH-011**). |
 
 ---
@@ -237,11 +237,11 @@ Workflow-state metadata on the plan: default core → `multiple_candidates` ([sr
 
 | Question | Answer |
 | --- | --- |
-| Best command for target MVP flow today? | **Diagnosis + decision:** `python run_portfolio_review.py --skip-candidates` (diagnosis only) or full path: `python run_portfolio_review.py --mode core`. **One-candidate product story:** `python run_portfolio_review.py --candidates equal_weight` (or Alternatives Builder command plan + factory). |
-| Does `--mode core` produce product-facing flow? | **Yes** for backend JSON contracts **if** run completes; **no** for target UX (6 candidates, technical package dominant). |
-| One selected candidate or batch? | **Batch (6)** by default (`core_fast`). One candidate only with explicit `--candidates`. |
-| Six product-facing JSON outputs? | **Code path: yes** after compare + materialization. **This workspace: not verified on disk** (gitignored / absent). |
-| Where does old technical package dominate? | `write_candidate_comparison_outputs` always emits `candidate_comparison.json`, health, robustness, selection, trade-off, model risk, assumption sensitivity, Pareto, regret, action, monitoring, journal, `decision_package_summary.json` ([tests/mvp_offline_fixtures.py](../../tests/mvp_offline_fixtures.py) `MVP_DECISION_PACKAGE_ARTIFACTS`). Product surfaces must **filter** per [OUTPUTS.md](../../OUTPUTS.md) bundle policy. |
+| Best command for target MVP flow today... | **Diagnosis + decision:** `python run_portfolio_review.py --skip-candidates` (diagnosis only) or full path: `python run_portfolio_review.py --mode core`. **One-candidate product story:** `python run_portfolio_review.py --candidates equal_weight` (or Alternatives Builder command plan + factory). |
+| Does `--mode core` produce product-facing flow... | **Yes** for backend JSON contracts **if** run completes; **no** for target UX (6 candidates, technical package dominant). |
+| One selected candidate or batch... | **Batch (6)** by default (`core_fast`). One candidate only with explicit `--candidates`. |
+| Six product-facing JSON outputs... | **Code path: yes** after compare + materialization. **This workspace: not verified on disk** (gitignored / absent). |
+| Where does old technical package dominate... | `write_candidate_comparison_outputs` always emits `candidate_comparison.json`, health, robustness, selection, trade-off, model risk, assumption sensitivity, Pareto, regret, action, monitoring, journal, `decision_package_summary.json` ([tests/mvp_offline_fixtures.py](../../tests/mvp_offline_fixtures.py) `MVP_DECISION_PACKAGE_ARTIFACTS`). Product surfaces must **filter** per [OUTPUTS.md](../../OUTPUTS.md) bundle policy. |
 
 ---
 
@@ -267,7 +267,7 @@ Workflow-state metadata on the plan: default core → `multiple_candidates` ([sr
 
 ## 5. One-Candidate Journey Check
 
-| Step | Works directly? | Notes |
+| Step | Works directly... | Notes |
 | --- | --- | --- |
 | Diagnosis-only state | **Yes** | `python run_portfolio_review.py --skip-candidates` → plan `diagnosis_only` ([tests/test_portfolio_review_workflow.py](../../tests/test_portfolio_review_workflow.py)) |
 | Launchpad card | **Partial** | JSON after materialization; no UI |
@@ -461,17 +461,17 @@ python run_candidate_factory.py --candidates equal_weight --execution-mode stand
 
 | Question | Blunt answer |
 | --- | --- |
-| **Can I demo this product flow today?** | **Not reliably from the repo alone.** You can demo **modules and offline decision-package logic**, but a **client-visible product walkthrough** needs a **fresh `run_portfolio_review.py` run** (prefer `--candidates <one>`) and inspection of gitignored `Main portfolio/`. Expect **~9 minutes** for default core batch. |
-| **Shortest path to demo-ready backend?** | (1) Run `python run_portfolio_review.py --candidates equal_weight` (approved network). (2) Implement **Session 03 / RM-ARCH-011** so bundle JSON cross-references are coherent. (3) Add **Session 01** integration test so regressions are caught without live runs. (4) Commit migration source in allowlisted batches so demos are reproducible. |
-| **Highest-leverage next fix?** | **`RM-ARCH-011` sidecar wiring + one-candidate default demo command** — aligns runtime with PRODUCT.md story without waiting for UI. |
+| **Can I demo this product flow today...** | **Not reliably from the repo alone.** You can demo **modules and offline decision-package logic**, but a **client-visible product walkthrough** needs a **fresh `run_portfolio_review.py` run** (prefer `--candidates <one>`) and inspection of gitignored `Main portfolio/`. Expect **~9 minutes** for default core batch. |
+| **Shortest path to demo-ready backend...** | (1) Run `python run_portfolio_review.py --candidates equal_weight` (approved network). (2) Implement **Session 03 / RM-ARCH-011** so bundle JSON cross-references are coherent. (3) Add **Session 01** integration test so regressions are caught without live runs. (4) Commit migration source in allowlisted batches so demos are reproducible. |
+| **Highest-leverage next fix...** | **`RM-ARCH-011` sidecar wiring + one-candidate default demo command** — aligns runtime with PRODUCT.md story without waiting for UI. |
 
 ### After Session 08 closure (2026-05-26)
 
 | Question | Blunt answer |
 | --- | --- |
-| **Can I demo this product flow today?** | **Yes (MVP backend).** Run `python run_portfolio_review.py --candidates equal_weight` (~2 min subject+factory+compare in Session 07 baseline), then read six bundle JSON under `Main portfolio/` per [OUTPUTS.md](../../OUTPUTS.md). Offline proof: `python -m pytest tests/test_product_bundle_integration.py tests/test_product_bundle_paths.py -q`. |
-| **Default command still wrong for product story?** | **Yes, by design** — use `--candidates <id>` for product demo; `--mode core` remains six-candidate regression. |
-| **Highest-leverage next work?** | UI/API consumer; optional `RM-ARCH-010` LLM spec (Session 09 deferred); dirty-tree allowlisted commits; optional fix for stale multi-candidate compare on disk (demo C1). |
+| **Can I demo this product flow today...** | **Yes (MVP backend).** Run `python run_portfolio_review.py --candidates equal_weight` (~2 min subject+factory+compare in Session 07 baseline), then read six bundle JSON under `Main portfolio/` per [OUTPUTS.md](../../OUTPUTS.md). Offline proof: `python -m pytest tests/test_product_bundle_integration.py tests/test_product_bundle_paths.py -q`. |
+| **Default command still wrong for product story...** | **Yes, by design** — use `--candidates <id>` for product demo; `--mode core` remains six-candidate regression. |
+| **Highest-leverage next work...** | UI/API consumer; optional `RM-ARCH-010` LLM spec (Session 09 deferred); dirty-tree allowlisted commits; optional fix for stale multi-candidate compare on disk (demo C1). |
 
 ---
 

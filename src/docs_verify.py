@@ -9,8 +9,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 LOCAL_REF_RE = re.compile(
-    r"`([^`\n]+\.(?:md|mdc|py|yml|yaml|json|csv|txt))`"
-    r"|\]\((?!https?://|mailto:)([^)#]+)"
+    r"`([^`\n]+\.(...:md|mdc|py|yml|yaml|json|csv|txt))`"
+    r"|\]\((...!https...://|mailto:)([^)#]+)"
 )
 
 # Paths that were removed or moved; presence in source docs is a stale reference.
@@ -134,7 +134,7 @@ OPERATIONAL_RUNBOOK_FORBIDDEN_PATTERNS: tuple[tuple[str, str], ...] = (
         "runbook must not map default command to core_fast factory profile",
     ),
     (
-        r"run_portfolio_review\.py(?:[^\n]*)\(default\)(?:[^\n]*)(?:six|6)\s+candidates",
+        r"run_portfolio_review\.py(...:[^\n]*)\(default\)(...:[^\n]*)(...:six|6)\s+candidates",
         "runbook must not describe default review as a six-candidate batch",
     ),
 )

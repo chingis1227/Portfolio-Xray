@@ -542,7 +542,7 @@ def _factor_regression_inference_panel(
         "max_vif": _as_float(mc.get("max_vif")),
         "max_vif_factor": mc.get("max_vif_factor"),
         "cond_correlation_matrix": _as_float(mc.get("cond_correlation_matrix")),
-        "assessment_en": mc.get("assessment_en") or mc.get("assessment_ru"),
+        "assessment_en": mc.get("assessment_en") or mc.get("assessment_en_legacy"),
     }
     ser = (
         reg.get("serial_correlation_diagnostics")

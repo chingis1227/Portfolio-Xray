@@ -14,7 +14,7 @@ closure status are tracked in
 
 Stress Lab answers: where can the portfolio break, under which scenarios, why does it lose money,
 which assets pull it down, which protect it, where are hedge gaps, and how much can we trust the
-result?
+result...
 
 Core MVP sub-blocks:
 
@@ -166,7 +166,7 @@ Code registry: seven fixed vectors in `SCENARIOS` plus calibrated `recession_sev
 `src/scenario_library.py`. Shock math and pass/fail: [stress_testing_spec.md](stress_testing_spec.md)
 §2. **Not** in the active suite: `crypto_shock`, `volatility_shock` (deferred §2.3).
 
-**Implementation question:** Which scenarios exist, with what inputs, shocks, and readiness metadata?
+**Implementation question:** Which scenarios exist, with what inputs, shocks, and readiness metadata...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
@@ -184,7 +184,7 @@ Tests: `tests/test_scenario_library.py`, `tests/test_scenario_library_normalized
 
 #### 3.1.1 Historical Scenarios — implementation
 
-**Question:** How did the portfolio behave in past crises (realized)?
+**Question:** How did the portfolio behave in past crises (realized)...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
@@ -208,7 +208,7 @@ Tests: `tests/test_stress_historical_fields.py`, `tests/test_stress_mandate_pass
 
 #### 3.1.2 Synthetic Scenarios — implementation
 
-**Question:** What happens under hypothetical factor shocks?
+**Question:** What happens under hypothetical factor shocks...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
@@ -226,7 +226,7 @@ Tests: `tests/test_stress_mandate_pass.py`, `tests/test_stress_covariance_taxono
 ### 3.2 Stress Results
 
 **Question:** For each active stress scenario, what happened, what drove losses, what offset them,
-and how trustworthy is the evidence — without parsing raw scenario rows?
+and how trustworthy is the evidence — without parsing raw scenario rows...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
@@ -259,7 +259,7 @@ Tests: `tests/test_stress_results_block_contract.py`, `tests/test_stress_results
 
 ### 3.3 Hedge Gap Analysis (Core MVP)
 
-**Question:** For each key market risk type, did assets that helped offset losses from assets that hurt in the mapped synthetic scenario — where is protection weak, and what is the main hedge gap?
+**Question:** For each key market risk type, did assets that helped offset losses from assets that hurt in the mapped synthetic scenario — where is protection weak, and what is the main hedge gap...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
@@ -306,7 +306,7 @@ These capabilities remain in code and specs but are **not** numbered Core MVP pr
 
 ### What Happens If API (no UI)
 
-**Question:** Custom shock vectors with the same math as built-in scenarios?
+**Question:** Custom shock vectors with the same math as built-in scenarios...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
@@ -320,7 +320,7 @@ Tests: `tests/test_stress_simulator_contract.py` (PnL equivalence to built-in ro
 
 ### Crisis Replay
 
-**Question:** Month-by-month crisis path, recovery, and static asset contribution — not aggregate only?
+**Question:** Month-by-month crisis path, recovery, and static asset contribution — not aggregate only...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
@@ -336,7 +336,7 @@ Tests: `tests/test_stress_historical_fields.py`.
 
 ### Legacy hedge gap (`hedge_gap_analysis`)
 
-**Question:** Do taxonomy hedge-labeled holdings fail to protect in mapped stress scenarios?
+**Question:** Do taxonomy hedge-labeled holdings fail to protect in mapped stress scenarios...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |

@@ -223,7 +223,7 @@ opt-in or become a product default.
 
 Run commands from the repository root:
 
-    D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА
+    D:\Desktop\CURSOR TULA DIAGNOSTICS
 
 For Session 1, after editing:
 

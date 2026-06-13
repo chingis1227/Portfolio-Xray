@@ -10,10 +10,10 @@ Update this file when the general implementation contract, workflows, inputs/out
 
 `SPEC.md` is the canonical implementation entry point. It has higher authority than product concept documents such as [BUSINESS_VISION.md](BUSINESS_VISION.md), [PRODUCT.md](PRODUCT.md), and [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) when the question is current implementation behavior.
 
-The current canonical product truth is **ДИАГНОСТИКА 2**. Product concept documents can describe target direction, but the active product interpretation must follow this distinction:
+The current canonical product truth is **Diagnosis 2**. Product concept documents can describe target direction, but the active product interpretation must follow this distinction:
 
-- current Core MVP = diagnosis-first/current-portfolio-first ДИАГНОСТИКА 2 flow;
-- ДИАГНОСТИКА 2 НА ПОТОМ = backlog / advanced / later;
+- current Core MVP = diagnosis-first/current-portfolio-first Diagnosis 2 flow;
+- Diagnosis 2 Later = backlog / advanced / later;
 - older optimizer/report/scorecard-heavy modules may remain implemented as backend evidence, technical artifacts, generated support, legacy compatibility, or advanced research, but they are not the current Core MVP product flow unless explicitly promoted by specs and code.
 
 They do not change formulas, scenarios, optimizer policy, data rules, output contracts, or code behavior until this spec and the relevant detailed specs are updated.
@@ -30,6 +30,7 @@ Canonical current product flow:
 Input portfolio
 -> Portfolio X-Ray
 -> Stress Test Lab
+-> Client Fit Check
 -> Problem Classification
 -> Candidate Launchpad
 -> Portfolio Alternatives Builder
@@ -40,7 +41,7 @@ Input portfolio
 -> Monitoring / What Changed
 ```
 
-This is the ДИАГНОСТИКА 2 product truth. The implementation is still CLI/file-driven and partially report-first, but current product surfaces must be interpreted through this flow, not through the older optimization/scorecard/report package.
+This is the Diagnosis 2 product truth. The implementation is still CLI/file-driven and partially report-first, but current product surfaces must be interpreted through this flow, not through the older optimization/scorecard/report package.
 
 ## Implementation Scope
 
@@ -117,14 +118,16 @@ Target product areas that remain TBD until separately specified and implemented:
 - full multi-candidate ranking/arena as default product UX
 - full Action Plan / Rebalancing Advisor as product module
 - advanced monitoring workspace
-- Crisis Replay UI, What Happens If UI, Client-Fit Check, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt as product UX, full custom constraints UI, multi-client workspace, and polished PDF report product
+- Crisis Replay UI, What Happens If UI, Client Fit suitability approval, Asset X-Ray, Max Sharpe, tax-aware optimization,
+  turnover-aware optimizer objective, tactical tilt as product UX, full custom constraints UI,
+  multi-client workspace, and polished PDF report product
 
 Do not describe target UI/schema migration work as current implementation unless the relevant source
 code, generated artifacts, and owning specs verify that status.
 
 ## Main Workflows
 
-Portfolio-first review workflow (binding transition contract, interpreted through ДИАГНОСТИКА 2):
+Portfolio-first review workflow (binding transition contract, interpreted through Diagnosis 2):
 
 ```text
 analysis_subject / current portfolio
@@ -232,6 +235,7 @@ Main report artifacts
 | Scenario Library and normalized scenario view | [docs/specs/scenario_library_spec.md](docs/specs/scenario_library_spec.md) |
 | Evidence-to-diagnosis interpretation methodology and root-cause-over-symptom boundary | [docs/specs/diagnosis_interpretation_methodology_spec.md](docs/specs/diagnosis_interpretation_methodology_spec.md) |
 | Diagnosis rulebook YAML contract, read-only parity validator, and schema | [docs/specs/diagnosis_rulebook_schema_spec.md](docs/specs/diagnosis_rulebook_schema_spec.md) |
+| Client Fit V1 check, questionnaire, source quality, and no-advice boundary | [docs/specs/client_fit_check_spec.md](docs/specs/client_fit_check_spec.md), [docs/specs/client_fit_questionnaire_spec.md](docs/specs/client_fit_questionnaire_spec.md) |
 | Problem Classification and Candidate Launchpad current v3 contracts | [docs/specs/block_4_diagnosis_v3_spec.md](docs/specs/block_4_diagnosis_v3_spec.md), [docs/specs/problem_classification_spec.md](docs/specs/problem_classification_spec.md), [docs/specs/candidate_launchpad_spec.md](docs/specs/candidate_launchpad_spec.md) |
 | Portfolio Alternatives Builder setup, validation, and explicit Block 6 / Block 7 boundary | [docs/specs/portfolio_alternatives_builder_spec.md](docs/specs/portfolio_alternatives_builder_spec.md), [docs/specs/builder_prefill_spec.md](docs/specs/builder_prefill_spec.md), [docs/specs/candidate_setup_spec.md](docs/specs/candidate_setup_spec.md) |
 | Candidate Generation one-attempt artifact | [docs/specs/candidate_generation_spec.md](docs/specs/candidate_generation_spec.md) |
@@ -338,6 +342,8 @@ Primary outputs include:
 - `run_metadata.json`
 - `stress_report.json`
 - `portfolio_xray.json`
+- `client_fit_check.json` under `analysis_subject/` on portfolio-first diagnosis runs; schema
+  `client_fit_check_v1`; status is `not_provided` when no Client Fit profile is supplied.
 - `candidate_comparison.json`
 - `robustness_scorecard.json`
 - `portfolio_health_score.json`
@@ -450,6 +456,7 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Blocks 1-5 MVP core reliability (Phase 16) | **Done** (Sessions 01-09, `RM-1010`-`RM-1018`); offline acceptance bundle and operator runbook govern routine verification |
 | Main CLI optimization and report pipeline | Implemented |
 | Input and Assumptions Layer | Implemented CLI/file-driven V1; Core MVP three-field surface, MVP defaults injection, real-cash holdings, `core_mvp_input_surface` / `core_mvp_input_contract` product contract plus `input_surface` / `field_tiers` disclosure ([input_assumptions_spec.md](docs/specs/input_assumptions_spec.md); [Input Layer MVP Migration](docs/exec_plans/2026-05-26_input_layer_mvp_migration.md) Sessions 01–09) |
+| Client Fit V1 | Implemented on `codex/client-fit-v1` as a non-binding profile-fit layer with active web onboarding/display routes and backend/CLI missing-profile compatibility. The web journey uses `/client-profile` before Portfolio Input and `/client-fit` after Stress Lab and before Hypothesis. Backend writes `client_fit_check.json` (`client_fit_check_v1`), Block 4 can use dimension-level Client Fit signals as supporting/contrary evidence, `goal_risk_conflict` can become the objective-review primary outcome, site/report explanation bundles expose safe Client Fit hierarchy copy, Candidate Launchpad carries compact Client Fit context without suppressing material diagnoses, Builder carries Client Fit target rows as hypothesis-test criteria, Current vs Candidate can show Current vs Candidate vs Client Target evidence without issuing a verdict, and Verdict/API/Supabase/frontend surfaces consume bounded display models. V1 scope is return, volatility, maximum drawdown, horizon, source quality, and goal-risk conflict; liquidity is explicitly excluded from V1. It is not suitability approval, trade advice, or an optimizer mandate ([client_fit_check_spec.md](docs/specs/client_fit_check_spec.md), [client_fit_questionnaire_spec.md](docs/specs/client_fit_questionnaire_spec.md)). |
 | Portfolio X-Ray Core MVP (Blocks 2.1–2.6) | Blocks 2.1–2.6 **implemented** on `portfolio_xray.json`; **no client mandate / profile target comparison** in product blocks ([portfolio_xray_layer_spec.md](docs/specs/portfolio_xray_layer_spec.md)) |
 | Risk Budget View (Block 2.5) | Product block `block_2_5_risk_budget_view` **implemented** (Sessions 00–08, 2026-05-26); legacy `sections.risk_budget_view` preserved ([portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.5.1) |
 | Portfolio Weakness Map (Block 2.6) | Product block `block_2_6_portfolio_weakness_map` **implemented** — `heuristic_v2`, eight canonical Stress Lab `risk_type` ids (2026-05-29); pre-stress over Blocks 2.1–2.5; legacy `sections.weakness_map` preserved for formatters ([portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.6.1, [v2 acceptance audit](docs/audits/2026-05-29_block_2_6_weakness_map_heuristic_v2_acceptance_audit.md), `DEC-2026-05-29-001`) |
@@ -474,7 +481,7 @@ When a diagnostic degrades because inputs are missing, the output must expose th
 | Generated CSV/JSON/HTML/TXT/PDF-style reports | Implemented |
 | Full interactive UI | Target/TBD |
 | Diagnosis-only product state as formal UX/workflow state | Target/TBD; current generated artifacts may support diagnosis review, but a formal product state requires code/spec verification |
-| Problem Classification | **Implemented (v3)** — `problem_classification_v3` via [src/block_4/diagnosis_builder.py](src/block_4/diagnosis_builder.py); evidence-to-diagnosis translation from Blocks 2–3 product blocks; `problems[]` shim for legacy readers. Spec: [block_4_diagnosis_v3_spec.md](docs/specs/block_4_diagnosis_v3_spec.md). Legacy V1 builder: [src/problem_classification.py](src/problem_classification.py) (unit tests only). |
+| Problem Classification | **Implemented (v3)** — `problem_classification_v3` via [src/block_4/diagnosis_builder.py](src/block_4/diagnosis_builder.py); evidence-to-diagnosis translation from Blocks 2–3 product blocks plus governed optional Client Fit context from `client_fit_check.json`; `problems[]` shim for legacy readers. Client Fit breach/pass remains separate from objective `diagnostic_quality_status`; only `goal_risk_conflict` is a Client Fit primary exception. Spec: [block_4_diagnosis_v3_spec.md](docs/specs/block_4_diagnosis_v3_spec.md). Legacy V1 builder: [src/problem_classification.py](src/problem_classification.py) (unit tests only). |
 | Candidate Launchpad | **Implemented (v3)** — `candidate_launchpad_v3` via [src/block_4/launchpad_cards.py](src/block_4/launchpad_cards.py). Legacy V1: [src/candidate_launchpad.py](src/candidate_launchpad.py) (unit tests only) |
 
 

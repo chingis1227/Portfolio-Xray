@@ -420,11 +420,11 @@ Proof results:
 | 2022 | 12 | reliable | −16.29% |
 | banking_2023 | 4 | reliable | +0.72% |
 
-### 7.3 dotcom / 2008 — bug or normal?
+### 7.3 dotcom / 2008 — bug or normal...
 
 **Normal data limitation** for current ETF holdings: no aligned monthly observations across all eight assets in those date ranges. Code records `insufficient_data` and plain-English disclosure in `data_trust_summary`. This is **not** evidence of a stress-engine bug for the primary realized-only path.
 
-### 7.4 Who writes `insufficient_data`?
+### 7.4 Who writes `insufficient_data`...
 
 **Python code** in `src/stress.py` (and related modules)—**not** AI, **not** human judgment in the pipeline.
 
@@ -561,9 +561,9 @@ Factory calls `write_candidate_comparison_outputs()` → rebuilds **`candidate_c
 
 | Question | Answer |
 | --- | --- |
-| Is PDF part of the core algorithm? | **No.** PDF is produced by `rebuild_pdf_reports.py`, a separate presentation/export step. |
-| What does `--skip-pdf` do? | Omits that step; calculations and JSON still run. |
-| Does `--skip-pdf` break math? | **No.** |
+| Is PDF part of the core algorithm... | **No.** PDF is produced by `rebuild_pdf_reports.py`, a separate presentation/export step. |
+| What does `--skip-pdf` do... | Omits that step; calculations and JSON still run. |
+| Does `--skip-pdf` break math... | **No.** |
 | Machine-readable layer | **JSON** contracts under `analysis_subject/`, factory run, comparison, snapshots (`src/output_policy.py`: `site_api` writes JSON, not CSV/TXT/HTML/PNG/PDF by default). |
 
 **Note:** Presentation files (CSV, HTML, commentary.txt) may remain on disk from earlier `full_report` or `legacy_export` runs—they are **not guaranteed refreshed** on `site_api` + `--skip-pdf` path.
@@ -578,7 +578,7 @@ These may appear under `Main portfolio/` but are **after Blocks 1–5**:
 
 ## 11. Decision table
 
-| Step | What is decided | Who decides | Input | Output | Fully algorithmizable? | Evidence |
+| Step | What is decided | Who decides | Input | Output | Fully algorithmizable... | Evidence |
 | --- | --- | --- | --- | --- | --- | --- |
 | Weight validation | Pass/fail load | **Code** | config weights | valid / error | Yes | `config_schema.py` |
 | analysis_end | Cutoff date | **Code** | month-end index | date string | Yes | `windows.py` |
@@ -622,11 +622,11 @@ Data sufficiency labels; metric values; stress losses; pass/fail; factory status
 
 ## 13. Main conclusion
 
-### Can Blocks 1–5 be described as an algorithm?
+### Can Blocks 1–5 be described as an algorithm...
 
 **Yes.** One ordered command runs a fixed sequence: validate → load data → returns → metrics → stress → xray → factory → comparison JSON. The process is reproducible given the same config, data, and code version.
 
-### What is already algorithmic?
+### What is already algorithmic...
 
 Groups A and B above constitute the vast majority of Blocks 1–5. **No AI participates in calculation or status assignment.**
 

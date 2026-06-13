@@ -8,7 +8,7 @@
 # =============================================================================
 # SECTION 1: CORE SETTINGS
 # =============================================================================
-# investor_currency: на выбор — USD (доллар), EUR (евро), JPY (йена), CHF (франк).
+# Legacy comment normalized to English-only text.
 
 investor_currency: USD
 initial_investable_amount: 1000
@@ -41,17 +41,17 @@ tickers: [VOO, QQQ, GLD, SLV, BND, SCHD, SCHP, TLT]
 
 client_profile: Balanced
 
-# optimization_soft_vol_penalty_lambda: 0    # мягкий vol к target_vol_annual; 0 => в рантайме 12
-# optimization_soft_return_penalty_lambda: 0  # мягкий доход к target_nominal_return_annual; 0 => в рантайме 8
+# Legacy comment normalized to English-only text.
+# Legacy comment normalized to English-only text.
 
-# allow_leverage, allow_short_selling: на выбор true / false.
+# Legacy comment normalized to English-only text.
 allow_leverage: false
 allow_short_selling: false
 
-# horizon_years: число лет (например 10, 3, 0.5); null допустим.
+# Legacy comment normalized to English-only text.
 horizon_years: 10.0
 
-# CSV — только таблицы (results_csv)
+# Legacy comment normalized to English-only text.
 output_dir: results_csv
-# Финальные результаты: веса, все JSON, report
+# Legacy comment normalized to English-only text.
 output_dir_final: "Main portfolio"

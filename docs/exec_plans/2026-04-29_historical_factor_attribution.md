@@ -7,7 +7,7 @@ This document follows the repository rules in `PLANS.md`.
 
 ## Purpose / Big Picture
 
-After this change, a user reading `stress_report.json` or `stress_commentary.txt` can see not only that the portfolio lost money in each historical stress episode, but which factor channels explain the model-based loss: equity, real rates, inflation, credit, USD, commodity, VIX, US growth, and oil when available. This makes the stress output answer questions such as "was 2008 credit-led or equity-led for this portfolio?" while explicitly warning that the attribution is model-based beta times realized factor shock, not a causal realized decomposition.
+After this change, a user reading `stress_report.json` or `stress_commentary.txt` can see not only that the portfolio lost money in each historical stress episode, but which factor channels explain the model-based loss: equity, real rates, inflation, credit, USD, commodity, VIX, US growth, and oil when available. This makes the stress output answer questions such as "was 2008 credit-led or equity-led for this portfolio..." while explicitly warning that the attribution is model-based beta times realized factor shock, not a causal realized decomposition.
 
 ## Progress
 
@@ -54,7 +54,7 @@ Update `tests/test_factor_oos_explainability.py` for the enrichment helper and `
 
 Work from repository root:
 
-    C:\Users\ShumeikoYe\OneDrive\Рабочий стол\Курсор Модель Блекрока 2
+    C:\Users\ShumeikoYe\OneDrive\Desktop\Cursor BlackRock Model 2
 
 Run focused tests after edits:
 

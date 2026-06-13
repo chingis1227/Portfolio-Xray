@@ -20,6 +20,7 @@ It reads:
 - optional `selection_decision.json` in memory for `favored_candidate_id`.
 - optional `candidate_generation.json` in memory for the selected candidate's hypothesis,
   success criteria, weights, and transaction-cost assumption when those fields are available.
+- optional `client_fit_check.json` in memory for Client Fit target rows.
 
 It writes:
 
@@ -33,6 +34,8 @@ It does not:
 - build candidates;
 - optimize weights;
 - issue a Decision Verdict;
+- crown a winner or approve suitability;
+- convert Client Fit targets into optimizer behavior;
 - rename existing fields.
 
 ## Artifact Contract
@@ -55,7 +58,13 @@ Top-level shape:
   "source_artifacts": {
     "candidate_comparison": "candidate_comparison.json",
     "selection_decision": "selection_decision.json",
-    "candidate_generation": "candidate_generation.json"
+    "candidate_generation": "candidate_generation.json",
+    "client_fit_check": "client_fit_check.json"
+  },
+  "guardrails": {
+    "diagnostic_only": true,
+    "does_not_issue_verdict": true,
+    "does_not_crown_winner": true
   },
   "warnings": []
 }
@@ -72,6 +81,14 @@ When a diagnosis-only portfolio review completes, root `current_vs_candidate.jso
 Each `comparisons[]` row contains candidate identity, status, artifact root, dimension deltas,
 trade-off summaries, practicality fields, success-criteria evaluation, materiality for decision
 review, data quality, and source files.
+
+When `client_fit_check.json` is supplied, each comparison row also contains
+`client_fit_target_comparison`. This block has schema
+`current_vs_candidate_client_targets_v1`, profile/source-quality context, target rows for return,
+volatility, historical drawdown, worst stress loss, and horizon when available, plus explicit
+`does_not_issue_verdict` and `does_not_crown_winner` guardrails. These rows answer "how do current
+and candidate evidence compare with the provided Client Fit targets..." They do not decide whether to
+keep, rebalance, or approve the portfolio.
 
 ## Baseline and Candidate Selection
 
@@ -104,6 +121,7 @@ row answers:
 - turnover required when baseline and candidate weights are available;
 - transaction-cost assumption and simple estimated cost when turnover is available;
 - success-criteria result when criteria can be mapped to available metrics;
+- Current vs Candidate vs Client Target rows when Client Fit evidence exists;
 - whether evidence is material enough for decision review.
 
 The adapter compares these evidence groups:
@@ -141,6 +159,12 @@ factor beta. Unmapped criteria are `not_evaluated`; mapped-but-missing criteria 
 `materiality_for_decision_review` is a review gate, not a rebalance recommendation. It can say
 `review_candidate`, `not_material`, or `insufficient_evidence`. The Decision Verdict remains the
 place where action, no-action, or evidence-insufficient outcomes are evaluated.
+
+Client Fit target rows are comparison references only. A candidate moving closer to the stated
+return, volatility, drawdown, or stress-loss limit is evidence for later review, not a "winner" and
+not a verdict. A candidate moving away from a target is a visible trade-off, not automatic trade
+advice. Missing target evidence remains evidence-insufficient for that row rather than being filled
+with a fake conclusion.
 
 ## Workflow Integration
 

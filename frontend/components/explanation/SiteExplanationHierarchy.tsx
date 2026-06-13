@@ -1,4 +1,4 @@
-﻿import type { SiteExplanationBundle, SiteExplanationScreen, SiteExplanationTextItem } from "@/lib/types";
+import type { SiteExplanationBundle, SiteExplanationScreen, SiteExplanationTextItem } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
 type Props = {

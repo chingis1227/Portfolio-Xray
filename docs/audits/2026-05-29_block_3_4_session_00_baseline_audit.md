@@ -18,12 +18,12 @@ Related:
 
 | Question | Verdict |
 | --- | --- |
-| Is Block 3.4 implemented on `stress_report.json`? | **Yes** — `current_portfolio_stress_scorecard_v1`, adapter over `stress_results_v1` + `hedge_gap_analysis_v1`. |
-| Is wiring correct (after 3.2 and 3.3)? | **Yes** — `attach_current_portfolio_stress_scorecard_v1` in `src/stress.py` (`run_stress`, `_empty_report`), `run_report.py`, `run_optimization.py`. |
-| Is the Phase 2 v1.1 product contract complete? | **No** — missing `block_status`, `ruleset_version`, `stress_diagnosis`, `diagnosis_confidence`, `hedge_gap_summary`, `pre_stress_confirmation_summary`, downstream signals, `next_decision_uses[]`, boolean `legacy_fallback_used`. |
-| Are downstream consumers v1-primary? | **No** — Problem Classification, AI Commentary refs, Candidate Comparison stress bundle, and snapshot still prefer or only expose `stress_scorecard_v1`. |
-| Is worst-scenario logic correct at MVP? | **Yes (via Block 3.2 envelope)** — scorecard reads `stress_results_v1.envelope.worst_synthetic` / `worst_historical`; contract test asserts parity. |
-| Session 00 code changes? | **None** (audit + ExecPlan registration only). |
+| Is Block 3.4 implemented on `stress_report.json`... | **Yes** — `current_portfolio_stress_scorecard_v1`, adapter over `stress_results_v1` + `hedge_gap_analysis_v1`. |
+| Is wiring correct (after 3.2 and 3.3)... | **Yes** — `attach_current_portfolio_stress_scorecard_v1` in `src/stress.py` (`run_stress`, `_empty_report`), `run_report.py`, `run_optimization.py`. |
+| Is the Phase 2 v1.1 product contract complete... | **No** — missing `block_status`, `ruleset_version`, `stress_diagnosis`, `diagnosis_confidence`, `hedge_gap_summary`, `pre_stress_confirmation_summary`, downstream signals, `next_decision_uses[]`, boolean `legacy_fallback_used`. |
+| Are downstream consumers v1-primary... | **No** — Problem Classification, AI Commentary refs, Candidate Comparison stress bundle, and snapshot still prefer or only expose `stress_scorecard_v1`. |
+| Is worst-scenario logic correct at MVP... | **Yes (via Block 3.2 envelope)** — scorecard reads `stress_results_v1.envelope.worst_synthetic` / `worst_historical`; contract test asserts parity. |
+| Session 00 code changes... | **None** (audit + ExecPlan registration only). |
 
 **Bottom line:** Block 3.4 MVP is **shipped and test-green (4 tests)**, but **not productized** for institutional v1.1 or full Core MVP decision path. Phase 2 Sessions 01–13 close contract, diagnosis object, bridges, downstream migration, and live-output gates.
 

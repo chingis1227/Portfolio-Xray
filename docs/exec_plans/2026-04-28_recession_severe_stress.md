@@ -97,7 +97,7 @@ that its shock vector is selected from the worse model-PnL episode, that
 
 Work from the repository root:
 
-    C:\Users\ShumeikoYe\OneDrive\Рабочий стол\Курсор Модель Блекрока 2
+    C:\Users\ShumeikoYe\OneDrive\Desktop\Cursor BlackRock Model 2
 
 Run focused tests after implementation:
 

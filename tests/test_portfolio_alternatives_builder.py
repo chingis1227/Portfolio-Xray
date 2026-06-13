@@ -379,7 +379,7 @@ def test_run_portfolio_alternative_plan_dry_run_does_not_execute(tmp_path: Path)
 def test_equal_weight_launchpad_method_maps_to_documented_product_commands(
     tmp_path: Path,
 ) -> None:
-    """Session 05: equal_weight from Launchpad в†’ factory plan and review --candidates only.
+    """Session 05: equal_weight from Launchpad → factory plan and review --candidates only.
 
     Documented in docs/product_flow_operator_guide.md; no new run_portfolio_review flags.
     """

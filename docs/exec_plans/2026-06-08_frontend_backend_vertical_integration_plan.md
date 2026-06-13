@@ -12,7 +12,7 @@ by this plan.
 
 ## Purpose / Big Picture
 
-Portfolio MRI / Portfolio X-Ray / ÄÈÀÃÍÎÑÒÈÊÀ 2 is a diagnosis-first investment
+Portfolio MRI / Portfolio X-Ray / Diagnosis 2 is a diagnosis-first investment
 decision-support product. It is not a dashboard and it is not an optimizer cockpit.
 After this plan is implemented, a user can enter a portfolio in the Next.js frontend,
 run the real Python diagnostics pipeline, choose one diagnostic hypothesis to test,
@@ -345,7 +345,7 @@ if needed.
 
 ## Context and Orientation
 
-The repository root is `D:\Ðàáî÷èé ñòîë\ÊÓÐÑÎÐ ÒÓËÀ ÄÈÀÃÍÎÑÒÈÊÀ`. The frontend lives
+The repository root is `D:\Desktop\CURSOR TULA DIAGNOSTICS`. The frontend lives
 under `frontend/` and is a Next.js/React application. The confirmed frontend API route
 is `frontend/app/api/portfolio/diagnose/route.ts`, which posts portfolio input to a
 Python bridge. The bridge is `scripts/run_review_from_payload.py`. It creates an
@@ -529,13 +529,13 @@ reject or ignore stale artifacts that do not match the current review/candidate 
 
 Baseline frontend checks:
 
-    cd D:\Ðàáî÷èé ñòîë\ÊÓÐÑÎÐ ÒÓËÀ ÄÈÀÃÍÎÑÒÈÊÀ\frontend
+    cd D:\Desktop\CURSOR TULA DIAGNOSTICS\frontend
     npm.cmd run typecheck
     npm.cmd run build
 
 Baseline backend bridge check:
 
-    cd D:\Ðàáî÷èé ñòîë\ÊÓÐÑÎÐ ÒÓËÀ ÄÈÀÃÍÎÑÒÈÊÀ
+    cd D:\Desktop\CURSOR TULA DIAGNOSTICS
     .\.venv\Scripts\python.exe -m pytest tests\test_frontend_review_bridge.py
 
 If `.venv` is missing, follow the Codex Windows Python rule: check `py -3 --version`,
@@ -872,15 +872,15 @@ Pre-existing dirty files at Session 07 start:
     M frontend/components/portfolio/PortfolioInputTable.tsx
     M frontend/lib/journey.ts
     M frontend/lib/types.ts
-    ?? docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
-    ?? frontend/app/api/
-    ?? frontend/components/layout/JourneyAdvanceActions.tsx
-    ?? frontend/components/layout/JourneyGate.tsx
-    ?? frontend/data/instrumentUniverse.ts
-    ?? frontend/lib/reviewState.tsx
-    ?? runs/
-    ?? scripts/run_review_from_payload.py
-    ?? tests/test_frontend_review_bridge.py
+    ...... docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
+    ...... frontend/app/api/
+    ...... frontend/components/layout/JourneyAdvanceActions.tsx
+    ...... frontend/components/layout/JourneyGate.tsx
+    ...... frontend/data/instrumentUniverse.ts
+    ...... frontend/lib/reviewState.tsx
+    ...... runs/
+    ...... scripts/run_review_from_payload.py
+    ...... tests/test_frontend_review_bridge.py
 
 Files changed in Session 07:
 
@@ -997,15 +997,15 @@ Pre-existing dirty files at Session 08 start:
     M frontend/components/portfolio/PortfolioInputTable.tsx
     M frontend/lib/journey.ts
     M frontend/lib/types.ts
-    ?? docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
-    ?? frontend/app/api/
-    ?? frontend/components/layout/JourneyAdvanceActions.tsx
-    ?? frontend/components/layout/JourneyGate.tsx
-    ?? frontend/data/instrumentUniverse.ts
-    ?? frontend/lib/reviewState.tsx
-    ?? runs/
-    ?? scripts/run_review_from_payload.py
-    ?? tests/test_frontend_review_bridge.py
+    ...... docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
+    ...... frontend/app/api/
+    ...... frontend/components/layout/JourneyAdvanceActions.tsx
+    ...... frontend/components/layout/JourneyGate.tsx
+    ...... frontend/data/instrumentUniverse.ts
+    ...... frontend/lib/reviewState.tsx
+    ...... runs/
+    ...... scripts/run_review_from_payload.py
+    ...... tests/test_frontend_review_bridge.py
 
 Files changed in Session 08:
 
@@ -1113,16 +1113,16 @@ Pre-existing dirty files at Session 09 start:
     M frontend/components/portfolio/PortfolioInputTable.tsx
     M frontend/lib/journey.ts
     M frontend/lib/types.ts
-    ?? .cache/
-    ?? docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
-    ?? frontend/app/api/
-    ?? frontend/components/layout/JourneyAdvanceActions.tsx
-    ?? frontend/components/layout/JourneyGate.tsx
-    ?? frontend/data/instrumentUniverse.ts
-    ?? frontend/lib/reviewState.tsx
-    ?? runs/
-    ?? scripts/run_review_from_payload.py
-    ?? tests/test_frontend_review_bridge.py
+    ...... .cache/
+    ...... docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
+    ...... frontend/app/api/
+    ...... frontend/components/layout/JourneyAdvanceActions.tsx
+    ...... frontend/components/layout/JourneyGate.tsx
+    ...... frontend/data/instrumentUniverse.ts
+    ...... frontend/lib/reviewState.tsx
+    ...... runs/
+    ...... scripts/run_review_from_payload.py
+    ...... tests/test_frontend_review_bridge.py
 
 Files changed in Session 09:
 
@@ -1141,7 +1141,7 @@ Implementation summary:
   clear stale verdict state, and hydration drops verdict summaries that no longer match the active
   generated candidate.
 - Rendered active backend verdict outcomes through `VerdictPanel` plus extra action framing, evidence
-  quality, and ?what would change it? cards. No-trade, evidence-insufficient, and failed/infeasible
+  quality, and ...what would change it... cards. No-trade, evidence-insufficient, and failed/infeasible
   candidate outcomes are rendered as normal states.
 - Avoided raw trading-instruction wording in the UI by mapping backend verdict ids into
   decision-support copy. The page explicitly says it does not recommend trades, execute trades, or
@@ -1374,7 +1374,7 @@ explicitly instructed.
 Suggested commit message: `Document frontend backend vertical integration runbook`.
 
 
-### Session 16 ? Final validation and handoff summary
+### Session 16 ... Final validation and handoff summary
 
 Goal: Validate the completed Sessions 10-15 vertical integration work, update final
 ExecPlan status, and produce the requested final text result.
@@ -1514,14 +1514,14 @@ Initial pre-existing dirty files before this ExecPlan was created:
     M frontend/components/portfolio/PortfolioInputTable.tsx
     M frontend/lib/journey.ts
     M frontend/lib/types.ts
-    ?? frontend/app/api/
-    ?? frontend/components/layout/JourneyAdvanceActions.tsx
-    ?? frontend/components/layout/JourneyGate.tsx
-    ?? frontend/data/instrumentUniverse.ts
-    ?? frontend/lib/reviewState.tsx
-    ?? runs/
-    ?? scripts/run_review_from_payload.py
-    ?? tests/test_frontend_review_bridge.py
+    ...... frontend/app/api/
+    ...... frontend/components/layout/JourneyAdvanceActions.tsx
+    ...... frontend/components/layout/JourneyGate.tsx
+    ...... frontend/data/instrumentUniverse.ts
+    ...... frontend/lib/reviewState.tsx
+    ...... runs/
+    ...... scripts/run_review_from_payload.py
+    ...... tests/test_frontend_review_bridge.py
 
 Files changed by plan creation:
 
@@ -1547,14 +1547,14 @@ Pre-existing dirty files at Session 00 start, excluding this new ExecPlan:
     M frontend/components/portfolio/PortfolioInputTable.tsx
     M frontend/lib/journey.ts
     M frontend/lib/types.ts
-    ?? frontend/app/api/
-    ?? frontend/components/layout/JourneyAdvanceActions.tsx
-    ?? frontend/components/layout/JourneyGate.tsx
-    ?? frontend/data/instrumentUniverse.ts
-    ?? frontend/lib/reviewState.tsx
-    ?? runs/
-    ?? scripts/run_review_from_payload.py
-    ?? tests/test_frontend_review_bridge.py
+    ...... frontend/app/api/
+    ...... frontend/components/layout/JourneyAdvanceActions.tsx
+    ...... frontend/components/layout/JourneyGate.tsx
+    ...... frontend/data/instrumentUniverse.ts
+    ...... frontend/lib/reviewState.tsx
+    ...... runs/
+    ...... scripts/run_review_from_payload.py
+    ...... tests/test_frontend_review_bridge.py
 
 Files changed in Session 00:
 
@@ -1601,15 +1601,15 @@ Pre-existing dirty files at Session 01 start:
     M frontend/components/portfolio/PortfolioInputTable.tsx
     M frontend/lib/journey.ts
     M frontend/lib/types.ts
-    ?? docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
-    ?? frontend/app/api/
-    ?? frontend/components/layout/JourneyAdvanceActions.tsx
-    ?? frontend/components/layout/JourneyGate.tsx
-    ?? frontend/data/instrumentUniverse.ts
-    ?? frontend/lib/reviewState.tsx
-    ?? runs/
-    ?? scripts/run_review_from_payload.py
-    ?? tests/test_frontend_review_bridge.py
+    ...... docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
+    ...... frontend/app/api/
+    ...... frontend/components/layout/JourneyAdvanceActions.tsx
+    ...... frontend/components/layout/JourneyGate.tsx
+    ...... frontend/data/instrumentUniverse.ts
+    ...... frontend/lib/reviewState.tsx
+    ...... runs/
+    ...... scripts/run_review_from_payload.py
+    ...... tests/test_frontend_review_bridge.py
 
 Files changed in Session 01:
 
@@ -1701,15 +1701,15 @@ Pre-existing dirty files at Session 02 start:
     M frontend/components/portfolio/PortfolioInputTable.tsx
     M frontend/lib/journey.ts
     M frontend/lib/types.ts
-    ?? docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
-    ?? frontend/app/api/
-    ?? frontend/components/layout/JourneyAdvanceActions.tsx
-    ?? frontend/components/layout/JourneyGate.tsx
-    ?? frontend/data/instrumentUniverse.ts
-    ?? frontend/lib/reviewState.tsx
-    ?? runs/
-    ?? scripts/run_review_from_payload.py
-    ?? tests/test_frontend_review_bridge.py
+    ...... docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
+    ...... frontend/app/api/
+    ...... frontend/components/layout/JourneyAdvanceActions.tsx
+    ...... frontend/components/layout/JourneyGate.tsx
+    ...... frontend/data/instrumentUniverse.ts
+    ...... frontend/lib/reviewState.tsx
+    ...... runs/
+    ...... scripts/run_review_from_payload.py
+    ...... tests/test_frontend_review_bridge.py
 
 Files changed in Session 02:
 
@@ -1774,15 +1774,15 @@ Pre-existing dirty files at Session 03 start:
     M frontend/components/portfolio/PortfolioInputTable.tsx
     M frontend/lib/journey.ts
     M frontend/lib/types.ts
-    ?? docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
-    ?? frontend/app/api/
-    ?? frontend/components/layout/JourneyAdvanceActions.tsx
-    ?? frontend/components/layout/JourneyGate.tsx
-    ?? frontend/data/instrumentUniverse.ts
-    ?? frontend/lib/reviewState.tsx
-    ?? runs/
-    ?? scripts/run_review_from_payload.py
-    ?? tests/test_frontend_review_bridge.py
+    ...... docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
+    ...... frontend/app/api/
+    ...... frontend/components/layout/JourneyAdvanceActions.tsx
+    ...... frontend/components/layout/JourneyGate.tsx
+    ...... frontend/data/instrumentUniverse.ts
+    ...... frontend/lib/reviewState.tsx
+    ...... runs/
+    ...... scripts/run_review_from_payload.py
+    ...... tests/test_frontend_review_bridge.py
 
 Files changed in Session 03:
 
@@ -1860,15 +1860,15 @@ Pre-existing dirty files at Session 04 start:
     M frontend/components/portfolio/PortfolioInputTable.tsx
     M frontend/lib/journey.ts
     M frontend/lib/types.ts
-    ?? docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
-    ?? frontend/app/api/
-    ?? frontend/components/layout/JourneyAdvanceActions.tsx
-    ?? frontend/components/layout/JourneyGate.tsx
-    ?? frontend/data/instrumentUniverse.ts
-    ?? frontend/lib/reviewState.tsx
-    ?? runs/
-    ?? scripts/run_review_from_payload.py
-    ?? tests/test_frontend_review_bridge.py
+    ...... docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
+    ...... frontend/app/api/
+    ...... frontend/components/layout/JourneyAdvanceActions.tsx
+    ...... frontend/components/layout/JourneyGate.tsx
+    ...... frontend/data/instrumentUniverse.ts
+    ...... frontend/lib/reviewState.tsx
+    ...... runs/
+    ...... scripts/run_review_from_payload.py
+    ...... tests/test_frontend_review_bridge.py
 
 Files changed in Session 04:
 
@@ -1936,15 +1936,15 @@ Pre-existing dirty files at Session 10 start:
     M frontend/components/portfolio/PortfolioInputTable.tsx
     M frontend/lib/journey.ts
     M frontend/lib/types.ts
-    ?? docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
-    ?? frontend/app/api/
-    ?? frontend/components/layout/JourneyAdvanceActions.tsx
-    ?? frontend/components/layout/JourneyGate.tsx
-    ?? frontend/data/instrumentUniverse.ts
-    ?? frontend/lib/reviewState.tsx
-    ?? runs/
-    ?? scripts/run_review_from_payload.py
-    ?? tests/test_frontend_review_bridge.py
+    ...... docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
+    ...... frontend/app/api/
+    ...... frontend/components/layout/JourneyAdvanceActions.tsx
+    ...... frontend/components/layout/JourneyGate.tsx
+    ...... frontend/data/instrumentUniverse.ts
+    ...... frontend/lib/reviewState.tsx
+    ...... runs/
+    ...... scripts/run_review_from_payload.py
+    ...... tests/test_frontend_review_bridge.py
 
     Note: `git status --short` also warned that `.cache/codex-pytest-temp/` could not
     be opened due to permission denial.
@@ -2023,15 +2023,15 @@ Pre-existing dirty files at Session 11 start:
     M frontend/components/portfolio/PortfolioInputTable.tsx
     M frontend/lib/journey.ts
     M frontend/lib/types.ts
-    ?? docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
-    ?? frontend/app/api/
-    ?? frontend/components/layout/JourneyAdvanceActions.tsx
-    ?? frontend/components/layout/JourneyGate.tsx
-    ?? frontend/data/instrumentUniverse.ts
-    ?? frontend/lib/reviewState.tsx
-    ?? runs/
-    ?? scripts/run_review_from_payload.py
-    ?? tests/test_frontend_review_bridge.py
+    ...... docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
+    ...... frontend/app/api/
+    ...... frontend/components/layout/JourneyAdvanceActions.tsx
+    ...... frontend/components/layout/JourneyGate.tsx
+    ...... frontend/data/instrumentUniverse.ts
+    ...... frontend/lib/reviewState.tsx
+    ...... runs/
+    ...... scripts/run_review_from_payload.py
+    ...... tests/test_frontend_review_bridge.py
 
     Note: `git status --short` also warned that `.cache/codex-pytest-temp/` could not
     be opened due to permission denial.
@@ -2178,18 +2178,18 @@ Pre-existing dirty files at Session 12 start:
     M "minimum cvar constrained portfolio/baseline_weights_metadata.json"
     M "minimum cvar constrained portfolio/summary.json"
     M "minimum cvar constrained portfolio/weights.json"
-    ?? docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
-    ?? frontend/app/api/
-    ?? frontend/components/layout/JourneyAdvanceActions.tsx
-    ?? frontend/components/layout/JourneyGate.tsx
-    ?? frontend/data/instrumentUniverse.ts
-    ?? frontend/lib/reviewState.tsx
-    ?? "minimum cvar constrained portfolio/builder_runtime_timing.json"
-    ?? "minimum cvar constrained portfolio/candidate_manifest.json"
-    ?? "minimum cvar constrained portfolio/candidate_weights_build.json"
-    ?? runs/
-    ?? scripts/run_review_from_payload.py
-    ?? tests/test_frontend_review_bridge.py
+    ...... docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
+    ...... frontend/app/api/
+    ...... frontend/components/layout/JourneyAdvanceActions.tsx
+    ...... frontend/components/layout/JourneyGate.tsx
+    ...... frontend/data/instrumentUniverse.ts
+    ...... frontend/lib/reviewState.tsx
+    ...... "minimum cvar constrained portfolio/builder_runtime_timing.json"
+    ...... "minimum cvar constrained portfolio/candidate_manifest.json"
+    ...... "minimum cvar constrained portfolio/candidate_weights_build.json"
+    ...... runs/
+    ...... scripts/run_review_from_payload.py
+    ...... tests/test_frontend_review_bridge.py
 
     Note: `git status --short` also warned that `.cache/codex-pytest-temp/` could not
     be opened due to permission denial.
@@ -2277,18 +2277,18 @@ Pre-existing dirty files at Session 13 start:
     M "minimum cvar constrained portfolio/baseline_weights_metadata.json"
     M "minimum cvar constrained portfolio/summary.json"
     M "minimum cvar constrained portfolio/weights.json"
-    ?? docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
-    ?? frontend/app/api/
-    ?? frontend/components/layout/JourneyAdvanceActions.tsx
-    ?? frontend/components/layout/JourneyGate.tsx
-    ?? frontend/data/instrumentUniverse.ts
-    ?? frontend/lib/reviewState.tsx
-    ?? "minimum cvar constrained portfolio/builder_runtime_timing.json"
-    ?? "minimum cvar constrained portfolio/candidate_manifest.json"
-    ?? "minimum cvar constrained portfolio/candidate_weights_build.json"
-    ?? runs/
-    ?? scripts/run_review_from_payload.py
-    ?? tests/test_frontend_review_bridge.py
+    ...... docs/exec_plans/2026-06-08_frontend_backend_vertical_integration_plan.md
+    ...... frontend/app/api/
+    ...... frontend/components/layout/JourneyAdvanceActions.tsx
+    ...... frontend/components/layout/JourneyGate.tsx
+    ...... frontend/data/instrumentUniverse.ts
+    ...... frontend/lib/reviewState.tsx
+    ...... "minimum cvar constrained portfolio/builder_runtime_timing.json"
+    ...... "minimum cvar constrained portfolio/candidate_manifest.json"
+    ...... "minimum cvar constrained portfolio/candidate_weights_build.json"
+    ...... runs/
+    ...... scripts/run_review_from_payload.py
+    ...... tests/test_frontend_review_bridge.py
 
     Note: `git status --short` also warned that `.cache/codex-pytest-temp/` could not
     be opened due to permission denial.

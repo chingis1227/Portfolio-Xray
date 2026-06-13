@@ -12,9 +12,9 @@ It does not override canonical specs or code.
 
 | Question | Answer |
 | --- | --- |
-| Are Blocks 1–5 a reliable MVP core? | **Yes** for portfolio-first **core** review with explicit `analysis_subject`, subject-first artifacts, offline smoke, and Phase 16 trust fixes. |
-| Machine-trustworthy full optimizer menu? | **Not yet** — on-disk comparison shows most optimizer rows `degraded`; only `minimum_variance` was `fair_comparison_ready` at audit time. |
-| Safe to wire Blocks 6–10 now? | **Conditional** — proceed on **core menu** with guards; do not rank `degraded` optimizers or treat core (6) as full (16) without reading `candidate_menu`. |
+| Are Blocks 1–5 a reliable MVP core... | **Yes** for portfolio-first **core** review with explicit `analysis_subject`, subject-first artifacts, offline smoke, and Phase 16 trust fixes. |
+| Machine-trustworthy full optimizer menu... | **Not yet** — on-disk comparison shows most optimizer rows `degraded`; only `minimum_variance` was `fair_comparison_ready` at audit time. |
+| Safe to wire Blocks 6–10 now... | **Conditional** — proceed on **core menu** with guards; do not rank `degraded` optimizers or treat core (6) as full (16) without reading `candidate_menu`. |
 
 **Operating conditions (mandatory):**
 

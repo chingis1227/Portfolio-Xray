@@ -1,4 +1,4 @@
-﻿type ReportSection = {
+type ReportSection = {
   title: string;
   body: string;
 };

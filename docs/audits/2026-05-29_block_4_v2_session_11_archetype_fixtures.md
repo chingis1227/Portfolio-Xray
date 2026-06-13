@@ -10,9 +10,9 @@ Prerequisite: [Session 10 diagnosis wiring](2026-05-29_block_4_v2_session_10_dia
 
 | Question | Verdict |
 | --- | --- |
-| Ten portfolio archetype fixtures? | **Yes** — `tests/block_4_fixtures.py` + `tests/fixtures/block_4/archetype_manifest.json` |
-| End-to-end `build_block_4_diagnosis()` per archetype? | **Yes** — `tests/test_block_4_v2_archetype_fixtures.py` (**15 passed**) |
-| v2 product + handoff contracts on every archetype? | **Yes** |
+| Ten portfolio archetype fixtures... | **Yes** — `tests/block_4_fixtures.py` + `tests/fixtures/block_4/archetype_manifest.json` |
+| End-to-end `build_block_4_diagnosis()` per archetype... | **Yes** — `tests/test_block_4_v2_archetype_fixtures.py` (**15 passed**) |
+| v2 product + handoff contracts on every archetype... | **Yes** |
 | Session 11 gate | **PASS** (10/10 archetypes; 100% fixture assertions) |
 
 **Session 11 verdict:** **PASS**

@@ -1,4 +1,4 @@
-﻿import { StatusBadge } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 const methodLabels: Record<string, string> = {
   equal_weight_reference_test: "Equal Weight diagnostic benchmark"

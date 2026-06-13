@@ -15,7 +15,7 @@ This document follows [PLANS.md](../../PLANS.md) from the repository root.
 
 ## Purpose / Big Picture
 
-After this migration, a portfolio-first operator running `python run_portfolio_review.py` on the current [config.yml](../../config.yml) reads `{output_dir_final}/analysis_subject/stress_report.json` and gets a **stable product-facing Block 3.3** that answers: *for each key market risk type, did assets that helped actually offset losses from assets that hurt in the mapped stress scenario, where is protection weak, and what is the main hedge gap?* — without pre-labeling holdings as hedge assets, without re-running the stress engine, and without client mandate pass/fail in Core MVP diagnostic mode.
+After this migration, a portfolio-first operator running `python run_portfolio_review.py` on the current [config.yml](../../config.yml) reads `{output_dir_final}/analysis_subject/stress_report.json` and gets a **stable product-facing Block 3.3** that answers: *for each key market risk type, did assets that helped actually offset losses from assets that hurt in the mapped stress scenario, where is protection weak, and what is the main hedge gap...* — without pre-labeling holdings as hedge assets, without re-running the stress engine, and without client mandate pass/fail in Core MVP diagnostic mode.
 
 Block 3.3 is delivered as **`hedge_gap_analysis_v1`** on `stress_report.json` (Stress Test Lab boundary — **not** `portfolio_xray.json`). It consumes **already calculated** stress evidence from Block 3.1 (`scenario_results[]`) and Block 3.2 (`stress_results_v1`). Legacy **`hedge_gap_analysis`** (`stress_scenario_hedge_evidence_v2`, taxonomy hedge labels) remains for backward compatibility; Core MVP operators read **`hedge_gap_analysis_v1`**.
 
@@ -115,7 +115,7 @@ Registry constant (planned): `BLOCK_3_3_RISK_SCENARIO_MAP` in `src/hedge_gap_ana
 
 Present on every `run_stress` output ([src/stress.py](../../src/stress.py) ~L1768, ~L1819):
 
-| Legacy field | v1 equivalent? | Notes |
+| Legacy field | v1 equivalent... | Notes |
 | --- | --- | --- |
 | `method` | `version` + `diagnosis_method` | v2 vs v1 |
 | `hedge_label_risk_roles`, `hedge_assets_considered` | **No** | Taxonomy-only |

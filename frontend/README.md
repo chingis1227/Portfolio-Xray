@@ -22,12 +22,14 @@ product or trading system.
 - The flow is one selected test path at a time; it is not a multi-candidate optimizer arena.
 - A candidate is a diagnostic test, not a recommendation. Decision Verdict is non-binding
   decision support, and no-trade / evidence-insufficient are valid outcomes.
-- Raw Stitch HTML/CSS/JS is not integrated.
-- Imported Stitch screenshots and design tokens are visual references only.
+- Old imported design artifacts are not integrated and are not current design authority.
+- Current design and route structure are documented in `../DESIGN.md` and `../docs/design/current_website_structure.md`.
 
 ## Architecture
 
-- `app/` contains seven route screens plus root redirect.
+- `app/` contains the public landing page, the required email sign-in step, the short onboarding flow, the platform route screens,
+  and API route compatibility handlers. The root route now renders the public landing page instead
+  of redirecting directly into an internal product step.
 - `app/api/portfolio/*` routes are compatibility proxies over the local FastAPI v1 API. They keep
   the current screen-facing response shape while FastAPI runs the Python review stages and enforces
   typed request/response contracts. The proxy layer may read same-run artifacts for lineage and
@@ -66,22 +68,32 @@ product or trading system.
 
 ## Portfolio Input validation
 
+- The normal web journey starts with the public landing page, requires email sign-in, and then runs
+  a short one-question-at-a-time onboarding flow. Onboarding saves the same non-binding Client Fit
+  profile that the manual Client Profile editor saves. Portfolio Input and Run diagnosis stay gated
+  until that valid Client Fit profile exists.
+- The Portfolio Input `Adjust intake` control edits the saved Client Fit target rows in a modal. It
+  does not send the user back through the five-question onboarding flow.
 - Investor currency is required and currently limited in the UI to USD or EUR.
 - Every visible portfolio row must use a selected instrument from the local instrument list and a weight greater than 0.
 - At least 2 valid rows are required before diagnosis.
 - Portfolio weights must add up to 100%, with a 0.01 tolerance for rounding.
 - Weights are never auto-normalized or silently corrected; the diagnosis CTA remains disabled until blocking validation passes.
 - The Next.js compatibility route repeats lightweight validation before calling FastAPI.
+- The backend bridge retries the same diagnosis command once when the first attempt returns a
+  transient empty market-data panel on a cold cache. The retry does not change formulas or accept
+  partial results.
 
 
 ## Review state and storage
 
-- The real flow is Portfolio Input -> Diagnosis -> Stress Test Lab -> Hypothesis / Builder prepare
-  and Candidate Generation -> Current vs Candidate -> Decision Verdict -> Report / grounded
+- The real user-facing flow is Landing -> required email sign-in -> Onboarding -> Portfolio Input ->
+  Diagnosis -> Stress Test Lab -> Client Fit
+  -> Hypothesis / Builder prepare and Candidate Generation -> Current vs Candidate -> Decision Verdict -> Report / grounded
   explanation preview. If comparison evidence is current but metrics are unavailable, the UI may still
   continue to Verdict so the system can show an evidence-insufficient decision-support outcome
   instead of silently blocking the journey.
-- The UI stores compact display state in `pmri.activeReview.v2`: `reviewId`, portfolio input, diagnosis/stress evidence/launchpad/builder summaries, selected card/candidate, and stage summaries. Core screens consume these display models, not raw backend artifact trees. Candidate generation is enabled only when the active Builder setup matches the currently selected Launchpad card and says generation is allowed.
+- The UI stores compact display state in `pmri.activeReview.v2`: the Client Fit profile, `reviewId`, portfolio input, diagnosis/stress/Client Fit evidence, launchpad/builder summaries, selected card/candidate, and stage summaries. Core screens consume these display models, not raw backend artifact trees. Candidate generation is enabled only when the active Builder setup matches the currently selected Launchpad card and says generation is allowed.
 - When Supabase is enabled and the user is signed in, the active review may also keep a compact
   link to the selected cloud portfolio so diagnosis-history rows can point back to the saved
   portfolio input without uploading generated evidence.
@@ -106,8 +118,7 @@ product or trading system.
 
 ## Run locally
 
-Supabase persistence is optional. With the default `.env.example` values, the app stays in local
-demo mode, does not ask for login, and stores the active compact review in browser `localStorage`.
+Supabase persistence is optional, but the canonical public product path still starts with email sign-in. With local or incomplete Supabase setup, the sign-in page exposes a localhost-only fallback button so the site can be tested without a working email code. The active compact review is stored in browser `localStorage`.
 To enable Supabase-backed auth for later cloud persistence sessions, set only public browser-safe
 values:
 
@@ -120,7 +131,8 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-public-publishable-key
 If the flag is not exactly `true`, or either public value is blank, the Supabase gate remains
 disabled and no Supabase browser client is created.
 
-When Supabase is enabled, the sidebar shows an Email OTP sign-in panel. Configure Supabase Auth
+Canonical public entry requires an email OTP or magic-link sign-in before onboarding when Supabase is available.
+The platform sidebar intentionally does not show auth or cloud-storage controls in the core decision flow. Configure Supabase Auth
 Email OTP in the Supabase dashboard and allow the local callback URL:
 
 ```text
@@ -131,10 +143,10 @@ The callback exchanges the public magic-link auth code for a browser session. Th
 accepts an email OTP code. No service-role key, secret key, database password, Supabase Storage,
 Realtime channel, or Edge Function is used by the frontend.
 
-Current Supabase-backed behavior:
+Current Supabase-backed behavior is kept as infrastructure and may be surfaced again in a dedicated account/workspace area:
 
-- signed-in users can save, list, load, update, and delete compact portfolio inputs from the
-  Portfolio Input screen;
+- signed-in users can save, list, load, update, and delete compact portfolio inputs through the
+  existing persistence layer when that UI is intentionally exposed;
 - successful local diagnosis automatically attempts a compact cloud upsert into `reviews` and a
   compact `diagnosis` row in `review_stage_summaries`;
 - later successful local stages can save compact `builder`, `candidate`, `comparison`, `verdict`,
@@ -145,7 +157,7 @@ Current Supabase-backed behavior:
   recover the current browser state from Supabase summaries; run-local recovery by `reviewId` on
   Portfolio Input remains the advanced fallback for local generated artifacts;
 - cloud failures stay non-blocking: the local browser journey and local diagnosis/stage completion
-  still succeed, while the sidebar shows a warning notice;
+  still succeed;
 - Supabase remains an app-data layer only. The frontend does **not** upload `runs/`,
   `Main portfolio/`, `cache/`, PDFs, generated candidate folders, full `portfolio_xray.json`,
   full `stress_report.json`, price history, parquet, CSV exports, or raw generated artifact bundles.
@@ -174,7 +186,8 @@ DOM fallbacks plus `qa-report.json` under `../output/playwright/`. If live marke
 unavailable, treat the failure as a data-provider blocker and inspect the report/logs before making
 frontend or product conclusions.
 
-Open `http://localhost:3000`. Override the FastAPI URL for the Next.js proxy with
+Open `http://localhost:3000` to start at the landing page. Click `Enter Platform`, sign in with email when auth is available, complete the short onboarding, and the app will open Portfolio Input with Client Fit context already saved. For local preview while email sign-in is unavailable, open `http://localhost:3000/onboarding/name?dev_bypass=1`; this is a development shortcut, not the canonical product path.
+Override the FastAPI URL for the Next.js proxy with
 `PMRI_FASTAPI_BASE_URL` when using a non-default host or port.
 
 Optional checks:
@@ -204,7 +217,8 @@ Use [../docs/demo/frontend_backend_vertical_runbook.md](../docs/demo/frontend_ba
 
 - commands for Python bridge tests and frontend typecheck/build;
 - how to start the Next.js frontend;
-- the manual Input -> Diagnosis -> Stress Test Lab -> Hypothesis / Builder prepare and Candidate Generation -> Comparison -> Verdict -> Report click path;
+- the public Landing -> required email sign-in -> Onboarding entry path before Portfolio Input, plus the local-only `dev_bypass` preview path;
+- the manual Portfolio Input -> Diagnosis -> Stress Test Lab -> Hypothesis / Builder prepare and Candidate Generation -> Comparison -> Verdict -> Report click path;
 - run directory strategy under `runs/frontend_review_*`;
 - stale artifact risks and recovery;
 - product language boundaries: candidate is a diagnostic test, Builder setup is not a rebalance instruction, and Verdict/Report are decision-support only.

@@ -24,7 +24,7 @@ It does not cover:
 
 ## Product boundary
 
-- The workflow answers: *given my current allocation and the policy target from this run, is a move materially worthwhile?*
+- The workflow answers: *given my current allocation and the policy target from this run, is a move materially worthwhile...*
 - It remains **non-executing**: no broker integration, no automatic weight writes.
 - **Policy** weights still come only from `run_optimization.py` and approved release paths ([portfolio_construction_policy.md](portfolio_construction_policy.md)).
 - **Current** weights are user-supplied context ([input_assumptions_spec.md](input_assumptions_spec.md)); they are not policy replacements.
@@ -46,7 +46,7 @@ Recorded defaults when the user continues the plan without overrides:
 
 1. **Primary workflow:** `optimize_from_universe` + user `current_weights` in config, then **policy path** (optimize + report on Main), then **current materialization** into a sidecar, then **`run_compare_variants.py`** for the full decision package.
 2. **Sidecar location:** `{output_dir_final}/current_portfolio/` (default `Main portfolio/current_portfolio/`). Policy artifacts stay at `{output_dir_final}/` root.
-3. **Single-config mode:** Users keep `analysis_mode: optimize_from_universe`; they do not switch the whole config to `analyze_current_weights` to answer "should I move to policy?" (that mode remains a **current-only diagnostic** path).
+3. **Single-config mode:** Users keep `analysis_mode: optimize_from_universe`; they do not switch the whole config to `analyze_current_weights` to answer "should I move to policy..." (that mode remains a **current-only diagnostic** path).
 4. **Status artifact:** `current_vs_policy_status.json` records workflow completeness and No-Trade actionability for reporting (see below).
 5. **Deferred alternatives:** two full Main runs with toggled `analysis_mode` on the same folder (artifact overwrite risk); UI-only workflow without CLI materialization.
 
@@ -97,7 +97,7 @@ Recorded defaults when the user continues the plan without overrides:
 
 **Comparison:** `current` available on Main; `policy` `unavailable` or `degraded` with `stale_policy_snapshot` if old policy snapshots remain.
 
-**Out of scope for primary No-Trade question:** This path does not define the combined "move to policy?" workflow. Document in user-facing text as **holdings diagnostic**, not policy comparison.
+**Out of scope for primary No-Trade question:** This path does not define the combined "move to policy..." workflow. Document in user-facing text as **holdings diagnostic**, not policy comparison.
 
 ## Sidecar artifact contract (`current_portfolio/`)
 

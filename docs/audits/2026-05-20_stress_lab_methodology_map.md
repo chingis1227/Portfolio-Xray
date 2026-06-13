@@ -30,7 +30,7 @@ Stress Test Lab is the **diagnostic stress layer** centered on `stress_report.js
 `{output_dir_final}/analysis_subject/` after `run_report.py --materialize-analysis-subject`.
 
 **Core question:** Where can the portfolio break, under which scenarios, why does it lose money, which
-assets pull it down, which protect it, where are hedge gaps, and how much can we trust the result?
+assets pull it down, which protect it, where are hedge gaps, and how much can we trust the result...
 
 **Maturity (2026-05-20, post Sessions 00–11):** audit-grade for methodology handoff. Scorecard,
 conclusions, hedge gap v2 (`by_risk_type[]`), crisis replay v2, historical methodology disclosure,
@@ -66,7 +66,7 @@ Orchestration: [run_report.py](../../run_report.py) stress block (~lines 620–1
 
 ### 3.1 Scenario Library
 
-**Question:** Which scenarios exist, with what inputs, shocks, and readiness metadata?
+**Question:** Which scenarios exist, with what inputs, shocks, and readiness metadata...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
@@ -84,7 +84,7 @@ Orchestration: [run_report.py](../../run_report.py) stress block (~lines 620–1
 
 ### 3.1.1 Historical Scenarios
 
-**Question:** How did the portfolio behave in past crises (realized)?
+**Question:** How did the portfolio behave in past crises (realized)...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
@@ -102,7 +102,7 @@ Orchestration: [run_report.py](../../run_report.py) stress block (~lines 620–1
 
 ### 3.1.2 Synthetic Scenarios
 
-**Question:** What happens under hypothetical factor shocks?
+**Question:** What happens under hypothetical factor shocks...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
@@ -121,7 +121,7 @@ Orchestration: [run_report.py](../../run_report.py) stress block (~lines 620–1
 
 ### 3.2 Stress Conclusions
 
-**Question:** Worst case, drivers, confidence, hedge status — without parsing all scenario rows?
+**Question:** Worst case, drivers, confidence, hedge status — without parsing all scenario rows...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
@@ -137,9 +137,9 @@ Orchestration: [run_report.py](../../run_report.py) stress block (~lines 620–1
 
 **Tests:** `tests/test_stress_scorecard_contract.py`, `tests/test_portfolio_commentary.py`.
 
-### 3.3 What Happens If? Simulator
+### 3.3 What Happens If... Simulator
 
-**Question:** Custom shock vectors with same math as built-in scenarios?
+**Question:** Custom shock vectors with same math as built-in scenarios...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
@@ -155,7 +155,7 @@ written by `run_stress`.
 
 ### 3.4 Crisis Replay
 
-**Question:** Month-by-month crisis path, not aggregate only?
+**Question:** Month-by-month crisis path, not aggregate only...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
@@ -172,7 +172,7 @@ written by `run_stress`.
 
 ### 3.5 Hedge Gap Analysis
 
-**Question:** Do hedge-labeled holdings fail to protect in stress?
+**Question:** Do hedge-labeled holdings fail to protect in stress...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
@@ -189,7 +189,7 @@ written by `run_stress`.
 
 ### 3.6 Current Portfolio Stress Scorecard
 
-**Question:** Unified machine-readable stress summary?
+**Question:** Unified machine-readable stress summary...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |

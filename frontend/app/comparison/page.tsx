@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
+import { ClientFitContextCard } from "@/components/client-fit/ClientFitContextCard";
 import { CandidateComparisonPanel } from "@/components/comparison/CandidateComparisonPanel";
 import { TradeoffSummary } from "@/components/comparison/TradeoffSummary";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -179,6 +180,7 @@ export default function ComparisonPage() {
     ? { ...comparison, metrics: displayableMetrics }
     : comparison;
   const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
+  const clientFitForStage = comparison?.clientFit ?? activeReview?.reviewSummary?.clientFit;
 
   useEffect(() => {
     setComparisonError(undefined);
@@ -246,7 +248,7 @@ export default function ComparisonPage() {
   return (
     <div>
         <PageHeader
-          kicker="Step 05 / Comparison"
+          kicker="Step 06 / Comparison"
           title="Current vs Candidate Comparison"
           description="This step compares the current portfolio with one generated diagnostic candidate. It does not make a final decision or create a rebalance instruction."
         >
@@ -348,6 +350,12 @@ export default function ComparisonPage() {
               costs={tradeoffDetail}
               evidenceQuality={validComparisonForDisplay.evidenceQuality}
               boundary={validComparisonForDisplay.candidateBoundary}
+            />
+            <ClientFitContextCard
+              clientFit={clientFitForStage}
+              title="Current vs candidate vs Client Fit"
+              description="This comparison can show whether the candidate improves profile-fit evidence, but it still does not decide the portfolio action."
+              structuralIssueNote="A green Client Fit result is not enough to ignore a structural diagnosis issue; compare the candidate against both diagnosis evidence and profile targets."
             />
             <CandidateComparisonPanel {...validComparisonForDisplay} />
             <section className="grid gap-4 lg:grid-cols-3">

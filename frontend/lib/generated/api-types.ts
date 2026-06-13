@@ -96,7 +96,40 @@ export interface Components {
       [key: string]: number;
     } | null;
     };
+    "ClientFitDisplaySummary": {
+      decision_boundary?: string;
+      main_explanation?: string | null;
+      next_best_test?: string | null;
+      profile_label?: string | null;
+      source_quality_label?: string | null;
+      status_label?: string;
+      status_tone?: "green" | "amber" | "red";
+      target_rows?: Array<Components["schemas"]["ClientFitTargetDisplayRow"]>;
+    };
+    "ClientFitInput": {
+      horizon_years?: number | null;
+      preset_id?: "ultra_conservative" | "conservative" | "balanced" | "growth" | "aggressive" | null;
+      source: "questionnaire" | "preset_override" | "manual_override" | "imported" | "missing";
+      source_quality: "high" | "medium" | "low" | "missing";
+      source_quality_reason?: string | null;
+      target_max_drawdown_pct?: number | null;
+      target_return_range?: Components["schemas"]["ClientFitRangeInput"] | null;
+      target_vol_range?: Components["schemas"]["ClientFitRangeInput"] | null;
+    };
+    "ClientFitRangeInput": {
+      max: number;
+      min: number;
+    };
+    "ClientFitTargetDisplayRow": {
+      dimension_label: string;
+      explanation?: string | null;
+      portfolio_value_label?: string | null;
+      status_label: string;
+      status_tone: "green" | "amber" | "red";
+      target_or_limit_label?: string | null;
+    };
     "ComparisonData": {
+      client_fit?: Components["schemas"]["ClientFitDisplaySummary"];
       comparison?: Components["schemas"]["ComparisonSummary"];
       evidence_chain_context?: Components["schemas"]["DownstreamEvidenceChainContext"];
       next_allowed_actions?: Array<"prepare_builder" | "recover_review" | "resolve_data_quality" | "generate_candidate" | "select_another_card" | "monitor" | "run_comparison" | "generate_verdict" | "generate_report" | "test_another_hypothesis" | "rerun_comparison" | "rerun_verdict">;
@@ -133,6 +166,7 @@ export interface Components {
       sample_mode?: boolean;
     };
     "CreateReviewRequest": {
+      client_fit?: Components["schemas"]["ClientFitInput"] | null;
       options?: Components["schemas"]["CreateReviewOptions"];
       portfolio: Components["schemas"]["PortfolioInput"];
     };
@@ -274,6 +308,7 @@ export interface Components {
       investor_currency?: "USD" | "EUR";
     };
     "ReportData": {
+      client_fit?: Components["schemas"]["ClientFitDisplaySummary"];
       evidence_chain_context?: Components["schemas"]["DownstreamEvidenceChainContext"];
       grounding?: Components["schemas"]["ReportGrounding"];
       llm_generated?: false;
@@ -308,6 +343,7 @@ export interface Components {
     };
     "ReviewCreatedData": {
       artifact_refs?: Array<Components["schemas"]["ArtifactRef"]>;
+      client_fit?: Components["schemas"]["ClientFitDisplaySummary"];
       diagnosis?: Components["schemas"]["DiagnosisSummary"];
       launchpad?: Array<Components["schemas"]["LaunchpadCardSummary"]>;
       next_allowed_actions?: Array<"prepare_builder" | "recover_review" | "resolve_data_quality" | "generate_candidate" | "select_another_card" | "monitor" | "run_comparison" | "generate_verdict" | "generate_report" | "test_another_hypothesis" | "rerun_comparison" | "rerun_verdict">;
@@ -315,6 +351,7 @@ export interface Components {
     };
     "ReviewRecoveryData": {
       artifact_refs?: Array<Components["schemas"]["ArtifactRef"]>;
+      client_fit?: Components["schemas"]["ClientFitDisplaySummary"];
       diagnosis?: Components["schemas"]["DiagnosisSummary"];
       downstream_artifacts_restored_as_active?: boolean;
       launchpad?: Array<Components["schemas"]["LaunchpadCardSummary"]>;
@@ -357,6 +394,7 @@ export interface Components {
       type: string;
     };
     "VerdictData": {
+      client_fit?: Components["schemas"]["ClientFitDisplaySummary"];
       evidence_chain_context?: Components["schemas"]["DownstreamEvidenceChainContext"];
       next_allowed_actions?: Array<"prepare_builder" | "recover_review" | "resolve_data_quality" | "generate_candidate" | "select_another_card" | "monitor" | "run_comparison" | "generate_verdict" | "generate_report" | "test_another_hypothesis" | "rerun_comparison" | "rerun_verdict">;
       verdict?: Components["schemas"]["VerdictSummary"];
@@ -402,6 +440,10 @@ export type CandidateData = Components["schemas"]["CandidateData"];
 export type CandidateIdRequest = Components["schemas"]["CandidateIdRequest"];
 export type CandidateResponse = Components["schemas"]["CandidateResponse"];
 export type CandidateSummary = Components["schemas"]["CandidateSummary"];
+export type ClientFitDisplaySummary = Components["schemas"]["ClientFitDisplaySummary"];
+export type ClientFitInput = Components["schemas"]["ClientFitInput"];
+export type ClientFitRangeInput = Components["schemas"]["ClientFitRangeInput"];
+export type ClientFitTargetDisplayRow = Components["schemas"]["ClientFitTargetDisplayRow"];
 export type ComparisonData = Components["schemas"]["ComparisonData"];
 export type ComparisonIdRequest = Components["schemas"]["ComparisonIdRequest"];
 export type ComparisonResponse = Components["schemas"]["ComparisonResponse"];

@@ -1,8 +1,8 @@
 """
-Отдельное сравнение: выборочная Sigma vs робастная (MinCovDet / MCD) на config.yml.
+Standalone comparison: sample Sigma vs robust Sigma (MinCovDet / MCD) on config.yml.
 
-Не трогает production run_optimization и portfolio_weights.
-Запуск: python compare_robust_cov_main.py
+Does not modify production run_optimization or portfolio_weights.
+Run: python compare_robust_cov_main.py
         python compare_robust_cov_main.py --no-cache
 """
 from __future__ import annotations
@@ -42,7 +42,7 @@ def main() -> None:
         cfg_path = __import__("pathlib").Path(args.config).resolve() if args.config else None
         cfg = load_validated_config(cfg_path)
     except ConfigValidationError as e:
-        logger.error("Конфиг: %s", e)
+        logger.error("Config: %s", e)
         raise SystemExit(1)
 
     ns = SimpleNamespace(no_cache=args.no_cache)
@@ -59,7 +59,7 @@ def main() -> None:
 
     for label, r in [("sample", r_sample), ("MCD", r_robust)]:
         if r.get("error"):
-            print(f"[{label}] ОШИБКА: {r['error']}")
+            print(f"[{label}] ERROR: {r['error']}")
             raise SystemExit(1)
 
     frob = _frobenius(r_sample["cov_optim"], r_robust["cov_optim"])
@@ -68,11 +68,11 @@ def main() -> None:
     l1 = sum(abs(w0.get(t, 0.0) - w1.get(t, 0.0)) for t in tickers)
     max_abs = max(abs(w0.get(t, 0.0) - w1.get(t, 0.0)) for t in tickers)
 
-    print("=== Sample vs robust (MinCovDet) — оптимизационная Sigma ===")
-    print(f"analysis_end={analysis_end_str}, окно={window_months} мес., dual_cov={r_sample['dual_enabled']}")
+    print("=== Sample vs robust (MinCovDet) - optimization Sigma ===")
+    print(f"analysis_end={analysis_end_str}, window={window_months} months, dual_cov={r_sample['dual_enabled']}")
     print(f"Frobenius ||Sigma_sample - Sigma_MCD|| = {frob:.6e}")
     print()
-    print("=== Веса после RC post-process ===")
+    print("=== Weights after RC post-process ===")
     print(f"L1 sum |dw| = {l1:.6f}, max |dw_i| = {max_abs:.6f}")
     print()
     hdr = f"{'ticker':<8} {'w_sample':>10} {'w_MCD':>10} {'diff':>10}"
@@ -84,12 +84,12 @@ def main() -> None:
             continue
         print(f"{t:<8} {a:10.4f} {b:10.4f} {b - a:10.4f}")
     print()
-    print("=== Вола (месячная cov -> год) ===")
+    print("=== Volatility (monthly cov -> annual) ===")
     print(f"Sigma_opt sample: {r_sample['vol_on_optim_cov']:.4f}  |  Sigma_opt MCD: {r_robust['vol_on_optim_cov']:.4f}")
-    print(f"Sigma_hist sample веса: {r_sample['vol_on_sample_cov']:.4f}  |  Sigma_hist MCD веса: {r_robust['vol_on_sample_cov']:.4f}")
+    print(f"Sigma_hist sample weights: {r_sample['vol_on_sample_cov']:.4f}  |  Sigma_hist MCD weights: {r_robust['vol_on_sample_cov']:.4f}")
     print()
-    print("RC по активам Sigma_opt: sample ", r_sample["rc_asset_on_optim_cov"])
-    print("RC по активам Sigma_opt: MCD    ", r_robust["rc_asset_on_optim_cov"])
+    print("RC by asset Sigma_opt: sample ", r_sample["rc_asset_on_optim_cov"])
+    print("RC by asset Sigma_opt: MCD    ", r_robust["rc_asset_on_optim_cov"])
     print()
     print("status sample:", r_sample["status"][:220])
     print("status MCD:   ", r_robust["status"][:220])

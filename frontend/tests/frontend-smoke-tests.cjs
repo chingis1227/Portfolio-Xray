@@ -103,12 +103,19 @@ test("frontend static journey pages respond on a local Next server", { timeout: 
   child.stderr.on("data", (chunk) => outputLines.push(chunk.toString()));
 
   try {
-    await waitForServer(`${baseUrl}/portfolio-input`, child, outputLines);
+    await waitForServer(`${baseUrl}/`, child, outputLines);
 
     const pages = [
+      ["/", /X-Ray your portfolio before you change it|Enter Platform/i],
+      ["/onboarding/sign-in", /Sign in before opening the diagnostic room|Enter your email/i],
+      ["/onboarding/name", /What should we call you|Continue/i],
+      ["/onboarding/investor-type", /Five questions before we open the portfolio screen|What your answers do/i],
+      ["/onboarding/loading", /Setting up your experience|Opening the decision room/i],
+      ["/client-profile", /Manual diagnostic context|Client Fit profile editor/i],
       ["/portfolio-input", /Portfolio Input|Run diagnosis/i],
       ["/diagnosis", /Diagnosis|Portfolio/i],
       ["/evidence", /Stress Test Lab|X-Ray/i],
+      ["/client-fit", /Client Fit|provided profile/i],
       ["/hypothesis", /Hypothesis|Builder/i],
       ["/comparison", /Comparison|Current/i],
       ["/verdict", /Verdict|Decision/i],

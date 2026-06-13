@@ -10,11 +10,11 @@ Prerequisite: [Session 06 prioritization](2026-05-29_block_4_v2_session_06_probl
 
 | Question | Verdict |
 | --- | --- |
-| `map_action_paths()` implemented? | **Yes** — `src/block_4/action_path_mapping.py` |
-| Per-problem action fields populated? | **Yes** — `suggested_action_path_id`, `secondary_action_path_ids`, methods, paths |
-| Top-level `suggested_actions[]` deduped? | **Yes** — primary first, then secondary primaries, then secondary paths |
-| ProblemRow narrative stubs? | **Yes** — `short_diagnosis_en`, `why_it_matters_en`, optional guardrails |
-| Session 07 tests? | **Yes** — `tests/test_block_4_action_path_mapping.py` (**6 passed**) |
+| `map_action_paths()` implemented... | **Yes** — `src/block_4/action_path_mapping.py` |
+| Per-problem action fields populated... | **Yes** — `suggested_action_path_id`, `secondary_action_path_ids`, methods, paths |
+| Top-level `suggested_actions[]` deduped... | **Yes** — primary first, then secondary primaries, then secondary paths |
+| ProblemRow narrative stubs... | **Yes** — `short_diagnosis_en`, `why_it_matters_en`, optional guardrails |
+| Session 07 tests... | **Yes** — `tests/test_block_4_action_path_mapping.py` (**6 passed**) |
 
 **Session 07 verdict:** **PASS**
 

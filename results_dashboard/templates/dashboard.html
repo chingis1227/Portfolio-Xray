@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Результаты оптимизации — дашборд</title>
+  <title>Optimization Results Dashboard</title>
   <link rel="stylesheet" href="{{ design_css_href }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}" />
 </head>
@@ -11,69 +11,69 @@
   <div class="dash-page">
     {% if not vm.has_data %}
     <header class="dash-top" style="border: none; padding: 0; margin-bottom: 1rem">
-      <h1>Ключевые результаты</h1>
+      <h1>Key Results</h1>
     </header>
     <div class="dash-error">
-      <p><strong>Нет данных.</strong> {{ vm.error or "См. путь в конфиге output_dir_final." }}</p>
-      <p class="muted" style="margin-top: 8px">Корень: {{ vm.project_root }}</p>
+      <p><strong>No data.</strong> {{ vm.error or "See the output_dir_final path in config." }}</p>
+      <p class="muted" style="margin-top: 8px">Root: {{ vm.project_root }}</p>
     </div>
     {% else %}
     <header class="dash-top">
       <div>
-        <h1>Ключевые результаты</h1>
+        <h1>Key Results</h1>
         <p class="dash-meta">
-          Папка: <code style="font-size:0.88em">{{ vm.output_dir }}</code>
+          Folder: <code style="font-size:0.88em">{{ vm.output_dir }}</code>
           · analysis_end: {{ vm.analysis_end }}
-          {% if vm.client_profile %}· профиль: {{ vm.client_profile }}{% endif %}
+          {% if vm.client_profile %}· profile: {{ vm.client_profile }}{% endif %}
         </p>
       </div>
       <div class="dash-actions">
         <span class="dash-status-pill kind-{{ vm.status_kind }}">{{ vm.status }}</span>
         {% if vm.report_url %}
-        <a class="btn btn-outlined" href="{{ vm.report_url }}">HTML-отчёт (snapshot)</a>
+        <a class="btn btn-outlined" href="{{ vm.report_url }}">HTML report (snapshot)</a>
         {% endif %}
       </div>
     </header>
 
     <div class="dash-kpi-grid">
       <div class="dash-kpi">
-        <h3>MaxDD (мандат)</h3>
+        <h3>MaxDD (mandate)</h3>
         <div class="val">
           {% if vm.mandate.get("pass") %}PASS{% else %}FAIL{% endif %}
         </div>
-        <p class="sub">Факт: {{ vm.mandate_max_dd_pct }} / лимит: {{ vm.mandate_dd_limit_pct }}</p>
+        <p class="sub">Actual: {{ vm.mandate_max_dd_pct }} / limit: {{ vm.mandate_dd_limit_pct }}</p>
       </div>
       <div class="dash-kpi">
         <h3>Stress</h3>
         <div class="val">{{ vm.stress.get("status", "—") }}</div>
         <p class="sub">
-          {{ vm.stress.get("fail_reason_code", "—") }} · худший: {{ vm.stress_worst_pct }}
+          {{ vm.stress.get("fail_reason_code", "—") }} · worst: {{ vm.stress_worst_pct }}
         </p>
       </div>
       <div class="dash-kpi">
         <h3>CAGR (10Y)</h3>
         <div class="val">{{ vm.metrics_cagr }}</div>
-        <p class="sub">по снимку snapshot_10y</p>
+        <p class="sub">from snapshot_10y</p>
       </div>
       <div class="dash-kpi">
         <h3>Vol (10Y)</h3>
         <div class="val">{{ vm.metrics_vol }}</div>
-        <p class="sub">годовая, по снимку</p>
+        <p class="sub">annualized, from snapshot</p>
       </div>
       <div class="dash-kpi">
         <h3>Sharpe (10Y)</h3>
         <div class="val">{{ vm.metrics_sharpe }}</div>
-        <p class="sub">по снимку</p>
+        <p class="sub">from snapshot</p>
       </div>
       <div class="dash-kpi">
-        <h3>MaxDD (окно 10Y)</h3>
+        <h3>MaxDD (10Y window)</h3>
         <div class="val">{{ vm.metrics_mdd }}</div>
-        <p class="sub">модельные метрики</p>
+        <p class="sub">model metrics</p>
       </div>
     </div>
 
     <section class="dash-section" aria-labelledby="h-weights">
-      <h2 id="h-weights">Веса (топ-12)</h2>
+      <h2 id="h-weights">Weights (top 12)</h2>
       <div class="dash-weights">
         {% for t, w in vm.top_weights %}
         <div class="dash-wrow">
@@ -88,13 +88,13 @@
     </section>
 
     <section class="dash-section" aria-labelledby="h-rca-top">
-      <h2 id="h-rca-top">Вклад в риск по активам (топ из snapshot_10y)</h2>
+      <h2 id="h-rca-top">Asset risk contribution (top rows from snapshot_10y)</h2>
       <div class="dash-table-wrap">
         <table class="dash-table">
           <thead>
             <tr>
-              <th>Тикер</th>
-              <th class="num">RC (доля дисперсии)</th>
+              <th>Ticker</th>
+              <th class="num">RC (variance share)</th>
             </tr>
           </thead>
           <tbody>
@@ -107,12 +107,12 @@
           </tbody>
         </table>
       </div>
-      <p class="muted" style="margin-top: 10px">RC_vol — вклад инструмента в дисперсию портфеля на окне 10Y; см. metrics_specification.</p>
+      <p class="muted" style="margin-top: 10px">RC_vol is the instrument contribution to portfolio variance over the 10Y window; see metrics_specification.</p>
     </section>
 
     {% if vm.violation_lines %}
     <section class="dash-section" aria-labelledby="h-vi">
-      <h2 id="h-vi">Нарушения / замечания</h2>
+      <h2 id="h-vi">Violations / notes</h2>
       <ul class="dash-vlist">
         {% for line in vm.violation_lines %}
         <li>{{ line }}</li>
@@ -123,12 +123,12 @@
 
     {% if vm.rc_breaches %}
     <section class="dash-section" aria-labelledby="h-rca">
-      <h2 id="h-rca">RC выше per-asset cap (фрагмент)</h2>
+      <h2 id="h-rca">RC above per-asset cap (excerpt)</h2>
       <div class="dash-table-wrap">
         <table class="dash-table">
           <thead>
             <tr>
-              <th>Тикер</th>
+              <th>Ticker</th>
               <th class="num">RC %</th>
               <th class="num">Cap %</th>
             </tr>
@@ -148,8 +148,8 @@
     {% endif %}
 
     <p class="muted" style="margin-top: var(--space-32)">
-      Источник: <code>run_result.json</code>, <code>snapshot_10y.json</code> в <code>output_dir_final</code>.
-      См. DESIGN.md. Данные read-only; для обновления перезапустите прогон отчёта/оптимизации.
+      Source: <code>enn_result.json</code>, <code>snapshot_10y.json</code> in <code>output_dir_final</code>.
+      See DESIGN.md. Data is read-only; rerun the report/optimization to refresh it.
     </p>
     {% endif %}
   </div>

@@ -26,6 +26,7 @@ STEP_MONITOR = "monitor_quarterly"
 STEP_RERUN = "rerun_diagnostics"
 STEP_RESOLVE_DATA = "resolve_data"
 STEP_COMPARE_REFERENCE = "compare_reference_benchmarks"
+STEP_REVIEW_OBJECTIVES = "review_client_objectives"
 
 _EVIDENCE_INSUFFICIENT_IDS = frozenset(
     {
@@ -67,6 +68,8 @@ def evaluate_no_trade_gate(
 
     if primary_id == "evidence_insufficient_data_quality":
         return _gate_data_quality(evidence)
+    if primary_id == "goal_risk_conflict":
+        return _gate_goal_risk_conflict(mapping.primary_problem)
     if primary_id == "mixed_evidence_no_action":
         return _gate_mixed_evidence(scoring, prioritization)
     if primary_id == "current_portfolio_acceptable":
@@ -212,6 +215,14 @@ def gate_from_primary_problem_id(primary_problem_id: str) -> NoTradeGateResult:
             recommended_next_step=STEP_COMPARE_REFERENCE,
             launchpad_suppressed=True,
         )
+    if primary_problem_id == "goal_risk_conflict":
+        return NoTradeGateResult(
+            outcome=OUTCOME_DO_NOT_ACT,
+            headline_en="Review the stated objectives before candidate testing.",
+            reasons=("Client Fit found an internal goal-risk conflict.",),
+            recommended_next_step=STEP_REVIEW_OBJECTIVES,
+            launchpad_suppressed=True,
+        )
     if primary_problem_id == "current_portfolio_acceptable":
         return NoTradeGateResult(
             outcome=OUTCOME_MONITOR,
@@ -266,6 +277,23 @@ def _gate_mixed_evidence(
         headline_en="No immediate rebalance is justified; compare against simple reference benchmarks.",
         reasons=tuple(reasons),
         recommended_next_step=STEP_COMPARE_REFERENCE,
+        launchpad_suppressed=True,
+    )
+
+
+def _gate_goal_risk_conflict(primary: dict[str, Any]) -> NoTradeGateResult:
+    reasons = ["Client Fit found an internal goal-risk conflict"]
+    for ref in primary.get("evidence_refs") or []:
+        if isinstance(ref, dict) and ref.get("signal") == "goal_risk_conflict":
+            text = str(ref.get("interpretation_en") or "").strip()
+            if text:
+                reasons.append(text)
+                break
+    return NoTradeGateResult(
+        outcome=OUTCOME_DO_NOT_ACT,
+        headline_en="Review the stated objectives before candidate testing.",
+        reasons=tuple(dict.fromkeys(reasons)),
+        recommended_next_step=STEP_REVIEW_OBJECTIVES,
         launchpad_suppressed=True,
     )
 

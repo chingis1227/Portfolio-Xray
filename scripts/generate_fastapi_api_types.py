@@ -90,7 +90,7 @@ def _schema_to_ts(schema: dict[str, Any] | bool | None) -> str:
         additional = schema.get("additionalProperties", None)
         parts: list[str] = ["{"]
         for prop, prop_schema in sorted(properties.items()):
-            optional = "" if prop in required else "?"
+            optional = "" if prop in required else "..."
             parts.append(f"  {_prop_name(prop)}{optional}: {_schema_to_ts(prop_schema)};")
         if additional and additional is not False:
             parts.append(f"  [key: string]: {_schema_to_ts(additional if isinstance(additional, dict) else {})};")

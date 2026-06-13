@@ -4,7 +4,7 @@ This document is part of the active project documentation after the documentatio
 
 ## 1. Product Summary
 
-Portfolio MRI / Portfolio X-Ray is a portfolio diagnostics and investment decision-support product. The **canonical current product truth is вЂњР”РРђР“РќРћРЎРўРРљРђ 2вЂќ**.
+Portfolio MRI / Portfolio X-Ray is a portfolio diagnostics and investment decision-support product. The **canonical current product truth is “Diagnosis 2”**.
 
 The user does not start by choosing an optimizer. The user starts by submitting a current portfolio.
 The product diagnoses what is inside that portfolio, where risk is hidden, how it behaves under
@@ -34,7 +34,7 @@ hosted workspace behavior, polished export packaging, and advanced product modul
 scope. Current implementation status is owned by `SPEC.md`, `OUTPUTS.md`, `docs/specs/*.md`, and
 code.
 
-вЂњР”РРђР“РќРћРЎРўРРљРђ 2 РќРђ РџРћРўРћРњвЂќ is backlog / advanced / later. The following must not be described as the
+“Diagnosis 2 Later” is backlog / advanced / later. The following must not be described as the
 current Core MVP product flow even if code or generated artifacts exist: Portfolio Health Score,
 Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena,
 Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Model Risk Diagnostics, full Action
@@ -118,9 +118,10 @@ Target MVP inputs:
 - Investor currency.
 
 **Core MVP boundary:** client profile, mandate targets (return, vol, max drawdown), horizon,
-liquidity needs, suitability limits, and constraint comparison are **not** required and must not
-drive Block 1вЂ“3 product-facing conclusions. Those fields remain in config / Advanced settings for
-legacy optimization and future Client-Fit Check only.
+liquidity needs, suitability limits, and constraint comparison are **not** required by Blocks 1-3
+and must not drive their product-facing conclusions. The web journey now collects Client Fit before
+diagnosis and evaluates it after Stress Lab; legacy mandate fields remain in config / Advanced
+settings for legacy optimization and compatibility.
 
 System-level inputs and defaults:
 
@@ -164,12 +165,12 @@ Target sections:
 
 Questions answered:
 
-- What do I actually own?
-- What is the real economic exposure?
-- Which assets dominate risk?
-- Where does risk contribution differ from capital weight?
-- Are different holdings actually duplicating the same risk?
-- Is diversification real or only visual?
+- What do I actually own...
+- What is the real economic exposure...
+- Which assets dominate risk...
+- Where does risk contribution differ from capital weight...
+- Are different holdings actually duplicating the same risk...
+- Is diversification real or only visual...
 
 Product rule:
 
@@ -193,17 +194,17 @@ Target sections:
 
 Questions answered:
 
-- How does the portfolio behave in bad markets?
-- Which assets hurt most under stress?
-- Which assets help?
-- Where is the main hedge gap?
-- Which market risks require further testing through a candidate?
+- How does the portfolio behave in bad markets...
+- Which assets hurt most under stress...
+- Which assets help...
+- Where is the main hedge gap...
+- Which market risks require further testing through a candidate...
 
 Product rule:
 
 Stress Test Lab should show vulnerability and evidence quality. It should not fabricate historical
 evidence when data is insufficient. **Core MVP:** stress reports diagnostic facts only
-(`loss_gate_mode="diagnostic"`) вЂ” no client mandate pass/fail on scenario rows. Legacy mandate
+(`loss_gate_mode="diagnostic"`) — no client mandate pass/fail on scenario rows. Legacy mandate
 comparison (`loss_gate_mode="mandate"`, DIAG_* statuses) applies only to legacy/advanced report paths.
 
 #### 4.3.1 Scenario Library (Block 3.1)
@@ -211,14 +212,14 @@ comparison (`loss_gate_mode="mandate"`, DIAG_* statuses) applies only to legacy/
 Scenario Library is the unified set of test scenarios for portfolio stress evaluation. It includes
 historical and synthetic scenarios and allows consistent stress-testing conditions.
 
-**Historical scenarios (fixed):** `dotcom`, `2008`, `2020`, `2022`, `banking_2023` вЂ” real crisis
+**Historical scenarios (fixed):** `dotcom`, `2008`, `2020`, `2022`, `banking_2023` — real crisis
 periods; realized portfolio behavior where data supports it.
 
 **Synthetic scenarios (fixed):** `equity_shock`, `credit_shock`, `rates_shock`,
-`inflation_stagflation`, `liquidity_shock`, `usd_shock`, `commodity_shock`, `recession_severe` вЂ”
+`inflation_stagflation`, `liquidity_shock`, `usd_shock`, `commodity_shock`, `recession_severe` —
 predefined factor shocks.
 
-Canonical spec: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) В§3.1.
+Canonical spec: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) Section 3.1.
 Do not add or rename scenarios without spec and `DECISIONS.md`. Other Block 3 sections (stress
 results, hedge gap analysis, scorecard) are separate from 3.1.
 
@@ -240,14 +241,14 @@ Product boundary:
 - `stress_conclusions` remains a compatibility worst-case rollup for snapshot/comparison/commentary
   consumers and does not replace `stress_results_v1`.
 
-Canonical specs: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) В§3.2,
-[docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) В§12.1.
+Canonical specs: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) Section 3.2,
+[docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) Section 12.1.
 
 #### 4.3.4 Current Portfolio Stress Scorecard (Block 3.4)
 
 Block 3.4 is the product-facing **current-portfolio** stress scorecard on `stress_report.json`:
 `current_portfolio_stress_scorecard_v1` (ruleset `current_portfolio_stress_scorecard_rules_v1_1`).
-It summarizes Blocks 3.1вЂ“3.3 into executive stress diagnosis: worst synthetic/historical selectors,
+It summarizes Blocks 3.1–3.3 into executive stress diagnosis: worst synthetic/historical selectors,
 `stress_diagnosis` (headline, confidence, resilience lists), loss/risk summaries, factor drivers,
 `hedge_gap_summary`, optional pre-stress confirmation from Blocks 2.4/2.6, and compact downstream
 signals for Problem Classification, Candidate Comparison, and AI Commentary.
@@ -266,7 +267,7 @@ Hedge Gap Analysis is the product-facing Block 3.3 contract on `stress_report.js
 
 It answers, for each key market risk type mapped to a synthetic stress scenario: whether assets that
 helped offset losses from assets that hurt, where protection is weakest, and what the main hedge
-gap is вЂ” using signed per-asset scenario contributions only (no pre-labeling holdings as hedges).
+gap is — using signed per-asset scenario contributions only (no pre-labeling holdings as hedges).
 
 Product boundary:
 
@@ -276,13 +277,13 @@ Product boundary:
 - Eight product protection areas map 1:1 to eight synthetic scenarios (includes `recession_severe_protection`)
   from Block 3.3 v1 rows.
 - Core MVP diagnostic mode (`loss_gate_mode="diagnostic"`) reports offset facts and English
-  interpretation only вЂ” no client mandate pass/fail on Block 3.3 rows.
+  interpretation only — no client mandate pass/fail on Block 3.3 rows.
 - Legacy `hedge_gap_analysis` (`stress_scenario_hedge_evidence_v2`, taxonomy hedge labels) remains
   for backward compatibility; Core MVP operators read `hedge_gap_analysis_v1`.
 
-Canonical specs: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) В§3.3,
+Canonical specs: [docs/specs/stress_lab_layer_spec.md](docs/specs/stress_lab_layer_spec.md) Section 3.3,
 [docs/specs/hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md),
-[docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) В§12.2.2.
+[docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md) Section 12.2.2.
 
 ### 4.4 Problem Classification
 
@@ -440,12 +441,12 @@ Target comparison dimensions:
 
 Questions answered:
 
-- What improves?
-- What worsens?
-- Is the improvement material?
-- Is turnover justified?
-- Is the result robust enough to act on?
-- Does the candidate solve the diagnosed problem?
+- What improves...
+- What worsens...
+- Is the improvement material...
+- Is turnover justified...
+- Is the result robust enough to act on...
+- Does the candidate solve the diagnosed problem...
 
 Product rule:
 
@@ -591,7 +592,7 @@ These items are not Core MVP requirements. Do not describe them as implemented u
 - Full multi-candidate ranking / advanced research comparison.
 - Out-of-sample / walk-forward analysis.
 - Full Crisis Replay UI.
-- What Happens If? Simulator.
+- What Happens If... Simulator.
 - Portfolio Health Score / Robustness Scorecard as standalone/current primary product modules (not current Core MVP; advanced/backend/backlog only).
 - Assumption Sensitivity / Assumption Testing Mode.
 - Pareto Frontier / Dominance Check.
@@ -619,7 +620,7 @@ These items are not Core MVP requirements. Do not describe them as implemented u
   Examples: Equity Growth Portfolio, Balanced 60/40-like, Credit Carry Portfolio, Duration-heavy
   Defensive, Inflation-sensitive, Pseudo-diversified Portfolio. Legacy
   `sections.portfolio_archetype` may still be emitted on full X-Ray report builds for compatibility;
-  product-facing diagnosis uses Portfolio X-Ray Blocks 2.1вЂ“2.6 (including Weakness Map as Block 2.6).
+  product-facing diagnosis uses Portfolio X-Ray Blocks 2.1–2.6 (including Weakness Map as Block 2.6).
   Do not add `block_2_5_portfolio_archetype` or promote archetype in the product-bundle chain without
   explicit product migration.
 
@@ -750,16 +751,16 @@ The product should not:
 
 - Which implemented additive artifacts should be promoted into the first interactive product UI:
   Problem Classification, Candidate Launchpad, Alternatives Builder, Current-vs-Candidate, or
-  Decision Verdict?
+  Decision Verdict...
 - Should current Selection Engine schemas continue to be preserved and mapped to Decision Verdict
-  language, or should a new schema be introduced later through an explicit migration?
-- How many reasonable paths to test should be shown in MVP: 2 or 3?
-- Which candidate methods are available in core MVP vs full research mode?
-- What is the minimum evidence threshold for "no material rebalance recommended"?
+  language, or should a new schema be introduced later through an explicit migration...
+- How many reasonable paths to test should be shown in MVP: 2 or 3...
+- Which candidate methods are available in core MVP vs full research mode...
+- What is the minimum evidence threshold for "no material rebalance recommended"...
 - Resolved for current phase: AI Commentary remains **grounding-context only** (`ai_commentary_context.json`).
   Generated natural-language AI Commentary requires a separate future spec (`RM-ARCH-010` in
   [docs/ROADMAP.md](docs/ROADMAP.md)); do not implement or document LLM prose as shipped until approved.
-- Which monitoring signals belong in MVP vs later advisor workspace?
+- Which monitoring signals belong in MVP vs later advisor workspace...
 
 ## 13. Source-Of-Truth Relationship
 

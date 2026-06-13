@@ -56,7 +56,7 @@ Orchestration: [src/snapshot.py](../../src/snapshot.py) `_xray_summary_from_outp
 
 ### 2.1 Asset Allocation
 
-**Question:** What does the portfolio own, and where is capital concentrated?
+**Question:** What does the portfolio own, and where is capital concentrated...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
@@ -71,7 +71,7 @@ Orchestration: [src/snapshot.py](../../src/snapshot.py) `_xray_summary_from_outp
 
 ### 2.2 Portfolio Metrics / Risk Diagnostics
 
-**Question:** How has the portfolio behaved historically, and what risk did it take?
+**Question:** How has the portfolio behaved historically, and what risk did it take...
 
 | Metric | Computation owner | Frequency | Window | X-Ray exposure | Provenance |
 | --- | --- | --- | --- | --- | --- |
@@ -87,7 +87,7 @@ Orchestration: [src/snapshot.py](../../src/snapshot.py) `_xray_summary_from_outp
 
 ### 2.3 Factor Exposure / Factor Sensitivity
 
-**Question:** Which factors is the portfolio sensitive to?
+**Question:** Which factors is the portfolio sensitive to...
 
 | Evidence | Source | X-Ray field | Provenance |
 | --- | --- | --- | --- |
@@ -101,7 +101,7 @@ Orchestration: [src/snapshot.py](../../src/snapshot.py) `_xray_summary_from_outp
 
 ### 2.4 Hidden Exposure / Hidden Risk Detector
 
-**Question:** What risks are not obvious from headline allocation?
+**Question:** What risks are not obvious from headline allocation...
 
 Eleven categories in fixed order ([C] `HIDDEN_RISK_CATEGORY_ORDER`). Each emits
 `flagged` / `below_threshold` / `unavailable` with evidence, thresholds keys, section confidence
@@ -115,7 +115,7 @@ drift tests in `tests/test_portfolio_xray_threshold_registry.py` (Session 02 / `
 
 ### 2.5 Portfolio Archetype Classification
 
-**Question:** What kind of portfolio is this, with evidence and caveats?
+**Question:** What kind of portfolio is this, with evidence and caveats...
 
 Ten archetypes; rule-based scorecard; primary/secondary; `conflicting_signals` with weakness-map
 tensions ([C] **S** spec §2.5). Built **after** weakness map.
@@ -124,7 +124,7 @@ tensions ([C] **S** spec §2.5). Built **after** weakness map.
 
 ### 2.6 Risk Budget View
 
-**Question:** Which assets consume risk relative to capital weight?
+**Question:** Which assets consume risk relative to capital weight...
 
 | Field | Source | Provenance |
 | --- | --- | --- |
@@ -138,7 +138,7 @@ tensions ([C] **S** spec §2.5). Built **after** weakness map.
 
 ### 2.7 Portfolio Weakness Map
 
-**Question:** Under which scenarios/regimes is the portfolio vulnerable?
+**Question:** Under which scenarios/regimes is the portfolio vulnerable...
 
 V2 contract: `exposure_present`, `adverse_evidence`, `severity`, `confidence`, `scenario_coverage`,
 drivers ([C] **S** spec §2.7). Scenario map in `WEAKNESS_SCENARIO_MAP`; `crypto_shock` conditional.

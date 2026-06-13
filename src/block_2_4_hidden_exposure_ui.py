@@ -249,7 +249,7 @@ def _short_diagnosis(alert: dict[str, Any]) -> str:
     explanation = str(alert.get("explanation") or "").strip()
     if not explanation:
         return _UNAVAILABLE_DIAGNOSIS
-    parts = re.split(r"(?<=[.!?])\s+", explanation, maxsplit=1)
+    parts = re.split(r"(...<=[.!...])\s+", explanation, maxsplit=1)
     return parts[0].strip() if parts else explanation
 
 

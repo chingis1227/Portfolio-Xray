@@ -87,6 +87,45 @@ def test_normalize_payload_maps_frontend_percent_and_preserves_real_cash() -> No
     }
     assert normalized["holdings"][-1]["type"] == "cash"
     assert normalized["holdings"][-1]["ticker"] == "Cash USD"
+    assert normalized["client_fit"] is None
+
+
+def test_client_fit_payload_is_preserved_and_mapped_to_input_config(tmp_path: Path) -> None:
+    payload = sample_payload()
+    payload["client_fit"] = {
+        "preset_id": "growth",
+        "source": "manual_override",
+        "source_quality": "high",
+        "source_quality_reason": "User supplied complete manual targets.",
+        "horizon_years": 8,
+        "target_return_range": {"min": 0.07, "max": 0.10},
+        "target_vol_range": {"min": 0.10, "max": 0.14},
+        "target_max_drawdown_pct": -0.275,
+    }
+
+    normalized = bridge.normalize_payload(payload)
+    config = bridge.build_input_config(normalized, bridge.PROJECT_ROOT / "runs" / "frontend_review_client_fit")
+
+    assert normalized["client_fit"] == payload["client_fit"]
+    assert config["client_fit"] == payload["client_fit"]
+    assert config["client_profile"] == "growth"
+    assert config["horizon_years"] == 8.0
+    assert config["target_nominal_return_annual"] == pytest.approx(0.085)
+    assert config["target_vol_annual"] == pytest.approx(0.12)
+    assert config["target_max_drawdown_pct"] == -0.275
+
+
+def test_client_fit_payload_rejects_invalid_range() -> None:
+    payload = sample_payload()
+    payload["client_fit"] = {
+        "preset_id": "balanced",
+        "source": "questionnaire",
+        "source_quality": "medium",
+        "target_return_range": {"min": 0.08, "max": 0.05},
+    }
+
+    with pytest.raises(bridge.PayloadValidationError, match="target_return_range"):
+        bridge.normalize_payload(payload)
 
 
 def test_create_run_dir_creates_unique_frontend_review_dirs_for_100_users(tmp_path: Path) -> None:
@@ -322,7 +361,7 @@ def test_run_from_payload_writes_failed_result_for_validation_error(
 def test_scrub_failure_text_hides_tracebacks_and_absolute_paths() -> None:
     raw = (
         'Traceback (most recent call last):\n'
-        '  File "D:\\Рабочий стол\\КУРСОР ТУЛА ДИАГНОСТИКА\\src\\internal.py", line 12, in run\n'
+        '  File "D:\\Desktop\\CURSOR TULA DIAGNOSTICS\\src\\internal.py", line 12, in run\n'
         "ValueError: failed while reading D:\\secret\\portfolio\\config.yml"
     )
 
@@ -380,6 +419,60 @@ def test_run_from_payload_missing_outputs_writes_safe_failure(
     assert result["details"] == "missing_backend_output"
     assert "Expected output file was not created:" in result["error"]
     assert str(run_dir) not in result["error"]
+
+
+def test_run_from_payload_retries_once_after_transient_empty_market_data(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    payload_path = tmp_path / "payload.json"
+    payload_path.write_text(json.dumps(sample_payload()), encoding="utf-8")
+    run_dir = tmp_path / "runs" / "frontend_review_retry_market_data"
+    run_dir.mkdir(parents=True)
+    calls = 0
+
+    class Completed:
+        def __init__(self, returncode: int, stdout: str = "", stderr: str = "") -> None:
+            self.returncode = returncode
+            self.stdout = stdout
+            self.stderr = stderr
+
+    def fake_run_backend(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return Completed(
+                1,
+                stdout="WARNING: Daily price cache not saved because market data produced no usable prices.",
+                stderr="WARNING: Return panel cache not saved because market data produced an empty panel.",
+            )
+
+        subject = run_dir / "analysis_subject"
+        for name in [
+            "portfolio_xray.json",
+            "stress_report.json",
+            "run_metadata.json",
+            "output_manifest.json",
+            "site_explanation_bundle.json",
+            "problem_classification.json",
+            "candidate_launchpad.json",
+            "portfolio_alternatives_builder.json",
+        ]:
+            _write_json(subject / name, {"name": name})
+        return Completed(0)
+
+    monkeypatch.setattr(bridge, "create_run_dir", lambda: ("frontend_review_retry_market_data", run_dir))
+    monkeypatch.setattr(bridge, "run_backend", fake_run_backend)
+
+    code, result_path = bridge.run_from_payload(
+        payload_path,
+        mode=bridge.MODE_DIAGNOSIS_PLUS_PROBLEM,
+        timeout_seconds=1,
+    )
+
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+    assert code == 0
+    assert calls == 2
+    assert result["status"] == "completed"
 
 
 def test_prepare_selected_builder_setup_rebuilds_matching_builder_for_selected_card(

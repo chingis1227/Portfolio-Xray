@@ -1,4 +1,4 @@
-﻿export type SupabaseRuntimeStatus = {
+export type SupabaseRuntimeStatus = {
   enabled: boolean;
   url?: string;
   publishableKey?: string;

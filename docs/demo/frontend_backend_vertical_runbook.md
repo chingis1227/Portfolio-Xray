@@ -1,17 +1,22 @@
 # Frontend Backend Vertical Demo Runbook
 
 This runbook explains how a human operator can run and demo the completed
-frontend-to-backend vertical Portfolio MRI flow from Portfolio Input through grounded
-Report / AI Commentary.
+frontend-to-backend vertical Portfolio MRI flow from the public landing page through required email sign-in, onboarding,
+Portfolio Input, and grounded Report / AI Commentary.
 
 Use this guide for the interactive Next.js demo. Use
 `docs/demo/full_demo_mvp_runbook.md` for the older CLI/file-only Blocks 5-9 demo.
 
 ## Product boundary
 
-The interactive flow is a diagnosis-first decision-support workflow:
+The interactive flow is a diagnosis-first decision-support workflow. The public entry experience
+prepares non-binding Client Fit context before the diagnostic platform opens:
 
 ```text
+Landing
+-> required email sign-in
+-> Onboarding
+-> Loading / setup
 Portfolio Input
 -> Diagnosis
 -> Evidence
@@ -32,7 +37,8 @@ The product boundary is strict:
 
 ## What the demo proves
 
-The demo proves that a user can enter a portfolio in the frontend, run the real Python
+The demo proves that a user can open a public landing page, sign in with email, complete friendly
+onboarding that saves Client Fit context, enter a portfolio in the frontend, run the real Python
 diagnostics bridge, select one Launchpad test path, prepare a matching run-local Builder
 setup for that exact card, generate exactly one diagnostic candidate, compare the current
 portfolio with that candidate, request a Decision Verdict, and read a client-ready
@@ -117,7 +123,10 @@ the repository root.
 
 ## Manual click-through guide
 
-Use a simple portfolio that sums to 100%. A stable smoke portfolio is:
+Start at `http://localhost:3000`. Confirm the public page shows `X-Ray your portfolio before you
+change it` and does not show the platform sidebar or platform step rail. Click **Enter Platform** and confirm it opens `/onboarding/sign-in`. Enter an email, then enter the email code when the verification step appears. If local email auth is unavailable, use the localhost fallback on the sign-in page or open `http://localhost:3000/onboarding/name?dev_bypass=1` for preview only. After sign-in or local fallback, complete the short onboarding screens and let the setup screen redirect to Portfolio Input.
+
+After onboarding, use a simple portfolio that sums to 100%. A stable smoke portfolio is:
 
 | Holding | Type | Weight |
 | --- | --- | ---: |
@@ -127,7 +136,8 @@ Use a simple portfolio that sums to 100%. A stable smoke portfolio is:
 
 Then demo the flow:
 
-1. On Portfolio Input, enter investor currency `USD` and the holdings above.
+1. On Portfolio Input, confirm the platform sidebar and top journey rail are now visible, Portfolio is Step 1 of 8, and the
+   Client Fit profile is ready from onboarding. Enter investor currency `USD` and the holdings above.
 2. Run diagnosis. The frontend calls `POST /api/portfolio/diagnose`.
 3. On Diagnosis / Evidence, explain the current portfolio first. Do not discuss candidates yet.
 4. On Hypothesis, select one Launchpad test path. The right-hand Builder panel shows

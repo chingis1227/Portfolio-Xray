@@ -120,29 +120,29 @@ flowchart TD
 
 ## Answers to the Twelve Product Questions (updated)
 
-1. **What is optimized?** **w** on risk tickers maximizing **`LH(w)`** (lower-half mean of optimization-eligible scenario returns) **by default**, plus **small** secondary regularizers; alternate modes **A** / legacy hybrid via CLI.
+1. **What is optimized...** **w** on risk tickers maximizing **`LH(w)`** (lower-half mean of optimization-eligible scenario returns) **by default**, plus **small** secondary regularizers; alternate modes **A** / legacy hybrid via CLI.
 
-2. **Which scenarios in v1?** The **LH** pool **`{s}`** includes **`base_historical`** (one outcome **`r_base(w)`**) **plus** every synthetic and historical episode that is **`hard_stress_constraint`** or **`soft_constraint`** after fallback — explicitly **including dotcom and 2008** when metadata shows anything better than **`unavailable`**. Roles **`excluded`** never enter the pool; **`diagnostic_only`** stay out of **`LH`** but appear in post-opt tables.
+2. **Which scenarios in v1...** The **LH** pool **`{s}`** includes **`base_historical`** (one outcome **`r_base(w)`**) **plus** every synthetic and historical episode that is **`hard_stress_constraint`** or **`soft_constraint`** after fallback — explicitly **including dotcom and 2008** when metadata shows anything better than **`unavailable`**. Roles **`excluded`** never enter the pool; **`diagnostic_only`** stay out of **`LH`** but appear in post-opt tables.
 
-3. **Ignored / diagnostic-only?** **Macro regimes** remain **`diagnostic_only`** for weight selection. Historical episodes are **`diagnostic_only`** only when fallback quality is weak; **`excluded`** only when no reliable fallback exists for required assets.
+3. **Ignored / diagnostic-only...** **Macro regimes** remain **`diagnostic_only`** for weight selection. Historical episodes are **`diagnostic_only`** only when fallback quality is weak; **`excluded`** only when no reliable fallback exists for required assets.
 
-4. **Scenario returns?** Base μ′w; synthetic linear shock map; historical **`r_ep(w)=Σ w_i R_{i,ep}`** with **`R_{i,ep}`** from per-asset waterfall. **Realized direct ETF path is never overwritten**; proxies fill **gaps only**.
+4. **Scenario returns...** Base μ′w; synthetic linear shock map; historical **`r_ep(w)=Σ w_i R_{i,ep}`** with **`R_{i,ep}`** from per-asset waterfall. **Realized direct ETF path is never overwritten**; proxies fill **gaps only**.
 
-5. **Scenario risks?** Prefer **`sqrt(w'Σ_s w)`** from normalized monthly Σ when valid; document fallback when Σ missing.
+5. **Scenario risks...** Prefer **`sqrt(w'Σ_s w)`** from normalized monthly Σ when valid; document fallback when Σ missing.
 
-6. **v1 objective?** **Default: maximize `LH(w)`** (mean of **`⌈N/2⌉`** worst scenario returns after sorting eligible **`scenario_return_s(w)`**). **Optional:** maximin (**A**), legacy hybrid (**D**). Regularizers secondary.
+6. **v1 objective...** **Default: maximize `LH(w)`** (mean of **`⌈N/2⌉`** worst scenario returns after sorting eligible **`scenario_return_s(w)`**). **Optional:** maximin (**A**), legacy hybrid (**D**). Regularizers secondary.
 
-7. **Constraints?** Unchanged — reuse `_build_bounds` and optional stress caps.
+7. **Constraints...** Unchanged — reuse `_build_bounds` and optional stress caps.
 
-8. **Confidence weights?** Unchanged — scale penalties / slack, not returns.
+8. **Confidence weights...** Unchanged — scale penalties / slack, not returns.
 
-9. **Outputs?** Same six artifacts; include **`lower_half_mean`**, full **sorted scenario returns at optimum**, **`percentile_diagnostics_only`** flag, **`p05/p10/p25`** on discrete scenarios; **add** fallback columns / nested metadata (`historical_stress_method`, coverage, asset partitions, warnings).
+9. **Outputs...** Same six artifacts; include **`lower_half_mean`**, full **sorted scenario returns at optimum**, **`percentile_diagnostics_only`** flag, **`p05/p10/p25`** on discrete scenarios; **add** fallback columns / nested metadata (`historical_stress_method`, coverage, asset partitions, warnings).
 
-10. **Tests?** Extended — see Validation.
+10. **Tests...** Extended — see Validation.
 
-11. **Limitations?** Proxy and asset-class returns introduce **mapping error**; factor_replay omits idiosyncratic episode noise; mixed tiers reduce comparability across assets; **small N** makes **`LH`** coarse and makes **5/10/25th** empirical percentiles **diagnostic-only**; **`LH`** non-smoothness may require specialized optimization tactics; base scenario inside the pool can **pull** the tail average toward “normal” times unless stress scenarios dominate spread.
+11. **Limitations...** Proxy and asset-class returns introduce **mapping error**; factor_replay omits idiosyncratic episode noise; mixed tiers reduce comparability across assets; **small N** makes **`LH`** coarse and makes **5/10/25th** empirical percentiles **diagnostic-only**; **`LH`** non-smoothness may require specialized optimization tactics; base scenario inside the pool can **pull** the tail average toward “normal” times unless stress scenarios dominate spread.
 
-12. **Monte Carlo later?** Unchanged — sample paths from `(μ_s, Σ_s)` per scenario.
+12. **Monte Carlo later...** Unchanged — sample paths from `(μ_s, Σ_s)` per scenario.
 
 ## Plan of Work
 

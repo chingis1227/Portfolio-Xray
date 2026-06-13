@@ -1,4 +1,4 @@
-"""Block 4 v3 contract shape tests (Session 01 вЂ” spec-only, no builder yet)."""
+"""Block 4 v3 contract shape tests (Session 01 — spec-only, no builder yet)."""
 
 from __future__ import annotations
 

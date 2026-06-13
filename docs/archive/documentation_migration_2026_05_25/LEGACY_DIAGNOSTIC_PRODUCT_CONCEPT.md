@@ -334,11 +334,11 @@ The user quickly sees which market environments are most dangerous for the portf
 
 The Portfolio X-Ray layer answers:
 
-- What is really inside the portfolio?
-- How does it behave?
-- Where does risk come from?
-- What hidden exposures exist?
-- Where are the portfolio's weak points?
+- What is really inside the portfolio...
+- How does it behave...
+- Where does risk come from...
+- What hidden exposures exist...
+- Where are the portfolio's weak points...
 
 ## 3. Stress Test Lab
 
@@ -413,7 +413,7 @@ Example:
 
 > In a 2008-like shock, portfolio loses -24.6%. 68% of the loss comes from equity and credit-sensitive assets. Treasuries hedge only partially because duration exposure is too low.
 
-### 3.3 What Happens If? Simulator
+### 3.3 What Happens If... Simulator
 
 Target interactive feature:
 
@@ -439,7 +439,7 @@ Purpose:
 
 This answers the investor's core question:
 
-> What happens to my portfolio if the market goes wrong?
+> What happens to my portfolio if the market goes wrong...
 
 ### 3.4 Crisis Replay
 
@@ -641,10 +641,10 @@ This is an informational and diagnostic layer over the portfolio. It does not pr
 
 It answers:
 
-- Where are we in the macro environment?
-- In which regimes is the portfolio most vulnerable?
-- In which regimes has the portfolio historically benefited?
-- Which risks are currently most relevant?
+- Where are we in the macro environment...
+- In which regimes is the portfolio most vulnerable...
+- In which regimes has the portfolio historically benefited...
+- Which risks are currently most relevant...
 
 ### 8.1 Current Macro Regime
 
@@ -823,7 +823,7 @@ These weights are conceptual and TBD unless a future spec formalizes them.
 
 Selection Engine answers:
 
-> Which candidate should be chosen, and why?
+> Which candidate should be chosen, and why...
 
 The decision is multi-criteria, not based on one metric.
 
@@ -902,7 +902,7 @@ Regret Analysis shows the cost of choosing wrong.
 
 Main question:
 
-> If the user chooses portfolio A, how badly can it lose to B or C in scenarios where those portfolios are better?
+> If the user chooses portfolio A, how badly can it lose to B or C in scenarios where those portfolios are better...
 
 Metrics can include:
 
@@ -1094,7 +1094,7 @@ Stored fields can include:
 
 Post-review question:
 
-> Was the decision good based on what was known at the time?
+> Was the decision good based on what was known at the time...
 
 Purpose:
 
@@ -1102,36 +1102,36 @@ The system separates decision quality from outcome quality and creates a discipl
 
 ## Questions The Product Should Answer
 
-- What exactly is being analyzed?
-- What goals and constraints does the client have?
-- What assumptions is the analysis based on?
-- What is really inside the portfolio?
-- How is the portfolio distributed by assets, classes, currencies, regions, and factors?
-- How does the portfolio behave by return, risk, and drawdown?
-- Where is the main risk?
-- Which assets contribute disproportionately to risk?
-- What hidden exposures exist?
-- What behavioral archetype does the portfolio match?
-- Where is the portfolio most vulnerable?
-- Where does the portfolio break in stress scenarios?
-- Which assets pull the portfolio down in crisis?
-- Which assets actually protect the portfolio?
-- Where is the hedge gap?
-- Which alternative portfolios can be built?
-- How do alternatives behave historically?
-- How do alternatives pass the same stress tests?
-- Which alternative is better, and why?
-- How robust is the selected variant to assumption changes?
-- Which candidates can be rejected as weak?
-- What is the cost of choosing wrong?
-- What trade-off does the investor accept?
-- How much can the user trust the calculations and conclusions?
-- What exactly should be bought, sold, or changed?
-- Is changing the portfolio worth it?
-- How can the decision be explained to a client in plain investment language?
-- What changed since the last analysis?
-- Why was this exact decision made?
-- Was the decision high-quality from a process perspective?
+- What exactly is being analyzed...
+- What goals and constraints does the client have...
+- What assumptions is the analysis based on...
+- What is really inside the portfolio...
+- How is the portfolio distributed by assets, classes, currencies, regions, and factors...
+- How does the portfolio behave by return, risk, and drawdown...
+- Where is the main risk...
+- Which assets contribute disproportionately to risk...
+- What hidden exposures exist...
+- What behavioral archetype does the portfolio match...
+- Where is the portfolio most vulnerable...
+- Where does the portfolio break in stress scenarios...
+- Which assets pull the portfolio down in crisis...
+- Which assets actually protect the portfolio...
+- Where is the hedge gap...
+- Which alternative portfolios can be built...
+- How do alternatives behave historically...
+- How do alternatives pass the same stress tests...
+- Which alternative is better, and why...
+- How robust is the selected variant to assumption changes...
+- Which candidates can be rejected as weak...
+- What is the cost of choosing wrong...
+- What trade-off does the investor accept...
+- How much can the user trust the calculations and conclusions...
+- What exactly should be bought, sold, or changed...
+- Is changing the portfolio worth it...
+- How can the decision be explained to a client in plain investment language...
+- What changed since the last analysis...
+- Why was this exact decision made...
+- Was the decision high-quality from a process perspective...
 
 ## Relationship To Current Implementation
 

@@ -45,7 +45,7 @@ The product is a **decision-support system**, not an automated investment manage
 
 **Primary question you answer:**
 
-> Did this portfolio behave well historically for **robust reasons**, or does it only look good because of a favorable sample, optimized assumptions, or unrealistic backtest rules?
+> Did this portfolio behave well historically for **robust reasons**, or does it only look good because of a favorable sample, optimized assumptions, or unrealistic backtest rules...
 
 **Core principle:** Backtest is **not** proof of future performance. Backtest is a **historical behavior test** across market environments.
 
@@ -145,7 +145,7 @@ Preserve distinctions between:
 
 **Evaluate:** period, starting value, CAGR, vol, Sharpe, Sortino, max drawdown, time to recovery, worst month/year, rolling 12M/36M returns, rolling drawdown/Sharpe, downside deviation, VaR/ES where available, beta and correlation to benchmark, tracking difference vs benchmark or current portfolio.
 
-**Key question:** Does this portfolio look good because it was genuinely robust, or because fixed weights accidentally matched the historical period?
+**Key question:** Does this portfolio look good because it was genuinely robust, or because fixed weights accidentally matched the historical period...
 
 **Main risk:** Static backtests can exaggerate winners, understate implementation reality, and hide drift effects.
 
@@ -157,7 +157,7 @@ Preserve distinctions between:
 
 **Evaluate:** performance per rule; realized turnover; turnover-adjusted performance; vol and drawdown control; return drag from rebalancing; whether rebalancing improves risk enough to justify activity.
 
-**Key question:** Does rebalancing improve the portfolio materially, or create false precision and unnecessary turnover?
+**Key question:** Does rebalancing improve the portfolio materially, or create false precision and unnecessary turnover...
 
 **Main risk:** Frequent rebalancing can look controlled while ignoring friction, taxes, spreads, and execution limits.
 
@@ -169,7 +169,7 @@ Preserve distinctions between:
 
 **Evaluate:** rebalance event count; average and total turnover; risk reduction per rebalance; drawdown/vol improvement; risk improvement per 1% turnover.
 
-**Key question:** Is the rebalance economically justified, or triggered without meaningful risk improvement?
+**Key question:** Is the rebalance economically justified, or triggered without meaningful risk improvement...
 
 **Main risk:** Poorly calibrated thresholds generate mechanical trades without economic benefit.
 
@@ -181,7 +181,7 @@ Preserve distinctions between:
 
 **Evaluate:** OOS CAGR, vol, Sharpe, max drawdown; in-sample to OOS decay; weight stability; turnover between windows; ranking stability; drawdown in unseen periods.
 
-**Key question:** Does the strategy survive when it cannot see the future?
+**Key question:** Does the strategy survive when it cannot see the future...
 
 **Main risk:** Strong in-sample with weak OOS is a classic overfitting signal.
 
@@ -196,7 +196,7 @@ Preserve distinctions between:
 - Mark evidence **fragile** when history is too short.
 - Mark evidence **unreliable** when future information could have entered the test.
 
-**Key question:** Would this portfolio still have looked acceptable if the decision had been made **before** the tested period?
+**Key question:** Would this portfolio still have looked acceptable if the decision had been made **before** the tested period...
 
 ## Fair Comparison Contract
 

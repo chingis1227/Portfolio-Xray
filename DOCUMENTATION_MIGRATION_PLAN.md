@@ -36,9 +36,9 @@ from the provided DOCX concept drafts while preserving the current implementatio
 
 This plan uses only these explicitly provided DOCX concept drafts:
 
-- `D:\Рабочий стол\ДИАГНОСТИКА\ДИАГНОСТИКА 2\ВОПРОСЫ ПРОЕКТА.docx`
-- `D:\Рабочий стол\ДИАГНОСТИКА\ДИАГНОСТИКА 2\ДИАГНОСТИКА 2.docx`
-- `D:\Рабочий стол\ДИАГНОСТИКА\ДИАГНОСТИКА 2\ЦА ЦЕННОСТЬ ЦЕЛЬ ФИЛОСОФИЯ ПОДХОД ДИАГНОСТИКА 2 — копия.docx`
+- `D:\Desktop\DIAGNOSTICS\Diagnosis 2\PROJECT_QUESTIONS.docx`
+- `D:\Desktop\DIAGNOSTICS\Diagnosis 2\Diagnosis 2.docx`
+- `D:\Desktop\DIAGNOSTICS\Diagnosis 2\TARGET_AUDIENCE_VALUE_GOAL_PHILOSOPHY_APPROACH_Diagnosis_2_copy.docx`
 
 The DOCX files are product concept drafts and implementation notes. They do not override `SPEC.md`,
 `RULES.md`, `OUTPUTS.md`, `DATA.md`, `TESTING.md`, detailed specs, formulas, stress scenario
@@ -61,7 +61,7 @@ definitions, optimizer policy, current code behavior, or generated-output contra
 Portfolio MRI helps the user answer:
 
 > What is really inside this portfolio, where is the true risk, where can it break, what alternative
-> is reasonable to test, what trade-off would I accept, and should I rebalance or do nothing?
+> is reasonable to test, what trade-off would I accept, and should I rebalance or do nothing...
 
 The product value is not "perfect weights." It is disciplined, transparent, defensible
 decision-support.

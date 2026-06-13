@@ -172,7 +172,7 @@ def test_action_plan_txt_uses_ascii_delta_weight(tmp_path: Path) -> None:
     write_action_plan_txt(plan, path)
     text = path.read_text(encoding="utf-8")
     assert "delta w=0.01" in text
-    assert "О”" not in text
+    assert "\u041e\u201d" not in text
     assert "Δ" not in text
 
 

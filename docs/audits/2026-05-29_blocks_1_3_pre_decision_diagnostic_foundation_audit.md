@@ -15,11 +15,11 @@ Related: [runtime_entrypoints.md](../runtime_entrypoints.md), [Block 3.4 institu
 
 | Question | Answer |
 | --- | --- |
-| Can the system answer the 15 diagnostic questions (portfolio identity, composition, behavior, factors, hidden risks, normal risk owners, pre-stress weaknesses, stress losses, hedge gaps, executive stress diagnosis)? | **Mostly yes** on live `analysis_subject` JSON for the demo portfolio; gaps are data-window limits (dotcom/2008), partial block statuses, and pre-stress vs post-stress framing. |
-| Are three canonical runtime modes operational? | **Yes**, after one blocking fix (`export_stress_hedge_gap_bridge` timing registry). |
-| Is artifact scope clean per mode (no stale compare / no Blocks 4+ leakage in core-only)? | **No** — stale comparison menu and subject-side product JSON can remain on disk; one-candidate compare still aggregates **19** on-disk candidates in `candidate_comparison.json`. |
-| Do tests support readiness? | **Yes** — **232 passed**, 1 skipped in focused bundle. |
-| Ready for Decision Workflow? | **No** — use verdict **`NOT_READY_RUNTIME_CONTRACT_MISMATCH`**. |
+| Can the system answer the 15 diagnostic questions (portfolio identity, composition, behavior, factors, hidden risks, normal risk owners, pre-stress weaknesses, stress losses, hedge gaps, executive stress diagnosis)... | **Mostly yes** on live `analysis_subject` JSON for the demo portfolio; gaps are data-window limits (dotcom/2008), partial block statuses, and pre-stress vs post-stress framing. |
+| Are three canonical runtime modes operational... | **Yes**, after one blocking fix (`export_stress_hedge_gap_bridge` timing registry). |
+| Is artifact scope clean per mode (no stale compare / no Blocks 4+ leakage in core-only)... | **No** — stale comparison menu and subject-side product JSON can remain on disk; one-candidate compare still aggregates **19** on-disk candidates in `candidate_comparison.json`. |
+| Do tests support readiness... | **Yes** — **232 passed**, 1 skipped in focused bundle. |
+| Ready for Decision Workflow... | **No** — use verdict **`NOT_READY_RUNTIME_CONTRACT_MISMATCH`**. |
 
 **Bottom line:** Blocks **1–3 analytical content** on `portfolio_xray.json` and `stress_report.json` is materially present, institutionally upgraded (3.3 `hedge_gap_rules_v1_2`, 3.4 `current_portfolio_stress_scorecard_rules_v1_1`), and test-backed. **Runtime artifact contracts** for core-only, diagnosis-only, and one-candidate paths do not yet guarantee operators and downstream consumers see only the intended surface (stale comparison zoo, subject folder not pruned on core-only, live E2E gate fails on a real workspace). Fix artifact hygiene and re-run this audit before freezing the foundation.
 
@@ -178,7 +178,7 @@ No material claim found that Block 3.3/3.4 are still Target-only. Legacy optimiz
 
 ## 8. Legacy vs product-facing audit
 
-| Item | Location | Status | Leaks into Core MVP? |
+| Item | Location | Status | Leaks into Core MVP... |
 | --- | --- | --- | --- |
 | `stress_scorecard_v1` | `stress_report.json` | Legacy / mandate rollup | Secondary; 3.4 `legacy_fallback_used: false` |
 | `hedge_gap_analysis` (legacy) | `stress_report.json` | Legacy | Secondary to `hedge_gap_analysis_v1` |
@@ -212,7 +212,7 @@ No material claim found that Block 3.3/3.4 are still Target-only. Legacy optimiz
 
 ## 10. Downstream readiness (Blocks 4–7 consumption)
 
-| Consumer | Can use current foundation? | Blocker |
+| Consumer | Can use current foundation... | Blocker |
 | --- | --- | --- |
 | Problem Classification | **Yes** | Uses v1 hedge gap + scorecard; live output sensible. |
 | Candidate Launchpad | **Yes** | Driven from PC. |

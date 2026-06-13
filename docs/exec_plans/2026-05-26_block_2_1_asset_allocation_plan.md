@@ -108,7 +108,7 @@ normal holding with synthetic taxonomy, never substituting `cash_proxy_ticker` (
 ## Context and Orientation
 
 Portfolio MRI is diagnosis-first. Block 2.1 is the first Portfolio X-Ray sub-block: **what do I
-actually own and where is capital concentrated?**
+actually own and where is capital concentrated...**
 
 Pipeline today (portfolio-first):
 
@@ -173,7 +173,7 @@ ETF/stock universe **required** annotation fields (from `src/etf_universe.py` `R
 
 ### 3. Existing JSON / output inventory
 
-| Artifact | Location | Product-ready? | Notes |
+| Artifact | Location | Product-ready... | Notes |
 | --- | --- | --- | --- |
 | `portfolio_xray.json` | `{output_dir_final}/analysis_subject/` | **Partial** | Seven sections; 2.1 is internal `items[]` model |
 | `sections.asset_allocation` | inside above | Internal | `holding`, `breakdown`, `weight_concentration` items |

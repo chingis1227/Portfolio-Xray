@@ -111,7 +111,7 @@ Normalization decision:
 Session 01 should now produce a field-level Contract Map Audit with this shape:
 
 ```text
-Source block / Field / Produced? / Consumed by next block? / Used in decision? / Gap
+Source block / Field / Produced... / Consumed by next block... / Used in decision... / Gap
 ```
 
 Minimum fields to map:

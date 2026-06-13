@@ -366,7 +366,13 @@
       "es_95": -0.03,
       "es_99": -0.04,
       "downside_deviation": 0.065,
-      "eee_10": 42.5
+      "eee_10": 42.5,
+      "metric_available": true,
+      "method": "historical",
+      "frequency": "daily",
+      "window": "10y",
+      "window_months": null,
+      "n_obs": null
     },
     "benchmark_dependence": {
       "benchmark_ticker": "SPY",
@@ -880,8 +886,8 @@
       ]
     },
     "stress_lab_separation": {
-      "block_2_3_answers": "What factors is the portfolio sensitive to?",
-      "stress_lab_answers": "What happens if those factors receive a stress shock?",
+      "block_2_3_answers": "What factors is the portfolio sensitive to...",
+      "stress_lab_answers": "What happens if those factors receive a stress shock...",
       "no_scenario_shocks_in_this_block": true,
       "no_rebalance_recommendations": true
     }
@@ -2811,7 +2817,7 @@
           "liquidity_shock"
         ],
         "limitations": [
-          "Hidden exposure (2.4) \u2014 hidden_equity_beta: Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only."
+          "Hidden exposure (2.4) — hidden_equity_beta: Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only."
         ]
       },
       {
@@ -2902,8 +2908,8 @@
           "recession_severe"
         ],
         "limitations": [
-          "Hidden exposure (2.4) \u2014 credit_liquidity_risk: credit_quality and credit-sensitive subtype weights are not aggregated in Block 2.1 product output.",
-          "Hidden exposure (2.4) \u2014 credit_liquidity_risk: Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only."
+          "Hidden exposure (2.4) — credit_liquidity_risk: credit_quality and credit-sensitive subtype weights are not aggregated in Block 2.1 product output.",
+          "Hidden exposure (2.4) — credit_liquidity_risk: Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only."
         ]
       },
       {
@@ -2993,8 +2999,8 @@
           "inflation_stagflation"
         ],
         "limitations": [
-          "Hidden exposure (2.4) \u2014 duration_concentration: duration_bucket is not aggregated in Block 2.1; rates sensitivity uses main_risk_factor and fixed_income proxies only.",
-          "Hidden exposure (2.4) \u2014 duration_concentration: Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only."
+          "Hidden exposure (2.4) — duration_concentration: duration_bucket is not aggregated in Block 2.1; rates sensitivity uses main_risk_factor and fixed_income proxies only.",
+          "Hidden exposure (2.4) — duration_concentration: Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only."
         ]
       },
       {
@@ -3145,14 +3151,14 @@
         ],
         "limitations": [
           "liquidity is proxied by taxonomy and credit/carry indicators only (no bid/ask data)",
-          "Hidden exposure (2.4) \u2014 correlation_concentration: Full FX factor decomposition is not in Core MVP; currency evidence uses Block 2.1 by_currency and concentration_flags only.",
-          "Hidden exposure (2.4) \u2014 correlation_concentration: PCA common-factor cluster concentration is not scored in Block 2.4 product alerts; when portfolio_pca is available, interpret legacy sections.hidden_risk_detector categories 'correlation_or_common_factor_concentration' and 'residual_pca_concentration' (wire-time cross-ref evidence only).",
-          "Hidden exposure (2.4) \u2014 correlation_concentration: Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only.",
-          "Hidden exposure (2.4) \u2014 credit_liquidity_risk: credit_quality and credit-sensitive subtype weights are not aggregated in Block 2.1 product output.",
-          "Hidden exposure (2.4) \u2014 credit_liquidity_risk: Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only.",
-          "Hidden exposure (2.4) \u2014 tail_risk: Rolling Sharpe instability is not exported in Block 2.2 product surface; vol_of_vol and rel_vol_of_vol are used as volatility-regime proxy evidence only.",
-          "Hidden exposure (2.4) \u2014 tail_risk: Formal sudden volatility-regime detection is outside Core MVP; interpret rolling volatility latest as indicative, not a regime classifier.",
-          "Hidden exposure (2.4) \u2014 tail_risk: Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only."
+          "Hidden exposure (2.4) — correlation_concentration: Full FX factor decomposition is not in Core MVP; currency evidence uses Block 2.1 by_currency and concentration_flags only.",
+          "Hidden exposure (2.4) — correlation_concentration: PCA common-factor cluster concentration is not scored in Block 2.4 product alerts; when portfolio_pca is available, interpret legacy sections.hidden_risk_detector categories 'correlation_or_common_factor_concentration' and 'residual_pca_concentration' (wire-time cross-ref evidence only).",
+          "Hidden exposure (2.4) — correlation_concentration: Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only.",
+          "Hidden exposure (2.4) — credit_liquidity_risk: credit_quality and credit-sensitive subtype weights are not aggregated in Block 2.1 product output.",
+          "Hidden exposure (2.4) — credit_liquidity_risk: Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only.",
+          "Hidden exposure (2.4) — tail_risk: Rolling Sharpe instability is not exported in Block 2.2 product surface; vol_of_vol and rel_vol_of_vol are used as volatility-regime proxy evidence only.",
+          "Hidden exposure (2.4) — tail_risk: Formal sudden volatility-regime detection is outside Core MVP; interpret rolling volatility latest as indicative, not a regime classifier.",
+          "Hidden exposure (2.4) — tail_risk: Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only."
         ]
       },
       {
@@ -3330,8 +3336,8 @@
             "interpretation": "Tail risk alert score proxies left-tail vulnerability that often surfaces in recessions."
           }
         ],
-        "short_diagnosis": "Severe recession risk is currently Unavailable. Severity is Unavailable because required signals are incomplete: Hidden exposure (2.4) \u2014 tail_risk: Rolling Sharpe instability is not exported in Block 2.2 product surface; vol_of_vol and rel_vol_of_vol are used as volatility-regime proxy evidence only.",
-        "why_status": "Severity is Unavailable because required signals are incomplete: Hidden exposure (2.4) \u2014 tail_risk: Rolling Sharpe instability is not exported in Block 2.2 product surface; vol_of_vol and rel_vol_of_vol are used as volatility-regime proxy evidence only.",
+        "short_diagnosis": "Severe recession risk is currently Unavailable. Severity is Unavailable because required signals are incomplete: Hidden exposure (2.4) — tail_risk: Rolling Sharpe instability is not exported in Block 2.2 product surface; vol_of_vol and rel_vol_of_vol are used as volatility-regime proxy evidence only.",
+        "why_status": "Severity is Unavailable because required signals are incomplete: Hidden exposure (2.4) — tail_risk: Rolling Sharpe instability is not exported in Block 2.2 product surface; vol_of_vol and rel_vol_of_vol are used as volatility-regime proxy evidence only.",
         "key_evidence": [
           "downside_beta: 90.0%. Downside beta provides a behavior-based proxy for recession sensitivity.",
           "tail_risk_score: 49.000. Tail risk alert score proxies left-tail vulnerability that often surfaces in recessions.",
@@ -3358,7 +3364,7 @@
         "data_quality_warnings": [],
         "confidence_reason": "Confidence is unavailable because the risk score could not be computed from current evidence.",
         "signal_scores": null,
-        "explanation": "Severe recession risk is currently Unavailable. Severity is Unavailable because required signals are incomplete: Hidden exposure (2.4) \u2014 tail_risk: Rolling Sharpe instability is not exported in Block 2.2 product surface; vol_of_vol and rel_vol_of_vol are used as volatility-regime proxy evidence only.",
+        "explanation": "Severe recession risk is currently Unavailable. Severity is Unavailable because required signals are incomplete: Hidden exposure (2.4) — tail_risk: Rolling Sharpe instability is not exported in Block 2.2 product surface; vol_of_vol and rel_vol_of_vol are used as volatility-regime proxy evidence only.",
         "why_it_matters": "Recessions can combine equity drawdowns, credit deterioration, and weaker diversification across risk sleeves.",
         "next_tests": [
           "recession_severe",
@@ -3366,9 +3372,9 @@
           "equity_shock"
         ],
         "limitations": [
-          "Hidden exposure (2.4) \u2014 tail_risk: Rolling Sharpe instability is not exported in Block 2.2 product surface; vol_of_vol and rel_vol_of_vol are used as volatility-regime proxy evidence only.",
-          "Hidden exposure (2.4) \u2014 tail_risk: Formal sudden volatility-regime detection is outside Core MVP; interpret rolling volatility latest as indicative, not a regime classifier.",
-          "Hidden exposure (2.4) \u2014 tail_risk: Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only.",
+          "Hidden exposure (2.4) — tail_risk: Rolling Sharpe instability is not exported in Block 2.2 product surface; vol_of_vol and rel_vol_of_vol are used as volatility-regime proxy evidence only.",
+          "Hidden exposure (2.4) — tail_risk: Formal sudden volatility-regime detection is outside Core MVP; interpret rolling volatility latest as indicative, not a regime classifier.",
+          "Hidden exposure (2.4) — tail_risk: Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only.",
           "insufficient evidence to score this risk type reliably"
         ]
       }
@@ -3967,7 +3973,7 @@
       "limitations": [
         "Factor exposures are diagnostics from the existing factor pipeline and do not replace raw holdings.",
         "Kalman betas are current-regime diagnostics and do not replace raw 5Y/10Y OLS betas.",
-        "Reported significance uses HAC/Newey-West p-values and confidence intervals per stress_testing_spec \u00a78.4; classical OLS t/p in by_factor are diagnostic-only."
+        "Reported significance uses HAC/Newey-West p-values and confidence intervals per stress_testing_spec §8.4; classical OLS t/p in by_factor are diagnostic-only."
       ],
       "method": "weekly OLS portfolio factor betas (5Y/10Y); Kalman latest; variance decomposition; factor_regression inference panel (HAC, multicollinearity, residual diagnostics)",
       "frequency": "weekly",
@@ -4408,7 +4414,7 @@
             {
               "archetype": "Equity Growth Portfolio",
               "tension": "equity_growth_portfolio_vs_equity_crash_weakness",
-              "explanation": "Equity Growth Portfolio is supported by allocation/factor evidence, but the weakness map shows high equity crash vulnerability \u2014 review both together.",
+              "explanation": "Equity Growth Portfolio is supported by allocation/factor evidence, but the weakness map shows high equity crash vulnerability — review both together.",
               "positive_evidence": [
                 "equity factor beta 0.720 is at or above 0.650"
               ],
@@ -4422,7 +4428,7 @@
             {
               "archetype": "Equity Growth Portfolio",
               "tension": "equity_growth_portfolio_vs_recession_weakness",
-              "explanation": "Equity Growth Portfolio is supported by allocation/factor evidence, but the weakness map shows high recession vulnerability \u2014 review both together.",
+              "explanation": "Equity Growth Portfolio is supported by allocation/factor evidence, but the weakness map shows high recession vulnerability — review both together.",
               "positive_evidence": [
                 "equity factor beta 0.720 is at or above 0.650"
               ],
@@ -4458,7 +4464,7 @@
               ]
             }
           ],
-          "conflict_summary": "Primary label Equity Growth Portfolio coexists with high equity crash weakness \u2014 the label describes holdings, not immunity to that regime."
+          "conflict_summary": "Primary label Equity Growth Portfolio coexists with high equity crash weakness — the label describes holdings, not immunity to that regime."
         }
       ],
       "limitations": [

@@ -73193,10 +73193,10 @@
     "version": "scenario_library_v1",
     "n_scenarios": 15,
     "output_paths": {
-      "scenario_library.json": "C:\\Users\\ShumeikoYe\\OneDrive\\Рабочий стол\\КУРСОР ТУЛА ДИАГНОСТИКА\\hierarchical risk parity portfolio\\scenario_library.json",
-      "scenario_library_summary.csv": "C:\\Users\\ShumeikoYe\\OneDrive\\Рабочий стол\\КУРСОР ТУЛА ДИАГНОСТИКА\\hierarchical risk parity portfolio\\results_csv\\scenario_library_summary.csv",
-      "scenario_library_missing_inputs.csv": "C:\\Users\\ShumeikoYe\\OneDrive\\Рабочий стол\\КУРСОР ТУЛА ДИАГНОСТИКА\\hierarchical risk parity portfolio\\results_csv\\scenario_library_missing_inputs.csv",
-      "scenario_library_warnings.csv": "C:\\Users\\ShumeikoYe\\OneDrive\\Рабочий стол\\КУРСОР ТУЛА ДИАГНОСТИКА\\hierarchical risk parity portfolio\\results_csv\\scenario_library_warnings.csv"
+      "scenario_library.json": "C:\\Users\\ShumeikoYe\\OneDrive\\Desktop\\CURSOR TULA DIAGNOSTICS\\hierarchical risk parity portfolio\\scenario_library.json",
+      "scenario_library_summary.csv": "C:\\Users\\ShumeikoYe\\OneDrive\\Desktop\\CURSOR TULA DIAGNOSTICS\\hierarchical risk parity portfolio\\results_csv\\scenario_library_summary.csv",
+      "scenario_library_missing_inputs.csv": "C:\\Users\\ShumeikoYe\\OneDrive\\Desktop\\CURSOR TULA DIAGNOSTICS\\hierarchical risk parity portfolio\\results_csv\\scenario_library_missing_inputs.csv",
+      "scenario_library_warnings.csv": "C:\\Users\\ShumeikoYe\\OneDrive\\Desktop\\CURSOR TULA DIAGNOSTICS\\hierarchical risk parity portfolio\\results_csv\\scenario_library_warnings.csv"
     },
     "warnings_global": [],
     "classifications": {
@@ -73241,11 +73241,11 @@
     "monte_carlo_feasibility_note": "Monte Carlo feasibility requires sampling/model choices not implemented here; normalized layer supplies consistent monthly Σ and typed scenario shocks where classified usable.",
     "robust_optimization_note": "Robust optimization needs explicit uncertainty sets / constraint semantics beyond this export; use scenarios tagged hard_stress_constraint or soft_constraint plus objective_input base when ready.",
     "output_paths": {
-      "scenario_library_normalized.json": "C:\\Users\\ShumeikoYe\\OneDrive\\Рабочий стол\\КУРСОР ТУЛА ДИАГНОСТИКА\\hierarchical risk parity portfolio\\scenario_library_normalized.json",
-      "scenario_library_normalized_summary.csv": "C:\\Users\\ShumeikoYe\\OneDrive\\Рабочий стол\\КУРСОР ТУЛА ДИАГНОСТИКА\\hierarchical risk parity portfolio\\results_csv\\scenario_library_normalized_summary.csv",
-      "scenario_library_normalized_missing_inputs.csv": "C:\\Users\\ShumeikoYe\\OneDrive\\Рабочий стол\\КУРСОР ТУЛА ДИАГНОСТИКА\\hierarchical risk parity portfolio\\results_csv\\scenario_library_normalized_missing_inputs.csv",
-      "scenario_library_normalized_warnings.csv": "C:\\Users\\ShumeikoYe\\OneDrive\\Рабочий стол\\КУРСОР ТУЛА ДИАГНОСТИКА\\hierarchical risk parity portfolio\\results_csv\\scenario_library_normalized_warnings.csv",
-      "scenario_library_normalized_classification.csv": "C:\\Users\\ShumeikoYe\\OneDrive\\Рабочий стол\\КУРСОР ТУЛА ДИАГНОСТИКА\\hierarchical risk parity portfolio\\results_csv\\scenario_library_normalized_classification.csv"
+      "scenario_library_normalized.json": "C:\\Users\\ShumeikoYe\\OneDrive\\Desktop\\CURSOR TULA DIAGNOSTICS\\hierarchical risk parity portfolio\\scenario_library_normalized.json",
+      "scenario_library_normalized_summary.csv": "C:\\Users\\ShumeikoYe\\OneDrive\\Desktop\\CURSOR TULA DIAGNOSTICS\\hierarchical risk parity portfolio\\results_csv\\scenario_library_normalized_summary.csv",
+      "scenario_library_normalized_missing_inputs.csv": "C:\\Users\\ShumeikoYe\\OneDrive\\Desktop\\CURSOR TULA DIAGNOSTICS\\hierarchical risk parity portfolio\\results_csv\\scenario_library_normalized_missing_inputs.csv",
+      "scenario_library_normalized_warnings.csv": "C:\\Users\\ShumeikoYe\\OneDrive\\Desktop\\CURSOR TULA DIAGNOSTICS\\hierarchical risk parity portfolio\\results_csv\\scenario_library_normalized_warnings.csv",
+      "scenario_library_normalized_classification.csv": "C:\\Users\\ShumeikoYe\\OneDrive\\Desktop\\CURSOR TULA DIAGNOSTICS\\hierarchical risk parity portfolio\\results_csv\\scenario_library_normalized_classification.csv"
     },
     "global_warnings": []
   },

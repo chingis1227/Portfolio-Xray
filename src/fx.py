@@ -15,13 +15,13 @@ from src.data_yf import fetch_daily
 # XXXUSD=X = 1 XXX in USD (no inversion needed)
 # USDXXX=X or XXX=X = 1 USD in XXX (needs inversion to get USD per 1 XXX)
 FX_TICKER_CONFIG: dict[str, tuple[str, bool]] = {
-    "EUR": ("EURUSD=X", False),   # 1 EUR = ? USD
-    "GBP": ("GBPUSD=X", False),   # 1 GBP = ? USD
-    "JPY": ("JPY=X", True),       # USD/JPY: 1 USD = ? JPY → invert
-    "CHF": ("USDCHF=X", True),    # USD/CHF: 1 USD = ? CHF → invert
-    "HKD": ("USDHKD=X", True),    # USD/HKD: 1 USD = ? HKD → invert
-    "CAD": ("USDCAD=X", True),    # USD/CAD: 1 USD = ? CAD → invert
-    "AUD": ("AUDUSD=X", False),   # 1 AUD = ? USD
+    "EUR": ("EURUSD=X", False),   # 1 EUR = ... USD
+    "GBP": ("GBPUSD=X", False),   # 1 GBP = ... USD
+    "JPY": ("JPY=X", True),       # USD/JPY: 1 USD = ... JPY → invert
+    "CHF": ("USDCHF=X", True),    # USD/CHF: 1 USD = ... CHF → invert
+    "HKD": ("USDHKD=X", True),    # USD/HKD: 1 USD = ... HKD → invert
+    "CAD": ("USDCAD=X", True),    # USD/CAD: 1 USD = ... CAD → invert
+    "AUD": ("AUDUSD=X", False),   # 1 AUD = ... USD
 }
 
 

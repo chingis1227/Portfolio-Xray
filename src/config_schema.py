@@ -89,6 +89,9 @@ class PortfolioConfig:
     current_weights: dict[str, float] = field(default_factory=dict)
     analysis_subject: dict[str, Any] = field(default_factory=dict)
     weights_source: str = "none"
+    # Client Fit V1 request/profile context. Preserved for downstream Client Fit artifact sessions;
+    # not used by optimizer or diagnosis by itself.
+    client_fit: dict[str, Any] = field(default_factory=dict)
 
     # Liquidity floor from profile or explicit config; used by ProLiquidity when set (else derived from liquidity_need_months * monthly_expenses / portfolio_value)
     liquidity_floor_pct: float | None = None
@@ -137,6 +140,7 @@ class PortfolioConfig:
             "portfolio_value": self.portfolio_value,
             "cash_policy": self.cash_policy,
             "client_profile": self.client_profile,
+            "client_fit": dict(self.client_fit or {}),
             "risk_free_source": self.rf_source,
             "cash_proxy_ticker": self.cash_proxy_ticker,
             "base_benchmark_ticker": self.benchmark_base_ticker,
@@ -318,6 +322,7 @@ MAPPING_FIELDS = [
     "weights",
     "current_weights",
     "analysis_subject",
+    "client_fit",
     "local_benchmark_map",
 ]
 
@@ -492,7 +497,7 @@ def _parse_percent_value(val: Any, field_name: str) -> float | None:
     
     if isinstance(val, str):
         val = val.strip()
-        match = re.match(r'^(-?\d+(?:\.\d+)?)\s*%$', val)
+        match = re.match(r'^(-...\d+(...:\.\d+)...)\s*%$', val)
         if match:
             return float(match.group(1)) / 100.0
         raise ConfigValidationError(
@@ -643,6 +648,70 @@ def _validate_mappings(cfg: dict[str, Any]) -> None:
             raise ConfigValidationError(
                 f"Config field '{f}' must be a dictionary, got {type(val).__name__}"
             )
+
+
+def _validate_client_fit(cfg: dict[str, Any]) -> None:
+    """Validate optional Client Fit V1 input contract without running Client Fit checks."""
+    raw = cfg.get("client_fit")
+    if raw is None or raw == {}:
+        cfg["client_fit"] = {}
+        return
+    if not isinstance(raw, dict):
+        raise ConfigValidationError(
+            f"Config field 'client_fit' must be a dictionary, got {type(raw).__name__}"
+        )
+    try:
+        from src.client_fit import PROFILE_IDS, SOURCE_QUALITY_VALUES, SOURCE_VALUES
+    except Exception as exc:  # pragma: no cover
+        raise ConfigValidationError(f"Client Fit validation import failed: {exc}") from exc
+
+    source = raw.get("source")
+    source_quality = raw.get("source_quality")
+    if source is not None and str(source) not in SOURCE_VALUES:
+        raise ConfigValidationError(
+            f"client_fit.source must be one of {sorted(SOURCE_VALUES)}, got {source!r}"
+        )
+    if source_quality is not None and str(source_quality) not in SOURCE_QUALITY_VALUES:
+        raise ConfigValidationError(
+            f"client_fit.source_quality must be one of {sorted(SOURCE_QUALITY_VALUES)}, got {source_quality!r}"
+        )
+    preset_id = raw.get("preset_id")
+    if preset_id is not None and str(preset_id) not in PROFILE_IDS:
+        raise ConfigValidationError(
+            f"client_fit.preset_id must be one of {list(PROFILE_IDS)}, got {preset_id!r}"
+        )
+    for field_name in ("target_return_range", "target_vol_range"):
+        range_value = raw.get(field_name)
+        if range_value is None:
+            continue
+        if not isinstance(range_value, dict):
+            raise ConfigValidationError(f"client_fit.{field_name} must be a dictionary.")
+        low = range_value.get("min")
+        high = range_value.get("max")
+        if (
+            isinstance(low, bool)
+            or isinstance(high, bool)
+            or not isinstance(low, (int, float))
+            or not isinstance(high, (int, float))
+            or not (0 <= float(low) < float(high) <= 1)
+        ):
+            raise ConfigValidationError(
+                f"client_fit.{field_name} must satisfy numeric 0 <= min < max <= 1."
+            )
+    max_drawdown = raw.get("target_max_drawdown_pct")
+    if max_drawdown is not None and (
+        isinstance(max_drawdown, bool)
+        or not isinstance(max_drawdown, (int, float))
+        or not (-1 <= float(max_drawdown) <= 0)
+    ):
+        raise ConfigValidationError(
+            "client_fit.target_max_drawdown_pct must be a decimal from -1 to 0."
+        )
+    horizon = raw.get("horizon_years")
+    if horizon is not None and (
+        isinstance(horizon, bool) or not isinstance(horizon, (int, float)) or float(horizon) <= 0
+    ):
+        raise ConfigValidationError("client_fit.horizon_years must be a positive number.")
 
 
 def _validate_analysis_subject(cfg: dict[str, Any]) -> None:
@@ -1152,6 +1221,7 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
     _validate_percents(cfg)
     _validate_nonnegative(cfg)
     _validate_mappings(cfg)
+    _validate_client_fit(cfg)
     _validate_analysis_subject(cfg)
     _validate_analysis_mode(cfg)
     _validate_tickers_weights(cfg)
@@ -1200,6 +1270,7 @@ def validate_config(cfg: dict[str, Any]) -> PortfolioConfig:
         current_weights=dict(cfg.get("current_weights") or {}),
         weights=dict(cfg.get("weights") or {}),
         weights_source=str(cfg.get("_weights_source") or ("config.weights" if cfg.get("weights") else "none")),
+        client_fit=dict(cfg.get("client_fit") or {}),
         benchmark_base_ticker=cfg["benchmark_base_ticker"],
         rf_source=cfg.get("rf_source"),
         cash_proxy_ticker=cfg.get("cash_proxy_ticker"),

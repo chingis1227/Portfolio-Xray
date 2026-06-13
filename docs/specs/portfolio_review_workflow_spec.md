@@ -39,7 +39,7 @@ Those remain governed by their dedicated specs in this directory.
 The portfolio-first workflow answers:
 
 ```text
-Given the portfolio I started with, should I keep it, improve it, rebalance it, or rethink it?
+Given the portfolio I started with, should I keep it, improve it, rebalance it, or rethink it...
 ```
 
 The system must not answer that question by showing a generated policy optimization result first.
@@ -125,7 +125,7 @@ new generated output contract.
 in `src/portfolio_review_workflow.py`. It does not change CLI execution by itself; dry-run and live
 runs print it in `summarize_plan()`.
 
-| `runtime_mode` | Typical command | Factory runs? | Compare runs? |
+| `runtime_mode` | Typical command | Factory runs... | Compare runs... |
 | --- | --- | --- | --- |
 | `product_diagnosis_only` | `python run_portfolio_review.py` (default) | No | No |
 | `product_one_candidate` | `python run_portfolio_review.py --candidates <id>` | Yes (explicit list) | Yes (`--then-compare`); explicit factory-id compatibility path, not the canonical visible Blocks 5-9 demo |
@@ -163,23 +163,23 @@ When candidates run, profile resolution follows `resolve_review_candidate_profil
 ### Command decision tree (operator)
 
 ```text
-Need current-portfolio diagnosis only?
+Need current-portfolio diagnosis only...
   └─ yes → python run_portfolio_review.py
            (runtime_mode=product_diagnosis_only, workflow_state=diagnosis_only)
 
-Need one visible Launchpad -> Builder -> Block 7 -> compare -> verdict demo?
+Need one visible Launchpad -> Builder -> Block 7 -> compare -> verdict demo...
   └─ yes → python scripts/run_blocks_5_to_9_vertical_flow.py --method <factory_id>
 
-Already know the backend factory id and only need compatibility factory + compare?
+Already know the backend factory id and only need compatibility factory + compare...
   └─ yes → python run_portfolio_review.py --candidates <factory_id>
            (runtime_mode=product_one_candidate, workflow_state=one_candidate,
             path classification=explicit factory-id compatibility)
 
-Need backend six-candidate batch + compare (research / Blocks 1–5 regression)?
+Need backend six-candidate batch + compare (research / Blocks 1–5 regression)...
   └─ yes → python run_portfolio_review.py --with-candidates
            (runtime_mode=research_batch, workflow_state=multiple_candidates, profile core_fast)
 
-Need full 16-builder menu?
+Need full 16-builder menu...
   └─ yes → python run_portfolio_review.py --mode full
            (runtime_mode=research_batch, workflow_state=multiple_candidates, profile default_v1)
 ```

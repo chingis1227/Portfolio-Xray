@@ -132,7 +132,7 @@ If an input has insufficient coverage, stale data, young assets, NaNs, benchmark
 
 ### 2.1 Asset Allocation
 
-Question answered: What does the portfolio own, and where is capital visibly concentrated?
+Question answered: What does the portfolio own, and where is capital visibly concentrated...
 
 Target views:
 
@@ -328,7 +328,7 @@ Duplicate-group severity (§2.1.1) is fixed: medium ≥ 10% combined weight; hig
 
 ### 2.2 Portfolio Metrics / Risk Diagnostics
 
-Question answered: How has the portfolio behaved historically, and what risk did it take?
+Question answered: How has the portfolio behaved historically, and what risk did it take...
 
 Target metrics:
 
@@ -562,7 +562,7 @@ Optional Session 03+ keys (recommended): `vol_of_vol`, `rel_vol_of_vol` as numbe
 
 ### 2.3 Factor Exposure / Factor Sensitivity
 
-Question answered: Which factors is the portfolio sensitive to?
+Question answered: Which factors is the portfolio sensitive to...
 
 Target factor coverage:
 
@@ -597,7 +597,7 @@ Canonical factor behavior remains in [factor_diagnostics_spec.md](factor_diagnos
 
 Status: **implemented** (ExecPlan [Block 2.3 Factor Exposure MVP](../exec_plans/2026-05-26_block_2_3_factor_exposure_plan.md)). **Implementation:** `src/block_2_3_factor_exposure.py` -> `build_block_2_3_factor_exposure`, wired from `build_portfolio_xray_v2`.
 
-Purpose: give portfolio-first consumers a stable, product-facing answer to “Which market factors actually drive the behavior of the current portfolio?” Diagnostic-only: no optimizer, no candidate generation, no Stress Lab scenario shock logic, no stress pass/fail, and no rebalance recommendation.
+Purpose: give portfolio-first consumers a stable, product-facing answer to “Which market factors actually drive the behavior of the current portfolio...” Diagnostic-only: no optimizer, no candidate generation, no Stress Lab scenario shock logic, no stress pass/fail, and no rebalance recommendation.
 
 **Architecture boundary:** Block 2.3 is a read-only adapter over existing `stress_report` factor diagnostics. It must not trigger OLS/HAC regressions, Kalman calculations, factor variance decomposition, data loading, or fallback calculations. Missing fields such as `factor_betas_5y` produce `partial` / `unavailable` output with warnings; the missing data must be fixed upstream in stress report generation / `src/stress_factors.py`.
 
@@ -672,7 +672,7 @@ python scripts/validate_core_mvp_block2_fixture_matrix.py
 
 ### 2.4 Hidden Exposure / Hidden Risk Detector
 
-Question answered: What risks are not obvious from headline allocation?
+Question answered: What risks are not obvious from headline allocation...
 
 #### 2.4.1 Block 2.4 product contract (`block_2_4_hidden_exposure`)
 
@@ -822,7 +822,7 @@ Current status: V2 implemented in Session 05 (2026-05-19). Rule-based thresholds
 
 ### 2.5 Risk Budget View
 
-Question answered: Which holdings and risk buckets consume portfolio variance risk relative to their capital weights?
+Question answered: Which holdings and risk buckets consume portfolio variance risk relative to their capital weights...
 
 **Product exposure:** **Core MVP** — top-level `block_2_5_risk_budget_view` (§2.5.1). Legacy `sections.risk_budget_view` remains for formatters and golden tests.
 
@@ -838,7 +838,7 @@ Legacy section status: partially implemented in `src/portfolio_xray.py` (`_risk_
 
 Status: **implemented** (ExecPlan [Block 2.5 Risk Budget View](../exec_plans/2026-05-26_block_2_5_risk_budget_view_plan.md) Sessions 00–08 closed 2026-05-26). **Implementation:** `src/block_2_5_risk_budget_view.py` -> `build_block_2_5_risk_budget_view`, wired from `build_portfolio_xray_v2` after `block_2_4_hidden_exposure`. Live acceptance: [Block 2.5 acceptance audit](../audits/2026-05-26_block_2_5_risk_budget_acceptance_audit.md).
 
-Purpose: answer *who really drives portfolio risk?* — capital weight vs volatility risk contribution (RC_vol), per-asset gaps, top RC concentrations, and bucket-level RC aggregation. Diagnostic-only: no optimizer, candidates, mandate gates, or trade instructions.
+Purpose: answer *who really drives portfolio risk...* — capital weight vs volatility risk contribution (RC_vol), per-asset gaps, top RC concentrations, and bucket-level RC aggregation. Diagnostic-only: no optimizer, candidates, mandate gates, or trade instructions.
 
 **Artifact placement:** top-level key `block_2_5_risk_budget_view` on `portfolio_xray.json` under the active output folder (portfolio-first: `{output_dir_final}/analysis_subject/portfolio_xray.json`). Do **not** introduce a separate `risk_budget_view.json` in the six-file product bundle.
 
@@ -931,7 +931,7 @@ or treat archetype as a six-file / `output_manifest` product requirement until a
 builds so golden tests, `report.txt` / HTML formatters, and older consumers keep working. UI/API and
 portfolio-first operators should read **Blocks 2.1–2.6** for the current product diagnosis.
 
-Question answered (when enabled): What kind of portfolio is this, with evidence and caveats?
+Question answered (when enabled): What kind of portfolio is this, with evidence and caveats...
 
 Target archetypes (rule-based scorecard, diagnostic-only):
 
@@ -974,7 +974,7 @@ the weakness map so regime tensions can be disclosed. **Product status: postpone
 **Product exposure:** **Core MVP** — top-level `block_2_6_portfolio_weakness_map` (§2.6.1). Legacy
 `sections.weakness_map` remains for backward compatibility and report formatters.
 
-Question answered: Where is the portfolio likely fragile, and what should be tested next in Stress Test Lab?
+Question answered: Where is the portfolio likely fragile, and what should be tested next in Stress Test Lab...
 
 **Product block (Core MVP):** `block_2_6_portfolio_weakness_map` (§2.6.1). This block is a **pre-stress hypothesis map**:
 it does not compute scenario losses or attribution.
@@ -1046,7 +1046,7 @@ Legacy section provenance (`RM-943`): `frequency=mixed`, `window` may list stres
 #### 2.6.1 Block 2.6 product contract (`block_2_6_portfolio_weakness_map`)
 
 Status: **implemented** — **`heuristic_v2`** closed 2026-05-29 (v1 MVP closed 2026-05-26: [Block 2.6 MVP acceptance audit](../audits/2026-05-26_block_2_6_portfolio_weakness_map_acceptance_audit.md); v2: [heuristic_v2 acceptance audit](../audits/2026-05-29_block_2_6_weakness_map_heuristic_v2_acceptance_audit.md), [UI Pareto spec](block_2_6_weakness_map_ui_pareto_spec.md), `DEC-2026-05-29-001`). Implementation: `src/block_2_6_portfolio_weakness_map.py` wired from `build_portfolio_xray_v2` after Block 2.5. This product block answers:
-*"Where is this portfolio likely fragile, and what should we test next?"* It does **not** compute stress PnL, pass/fail, or loss attribution.
+*"Where is this portfolio likely fragile, and what should we test next..."* It does **not** compute stress PnL, pass/fail, or loss attribution.
 
 **Architecture boundary (hard):**
 

@@ -17,11 +17,11 @@ Related:
 
 | Question | Verdict |
 | --- | --- |
-| Is `block_2_5_risk_budget_view` on live diagnosis path? | **Yes** — `run_portfolio_review.py --skip-candidates` refreshed `Main portfolio/analysis_subject/portfolio_xray.json` with populated Block 2.5 (`status` **ok**). |
-| Is Block 2.5 present after one-candidate demo? | **Yes** — same subject artifact after `--candidates equal_weight`; product validator **PASS** (8 checks). |
-| Does the product block exclude stress PnL fields? | **Yes** — no `worst_stress_*` keys on `assets[]` or block envelope (§5.2). |
-| Does legacy `sections.risk_budget_view` remain? | **Yes** — legacy section present on full X-Ray build (§5.3). |
-| Is the full ExecPlan accepted (Sessions 00–08)? | **Yes — 9/9** sessions complete (see §3). |
+| Is `block_2_5_risk_budget_view` on live diagnosis path... | **Yes** — `run_portfolio_review.py --skip-candidates` refreshed `Main portfolio/analysis_subject/portfolio_xray.json` with populated Block 2.5 (`status` **ok**). |
+| Is Block 2.5 present after one-candidate demo... | **Yes** — same subject artifact after `--candidates equal_weight`; product validator **PASS** (8 checks). |
+| Does the product block exclude stress PnL fields... | **Yes** — no `worst_stress_*` keys on `assets[]` or block envelope (§5.2). |
+| Does legacy `sections.risk_budget_view` remain... | **Yes** — legacy section present on full X-Ray build (§5.3). |
+| Is the full ExecPlan accepted (Sessions 00–08)... | **Yes — 9/9** sessions complete (see §3). |
 
 **Bottom line:** Block 2.5 Risk Budget View MVP is **complete**. Operators read capital vs variance-risk contribution from `block_2_5_risk_budget_view` on `analysis_subject/portfolio_xray.json`; legacy `sections.risk_budget_view` remains for formatters and golden contracts.
 

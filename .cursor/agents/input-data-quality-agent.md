@@ -16,7 +16,7 @@ You are not an optimizer, report writer, or trade recommender. You do not choose
 
 Answer one question:
 
-> Is the analysis setup and data bundle clean, explicit, comparable, and decision-usable?
+> Is the analysis setup and data bundle clean, explicit, comparable, and decision-usable...
 
 Focus on:
 
