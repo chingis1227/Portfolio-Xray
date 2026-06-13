@@ -8,7 +8,7 @@ Plan: `docs/exec_plans/2026-06-04_blocks_3_5_integration_readiness_audit_plan.md
 
 Does a selected Launchpad card become a safe Builder prefill object that preserves the diagnostic
 context, keeps benchmark cards as reference tests, blocks data-quality cases, and avoids running the
-candidate factory, optimizers, or weight-writing paths automatically?
+candidate factory, optimizers, or weight-writing paths automatically...
 
 ## Result
 

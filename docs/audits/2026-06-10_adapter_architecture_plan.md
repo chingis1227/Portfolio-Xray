@@ -132,9 +132,9 @@ The following must stay centralized in or near `reviewState.tsx`:
 7. Stage result recording entrypoints exposed to pages: `recordBuilderSetup`, `recordCandidateGeneration`, `recordComparisonResult`, `recordVerdictResult`.
 8. Reset behavior that clears or invalidates downstream candidate/comparison/verdict/report readiness when upstream selection, candidate, or review identity changes.
 
-Centralized code should answer: "What is the active review, what stage is it in, and which downstream evidence is still current?"
+Centralized code should answer: "What is the active review, what stage is it in, and which downstream evidence is still current..."
 
-Centralized code should not answer: "How exactly should the Diagnosis screen phrase the risk-budget insight?" or "Which rows should the Comparison screen render?"
+Centralized code should not answer: "How exactly should the Diagnosis screen phrase the risk-budget insight..." or "Which rows should the Comparison screen render..."
 
 ## What should split into screen-specific adapters or models
 

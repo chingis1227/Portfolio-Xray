@@ -226,7 +226,7 @@ def try_decode_mojibake_russian(text: str) -> str:
 
     # Only rewrite likely-mojibake runs (Cyrillic-looking noise in Latin context)
     return re.sub(
-        r"[\u0400-\u04ff\u0432\u0402\u201c\u201d\u2020\u2019\u2030\u20ac]+(?:\s*[\u0400-\u04ff\u0432\u0402\u201c\u201d\u2020\u2019\u2030\u20ac]+)*",
+        r"[\u0400-\u04ff\u0432\u0402\u201c\u201d\u2020\u2019\u2030\u20ac]+(...:\s*[\u0400-\u04ff\u0432\u0402\u201c\u201d\u2020\u2019\u2030\u20ac]+)*",
         _decode_match,
         text,
     )

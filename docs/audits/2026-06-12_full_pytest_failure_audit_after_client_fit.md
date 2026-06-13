@@ -89,8 +89,8 @@ portfolio lineage and no-trade actionability. Do not patch each assertion separa
 canonical status rule first:
 
 - If current weights exist but the current sidecar report is missing in optimize mode, should the
-  current row be `unavailable` or `degraded`?
-- If the current sidecar exists, should `artifact_root` always point to `Main portfolio/current_portfolio`?
+  current row be `unavailable` or `degraded`...
+- If the current sidecar exists, should `artifact_root` always point to `Main portfolio/current_portfolio`...
 
 The existing tests and older docs favor `unavailable` when the sidecar is missing and sidecar-root
 lineage when it exists.

@@ -42,7 +42,7 @@ The completed prototype provides the requested frontend foundation: a clean Next
 
 ## Context and Orientation
 
-The repository root is `D:/Рабочий стол/КУРСОР ТУЛА ДИАГНОСТИКА`. The current product truth is diagnosis-first Portfolio MRI / Portfolio X-Ray. The new frontend lives in `frontend/` and is intentionally independent from Python files such as `run_portfolio_review.py`, `run_core_diagnostics.py`, and `src/`. Static demo data lives in `frontend/data/demo/`. Reusable components live in `frontend/components/`. Next.js route screens live in `frontend/app/`.
+The repository root is `D:/Desktop/CURSOR TULA DIAGNOSTICS`. The current product truth is diagnosis-first Portfolio MRI / Portfolio X-Ray. The new frontend lives in `frontend/` and is intentionally independent from Python files such as `run_portfolio_review.py`, `run_core_diagnostics.py`, and `src/`. Static demo data lives in `frontend/data/demo/`. Reusable components live in `frontend/components/`. Next.js route screens live in `frontend/app/`.
 
 A candidate is a portfolio hypothesis to test, not a recommendation. A verdict is decision support, not a trading instruction. No-trade and evidence-insufficient outcomes are valid and must be visible in the UI.
 

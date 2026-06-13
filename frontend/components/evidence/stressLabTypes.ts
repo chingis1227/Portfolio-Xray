@@ -29,7 +29,7 @@ export type StressScenarioTile = {
   evidenceQualityLabel: string;
   evidenceTone: StatusTone;
   isWorst: boolean;
-  dataNote?: string;
+  dataNote...: string;
 };
 
 export type StressScenarioDetail = StressScenarioTile & {
@@ -38,7 +38,7 @@ export type StressScenarioDetail = StressScenarioTile & {
   assetsHelped: ContributionRow[];
   factorAttribution: FactorContributionRow[];
   interpretation: string;
-  limitation?: string;
+  limitation...: string;
 };
 
 export type StressScorecardItem = {

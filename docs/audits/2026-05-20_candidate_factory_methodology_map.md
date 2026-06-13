@@ -27,7 +27,7 @@ Product concept (non-binding): [DIAGNOSTIC_PRODUCT_CONCEPT.md](../DIAGNOSTIC_PRO
 
 ## 1. Executive summary
 
-Block 4 answers: **What alternative portfolios can we build from the same universe and data, how was each one constructed, is it fresh and valid, what can fail, and is it ready for fair backtest, stress evaluation, and comparison?**
+Block 4 answers: **What alternative portfolios can we build from the same universe and data, how was each one constructed, is it fresh and valid, what can fail, and is it ready for fair backtest, stress evaluation, and comparison...**
 
 **Architecture (shipped):**
 
@@ -73,7 +73,7 @@ config.yml + load_monthly_data_shared
 
 ### 4.1 Candidate Menu / Candidate Registry
 
-**User question:** Which alternatives exist, which are in the product menu vs a reduced run, and how are they labeled for comparison?
+**User question:** Which alternatives exist, which are in the product menu vs a reduced run, and how are they labeled for comparison...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
@@ -156,7 +156,7 @@ config.yml + load_monthly_data_shared
 
 ### 4.2 Candidate Construction Methods (cross-cutting)
 
-**User question:** By what rule is each candidate built, with what data, and is it deterministic?
+**User question:** By what rule is each candidate built, with what data, and is it deterministic...
 
 | Element | Rule | Provenance |
 | --- | --- | --- |
@@ -351,7 +351,7 @@ All: **optimized weights** on monthly Σ (and scenario matrix for CVaR); **no** 
 
 ### 4.7 Candidate Factory Orchestration
 
-**User question:** How are candidates run in batch, what flags apply, and what happens on partial failure?
+**User question:** How are candidates run in batch, what flags apply, and what happens on partial failure...
 
 | Element | Detail | Prov. |
 | --- | --- | --- |
@@ -387,7 +387,7 @@ All: **optimized weights** on monthly Σ (and scenario matrix for CVaR); **no** 
 
 ### 4.8 Candidate Metadata, Freshness, and Status Contract
 
-**User question:** Can we trust that a candidate folder matches this review date and config?
+**User question:** Can we trust that a candidate folder matches this review date and config...
 
 #### Factory run (`candidate_factory_run_v1`)
 
@@ -422,7 +422,7 @@ Stale snapshot → row `unavailable`, `unavailable_reason: stale_snapshot_analys
 | `generated_at` per candidate vs factory batch time | Partial (**A** in snapshots only) |
 | Propagation of builder `FAIL_*` into factory reason codes (often collapsed to missing snapshot) | **C** gap |
 
-**Stale in comparison?** Blocked when `analysis_end` known (**C**). If comparison `analysis_end` null, stale gate may not fire (**C** risk).
+**Stale in comparison...** Blocked when `analysis_end` known (**C**). If comparison `analysis_end` null, stale gate may not fire (**C** risk).
 
 **Tests:** Factory freshness tests; `test_stale_candidate_snapshot_marked_unavailable` in comparison.
 
@@ -436,7 +436,7 @@ Stale snapshot → row `unavailable`, `unavailable_reason: stale_snapshot_analys
 
 ### 4.9 Candidate Readiness for Backtest, Stress, Evaluation, and Comparison
 
-**User question:** Is each candidate ready for fair comparison and downstream decision artifacts?
+**User question:** Is each candidate ready for fair comparison and downstream decision artifacts...
 
 #### Full report diagnostics (per candidate folder)
 

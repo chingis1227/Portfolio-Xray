@@ -233,10 +233,10 @@ Key outputs:
 
 User questions answered:
 
-- What do I actually own?
-- Where is my risk concentrated?
-- Which assets contribute more risk than their weight suggests?
-- Does the portfolio behave like its labels imply?
+- What do I actually own...
+- Where is my risk concentrated...
+- Which assets contribute more risk than their weight suggests...
+- Does the portfolio behave like its labels imply...
 
 Current implementation:
 
@@ -261,7 +261,7 @@ Primary screen sections:
 - Synthetic scenario results.
 - Loss contribution.
 - Hedge gap analysis.
-- What Happens If? simulator.
+- What Happens If... simulator.
 
 Key outputs:
 
@@ -275,10 +275,10 @@ Key outputs:
 
 User questions answered:
 
-- Where does this portfolio break?
-- Which assets pull it down in crisis?
-- Which assets actually hedge?
-- Is the main weakness equity, rates, inflation, credit, liquidity, USD, commodity, or another risk?
+- Where does this portfolio break...
+- Which assets pull it down in crisis...
+- Which assets actually hedge...
+- Is the main weakness equity, rates, inflation, credit, liquidity, USD, commodity, or another risk...
 
 Current implementation:
 
@@ -286,7 +286,7 @@ Current implementation:
 
 Target additions:
 
-- Interactive What Happens If? simulator is TBD.
+- Interactive What Happens If... simulator is TBD.
 - Full visual crisis replay is TBD.
 
 ### 6. Candidate Portfolio Factory
@@ -367,9 +367,9 @@ Key outputs:
 
 User questions answered:
 
-- Did the candidate improve historical behavior?
-- Did lower risk come with lower return?
-- Did the strategy only look good in one period?
+- Did the candidate improve historical behavior...
+- Did lower risk come with lower return...
+- Did the strategy only look good in one period...
 
 Current implementation:
 
@@ -405,9 +405,9 @@ Key outputs:
 
 User questions answered:
 
-- What macro environment are we in?
-- Which regimes are dangerous for this portfolio?
-- Is the current portfolio exposed to the wrong risks for the current environment?
+- What macro environment are we in...
+- Which regimes are dangerous for this portfolio...
+- Is the current portfolio exposed to the wrong risks for the current environment...
 
 Current implementation:
 
@@ -458,9 +458,9 @@ Key outputs:
 
 User questions answered:
 
-- Which portfolio is better, and in what sense?
-- What do I give up if I choose the more robust portfolio?
-- Which candidates should be rejected?
+- Which portfolio is better, and in what sense...
+- What do I give up if I choose the more robust portfolio...
+- Which candidates should be rejected...
 
 Current implementation:
 
@@ -507,10 +507,10 @@ Key outputs:
 
 User questions answered:
 
-- What should I do?
-- Why is this recommendation reasonable?
-- What is the cost of changing?
-- Is doing nothing better?
+- What should I do...
+- Why is this recommendation reasonable...
+- What is the cost of changing...
+- Is doing nothing better...
 
 Current implementation:
 
@@ -680,11 +680,11 @@ Expected behavior:
 
 ## Open Product Questions
 
-- What is the first real UI surface: dashboard, static report, local app, or web app?
-- Should the initial product be investor-first, advisor-first, or report-first?
-- What minimum comparison set is required for launch?
-- How should monitoring frequency work?
-- What fields and review workflow are required for a user-maintained Decision Journal beyond generated V1 records?
+- What is the first real UI surface: dashboard, static report, local app, or web app...
+- Should the initial product be investor-first, advisor-first, or report-first...
+- What minimum comparison set is required for launch...
+- How should monitoring frequency work...
+- What fields and review workflow are required for a user-maintained Decision Journal beyond generated V1 records...
 
 ## Source Of Truth Relationship
 

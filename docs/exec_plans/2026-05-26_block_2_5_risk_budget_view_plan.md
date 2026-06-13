@@ -16,7 +16,7 @@ This document follows [PLANS.md](../../PLANS.md) from the repository root. A fut
 
 ## Purpose / Big Picture
 
-After this migration, a portfolio-first operator running `python run_portfolio_review.py` on the current [config.yml](../../config.yml) reads `{output_dir_final}/analysis_subject/portfolio_xray.json` and gets a **stable product-facing Block 2.5** that answers: *who really drives portfolio risk?* — not only where capital sits.
+After this migration, a portfolio-first operator running `python run_portfolio_review.py` on the current [config.yml](../../config.yml) reads `{output_dir_final}/analysis_subject/portfolio_xray.json` and gets a **stable product-facing Block 2.5** that answers: *who really drives portfolio risk...* — not only where capital sits.
 
 The block shows, per asset and in summary:
 
@@ -124,7 +124,7 @@ The block shows, per asset and in summary:
 
 ## Context and Orientation
 
-Portfolio MRI is diagnosis-first. Block 2.5 follows Block 2.4 in the X-Ray stack and answers: **which holdings and risk buckets consume portfolio variance risk relative to their capital weights?**
+Portfolio MRI is diagnosis-first. Block 2.5 follows Block 2.4 in the X-Ray stack and answers: **which holdings and risk buckets consume portfolio variance risk relative to their capital weights...**
 
 Pipeline today (portfolio-first):
 
@@ -164,7 +164,7 @@ config.yml (tickers, current_weights, investor_currency)
 
 ### 2. JSON / output inventory
 
-| Artifact | Location | Product-ready? | Notes |
+| Artifact | Location | Product-ready... | Notes |
 | --- | --- | --- | --- |
 | `block_2_1` … `block_2_4` | `analysis_subject/portfolio_xray.json` | **Yes** | Core MVP today |
 | `block_2_5_risk_budget_view` | — | **Missing** | Target MVP |

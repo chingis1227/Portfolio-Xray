@@ -11,10 +11,10 @@ Target architecture: Block 4 v2 plan (Evidence Extraction → Scoring → Severi
 
 | Question | Verdict |
 | --- | --- |
-| Is Block 4 entry implemented today? | **Yes (V1)** — `problem_classification_v1` + `candidate_launchpad_v1` in [`src/problem_classification.py`](../../src/problem_classification.py), [`src/candidate_launchpad.py`](../../src/candidate_launchpad.py). |
-| Is V1 sufficient for target product architecture? | **No** — thin rule layer; legacy `sections.*` readers; 9 problem IDs; severity-only sort; no evidence extraction module, rejected problems, no-trade gate, or rich `evidence_refs`. |
-| Are Blocks 2–3 product blocks ready as evidence sources? | **Yes** — `block_2_1` … `block_2_6` on `portfolio_xray.json`; `hedge_gap_analysis_v1` + `current_portfolio_stress_scorecard_v1` on `stress_report.json` (foundation closure `READY_FOR_DECISION_WORKFLOW`). |
-| Recommended V2 migration strategy? | **Additive schema bump** — `problem_classification_v2` / `candidate_launchpad_v2` with dual-write adapter during Sessions 10–13; keep V1 contract validators until Session 14 freeze. |
+| Is Block 4 entry implemented today... | **Yes (V1)** — `problem_classification_v1` + `candidate_launchpad_v1` in [`src/problem_classification.py`](../../src/problem_classification.py), [`src/candidate_launchpad.py`](../../src/candidate_launchpad.py). |
+| Is V1 sufficient for target product architecture... | **No** — thin rule layer; legacy `sections.*` readers; 9 problem IDs; severity-only sort; no evidence extraction module, rejected problems, no-trade gate, or rich `evidence_refs`. |
+| Are Blocks 2–3 product blocks ready as evidence sources... | **Yes** — `block_2_1` … `block_2_6` on `portfolio_xray.json`; `hedge_gap_analysis_v1` + `current_portfolio_stress_scorecard_v1` on `stress_report.json` (foundation closure `READY_FOR_DECISION_WORKFLOW`). |
+| Recommended V2 migration strategy... | **Additive schema bump** — `problem_classification_v2` / `candidate_launchpad_v2` with dual-write adapter during Sessions 10–13; keep V1 contract validators until Session 14 freeze. |
 | Session 00 gate | **PASS** — gap matrix complete; backward-compat decision recorded; pytest baseline captured. |
 
 **Bottom line:** V1 is a valid **decision-entry stub** accepted in Session 09. V2 must replace the monolithic collector with an auditable pipeline without changing Blocks 2–3 formulas or Candidate Factory behavior.

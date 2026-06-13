@@ -51,14 +51,14 @@ The product must not show many metrics without interpretation. Every screen must
 
 Help the user answer:
 
-1. What do I own?
-2. Where is the real risk?
-3. Where can the portfolio break?
-4. What alternatives exist?
-5. Which alternative is stronger?
-6. What trade-off do I accept?
-7. Should I rebalance or do nothing?
-8. How do I explain this decision professionally?
+1. What do I own...
+2. Where is the real risk...
+3. Where can the portfolio break...
+4. What alternatives exist...
+5. Which alternative is stronger...
+6. What trade-off do I accept...
+7. Should I rebalance or do nothing...
+8. How do I explain this decision professionally...
 
 ## Core journey (current Core MVP)
 
@@ -139,16 +139,16 @@ Design each screen so the user leaves with one clear insight and one clear next 
 
 | Screen | Top-level question | Main UX risk |
 |--------|-------------------|--------------|
-| Input & Assumptions | Is analysis ready? | Hidden assumptions -> overtrust |
-| Portfolio X-Ray | What do I really own? | Raw metrics without diagnosis |
-| Stress Lab | Where does it break? | Scary simulator without mechanism |
-| Problem Classification | What is wrong and how severe is it? | Generic problem statements without evidence |
-| Candidate Launchpad | What hypotheses should we test next? | Jumping to full candidate zoo |
-| Portfolio Alternatives Builder | How do we run one selected hypothesis? | Hidden delegation and unclear execution scope |
-| Current vs Candidate Comparison | Is this candidate better for this problem? | Ranking noise instead of decision evidence |
-| Decision Verdict | Should we hold, adjust, or no-trade? | Exposing technical engine labels as product language |
-| AI Commentary / Grounding | How do we explain with evidence only? | Invented certainty |
-| Monitoring / What Changed | What changed materially since prior review? | Noise vs material change |
+| Input & Assumptions | Is analysis ready... | Hidden assumptions -> overtrust |
+| Portfolio X-Ray | What do I really own... | Raw metrics without diagnosis |
+| Stress Lab | Where does it break... | Scary simulator without mechanism |
+| Problem Classification | What is wrong and how severe is it... | Generic problem statements without evidence |
+| Candidate Launchpad | What hypotheses should we test next... | Jumping to full candidate zoo |
+| Portfolio Alternatives Builder | How do we run one selected hypothesis... | Hidden delegation and unclear execution scope |
+| Current vs Candidate Comparison | Is this candidate better for this problem... | Ranking noise instead of decision evidence |
+| Decision Verdict | Should we hold, adjust, or no-trade... | Exposing technical engine labels as product language |
+| AI Commentary / Grounding | How do we explain with evidence only... | Invented certainty |
+| Monitoring / What Changed | What changed materially since prior review... | Noise vs material change |
 
 ### 1. Input & Assumptions
 
@@ -198,7 +198,7 @@ Each candidate: name; purpose; target behavior; expected strength/weakness; comp
 
 ### 5. Backtest & Validation (advanced, not default Core MVP)
 
-**Purpose:** Historical behavior  -  robust or overfit?
+**Purpose:** Historical behavior  -  robust or overfit...
 
 **Required disclaimer:** "Backtest is a historical behavior test, not a future return forecast."
 

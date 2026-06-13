@@ -18,7 +18,7 @@
 
 ## 0. Mandate vs diagnostic suite
 
-| Layer | What | Stops weight release? | Core MVP portfolio-first? |
+| Layer | What | Stops weight release... | Core MVP portfolio-first... |
 |-------|------|------------------------|---------------------------|
 | **Mandate** | Realized portfolio max drawdown on **full overlapping monthly history** vs `target_max_drawdown_pct` | **Yes** -> **FAIL_MANDATE** (`run_optimization.py`) | **No** — legacy/advanced optimization governance only |
 | **Stress suite — mandate mode** (`loss_gate_mode="mandate"`, legacy `optimize_from_universe` reports) | Synthetic/historical rows vs client `max_dd_limit`; suite status **DIAG_*** | **No** (diagnostic reporting) | **No** |
@@ -26,7 +26,7 @@
 
 Scenario and episode checks below are **for PM reporting** in legacy mandate mode; they do not replace the mandate gate and **do not apply** to Core MVP portfolio-first stress (`loss_gate_mode="diagnostic"`).
 
-**Core MVP product rule:** Block 1 Input, Blocks 2.1?2.6 X-Ray, and Block 3 Stress Test Lab do **not** require or compare against client profile targets (horizon, liquidity, target return/vol/MaxDD, suitability). The implemented Client Fit Check may compare bounded profile targets only after Stress Lab, while legacy mandate fields remain in config/`resolved_mandate` for legacy/advanced optimization compatibility. Do not read this rule as "no Client Profile in the web journey"; it is only the Blocks 1?3 calculation boundary.
+**Core MVP product rule:** Block 1 Input, Blocks 2.1...2.6 X-Ray, and Block 3 Stress Test Lab do **not** require or compare against client profile targets (horizon, liquidity, target return/vol/MaxDD, suitability). The implemented Client Fit Check may compare bounded profile targets only after Stress Lab, while legacy mandate fields remain in config/`resolved_mandate` for legacy/advanced optimization compatibility. Do not read this rule as "no Client Profile in the web journey"; it is only the Blocks 1...3 calculation boundary.
 
 ---
 

@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { BrandMark } from "@/components/onboarding/BrandMark";
 import { buildJourneySteps } from "@/lib/journey";
 import { useReviewState } from "@/lib/reviewState";
 import type { JourneyStepStatus } from "@/lib/types";
-import { AuthPanel } from "./AuthPanel";
-import { PersistenceStatus } from "./PersistenceStatus";
-import { SavedReviewsPanel } from "./SavedReviewsPanel";
 
 function statusClasses(status: JourneyStepStatus) {
   switch (status) {
@@ -45,18 +43,18 @@ export function Sidebar() {
   return (
     <aside className="hidden min-h-screen w-64 shrink-0 border-r border-pmri-border/45 bg-pmri-secondary/88 px-5 py-6 shadow-[16px_0_64px_rgba(0,0,0,0.14)] lg:flex lg:flex-col">
       <div>
-        <p className="text-lg font-semibold tracking-[-0.025em] text-pmri-text">Portfolio MRI</p>
-        <p className="pmri-microcopy mt-1">Investment Decision Room</p>
-        <div className="mt-5 rounded-2xl border border-pmri-border/45 bg-white/[0.02] p-4">
-          <p className="pmri-label text-pmri-text2">Decision-safe workspace</p>
-          <p className="mt-2 text-sm leading-6 text-pmri-muted">Current portfolio first. Candidate tests are diagnostic, not orders.</p>
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-pmri-border/55 bg-white/[0.035] shadow-decision">
+            <BrandMark className="h-8 w-8" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-lg font-semibold tracking-[-0.025em] text-pmri-text">Portfolio MRI</p>
+            <p className="pmri-microcopy mt-1">Investment Decision Room</p>
+          </div>
         </div>
-        <PersistenceStatus />
-        <AuthPanel />
-        <SavedReviewsPanel />
       </div>
 
-      {lockMessage ? (
+      {lockMessage ... (
         <div className="mt-6 rounded-2xl border border-pmri-amber/30 bg-pmri-amber/10 px-3 py-3 text-xs leading-5 text-pmri-text2" role="status">
           {lockMessage}
         </div>
@@ -78,7 +76,7 @@ export function Sidebar() {
 
           const className = `pmri-focus pmri-nav-text group flex w-full items-center justify-between rounded-2xl border px-3.5 py-3 text-left transition ${statusClasses(step.status)}`;
 
-          return step.status === "locked" ? (
+          return step.status === "locked" ... (
             <button
               key={step.id}
               type="button"

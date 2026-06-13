@@ -31,7 +31,7 @@ The Pareto / Dominance layer:
 
 ## Product Boundary
 
-- Answers: *Which candidates are clearly weaker than another option on return, risk, drawdown, stress loss, and (when known) turnover vs current—with no compensating metric advantage?*
+- Answers: *Which candidates are clearly weaker than another option on return, risk, drawdown, stress loss, and (when known) turnover vs current—with no compensating metric advantage...*
 - Does **not** answer: *automatically drop candidates from Selection*, *execute trades*, or *override mandate/stress release*.
 - Forbidden in exported text: imperative buy/sell, performance guarantees, presenting dominance as automatic investment truth.
 

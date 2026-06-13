@@ -4,7 +4,7 @@ This document is part of the active project documentation after the documentatio
 
 ## 1. Business Positioning
 
-Portfolio MRI / Portfolio X-Ray is a portfolio diagnostics and investment decision-support system. The **canonical current product truth is “ДИАГНОСТИКА 2”**.
+Portfolio MRI / Portfolio X-Ray is a portfolio diagnostics and investment decision-support system. The **canonical current product truth is “Diagnosis 2”**.
 
 It helps advisors and sophisticated investors understand what is really inside a portfolio, where
 risk is concentrated, how the portfolio may behave under stress, which alternative allocation
@@ -26,7 +26,7 @@ Input portfolio
 -> Monitoring / What Changed
 ```
 
-“ДИАГНОСТИКА 2 НА ПОТОМ” is backlog / advanced / later. Health Score, Robustness Scorecard, macro
+“Diagnosis 2 Later” is backlog / advanced / later. Health Score, Robustness Scorecard, macro
 dashboards, full multi-candidate arenas, full Action Plan / Rebalancing Advisor, full Decision
 Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client-Fit Check, Asset X-Ray,
 Max Sharpe, tax-aware optimization, turnover-aware optimizer objectives, tactical tilt, full custom
@@ -43,7 +43,7 @@ diagnosis, a stress-tested improvement hypothesis, and a defensible rebalance or
 The product should answer one practical question:
 
 > What is really inside this portfolio, where can it break, what reasonable alternative should be
-> tested, and should I rebalance or leave the portfolio unchanged?
+> tested, and should I rebalance or leave the portfolio unchanged...
 
 This question is more important than showing every available metric or every possible optimization
 method.
@@ -288,7 +288,7 @@ them as implemented unless verified in `SPEC.md`, `docs/specs/*.md`, or code.
 - Full multi-candidate ranking / advanced research comparison.
 - Out-of-sample / walk-forward analysis.
 - Full Crisis Replay UI.
-- What Happens If? Simulator.
+- What Happens If... Simulator.
 - Portfolio Health Score / Robustness Scorecard as standalone/current primary product modules (not current Core MVP; advanced/backend/backlog only).
 - Assumption Sensitivity / Assumption Testing Mode.
 - Pareto Frontier / Dominance Check.
@@ -359,9 +359,9 @@ Business success should be measured by whether users can:
 For advisors, a practical validation question is:
 
 > Would you use this report before a client meeting, and would it save enough time or improve enough
-> trust to justify paying for it?
+> trust to justify paying for it...
 
 For self-directed investors:
 
 > Does this help you make a clearer keep/rebalance/test-another-candidate decision than your current
-> tools?
+> tools...

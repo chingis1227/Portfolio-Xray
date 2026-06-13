@@ -3056,7 +3056,7 @@ def build_factory_run_txt(doc: dict[str, Any]) -> str:
         lines.append("")
         lines.append("Failed step details (reason_code):")
         for step in failed_steps:
-            cid = step.get("candidate_id") or "?"
+            cid = step.get("candidate_id") or "..."
             rc = step.get("reason_code") or "unknown"
             detail = f"  - {cid}: {rc}"
             message = step.get("message")

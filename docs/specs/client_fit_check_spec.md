@@ -6,7 +6,7 @@ that evidence into diagnosis rules, UI routes, comparison, verdict, and compact 
 
 ## Purpose
 
-Client Fit answers: **Does the diagnosed portfolio fit the client's provided investment profile?**
+Client Fit answers: **Does the diagnosed portfolio fit the client's provided investment profile...**
 It compares deterministic Portfolio X-Ray and Stress Lab evidence against the client's stated
 return, volatility, maximum drawdown, and horizon inputs. It does not approve suitability, execute
 trades, or replace portfolio diagnosis.

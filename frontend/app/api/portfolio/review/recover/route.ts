@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type RecoverRequest = {
-  review_id?: unknown;
+  review_id...: unknown;
 };
 
 export async function GET(request: Request) {

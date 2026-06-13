@@ -31,15 +31,15 @@ export function StressTestLab({ model }: { model: StressLabModel }) {
   const worstSyntheticScenario = useMemo(() => {
     const available = model.syntheticScenarios.filter((scenario) => scenario.availability === "available");
     return available.find((scenario) => scenario.isWorst)
-      ?? [...available].sort((a, b) => (a.portfolioLossPct ?? 0) - (b.portfolioLossPct ?? 0))[0]
-      ?? model.syntheticScenarios.find((scenario) => scenario.isWorst)
-      ?? model.syntheticScenarios[0]
-      ?? allScenarios[0];
+      ...... [...available].sort((a, b) => (a.portfolioLossPct ...... 0) - (b.portfolioLossPct ...... 0))[0]
+      ...... model.syntheticScenarios.find((scenario) => scenario.isWorst)
+      ...... model.syntheticScenarios[0]
+      ...... allScenarios[0];
   }, [allScenarios, model.syntheticScenarios]);
-  const selectedScenarioId = manualScenarioId ?? worstSyntheticScenario.id;
+  const selectedScenarioId = manualScenarioId ...... worstSyntheticScenario.id;
   const selectedScenario = allScenarios.find((scenario) => scenario.id === selectedScenarioId)
-    ?? worstSyntheticScenario
-    ?? allScenarios[0];
+    ...... worstSyntheticScenario
+    ...... allScenarios[0];
   const selectedIsWorst = selectedScenario.id === worstSyntheticScenario.id;
   const viewWorstScenario = () => setManualScenarioId(null);
 

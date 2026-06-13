@@ -10,12 +10,12 @@ Prerequisite: [Session 08 launchpad cards](2026-05-29_block_4_v2_session_08_laun
 
 | Question | Verdict |
 | --- | --- |
-| `evaluate_no_trade_gate()` implemented? | **Yes** — `src/block_4/no_trade_gate.py` |
-| `no_trade_or_monitoring_view` fields? | **Yes** — outcome, headline, reasons, next step, suppressed |
-| Confidence / stress / materiality rules? | **Yes** — actionable primary gate |
-| Launchpad integration? | **Yes** — `launchpad_cards` consumes gate result |
-| `build_diagnosis_summary()`? | **Yes** — PC v2 `summary.no_trade_outcome` |
-| Session 09 tests? | **Yes** — `tests/test_block_4_no_trade_gate.py` (**7 passed**) |
+| `evaluate_no_trade_gate()` implemented... | **Yes** — `src/block_4/no_trade_gate.py` |
+| `no_trade_or_monitoring_view` fields... | **Yes** — outcome, headline, reasons, next step, suppressed |
+| Confidence / stress / materiality rules... | **Yes** — actionable primary gate |
+| Launchpad integration... | **Yes** — `launchpad_cards` consumes gate result |
+| `build_diagnosis_summary()`... | **Yes** — PC v2 `summary.no_trade_outcome` |
+| Session 09 tests... | **Yes** — `tests/test_block_4_no_trade_gate.py` (**7 passed**) |
 
 **Session 09 verdict:** **PASS**
 

@@ -87,7 +87,7 @@ When `client_fit_check.json` is supplied, each comparison row also contains
 `current_vs_candidate_client_targets_v1`, profile/source-quality context, target rows for return,
 volatility, historical drawdown, worst stress loss, and horizon when available, plus explicit
 `does_not_issue_verdict` and `does_not_crown_winner` guardrails. These rows answer "how do current
-and candidate evidence compare with the provided Client Fit targets?" They do not decide whether to
+and candidate evidence compare with the provided Client Fit targets..." They do not decide whether to
 keep, rebalance, or approve the portfolio.
 
 ## Baseline and Candidate Selection

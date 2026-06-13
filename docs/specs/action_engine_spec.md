@@ -136,7 +136,7 @@ Reuses comparison/selection projections only (no new formulas):
 
 ## Diagnostic Boundary
 
-| Artifact | Binding? |
+| Artifact | Binding... |
 | --- | --- |
 | `action_plan.json` | Implementation plan for review only; **non-executing**. |
 | `selection_decision.json` | Formal decision record; Action must not override its status. |

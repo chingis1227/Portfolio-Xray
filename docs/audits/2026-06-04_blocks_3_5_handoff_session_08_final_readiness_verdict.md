@@ -6,7 +6,7 @@ Plan: `docs/exec_plans/2026-06-04_blocks_3_5_integration_readiness_audit_plan.md
 
 ## Question
 
-Can the product team safely move forward from the Blocks 3-5 handoff audit into Candidate Generation, or must handoff/docs/tests/live-artifact issues be fixed first?
+Can the product team safely move forward from the Blocks 3-5 handoff audit into Candidate Generation, or must handoff/docs/tests/live-artifact issues be fixed first...
 
 Required verdict choices from the active plan:
 
@@ -39,7 +39,7 @@ This is **not** evidence that the canonical source-code handoff is broken. It is
 
 ## Commands Run
 
-From repository root `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`.
+From repository root `D:\Desktop\CURSOR TULA DIAGNOSTICS`.
 
 ### Live validators and docs
 
@@ -178,7 +178,7 @@ After that, the final verdict can likely be upgraded to `READY_WITH_MINOR_GAPS` 
 
 ## Final Answer to the Plan Question
 
-Does Stress evidence flow into diagnosis, diagnosis into Launchpad, Launchpad into Builder prefill, and is this covered by tests/docs/live artifacts?
+Does Stress evidence flow into diagnosis, diagnosis into Launchpad, Launchpad into Builder prefill, and is this covered by tests/docs/live artifacts...
 
 - Source and docs answer: **yes, with minor gaps**.
 - Focused tests answer: **mostly yes; one non-handoff wording test remains red**.

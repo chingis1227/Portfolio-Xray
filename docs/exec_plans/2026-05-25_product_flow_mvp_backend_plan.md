@@ -59,9 +59,9 @@ flowchart LR
 
 ---
 
-## Documentation: enough context for new sessions?
+## Documentation: enough context for new sessions...
 
-| Area | Enough? | Gap / action |
+| Area | Enough... | Gap / action |
 | --- | --- | --- |
 | Implementation contract | Yes | [SPEC.md](../../SPEC.md), [OUTPUTS.md](../../OUTPUTS.md) § Product bundle |
 | Per-artifact schemas | Yes | `docs/specs/*` for each bundle file |

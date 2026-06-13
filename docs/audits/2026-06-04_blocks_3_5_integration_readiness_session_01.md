@@ -10,11 +10,11 @@ Scope: read-only readiness audit for Block 3 Stress Lab → Block 4 diagnosis / 
 
 | Question | Verdict |
 | --- | --- |
-| Does Block 3 expose product stress evidence for downstream consumers? | **Yes** — product keys are covered by downstream integration and Block 3 contract tests. |
-| Does Block 4 have product validators for diagnosis and launchpad handoff? | **Yes** — `check_problem_classification_v3` and `check_candidate_launchpad_v3` are active. |
-| Does Block 5 have product validators for compare and verdict artifacts? | **Yes** — `check_current_vs_candidate_v1` and `check_decision_verdict_v1` are active. |
-| Does the one-candidate command plan the intended product flow? | **Yes** — dry-run shows Blocks 3-5 flow through Decision Verdict and `--then-compare`. |
-| Is live generated output freshly proven in Session 01? | **No** — intentionally not refreshed; this session did not run a networked/live candidate build. |
+| Does Block 3 expose product stress evidence for downstream consumers... | **Yes** — product keys are covered by downstream integration and Block 3 contract tests. |
+| Does Block 4 have product validators for diagnosis and launchpad handoff... | **Yes** — `check_problem_classification_v3` and `check_candidate_launchpad_v3` are active. |
+| Does Block 5 have product validators for compare and verdict artifacts... | **Yes** — `check_current_vs_candidate_v1` and `check_decision_verdict_v1` are active. |
+| Does the one-candidate command plan the intended product flow... | **Yes** — dry-run shows Blocks 3-5 flow through Decision Verdict and `--then-compare`. |
+| Is live generated output freshly proven in Session 01... | **No** — intentionally not refreshed; this session did not run a networked/live candidate build. |
 
 **Session 01 verdict:** **READY_FOR_TARGETED_LIVE_VALIDATION**. The code-level contracts and focused regression bundle are green. A later session should prove fresh live artifacts if needed.
 

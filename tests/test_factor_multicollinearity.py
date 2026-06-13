@@ -20,7 +20,7 @@ def test_factor_multicollinearity_orthogonal_low_severity() -> None:
     assert out["cond_correlation_matrix"] is not None and float(out["cond_correlation_matrix"]) < 30.0
     assert "assessment_en" in out
     assert isinstance(out["assessment_en"], str) and out["assessment_en"].startswith("Low:")
-    assert "assessment_ru" not in out
+    assert "assessment_en_legacy" not in out
 
 
 def test_factor_multicollinearity_duplicate_column_high_vif() -> None:
@@ -35,7 +35,7 @@ def test_factor_multicollinearity_duplicate_column_high_vif() -> None:
     assert out.get("max_vif_is_infinite") is True
     assert "assessment_en" in out
     assert "High:" in out["assessment_en"]
-    assert "assessment_ru" not in out
+    assert "assessment_en_legacy" not in out
 
 
 def test_multicollinearity_commentary_prefers_assessment_en_over_legacy_ru() -> None:
@@ -47,7 +47,7 @@ def test_multicollinearity_commentary_prefers_assessment_en_over_legacy_ru() -> 
         {
             "severity": "low",
             "assessment_en": "Primary English text.",
-            "assessment_ru": "Legacy Russian text.",
+            "assessment_en_legacy": "Legacy Russian text.",
         },
     )
     text = "\n".join(lines)
@@ -61,6 +61,6 @@ def test_multicollinearity_commentary_reads_legacy_assessment_ru() -> None:
     lines: list[str] = []
     _append_factor_multicollinearity_section(
         lines,
-        {"severity": "low", "assessment_ru": "Legacy-only assessment."},
+        {"severity": "low", "assessment_en_legacy": "Legacy-only assessment."},
     )
     assert "Assessment: Legacy-only assessment." in "\n".join(lines)

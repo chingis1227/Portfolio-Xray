@@ -23,10 +23,10 @@ Input portfolio
 
 The demo should answer four questions:
 
-1. What is the current portfolio problem?
-2. What one hypothesis was tested?
-3. What improved and what worsened, when evidence is available?
-4. Is action justified, or should the user keep the current portfolio / review missing evidence?
+1. What is the current portfolio problem...
+2. What one hypothesis was tested...
+3. What improved and what worsened, when evidence is available...
+4. Is action justified, or should the user keep the current portfolio / review missing evidence...
 
 The demo is **not** an optimizer cockpit, not a candidate arena, and not a polished PDF report. Equal
 Weight and Risk Parity are diagnostic reference tests unless a later verdict justifies action. A

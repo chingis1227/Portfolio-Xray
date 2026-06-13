@@ -5,7 +5,7 @@
 **Date:** 2026-05-27  
 **Type:** Read-only audit + session-based cleanup plan (no code or doc fixes in this session)  
 **Scope:** Code, documentation, runtime behavior, JSON output contracts, AI Commentary boundaries, legacy contamination  
-**Product truth audited:** ДИАГНОСТИКА 2 — diagnosis-first, portfolio-first, decision-support (not black-box optimizer)
+**Product truth audited:** Diagnosis 2 — diagnosis-first, portfolio-first, decision-support (not black-box optimizer)
 
 **Evidence used:** `SPEC.md`, `README.md`, `OUTPUTS.md`, `AGENTS.md`, `docs/product_flow_operator_guide.md`, `docs/operational_runbook.md`, `docs/specs/portfolio_review_workflow_spec.md`, `docs/specs/ai_commentary_grounding_spec.md`, core modules under `src/`, entrypoints `run_portfolio_review.py` / `run_report.py` / `run_candidate_factory.py`, targeted greps, and live dry-runs:
 
@@ -46,7 +46,7 @@ Related prior audits (not duplicated here): [Core MVP Blocks 1–3 cleanup accep
 
 ### Overall posture
 
-The **implemented Core MVP diagnostic path (Blocks 1–3, subject-first materialization)** is largely consistent with ДИАГНОСТИКА 2. Residual risk is **documentation staleness**, **decision-layer mandate vocabulary**, **legacy report/commentary surfaces**, and **incomplete product-bundle artifacts on the default command** — not a wholesale optimizer-first code regression.
+The **implemented Core MVP diagnostic path (Blocks 1–3, subject-first materialization)** is largely consistent with Diagnosis 2. Residual risk is **documentation staleness**, **decision-layer mandate vocabulary**, **legacy report/commentary surfaces**, and **incomplete product-bundle artifacts on the default command** — not a wholesale optimizer-first code regression.
 
 ---
 
@@ -66,7 +66,7 @@ The **implemented Core MVP diagnostic path (Blocks 1–3, subject-first material
 | B10 | `SPEC.md` | Terminology boundary | Product: Decision Verdict; technical: Selection Engine — documented. | Code still exposes `mandate_risk_reduction` in verdict mapping. | **Low** (harmless if labelled legacy) | Document in `decision_verdict_spec.md` that mandate statuses are advanced/legacy policy semantics. |
 | B11 | `src/candidate_comparison.py` | `PRODUCT_MENU_PROFILE_ID = "default_v1"` | Product truth: selected candidate / shortlist; code constant names full menu as product menu. | Comparison warnings (`reduced_menu_scope_vs_product_default_v1`) mislead on one-candidate demos. | **Medium** | Rename constant/doc to `FULL_MENU_PROFILE_ID`; product default = explicit candidate id. |
 | B12 | `docs/specs/portfolio_xray_diagnostics_spec.md` vs `src/portfolio_xray.py` | Spec: Blocks 2.1–2.6 Core; §2.7 archetype not Core | Code still builds `sections.portfolio_archetype` and `format_portfolio_xray_commentary` includes archetype lines. | UI consuming `sections.*` treats non-Core block as product truth. | **Medium** | Docs already warn; add contract test forbidding archetype in `block_2_*` keys (may exist). |
-| B13 | `AGENTS.md` | Main Commands | Lists `run_optimization.py` before portfolio review in legacy section; primary path is `run_portfolio_review.py` — **aligned**. | Minor: “being reset around ДИАГНОСТИКА 2” reads as in-progress. | **Low** (stale comment) | Tighten wording to “canonical product is ДИАГНОСТИКА 2”. |
+| B13 | `AGENTS.md` | Main Commands | Lists `run_optimization.py` before portfolio review in legacy section; primary path is `run_portfolio_review.py` — **aligned**. | Minor: “being reset around Diagnosis 2” reads as in-progress. | **Low** (stale comment) | Tighten wording to “canonical product is Diagnosis 2”. |
 | B14 | `docs/product_flow_operator_guide.md` | Six-file bundle table | Bundle #4–6 require compare; read order does not state “absent until `--candidates` / compare”. | New chats expect `decision_verdict.json` after default run. | **Medium** | Add explicit “present only after compare” column. |
 | B15 | `run_report.py` | Materialize path | Writes `problem_classification.json` + `candidate_launchpad.json` on subject materialization — **matches** Blocks 4 prep docs. | Launchpad without user-triggered builder is OK as “suggested hypotheses”. | — | Document as “post-diagnosis, pre-candidate” artifacts. |
 
@@ -92,7 +92,7 @@ The **implemented Core MVP diagnostic path (Blocks 1–3, subject-first material
 
 ## D. AI Commentary Boundary Findings
 
-| ID | File path | Function / module | What is generated | JSON evidence | Grounded? | Recommended action |
+| ID | File path | Function / module | What is generated | JSON evidence | Grounded... | Recommended action |
 | --- | --- | --- | --- | --- | --- | --- |
 | D1 | `src/ai_commentary_context.py` | `build_ai_commentary_context` | Deterministic grounding stub: rules, `evidence_references`, `warnings` | Pulls refs from problem_classification, launchpad, comparison, selection, verdict, action, monitoring — **not** from xray/stress bodies | **Partial** — rules good; evidence refs incomplete vs allowed list | Add optional xray/stress refs (summary fields only); fail warnings when missing on diagnosis-only. |
 | D2 | `src/ai_commentary_context.py` | `_warnings` | Requires comparison, current_vs_candidate, selection, verdict | On diagnosis-only: all missing → `missing_required_source:*` | **Correct behavior** for compare bundle; confusing if reader expects file after R1 | Document: file only after compare; optional diagnosis-only stub without verdict warnings. |
@@ -155,7 +155,7 @@ The **implemented Core MVP diagnostic path (Blocks 1–3, subject-first material
 | --- | --- |
 | “portfolio-first `--mode core` uses core_fast” without candidate guard | `portfolio_review_workflow_spec.md` |
 | Blocks 1–5 checklist requiring factory on default run | `operational_runbook.md` |
-| `AGENTS.md` “being reset around ДИАГНОСТИКА 2” | minor |
+| `AGENTS.md` “being reset around Diagnosis 2” | minor |
 
 ### Generated artifact staleness
 
@@ -325,7 +325,7 @@ python run_portfolio_review.py --with-candidates --dry-run
 
 ## G. Acceptance Criteria
 
-The project is **architecture-clean** for ДИАГНОСТИКА 2 Core MVP when all of the following hold:
+The project is **architecture-clean** for Diagnosis 2 Core MVP when all of the following hold:
 
 1. **Docs describe what code does** — Default `run_portfolio_review.py` documented as diagnosis-only everywhere operators look (`operational_runbook`, audits, agents).
 2. **Runtime commands match docs** — Dry-run stages match command matrix for default, one-candidate, batch, and full modes.
@@ -367,7 +367,7 @@ The project is **architecture-clean** for ДИАГНОСТИКА 2 Core MVP when
 
 ## Outcomes & Retrospective
 
-This session delivered a **read-only** discrepancy map and seven implementation sessions. Core diagnostic architecture is largely aligned with ДИАГНОСТИКА 2; remaining work is **documentation/agent alignment**, **product-bundle presence clarity**, **AI grounding completeness**, and **legacy narrative gating** — not a fundamental redesign.
+This session delivered a **read-only** discrepancy map and seven implementation sessions. Core diagnostic architecture is largely aligned with Diagnosis 2; remaining work is **documentation/agent alignment**, **product-bundle presence clarity**, **AI grounding completeness**, and **legacy narrative gating** — not a fundamental redesign.
   
 ---
   
@@ -409,7 +409,7 @@ This session delivered a **read-only** discrepancy map and seven implementation 
 
 **Final status**
 
-- **ExecPlan status:** completed / accepted for ДИАГНОСТИКА 2 Core MVP architecture consistency.
+- **ExecPlan status:** completed / accepted for Diagnosis 2 Core MVP architecture consistency.
   
 ### Session 6 closure (2026-05-27)
 

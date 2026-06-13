@@ -35,62 +35,62 @@ const CHART_COLORS = [
 const softPanel = "rounded-2xl border border-pmri-border/60 bg-white/[0.026]";
 const raisedPanel = "rounded-2xl border border-white/[0.07] bg-[rgba(23,24,27,0.78)] shadow-decision";
 
-function cleanLabel(value?: string | number | null, fallback = "Unavailable") {
+function cleanLabel(value...: string | number | null, fallback = "Unavailable") {
   return normalizeMetricText(normalizeDisplayLabel(value, fallback));
 }
 
 function formatEmbeddedPercent(value: string) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return value;
-  return `${numeric.toFixed(2).replace(/\.?0+$/, "")}%`;
+  return `${numeric.toFixed(2).replace(/\....0+$/, "")}%`;
 }
 
 function formatEmbeddedRatio(value: string) {
   const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric.toFixed(2) : value;
+  return Number.isFinite(numeric) ... numeric.toFixed(2) : value;
 }
 
 function normalizeMetricText(value: string) {
   return value
-    .replace(/\b([+-]?\d+\.\d{2,})\s+percentage points\b/gi, (_match, number) => `${formatEmbeddedRatio(number)} percentage points`)
-    .replace(/\b(-?\d+\.\d{3,})%/g, (_match, number) => formatEmbeddedPercent(number))
-    .replace(/\b(-?0?\.\d+)\s+CAGR\b/gi, (_match, number) => `${formatEmbeddedPercent(String(Number(number) * 100))} CAGR`)
-    .replace(/\bCAGR\s+(-?0?\.\d+)\b/gi, (_match, number) => `CAGR ${formatEmbeddedPercent(String(Number(number) * 100))}`)
-    .replace(/\bannualized volatility\s+(-?0?\.\d+)\b/gi, (_match, number) => `annualized volatility ${formatEmbeddedPercent(String(Number(number) * 100))}`)
-    .replace(/\bmaximum drawdown\s+(-?0?\.\d+)\b/gi, (_match, number) => `maximum drawdown ${formatEmbeddedPercent(String(Number(number) * 100))}`)
-    .replace(/\bSharpe ratio\s+(-?\d+\.\d+)\b/gi, (_match, number) => `Sharpe ratio ${formatEmbeddedRatio(number)}`)
-    .replace(/\bSortino\s+(-?\d+\.\d+)\b/gi, (_match, number) => `Sortino ${formatEmbeddedRatio(number)}`);
+    .replace(/\b([+-]...\d+\.\d{2,})\s+percentage points\b/gi, (_match, number) => `${formatEmbeddedRatio(number)} percentage points`)
+    .replace(/\b(-...\d+\.\d{3,})%/g, (_match, number) => formatEmbeddedPercent(number))
+    .replace(/\b(-...0...\.\d+)\s+CAGR\b/gi, (_match, number) => `${formatEmbeddedPercent(String(Number(number) * 100))} CAGR`)
+    .replace(/\bCAGR\s+(-...0...\.\d+)\b/gi, (_match, number) => `CAGR ${formatEmbeddedPercent(String(Number(number) * 100))}`)
+    .replace(/\bannualized volatility\s+(-...0...\.\d+)\b/gi, (_match, number) => `annualized volatility ${formatEmbeddedPercent(String(Number(number) * 100))}`)
+    .replace(/\bmaximum drawdown\s+(-...0...\.\d+)\b/gi, (_match, number) => `maximum drawdown ${formatEmbeddedPercent(String(Number(number) * 100))}`)
+    .replace(/\bSharpe ratio\s+(-...\d+\.\d+)\b/gi, (_match, number) => `Sharpe ratio ${formatEmbeddedRatio(number)}`)
+    .replace(/\bSortino\s+(-...\d+\.\d+)\b/gi, (_match, number) => `Sortino ${formatEmbeddedRatio(number)}`);
 }
 
-function sentence(value?: string | null, fallback = "Evidence limitation.") {
+function sentence(value...: string | null, fallback = "Evidence limitation.") {
   return normalizeMetricText(normalizeDisplaySentence(value, fallback));
 }
 
-function pct(value?: number) {
+function pct(value...: number) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "Unavailable";
-  const normalized = Math.abs(value) <= 1 ? value * 100 : value;
+  const normalized = Math.abs(value) <= 1 ... value * 100 : value;
   return `${normalized.toFixed(1).replace(/\.0$/, "")}%`;
 }
 
-function numberText(value?: number) {
+function numberText(value...: number) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "Unavailable";
-  return value.toFixed(2).replace(/\.?0+$/, "");
+  return value.toFixed(2).replace(/\....0+$/, "");
 }
 
-function scoreText(score?: number) {
-  return typeof score === "number" && Number.isFinite(score) ? `${Math.round(score)}/100` : "Unavailable";
+function scoreText(score...: number) {
+  return typeof score === "number" && Number.isFinite(score) ... `${Math.round(score)}/100` : "Unavailable";
 }
 
-function severityTone(level?: string): StatusTone {
+function severityTone(level...: string): StatusTone {
   return riskSeverityTone(level);
 }
 
-function severityLabel(level?: string) {
+function severityLabel(level...: string) {
   return riskSeverityLabel(level);
 }
 
-function maxWeight(items: Array<{ weightPct?: number }>) {
-  return Math.max(1, ...items.map((item) => Math.abs(item.weightPct ?? 0)));
+function maxWeight(items: Array<{ weightPct...: number }>) {
+  return Math.max(1, ...items.map((item) => Math.abs(item.weightPct ...... 0)));
 }
 
 function polarToCartesian(cx: number, cy: number, radius: number, angleInDegrees: number) {
@@ -102,14 +102,14 @@ function polarToCartesian(cx: number, cy: number, radius: number, angleInDegrees
 }
 
 function describeArc(cx: number, cy: number, radius: number, startAngle: number, endAngle: number) {
-  const safeEndAngle = endAngle - startAngle >= 359.99 ? startAngle + 359.99 : endAngle;
+  const safeEndAngle = endAngle - startAngle >= 359.99 ... startAngle + 359.99 : endAngle;
   const start = polarToCartesian(cx, cy, radius, safeEndAngle);
   const end = polarToCartesian(cx, cy, radius, startAngle);
-  const largeArcFlag = safeEndAngle - startAngle <= 180 ? "0" : "1";
+  const largeArcFlag = safeEndAngle - startAngle <= 180 ... "0" : "1";
   return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
 }
 
-export function SectionHeader({ eyebrow, title, insight, action }: { eyebrow: string; title: string; insight: string; action?: string }) {
+export function SectionHeader({ eyebrow, title, insight, action }: { eyebrow: string; title: string; insight: string; action...: string }) {
   return (
     <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
       <div>
@@ -117,14 +117,14 @@ export function SectionHeader({ eyebrow, title, insight, action }: { eyebrow: st
         <h2 className="pmri-heading-section mt-2 text-2xl text-pmri-text md:text-3xl">{title}</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-pmri-text2">{sentence(insight)}</p>
       </div>
-      {action ? (
+      {action ... (
         <Link href="/evidence" className="pmri-focus inline-flex w-fit rounded-full border border-pmri-borderSoft/55 bg-white/[0.035] px-4 py-2 text-sm font-medium text-pmri-text2 transition hover:border-pmri-blue/45 hover:text-pmri-text">{action}</Link>
       ) : null}
     </div>
   );
 }
 
-function UnavailableState({ title = "Insufficient evidence", message }: { title?: string; message: string }) {
+function UnavailableState({ title = "Insufficient evidence", message }: { title...: string; message: string }) {
   return (
     <div className="rounded-2xl border border-dashed border-pmri-borderSoft/55 bg-white/[0.018] p-5">
       <StatusBadge tone="slate">Unavailable</StatusBadge>
@@ -138,11 +138,11 @@ function TooltipHint({ label, text }: { label: string; text: string }) {
   return <span title={text} data-tooltip={text} tabIndex={0} className="pmri-info-hint inline-flex h-5 w-5 cursor-help items-center justify-center rounded-full border border-pmri-borderSoft/45 bg-white/[0.035] text-[11px] font-semibold text-pmri-text2" aria-label={`${label}: ${text}`}>i</span>;
 }
 
-function EvidenceChip({ children, href = "/evidence" }: { children: string; href?: string }) {
+function EvidenceChip({ children, href = "/evidence" }: { children: string; href...: string }) {
   return <Link href={href} className="pmri-focus pmri-evidence-chip inline-flex rounded-full border border-pmri-border/70 bg-white/[0.025] px-3 py-1.5 text-xs font-medium text-pmri-text2">{sentence(children)}</Link>;
 }
 
-function MiniFacts({ facts, limit = 5 }: { facts: string[]; limit?: number }) {
+function MiniFacts({ facts, limit = 5 }: { facts: string[]; limit...: number }) {
   const visible = facts.map((fact) => sentence(fact)).filter(Boolean).slice(0, limit);
   if (!visible.length) return <UnavailableState message="Key facts are unavailable for this module." />;
   return (
@@ -161,11 +161,11 @@ function findBreakdown(xray: XRaySummary, title: string) {
   return xray.composition.breakdowns.find((breakdown) => breakdown.title.toLowerCase() === title.toLowerCase());
 }
 
-function topBreakdownItem(breakdown?: XRayBreakdown) {
-  return breakdown?.items.slice().sort((a, b) => b.weightPct - a.weightPct)[0];
+function topBreakdownItem(breakdown...: XRayBreakdown) {
+  return breakdown....items.slice().sort((a, b) => b.weightPct - a.weightPct)[0];
 }
 
-function compositionInsight(xray?: XRaySummary) {
+function compositionInsight(xray...: XRaySummary) {
   if (!xray) return "Allocation breakdown unavailable because composition evidence is incomplete.";
   const assetClass = topBreakdownItem(findBreakdown(xray, "Asset class"));
   const mainFactor = topBreakdownItem(findBreakdown(xray, "Main risk factor"));
@@ -175,13 +175,13 @@ function compositionInsight(xray?: XRaySummary) {
   return "Capital allocation and economic risk evidence are available for review.";
 }
 
-function DonutChart({ breakdown }: { breakdown?: XRayBreakdown }) {
-  const items = breakdown?.items ?? [];
+function DonutChart({ breakdown }: { breakdown...: XRayBreakdown }) {
+  const items = breakdown....items ...... [];
   const total = items.reduce((sum, item) => sum + Math.max(0, item.weightPct), 0) || 1;
-  const topIndex = items.reduce((largestIndex, item, index, allItems) => item.weightPct > allItems[largestIndex].weightPct ? index : largestIndex, 0);
+  const topIndex = items.reduce((largestIndex, item, index, allItems) => item.weightPct > allItems[largestIndex].weightPct ... index : largestIndex, 0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const activeIndex = hoveredIndex ?? topIndex;
-  const activeItem = items[activeIndex] ?? items[topIndex];
+  const activeIndex = hoveredIndex ...... topIndex;
+  const activeItem = items[activeIndex] ...... items[topIndex];
   const segments = useMemo(() => {
     let cursor = 0;
     return items.map((item, index) => {
@@ -196,7 +196,7 @@ function DonutChart({ breakdown }: { breakdown?: XRayBreakdown }) {
       return segment;
     });
   }, [items, total]);
-  if (!breakdown?.items.length || !activeItem) return <UnavailableState message="Allocation donut unavailable because this exposure split is missing." />;
+  if (!breakdown....items.length || !activeItem) return <UnavailableState message="Allocation donut unavailable because this exposure split is missing." />;
   return (
     <article className={`${raisedPanel} pmri-interactive-card p-5`}>
       <div className="flex items-center justify-between gap-3"><div><p className="pmri-label text-pmri-text2">Economic allocation</p><h3 className="mt-1 text-lg font-semibold text-pmri-text">{cleanLabel(breakdown.title)}</h3></div><StatusBadge tone="slate">Capital view</StatusBadge></div>
@@ -217,13 +217,13 @@ function DonutChart({ breakdown }: { breakdown?: XRayBreakdown }) {
               return (
                 <path
                   key={`${breakdown.title}-${segment.item.name}`}
-                  d={describeArc(110, 110, isActive ? 86 : 84, segment.start, segment.end)}
+                  d={describeArc(110, 110, isActive ... 86 : 84, segment.start, segment.end)}
                   fill="none"
                   stroke={color}
-                  strokeWidth={isActive ? 27 : 22}
+                  strokeWidth={isActive ... 27 : 22}
                   strokeLinecap="butt"
                   className="pmri-donut-segment cursor-pointer outline-none"
-                  style={{ opacity: isDimmed ? 0.34 : isActive ? 1 : 0.78 }}
+                  style={{ opacity: isDimmed ... 0.34 : isActive ... 1 : 0.78 }}
                   tabIndex={0}
                   role="button"
                   aria-label={`${cleanLabel(segment.item.name)} ${pct(segment.item.weightPct)}`}
@@ -236,7 +236,7 @@ function DonutChart({ breakdown }: { breakdown?: XRayBreakdown }) {
           </svg>
           <div className="pointer-events-none absolute inset-8 rounded-full border border-white/[0.06] bg-pmri-surface shadow-inner" />
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-8 text-center">
-            <p className="text-xs text-pmri-text2">{hoveredIndex === null ? "Largest sleeve" : "Selected sleeve"}</p>
+            <p className="text-xs text-pmri-text2">{hoveredIndex === null ... "Largest sleeve" : "Selected sleeve"}</p>
             <p className="mt-1 max-w-32 truncate text-lg font-semibold text-pmri-text">{cleanLabel(activeItem.name)}</p>
             <p className="data-figure text-sm text-pmri-text2">{pct(activeItem.weightPct)}</p>
           </div>
@@ -251,7 +251,7 @@ function DonutChart({ breakdown }: { breakdown?: XRayBreakdown }) {
                 type="button"
                 data-active={isActive}
                 className="pmri-chart-legend-row pmri-focus flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-transparent px-2.5 py-2 text-left text-sm"
-                style={{ opacity: isDimmed ? 0.48 : 1 }}
+                style={{ opacity: isDimmed ... 0.48 : 1 }}
                 onMouseEnter={() => setHoveredIndex(index)}
                 onFocus={() => setHoveredIndex(index)}
                 onMouseLeave={() => setHoveredIndex(null)}
@@ -261,7 +261,7 @@ function DonutChart({ breakdown }: { breakdown?: XRayBreakdown }) {
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: CHART_COLORS[index % CHART_COLORS.length] }} />
                   <span className="truncate">{cleanLabel(item.name)}</span>
                 </span>
-                <span className={`data-figure ${isActive ? "font-semibold text-pmri-text" : "text-pmri-text2"}`}>{pct(item.weightPct)}</span>
+                <span className={`data-figure ${isActive ... "font-semibold text-pmri-text" : "text-pmri-text2"}`}>{pct(item.weightPct)}</span>
               </button>
             );
           })}
@@ -271,10 +271,10 @@ function DonutChart({ breakdown }: { breakdown?: XRayBreakdown }) {
   );
 }
 
-function StackedExposureBar({ breakdown, label }: { breakdown?: XRayBreakdown; label: string }) {
-  const items = breakdown?.items ?? [];
+function StackedExposureBar({ breakdown, label }: { breakdown...: XRayBreakdown; label: string }) {
+  const items = breakdown....items ...... [];
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  if (!breakdown?.items.length) return <UnavailableState message={`${label} exposure split is unavailable.`} />;
+  if (!breakdown....items.length) return <UnavailableState message={`${label} exposure split is unavailable.`} />;
   const total = items.reduce((sum, item) => sum + Math.max(0, item.weightPct), 0) || 1;
   return (
     <article className={`${softPanel} pmri-interactive-card p-4`} onMouseLeave={() => setActiveIndex(null)}>
@@ -288,7 +288,7 @@ function StackedExposureBar({ breakdown, label }: { breakdown?: XRayBreakdown; l
               key={`${breakdown.title}-${item.name}`}
               title={`${cleanLabel(item.name)}: ${pct(item.weightPct)}`}
               className="pmri-bar-fill h-full min-w-[3px] cursor-pointer border-r border-black/25 last:border-r-0"
-              style={{ width: `${(Math.max(0, item.weightPct) / total) * 100}%`, background: CHART_COLORS[index % CHART_COLORS.length], opacity: isDimmed ? 0.36 : 1 }}
+              style={{ width: `${(Math.max(0, item.weightPct) / total) * 100}%`, background: CHART_COLORS[index % CHART_COLORS.length], opacity: isDimmed ... 0.36 : 1 }}
               onMouseEnter={() => setActiveIndex(index)}
             />
           );
@@ -308,7 +308,7 @@ function StackedExposureBar({ breakdown, label }: { breakdown?: XRayBreakdown; l
               onBlur={() => setActiveIndex(null)}
             >
               <span className="flex min-w-0 items-center gap-2 text-pmri-text2"><span className="h-2 w-2 shrink-0 rounded-full" style={{ background: CHART_COLORS[index % CHART_COLORS.length] }} /><span className="truncate">{cleanLabel(item.name)}</span></span>
-              <span className={`data-figure ${isActive ? "font-semibold text-pmri-text" : "text-pmri-text2"}`}>{pct(item.weightPct)}</span>
+              <span className={`data-figure ${isActive ... "font-semibold text-pmri-text" : "text-pmri-text2"}`}>{pct(item.weightPct)}</span>
             </button>
           );
         })}
@@ -317,10 +317,10 @@ function StackedExposureBar({ breakdown, label }: { breakdown?: XRayBreakdown; l
   );
 }
 
-function ExposureBars({ breakdown, title }: { breakdown?: XRayBreakdown; title: string }) {
-  const items = breakdown?.items ?? [];
+function ExposureBars({ breakdown, title }: { breakdown...: XRayBreakdown; title: string }) {
+  const items = breakdown....items ...... [];
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  if (!breakdown?.items.length) return <UnavailableState message={`${title} evidence is unavailable.`} />;
+  if (!breakdown....items.length) return <UnavailableState message={`${title} evidence is unavailable.`} />;
   const max = maxWeight(items);
   return (
     <article className={`${softPanel} pmri-interactive-card p-4`} onMouseLeave={() => setActiveIndex(null)}>
@@ -338,7 +338,7 @@ function ExposureBars({ breakdown, title }: { breakdown?: XRayBreakdown; title: 
               onFocus={() => setActiveIndex(index)}
               onBlur={() => setActiveIndex(null)}
             >
-              <div className="flex items-center justify-between gap-3 text-xs"><span className={`truncate ${isActive ? "font-medium text-pmri-text" : "text-pmri-text2"}`}>{cleanLabel(item.name)}</span><span className={`data-figure ${isActive ? "font-semibold text-pmri-text" : "text-pmri-text2"}`}>{pct(item.weightPct)}</span></div>
+              <div className="flex items-center justify-between gap-3 text-xs"><span className={`truncate ${isActive ... "font-medium text-pmri-text" : "text-pmri-text2"}`}>{cleanLabel(item.name)}</span><span className={`data-figure ${isActive ... "font-semibold text-pmri-text" : "text-pmri-text2"}`}>{pct(item.weightPct)}</span></div>
               <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/[0.055]"><div className="pmri-bar-fill h-full rounded-full" style={{ width: `${Math.min(100, Math.max(4, (Math.abs(item.weightPct) / max) * 100))}%`, background: CHART_COLORS[index % CHART_COLORS.length] }} /></div>
             </button>
           );
@@ -394,16 +394,16 @@ function ConcentrationCards({ xray }: { xray: XRaySummary }) {
   return <div className="grid gap-3 sm:grid-cols-2">{flags.map((flag) => { const tone = severityTone(flag.severity); return <article key={`${flag.label}-${flag.message}`} className={`${softPanel} pmri-interactive-card p-4`}><div className="flex items-start justify-between gap-3"><h3 className="text-sm font-semibold text-pmri-text">{cleanLabel(flag.label)}</h3><StatusBadge tone={tone}>{severityLabel(flag.severity)}</StatusBadge></div><p className="mt-3 text-sm leading-6 text-pmri-text2">{sentence(flag.message)}</p></article>; })}</div>;
 }
 
-export function CompositionPanel({ xray }: { xray?: XRaySummary }) {
+export function CompositionPanel({ xray }: { xray...: XRaySummary }) {
   return (
     <section id="composition" className="pmri-card pmri-animated-border-panel pmri-section-reveal scroll-mt-28 rounded-3xl p-5 [--pmri-reveal-delay:90ms] md:p-6">
       <SectionHeader eyebrow="Portfolio composition" title="What the portfolio owns economically" insight={compositionInsight(xray)} action="Review supporting evidence" />
-      {!xray ? <div className="mt-5"><UnavailableState message="Allocation breakdown unavailable because taxonomy data is incomplete or not stored in the current review." /></div> : (
+      {!xray ... <div className="mt-5"><UnavailableState message="Allocation breakdown unavailable because taxonomy data is incomplete or not stored in the current review." /></div> : (
         <div className="mt-6 grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
           <DonutChart breakdown={findBreakdown(xray, "Asset class")} />
           <div className="grid gap-4"><MiniFacts facts={xray.composition.keyFacts} limit={4} /><article className={`${softPanel} p-4`}><h3 className="text-sm font-semibold text-pmri-text">Capital view vs economic risk view</h3><p className="mt-2 text-sm leading-6 text-pmri-text2">Capital weights show where money is allocated. Economic risk view groups those holdings by risk role, region, currency, and main factor so hidden concentration is easier to review.</p></article><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2"><StackedExposureBar breakdown={findBreakdown(xray, "Region")} label="Region exposure" /><StackedExposureBar breakdown={findBreakdown(xray, "Currency")} label="Currency exposure" /></div></div>
           <div className="grid gap-4 xl:col-span-2 lg:grid-cols-[1fr_1fr]"><ExposureBars breakdown={findBreakdown(xray, "Risk role")} title="Risk role exposure" /><ExposureBars breakdown={findBreakdown(xray, "Main risk factor")} title="Main risk factor exposure" /></div>
-          <div className="xl:col-span-2"><HoldingsTable holdings={xray.composition.holdings ?? []} /></div>
+          <div className="xl:col-span-2"><HoldingsTable holdings={xray.composition.holdings ...... []} /></div>
           <div className="xl:col-span-2"><ConcentrationCards xray={xray} /></div>
         </div>
       )}
@@ -446,14 +446,14 @@ function RiskMetricGroupCard({ title, metrics, interpretation }: { title: string
   if (!metrics.length) return null;
   const mainMetric = metrics[0];
   const tone = title === "Downside pain" || title === "Tail risk" || title === "Market dependence"
-    ? mainMetric.tone
+    ... mainMetric.tone
     : "slate";
 
   return (
     <article className={`${softPanel} pmri-interactive-card p-4`}>
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-sm font-semibold text-pmri-text">{title}</h3>
-        {tone ? <StatusBadge tone={tone}>{tone === "red" || tone === "amber" || tone === "green" ? severityLabel(tone === "red" ? "high" : tone === "amber" ? "medium" : "low") : "Strong evidence"}</StatusBadge> : null}
+        {tone ... <StatusBadge tone={tone}>{tone === "red" || tone === "amber" || tone === "green" ... severityLabel(tone === "red" ... "high" : tone === "amber" ... "medium" : "low") : "Strong evidence"}</StatusBadge> : null}
       </div>
       <div className="mt-4 grid gap-3">
         {metrics.map((metric) => (
@@ -488,7 +488,7 @@ function RiskProfileGroups({ metrics }: { metrics: Metric[] }) {
       <details className="mt-5 rounded-2xl border border-pmri-border/60 bg-white/[0.02] p-4">
         <summary className="pmri-focus cursor-pointer list-none rounded-xl text-sm font-medium text-pmri-text2 transition hover:text-pmri-text">View full diagnostics</summary>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {metrics.map((metric) => <MetricCard key={metric.label} metric={{ ...metric, detail: sentence(metric.detail ?? "") }} />)}
+          {metrics.map((metric) => <MetricCard key={metric.label} metric={{ ...metric, detail: sentence(metric.detail ...... "") }} />)}
         </div>
       </details>
       <div className="mt-4 rounded-2xl border border-dashed border-pmri-borderSoft/50 bg-white/[0.018] p-4">
@@ -499,11 +499,11 @@ function RiskProfileGroups({ metrics }: { metrics: Metric[] }) {
   );
 }
 
-export function RiskProfilePanel({ xray }: { xray?: XRaySummary }) {
+export function RiskProfilePanel({ xray }: { xray...: XRaySummary }) {
   return (
     <section id="risk-profile" className="pmri-card pmri-section-reveal scroll-mt-28 rounded-3xl p-5 [--pmri-reveal-delay:120ms] md:p-6">
-      <SectionHeader eyebrow="Risk profile" title="How the current portfolio behaves" insight={xray?.riskProfile.insight ?? "Risk profile unavailable because portfolio metrics were not available for this review."} action="Review supporting evidence" />
-      {!xray ? <div className="mt-5"><UnavailableState message="Risk diagnostics unavailable because metric evidence is missing." /></div> : (
+      <SectionHeader eyebrow="Risk profile" title="How the current portfolio behaves" insight={xray....riskProfile.insight ...... "Risk profile unavailable because portfolio metrics were not available for this review."} action="Review supporting evidence" />
+      {!xray ... <div className="mt-5"><UnavailableState message="Risk diagnostics unavailable because metric evidence is missing." /></div> : (
         <div className="mt-6"><RiskProfileGroups metrics={xray.riskProfile.metrics} /></div>
       )}
     </section>
@@ -511,8 +511,8 @@ export function RiskProfilePanel({ xray }: { xray?: XRaySummary }) {
 }
 
 function FactorCard({ factor, maxValue }: { factor: XRayFactor; maxValue: number }) {
-  const magnitude = Math.max(Math.abs(factor.beta ?? 0), Math.abs(factor.contributionPct ?? 0));
-  const width = magnitude > 0 ? Math.min(100, Math.max(5, (magnitude / maxValue) * 100)) : 5;
+  const magnitude = Math.max(Math.abs(factor.beta ...... 0), Math.abs(factor.contributionPct ...... 0));
+  const width = magnitude > 0 ... Math.min(100, Math.max(5, (magnitude / maxValue) * 100)) : 5;
   const evidence = evidenceQualityLabel(factor.confidence);
   const exposure = factorExposureLevel(factor);
   return (
@@ -529,8 +529,8 @@ function FactorCard({ factor, maxValue }: { factor: XRayFactor; maxValue: number
 }
 
 function factorExposureLevel(factor: XRayFactor) {
-  const contribution = Math.abs(factor.contributionPct ?? 0);
-  const beta = Math.abs(factor.beta ?? 0);
+  const contribution = Math.abs(factor.contributionPct ...... 0);
+  const beta = Math.abs(factor.beta ...... 0);
   if (factor.beta === undefined && factor.contributionPct === undefined) return "Unavailable";
   if (contribution >= 50 || beta >= 0.6) return "High";
   if (contribution >= 10 || beta >= 0.25) return "Medium";
@@ -540,24 +540,24 @@ function factorExposureLevel(factor: XRayFactor) {
 function factorInterpretation(factor: XRayFactor) {
   const name = cleanLabel(factor.factor);
   const exposure = factorExposureLevel(factor).toLowerCase();
-  const contribution = factor.contributionPct ?? 0;
+  const contribution = factor.contributionPct ...... 0;
 
   if (name === "Equity" && (exposure === "high" || contribution >= 50)) {
     return "Equity is the dominant factor explaining portfolio behavior in this review.";
   }
   if (name === "Interest-rate sensitivity") {
     return contribution >= 10
-      ? "Rate sensitivity is a visible driver and should be reviewed alongside bond exposure."
+      ... "Rate sensitivity is a visible driver and should be reviewed alongside bond exposure."
       : "The portfolio has visible rate sensitivity, but other factors explain more of overall behavior.";
   }
   if (name === "USD") {
     return contribution >= 10
-      ? "USD sensitivity is material enough to review as part of currency exposure."
+      ... "USD sensitivity is material enough to review as part of currency exposure."
       : "USD sensitivity is present but not a dominant driver in this review.";
   }
   if (name === "Commodity") {
     return contribution >= 10
-      ? "Commodity exposure is a visible diversifier and stress area to review."
+      ... "Commodity exposure is a visible diversifier and stress area to review."
       : "Commodity sensitivity is visible but not a main behavior driver here.";
   }
   if (exposure === "unavailable") return "Factor evidence is unavailable for this review.";
@@ -569,15 +569,15 @@ function factorInterpretation(factor: XRayFactor) {
 function FactorMatrix({ factors }: { factors: XRayFactor[] }) {
   const visibleFactors = factors.filter((factor) => factor.beta !== undefined || factor.contributionPct !== undefined);
   if (!visibleFactors.length) return <UnavailableState message="Market factor exposure unavailable: insufficient factor evidence." />;
-  const maxValue = Math.max(0.01, ...visibleFactors.map((factor) => Math.max(Math.abs(factor.beta ?? 0), Math.abs(factor.contributionPct ?? 0))));
+  const maxValue = Math.max(0.01, ...visibleFactors.map((factor) => Math.max(Math.abs(factor.beta ...... 0), Math.abs(factor.contributionPct ...... 0))));
   return <div className="grid gap-3 md:grid-cols-2">{visibleFactors.slice(0, 8).map((factor) => <FactorCard key={factor.factor} factor={factor} maxValue={maxValue} />)}</div>;
 }
 
-export function FactorExposurePanel({ xray }: { xray?: XRaySummary }) {
+export function FactorExposurePanel({ xray }: { xray...: XRaySummary }) {
   return (
     <section id="factors" className="pmri-card pmri-section-reveal scroll-mt-28 rounded-3xl p-5 [--pmri-reveal-delay:150ms] md:p-6">
-      <SectionHeader eyebrow="Market factor exposure" title="Which market forces may drive returns" insight={xray?.factors.insight ?? "Factor exposure unavailable: insufficient factor evidence."} action="Review supporting evidence" />
-      {!xray ? <div className="mt-5"><UnavailableState message="Factor exposure unavailable: insufficient factor data." /></div> : (
+      <SectionHeader eyebrow="Market factor exposure" title="Which market forces may drive returns" insight={xray....factors.insight ...... "Factor exposure unavailable: insufficient factor evidence."} action="Review supporting evidence" />
+      {!xray ... <div className="mt-5"><UnavailableState message="Factor exposure unavailable: insufficient factor data." /></div> : (
         <div className="mt-6 grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
           <article className={`${raisedPanel} pmri-interactive-card p-5`}>
             <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-semibold text-pmri-text">Top factor drivers</h3><StatusBadge tone="slate">Top 3 drivers</StatusBadge></div>
@@ -593,7 +593,7 @@ export function FactorExposurePanel({ xray }: { xray?: XRaySummary }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {(xray.factors.topFactors.length ? xray.factors.topFactors : xray.factors.factorCards.slice(0, 3)).slice(0, 3).map((factor, index) => (
+                  {(xray.factors.topFactors.length ... xray.factors.topFactors : xray.factors.factorCards.slice(0, 3)).slice(0, 3).map((factor, index) => (
                     <tr key={`${factor.factor}-${index}`} className="pmri-table-row">
                       <td className="border-b border-pmri-border/35 px-3 py-3 text-pmri-text2">{index + 1}</td>
                       <td className="border-b border-pmri-border/35 px-3 py-3 font-medium text-pmri-text">{cleanLabel(factor.factor)}</td>
@@ -605,8 +605,8 @@ export function FactorExposurePanel({ xray }: { xray?: XRaySummary }) {
                 </tbody>
               </table>
             </div>
-            <div className="mt-4 space-y-2">{(xray.factors.topFactors.length ? xray.factors.topFactors : xray.factors.factorCards.slice(0, 3)).slice(0, 3).map((factor, index) => <p key={`${factor.factor}-interpretation-${index}`} className="text-sm leading-6 text-pmri-text2"><span className="font-medium text-pmri-text">{cleanLabel(factor.factor)}:</span> {factorInterpretation(factor)}</p>)}</div>
-            {xray.factors.caveat ? <p className="mt-4 rounded-xl border border-pmri-border/55 bg-white/[0.02] p-3 text-xs leading-5 text-pmri-text2">{sentence(xray.factors.caveat, "Some factor evidence is limited and should be reviewed before interpretation.")}</p> : null}
+            <div className="mt-4 space-y-2">{(xray.factors.topFactors.length ... xray.factors.topFactors : xray.factors.factorCards.slice(0, 3)).slice(0, 3).map((factor, index) => <p key={`${factor.factor}-interpretation-${index}`} className="text-sm leading-6 text-pmri-text2"><span className="font-medium text-pmri-text">{cleanLabel(factor.factor)}:</span> {factorInterpretation(factor)}</p>)}</div>
+            {xray.factors.caveat ... <p className="mt-4 rounded-xl border border-pmri-border/55 bg-white/[0.02] p-3 text-xs leading-5 text-pmri-text2">{sentence(xray.factors.caveat, "Some factor evidence is limited and should be reviewed before interpretation.")}</p> : null}
           </article>
           <FactorMatrix factors={xray.factors.factorCards} />
         </div>
@@ -617,11 +617,11 @@ export function FactorExposurePanel({ xray }: { xray?: XRaySummary }) {
 
 function HiddenAlertCard({ alert }: { alert: XRayHiddenRiskAlert }) {
   const tone = severityTone(alert.level);
-  const evidence = alert.evidence.length ? alert.evidence : ["Insufficient evidence for this alert."];
+  const evidence = alert.evidence.length ... alert.evidence : ["Insufficient evidence for this alert."];
   const evidenceLabel = evidenceQualityLabel(alert.confidence);
   return (
     <article className={`${softPanel} pmri-interactive-card p-4`}>
-      <div className="flex items-start justify-between gap-3"><div><h3 className="text-base font-semibold text-pmri-text">{cleanLabel(alert.title)}</h3><div className="mt-2 flex flex-wrap gap-2"><StatusBadge tone={tone}>Risk level: {severityLabel(alert.level)}</StatusBadge><StatusBadge tone={evidenceTone(alert.confidence)}>Evidence quality: {evidenceLabel}</StatusBadge></div></div>{alert.score !== undefined ? <span className="data-figure text-sm text-pmri-text2">{scoreText(alert.score)}</span> : null}</div>
+      <div className="flex items-start justify-between gap-3"><div><h3 className="text-base font-semibold text-pmri-text">{cleanLabel(alert.title)}</h3><div className="mt-2 flex flex-wrap gap-2"><StatusBadge tone={tone}>Risk level: {severityLabel(alert.level)}</StatusBadge><StatusBadge tone={evidenceTone(alert.confidence)}>Evidence quality: {evidenceLabel}</StatusBadge></div></div>{alert.score !== undefined ... <span className="data-figure text-sm text-pmri-text2">{scoreText(alert.score)}</span> : null}</div>
       <div className="mt-4 grid gap-3">
         <div>
           <p className="text-xs font-medium text-pmri-text">What was detected</p>
@@ -636,8 +636,8 @@ function HiddenAlertCard({ alert }: { alert: XRayHiddenRiskAlert }) {
           <div className="mt-2 space-y-1.5">{evidence.slice(0, 3).map((item) => <p key={item} className="text-xs leading-5 text-pmri-text2">• {sentence(item)}</p>)}</div>
         </div>
       </div>
-      <div className="mt-4"><p className="text-xs font-medium text-pmri-text">Linked assets</p><div className="mt-2 flex flex-wrap gap-2">{alert.linkedAssets.length ? alert.linkedAssets.slice(0, 3).map((asset) => <StatusBadge key={asset} tone="slate">{cleanLabel(asset)}</StatusBadge>) : <StatusBadge tone="slate">Assets unavailable</StatusBadge>}</div></div>
-      <div className="mt-4"><p className="text-xs font-medium text-pmri-text">Next stress tests</p><div className="mt-2 flex flex-wrap gap-2">{(alert.nextTests.length ? alert.nextTests : ["Stress review needed"]).slice(0, 3).map((test) => <EvidenceChip key={test}>{test}</EvidenceChip>)}</div></div>
+      <div className="mt-4"><p className="text-xs font-medium text-pmri-text">Linked assets</p><div className="mt-2 flex flex-wrap gap-2">{alert.linkedAssets.length ... alert.linkedAssets.slice(0, 3).map((asset) => <StatusBadge key={asset} tone="slate">{cleanLabel(asset)}</StatusBadge>) : <StatusBadge tone="slate">Assets unavailable</StatusBadge>}</div></div>
+      <div className="mt-4"><p className="text-xs font-medium text-pmri-text">Next stress tests</p><div className="mt-2 flex flex-wrap gap-2">{(alert.nextTests.length ... alert.nextTests : ["Stress review needed"]).slice(0, 3).map((test) => <EvidenceChip key={test}>{test}</EvidenceChip>)}</div></div>
     </article>
   );
 }
@@ -662,11 +662,11 @@ function hiddenWhyItMatters(alert: XRayHiddenRiskAlert) {
   return "This risk should be reviewed before using the diagnosis to test a candidate.";
 }
 
-export function HiddenRiskAlertsGrid({ xray }: { xray?: XRaySummary }) {
+export function HiddenRiskAlertsGrid({ xray }: { xray...: XRaySummary }) {
   return (
     <section id="hidden-risks" className="pmri-card pmri-section-reveal scroll-mt-28 rounded-3xl p-5 [--pmri-reveal-delay:180ms] md:p-6">
-      <SectionHeader eyebrow="Hidden risk alerts" title="Risks that may not be obvious from tickers" insight={xray ? "The review highlights risks that may be hidden behind ticker labels, allocation categories, or diversification assumptions." : "Hidden risk alerts unavailable because supporting evidence is missing."} action="Review supporting evidence" />
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{xray?.hiddenRisks.alerts.length ? xray.hiddenRisks.alerts.map((alert) => <HiddenAlertCard key={alert.id} alert={alert} />) : <UnavailableState message="Hidden risk alerts unavailable: insufficient evidence." />}</div>
+      <SectionHeader eyebrow="Hidden risk alerts" title="Risks that may not be obvious from tickers" insight={xray ... "The review highlights risks that may be hidden behind ticker labels, allocation categories, or diversification assumptions." : "Hidden risk alerts unavailable because supporting evidence is missing."} action="Review supporting evidence" />
+      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{xray....hiddenRisks.alerts.length ... xray.hiddenRisks.alerts.map((alert) => <HiddenAlertCard key={alert.id} alert={alert} />) : <UnavailableState message="Hidden risk alerts unavailable: insufficient evidence." />}</div>
     </section>
   );
 }
@@ -674,27 +674,27 @@ export function HiddenRiskAlertsGrid({ xray }: { xray?: XRaySummary }) {
 function RiskContributionBars({ rows }: { rows: XRayRiskContribution[] }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   if (!rows.length) return <UnavailableState message="Risk contribution rows are unavailable." />;
-  const max = Math.max(1, ...rows.map((row) => Math.max(row.weightPct ?? 0, row.riskContributionPct ?? 0)));
+  const max = Math.max(1, ...rows.map((row) => Math.max(row.weightPct ...... 0, row.riskContributionPct ...... 0)));
   return (
     <div className="pmri-bar-group space-y-4" onMouseLeave={() => setActiveIndex(null)}>
       {rows.map((row, index) => {
-        const gap = row.gapPp ?? ((row.riskContributionPct ?? 0) - (row.weightPct ?? 0));
-        const gapTone: StatusTone = gap > 5 ? "amber" : gap < -5 ? "green" : "slate";
+        const gap = row.gapPp ...... ((row.riskContributionPct ...... 0) - (row.weightPct ...... 0));
+        const gapTone: StatusTone = gap > 5 ... "amber" : gap < -5 ... "green" : "slate";
         const isActive = index === activeIndex;
         return (
           <button
             key={row.name}
             type="button"
             data-active={isActive}
-            className={`pmri-interactive-bar-row pmri-focus w-full cursor-pointer rounded-xl border border-pmri-border/60 bg-white/[0.024] p-4 text-left ${gap > 5 ? "pmri-risk-overweight" : ""}`}
+            className={`pmri-interactive-bar-row pmri-focus w-full cursor-pointer rounded-xl border border-pmri-border/60 bg-white/[0.024] p-4 text-left ${gap > 5 ... "pmri-risk-overweight" : ""}`}
             onMouseEnter={() => setActiveIndex(index)}
             onFocus={() => setActiveIndex(index)}
             onBlur={() => setActiveIndex(null)}
           >
-            <div className="flex items-center justify-between gap-3"><p className={`text-sm font-semibold ${isActive ? "text-pmri-text" : "text-pmri-text2"}`}>{cleanLabel(row.name)}</p><span className="pmri-gap-pill"><StatusBadge tone={gapTone}>Gap: {gap > 0 ? "+" : ""}{numberText(gap)} percentage points</StatusBadge></span></div>
+            <div className="flex items-center justify-between gap-3"><p className={`text-sm font-semibold ${isActive ... "text-pmri-text" : "text-pmri-text2"}`}>{cleanLabel(row.name)}</p><span className="pmri-gap-pill"><StatusBadge tone={gapTone}>Gap: {gap > 0 ... "+" : ""}{numberText(gap)} percentage points</StatusBadge></span></div>
             <div className="mt-3 space-y-2">
-              <div><div className="flex justify-between text-xs text-pmri-text2"><span>Capital weight</span><span className={isActive ? "font-semibold text-pmri-text" : ""}>{pct(row.weightPct)}</span></div><div className="mt-1 h-2 overflow-hidden rounded-full bg-white/[0.055]"><div className="pmri-bar-fill h-full rounded-full bg-pmri-blueSoft/70" style={{ width: `${Math.min(100, ((row.weightPct ?? 0) / max) * 100)}%` }} /></div></div>
-              <div><div className="flex justify-between text-xs text-pmri-text2"><span>Risk contribution</span><span className={isActive ? "font-semibold text-pmri-text" : ""}>{pct(row.riskContributionPct)}</span></div><div className="mt-1 h-2 overflow-hidden rounded-full bg-white/[0.055]"><div className="pmri-bar-fill pmri-risk-bar-fill h-full rounded-full bg-pmri-amber/75" style={{ width: `${Math.min(100, ((row.riskContributionPct ?? 0) / max) * 100)}%` }} /></div></div>
+              <div><div className="flex justify-between text-xs text-pmri-text2"><span>Capital weight</span><span className={isActive ... "font-semibold text-pmri-text" : ""}>{pct(row.weightPct)}</span></div><div className="mt-1 h-2 overflow-hidden rounded-full bg-white/[0.055]"><div className="pmri-bar-fill h-full rounded-full bg-pmri-blueSoft/70" style={{ width: `${Math.min(100, ((row.weightPct ...... 0) / max) * 100)}%` }} /></div></div>
+              <div><div className="flex justify-between text-xs text-pmri-text2"><span>Risk contribution</span><span className={isActive ... "font-semibold text-pmri-text" : ""}>{pct(row.riskContributionPct)}</span></div><div className="mt-1 h-2 overflow-hidden rounded-full bg-white/[0.055]"><div className="pmri-bar-fill pmri-risk-bar-fill h-full rounded-full bg-pmri-amber/75" style={{ width: `${Math.min(100, ((row.riskContributionPct ...... 0) / max) * 100)}%` }} /></div></div>
             </div>
           </button>
         );
@@ -705,29 +705,29 @@ function RiskContributionBars({ rows }: { rows: XRayRiskContribution[] }) {
 
 function RiskDriverLeaderboard({ rows }: { rows: XRayRiskContribution[] }) {
   if (!rows.length) return <UnavailableState message="Top risk drivers are unavailable." />;
-  const max = Math.max(1, ...rows.map((row) => row.riskContributionPct ?? 0));
-  return <div className="pmri-bar-group space-y-3">{rows.slice(0, 3).map((row) => <div key={row.name} className="pmri-interactive-bar-row rounded-xl border border-pmri-border/60 bg-white/[0.024] p-3"><div className="flex items-center justify-between gap-3"><span className="text-sm font-semibold text-pmri-text">{cleanLabel(row.name)}</span><span className="data-figure text-sm text-pmri-text">{pct(row.riskContributionPct)}</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.055]"><div className="pmri-bar-fill h-full rounded-full bg-pmri-text/75" style={{ width: `${Math.min(100, ((row.riskContributionPct ?? 0) / max) * 100)}%` }} /></div></div>)}</div>;
+  const max = Math.max(1, ...rows.map((row) => row.riskContributionPct ...... 0));
+  return <div className="pmri-bar-group space-y-3">{rows.slice(0, 3).map((row) => <div key={row.name} className="pmri-interactive-bar-row rounded-xl border border-pmri-border/60 bg-white/[0.024] p-3"><div className="flex items-center justify-between gap-3"><span className="text-sm font-semibold text-pmri-text">{cleanLabel(row.name)}</span><span className="data-figure text-sm text-pmri-text">{pct(row.riskContributionPct)}</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.055]"><div className="pmri-bar-fill h-full rounded-full bg-pmri-text/75" style={{ width: `${Math.min(100, ((row.riskContributionPct ...... 0) / max) * 100)}%` }} /></div></div>)}</div>;
 }
 
-function riskBudgetInsight(xray?: XRaySummary) {
-  const top = xray?.riskBudget.topContributor;
-  if (!top?.name) return "Risk budget unavailable because contribution evidence is missing.";
-  const gap = top.gapPp ?? ((top.riskContributionPct ?? 0) - (top.weightPct ?? 0));
-  return `${cleanLabel(top.name)} drives ${pct(top.riskContributionPct)} of normal risk versus ${pct(top.weightPct)} of capital. Gap: ${gap > 0 ? "+" : ""}${numberText(gap)} percentage points.`;
+function riskBudgetInsight(xray...: XRaySummary) {
+  const top = xray....riskBudget.topContributor;
+  if (!top....name) return "Risk budget unavailable because contribution evidence is missing.";
+  const gap = top.gapPp ...... ((top.riskContributionPct ...... 0) - (top.weightPct ...... 0));
+  return `${cleanLabel(top.name)} drives ${pct(top.riskContributionPct)} of normal risk versus ${pct(top.weightPct)} of capital. Gap: ${gap > 0 ... "+" : ""}${numberText(gap)} percentage points.`;
 }
 
-export function RiskBudgetPanel({ xray }: { xray?: XRaySummary }) {
-  const top = xray?.riskBudget.topContributor;
+export function RiskBudgetPanel({ xray }: { xray...: XRaySummary }) {
+  const top = xray....riskBudget.topContributor;
   return (
     <section id="risk-budget" className="pmri-card pmri-animated-border-panel pmri-section-reveal scroll-mt-28 rounded-3xl p-5 [--pmri-reveal-delay:210ms] md:p-6">
       <SectionHeader eyebrow="Who drives portfolio risk" title="Capital weight versus risk contribution" insight={riskBudgetInsight(xray)} action="Review supporting evidence" />
-      {!xray ? <div className="mt-5"><UnavailableState message="Risk budget unavailable because risk contribution data is missing." /></div> : (
+      {!xray ... <div className="mt-5"><UnavailableState message="Risk budget unavailable because risk contribution data is missing." /></div> : (
         <div className="mt-6 flex flex-col items-start gap-5 xl:flex-row">
           <article className={`${raisedPanel} pmri-interactive-card w-full p-5 xl:w-[55%]`} style={{ alignSelf: "flex-start", height: "auto" }}><div className="mb-4 flex items-center justify-between gap-3"><h3 className="text-sm font-semibold text-pmri-text">Weight vs risk contribution</h3><TooltipHint label="Risk contribution" text="Normal portfolio risk contribution, not stress loss contribution." /></div><RiskContributionBars rows={xray.riskBudget.contributors} /></article>
           <div className="w-full space-y-4 xl:w-[45%]">
-            <article className={`${raisedPanel} pmri-interactive-card p-5`}><p className="pmri-label text-pmri-text2">Top contributor</p><p className="mt-3 text-2xl font-semibold text-pmri-text">{top?.name ? cleanLabel(top.name) : "Unavailable"}</p><p className="mt-2 text-sm leading-6 text-pmri-text2">{top ? `${cleanLabel(top.name)} is ${pct(top.weightPct)} of capital and ${pct(top.riskContributionPct)} of normal portfolio risk.` : "Top risk contributor unavailable."}</p><p className="mt-4 text-sm text-pmri-text2">Top 3 risk share: <span className="data-figure text-pmri-text">{pct(xray.riskBudget.top3Share)}</span></p></article>
+            <article className={`${raisedPanel} pmri-interactive-card p-5`}><p className="pmri-label text-pmri-text2">Top contributor</p><p className="mt-3 text-2xl font-semibold text-pmri-text">{top....name ... cleanLabel(top.name) : "Unavailable"}</p><p className="mt-2 text-sm leading-6 text-pmri-text2">{top ... `${cleanLabel(top.name)} is ${pct(top.weightPct)} of capital and ${pct(top.riskContributionPct)} of normal portfolio risk.` : "Top risk contributor unavailable."}</p><p className="mt-4 text-sm text-pmri-text2">Top 3 risk share: <span className="data-figure text-pmri-text">{pct(xray.riskBudget.top3Share)}</span></p></article>
             <article className={`${softPanel} pmri-interactive-card p-4`}><h3 className="text-sm font-semibold text-pmri-text">Top 3 risk drivers</h3><div className="mt-4"><RiskDriverLeaderboard rows={xray.riskBudget.contributors} /></div></article>
-            {xray.riskBudget.buckets.length ? <article className={`${softPanel} pmri-interactive-card p-4`}><h3 className="text-sm font-semibold text-pmri-text">Risk bucket contribution</h3><p className="mt-1 text-xs leading-5 text-pmri-text2">Normal portfolio risk contribution by bucket.</p><div className="mt-4"><RiskDriverLeaderboard rows={xray.riskBudget.buckets} /></div></article> : null}
+            {xray.riskBudget.buckets.length ... <article className={`${softPanel} pmri-interactive-card p-4`}><h3 className="text-sm font-semibold text-pmri-text">Risk bucket contribution</h3><p className="mt-1 text-xs leading-5 text-pmri-text2">Normal portfolio risk contribution by bucket.</p><div className="mt-4"><RiskDriverLeaderboard rows={xray.riskBudget.buckets} /></div></article> : null}
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
               <article className={`${softPanel} pmri-interactive-card p-4`}><h3 className="text-sm font-semibold text-pmri-text">Risk-overweight assets</h3><div className="mt-3"><MiniFacts facts={xray.riskBudget.riskOverweight.map((row) => `${cleanLabel(row.name)}: ${pct(row.weightPct)} weight vs ${pct(row.riskContributionPct)} risk.`)} limit={3} /></div></article>
               <article className={`${softPanel} pmri-interactive-card p-4`}><h3 className="text-sm font-semibold text-pmri-text">Risk-underweight assets</h3><div className="mt-3"><MiniFacts facts={xray.riskBudget.riskUnderweight.map((row) => `${cleanLabel(row.name)}: ${pct(row.weightPct)} weight vs ${pct(row.riskContributionPct)} risk.`)} limit={3} /></div></article>
@@ -741,35 +741,35 @@ export function RiskBudgetPanel({ xray }: { xray?: XRaySummary }) {
 
 function WeaknessTile({ tile }: { tile: XRayWeaknessTile }) {
   const tone = severityTone(tile.severity);
-  const evidence = tile.evidence.length ? tile.evidence : ["Insufficient evidence for this weakness tile."];
-  const width = tile.score !== undefined ? Math.min(100, Math.max(5, tile.score)) : 0;
-  const drivers = tile.linkedAssets.length ? tile.linkedAssets.slice(0, 3).map((asset) => cleanLabel(asset)).join(", ") : "Assets unavailable";
-  const nextTest = tile.nextTests[0] ? cleanLabel(tile.nextTests[0]) : "Stress review needed";
+  const evidence = tile.evidence.length ... tile.evidence : ["Insufficient evidence for this weakness tile."];
+  const width = tile.score !== undefined ... Math.min(100, Math.max(5, tile.score)) : 0;
+  const drivers = tile.linkedAssets.length ... tile.linkedAssets.slice(0, 3).map((asset) => cleanLabel(asset)).join(", ") : "Assets unavailable";
+  const nextTest = tile.nextTests[0] ... cleanLabel(tile.nextTests[0]) : "Stress review needed";
   return (
-    <article className={`${softPanel} pmri-interactive-card pmri-weakness-tile ${tile.score === undefined ? "opacity-80" : ""} p-4`}>
+    <article className={`${softPanel} pmri-interactive-card pmri-weakness-tile ${tile.score === undefined ... "opacity-80" : ""} p-4`}>
       <div className="flex items-start justify-between gap-3"><div><h3 className="text-base font-semibold text-pmri-text">{cleanLabel(tile.title)}</h3><p className="mt-1 text-xs text-pmri-text2">{severityLabel(tile.severity)} · {scoreText(tile.score)}</p></div><StatusBadge tone={tone}>{severityLabel(tile.severity)}</StatusBadge></div>
-      <div className="mt-4"><div className="flex items-center justify-between text-xs text-pmri-text2"><span>Score</span><span className="data-figure text-pmri-text">{scoreText(tile.score)}</span></div><div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/[0.055]"><div className={`pmri-bar-fill h-full rounded-full ${tone === "red" ? "bg-pmri-risk/75" : tone === "amber" ? "bg-pmri-amber/75" : tone === "green" ? "bg-pmri-positive/70" : "bg-pmri-muted/55"}`} style={{ width: `${width}%` }} /></div></div>
+      <div className="mt-4"><div className="flex items-center justify-between text-xs text-pmri-text2"><span>Score</span><span className="data-figure text-pmri-text">{scoreText(tile.score)}</span></div><div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/[0.055]"><div className={`pmri-bar-fill h-full rounded-full ${tone === "red" ... "bg-pmri-risk/75" : tone === "amber" ... "bg-pmri-amber/75" : tone === "green" ... "bg-pmri-positive/70" : "bg-pmri-muted/55"}`} style={{ width: `${width}%` }} /></div></div>
       <div className="mt-4 space-y-2 text-xs leading-5 text-pmri-text2">
         <p><span className="font-medium text-pmri-text">Main drivers:</span> {drivers}</p>
         <p><span className="font-medium text-pmri-text">Next stress test:</span> {nextTest}</p>
       </div>
-      {tile.score === undefined ? <p className="mt-3 rounded-xl border border-dashed border-pmri-borderSoft/45 bg-black/10 p-3 text-xs leading-5 text-pmri-text2">Data limitation: review supporting evidence before treating this as a live weakness.</p> : null}
-      <details className="mt-4"><summary className="pmri-focus cursor-pointer list-none rounded-lg text-xs font-medium text-pmri-text2 transition hover:text-pmri-text">Supporting evidence</summary><div className="mt-3 space-y-2"><p className="text-xs leading-5 text-pmri-text2">{sentence(tile.diagnosis)}</p>{evidence.slice(0, 3).map((item) => <p key={item} className="text-xs leading-5 text-pmri-text2">• {sentence(item)}</p>)}<div className="flex flex-wrap gap-2 pt-1">{(tile.nextTests.length ? tile.nextTests.slice(0, 3) : ["Stress review needed"]).map((test) => <EvidenceChip key={test}>{test}</EvidenceChip>)}</div></div></details>
+      {tile.score === undefined ... <p className="mt-3 rounded-xl border border-dashed border-pmri-borderSoft/45 bg-black/10 p-3 text-xs leading-5 text-pmri-text2">Data limitation: review supporting evidence before treating this as a live weakness.</p> : null}
+      <details className="mt-4"><summary className="pmri-focus cursor-pointer list-none rounded-lg text-xs font-medium text-pmri-text2 transition hover:text-pmri-text">Supporting evidence</summary><div className="mt-3 space-y-2"><p className="text-xs leading-5 text-pmri-text2">{sentence(tile.diagnosis)}</p>{evidence.slice(0, 3).map((item) => <p key={item} className="text-xs leading-5 text-pmri-text2">• {sentence(item)}</p>)}<div className="flex flex-wrap gap-2 pt-1">{(tile.nextTests.length ... tile.nextTests.slice(0, 3) : ["Stress review needed"]).map((test) => <EvidenceChip key={test}>{test}</EvidenceChip>)}</div></div></details>
     </article>
   );
 }
 
-export function WeaknessMapGrid({ xray }: { xray?: XRaySummary }) {
-  const topWeaknesses = xray?.weaknessMap.tiles
+export function WeaknessMapGrid({ xray }: { xray...: XRaySummary }) {
+  const topWeaknesses = xray....weaknessMap.tiles
     .slice()
-    .sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
-    .slice(0, 3) ?? [];
+    .sort((a, b) => (b.score ...... -1) - (a.score ...... -1))
+    .slice(0, 3) ...... [];
 
   return (
     <section id="weakness-map" className="pmri-card pmri-animated-border-panel pmri-section-reveal scroll-mt-28 rounded-3xl p-5 [--pmri-reveal-delay:240ms] md:p-6">
-      <SectionHeader eyebrow="Potential stress weaknesses" title="Where the portfolio may break under stress" insight={xray ? "The map ranks pre-stress areas to review before any candidate test." : "Weakness map unavailable because pre-stress signals are missing."} action="Review supporting evidence" />
-      {topWeaknesses.length ? <div className="mt-6 grid gap-3 md:grid-cols-3">{topWeaknesses.map((tile, index) => <article key={`${tile.id}-summary`} className={`${raisedPanel} p-4`}><p className="pmri-label text-pmri-text2">Top weakness {index + 1}</p><h3 className="mt-2 text-base font-semibold text-pmri-text">{cleanLabel(tile.title)}</h3><p className="mt-2 text-sm text-pmri-text2">{severityLabel(tile.severity)} · {scoreText(tile.score)}</p></article>)}</div> : null}
-      <div className="pmri-weakness-grid mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{xray?.weaknessMap.tiles.length ? xray.weaknessMap.tiles.map((tile) => <WeaknessTile key={tile.id} tile={tile} />) : <UnavailableState message="Portfolio Weakness Map unavailable: insufficient evidence." />}</div>
+      <SectionHeader eyebrow="Potential stress weaknesses" title="Where the portfolio may break under stress" insight={xray ... "The map ranks pre-stress areas to review before any candidate test." : "Weakness map unavailable because pre-stress signals are missing."} action="Review supporting evidence" />
+      {topWeaknesses.length ... <div className="mt-6 grid gap-3 md:grid-cols-3">{topWeaknesses.map((tile, index) => <article key={`${tile.id}-summary`} className={`${raisedPanel} p-4`}><p className="pmri-label text-pmri-text2">Top weakness {index + 1}</p><h3 className="mt-2 text-base font-semibold text-pmri-text">{cleanLabel(tile.title)}</h3><p className="mt-2 text-sm text-pmri-text2">{severityLabel(tile.severity)} · {scoreText(tile.score)}</p></article>)}</div> : null}
+      <div className="pmri-weakness-grid mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{xray....weaknessMap.tiles.length ... xray.weaknessMap.tiles.map((tile) => <WeaknessTile key={tile.id} tile={tile} />) : <UnavailableState message="Portfolio Weakness Map unavailable: insufficient evidence." />}</div>
     </section>
   );
 }
@@ -797,7 +797,7 @@ export function DiagnosisSectionNav() {
       const visible = entries
         .filter((entry) => entry.isIntersecting)
         .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-      if (visible?.target.id) setActiveSection(visible.target.id);
+      if (visible....target.id) setActiveSection(visible.target.id);
     }, { rootMargin: "-18% 0px -68% 0px", threshold: [0.1, 0.35, 0.6] });
 
     targets.forEach((target) => observer.observe(target));
@@ -809,14 +809,14 @@ export function DiagnosisSectionNav() {
     if (!target) return;
     event.preventDefault();
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+    target.scrollIntoView({ behavior: reduceMotion ... "auto" : "smooth", block: "start" });
     window.history.replaceState(null, "", `#${id}`);
     setActiveSection(id);
   }
 
   return (
     <nav className="sticky top-4 z-20 -mx-1 overflow-x-auto rounded-2xl border border-pmri-border/70 bg-pmri-bg/88 p-1 shadow-decision backdrop-blur-xl" aria-label="Portfolio X-Ray sections">
-      <div className="flex min-w-max gap-1">{diagnosisSections.map((section) => <a key={section.id} href={`#${section.id}`} aria-current={activeSection === section.id ? "true" : undefined} onClick={(event) => handleSectionClick(event, section.id)} className="pmri-focus pmri-section-nav-link rounded-xl border border-transparent px-3.5 py-2 text-sm font-medium text-pmri-text2 hover:bg-white/[0.055] hover:text-pmri-text">{section.label}</a>)}</div>
+      <div className="flex min-w-max gap-1">{diagnosisSections.map((section) => <a key={section.id} href={`#${section.id}`} aria-current={activeSection === section.id ... "true" : undefined} onClick={(event) => handleSectionClick(event, section.id)} className="pmri-focus pmri-section-nav-link rounded-xl border border-transparent px-3.5 py-2 text-sm font-medium text-pmri-text2 hover:bg-white/[0.055] hover:text-pmri-text">{section.label}</a>)}</div>
     </nav>
   );
 }

@@ -5,7 +5,7 @@
 > `docs/specs/portfolio_review_workflow_spec.md`, `docs/product_flow_operator_guide.md`, and
 > `docs/exec_plans/final_architecture_consistency_audit_plan.md`.
 
-Date: 2026-05-23  
+Date: 2026-05-23
 Evidence basis: current repository code, canonical specs under `docs/specs/`, and generated artifacts from the proof portfolio on disk (`Main portfolio/`). Target product concepts (including `docs/DIAGNOSTIC_PRODUCT_CONCEPT.md`) are cited only where explicitly non-binding.
 
 Proof portfolio (from `config.yml` and `Main portfolio/analysis_subject/run_metadata.json`):
@@ -32,21 +32,21 @@ python run_portfolio_review.py --mode core --skip-pdf
 
 This document covers **Blocks 1–5 only**:
 
-1. Input & Assumptions  
-2. Portfolio X-Ray  
-3. Stress Test Lab  
-4. Candidate Portfolio Factory  
-5. Optimization Engine / candidate generation readiness  
+1. Input & Assumptions
+2. Portfolio X-Ray
+3. Stress Test Lab
+4. Candidate Portfolio Factory
+5. Optimization Engine / candidate generation readiness
 
 **Explicitly excluded** (mentioned only if they appear as downstream generated files on disk):
 
-- Selection Engine  
-- Action Engine / Action Plan  
-- Monitoring  
-- Decision Journal  
-- Final investment recommendation logic  
-- Full interactive UI  
-- PDF polish and client-facing narrative packaging beyond noting their role  
+- Selection Engine
+- Action Engine / Action Plan
+- Monitoring
+- Decision Journal
+- Final investment recommendation logic
+- Full interactive UI
+- PDF polish and client-facing narrative packaging beyond noting their role
 
 Blocks 6+ artifacts such as `decision_package_summary.json`, `action_plan.json`, and `selection_decision.json` may exist under `Main portfolio/` from prior runs but are **not** part of the Blocks 1–5 algorithm described here.
 
@@ -85,11 +85,11 @@ python run_portfolio_review.py --mode core --skip-pdf
 
 Defaults (from `run_portfolio_review.py` + `src/portfolio_review_workflow.py`):
 
-- `review_mode=core` → factory profile `core_v1`  
-- `skip_pdf=True` (PDF skipped unless `--with-pdf` or `--legacy-full-pdf`)  
-- `output_profile=site_api` (JSON/cache core contracts; no CSV/TXT/HTML/PNG by default)  
-- Candidates **not** skipped (`skip_candidates=False`)  
-- Comparison **not** skipped (`skip_compare=False`)  
+- `review_mode=core` → factory profile `core_v1`
+- `skip_pdf=True` (PDF skipped unless `--with-pdf` or `--legacy-full-pdf`)
+- `output_profile=site_api` (JSON/cache core contracts; no CSV/TXT/HTML/PNG by default)
+- Candidates **not** skipped (`skip_candidates=False`)
+- Comparison **not** skipped (`skip_compare=False`)
 - Factory `--then-compare` enabled (comparison runs inside factory, not as a separate orchestrator step)
 
 ### 2.2 Verified stage order (dry-run output)
@@ -98,14 +98,14 @@ Defaults (from `run_portfolio_review.py` + `src/portfolio_review_workflow.py`):
 input → diagnosis → candidates
 ```
 
-| Stage | Script / module | Blocking? | Produces |
+| Stage | Script / module | Blocking... | Produces |
 | --- | --- | --- | --- |
 | **diagnosis** | `run_report.py --materialize-analysis-subject --output-profile site_api` | **Yes** — non-zero exit stops workflow | `Main portfolio/analysis_subject/*` JSON contracts |
 | **candidates** | `run_candidate_factory.py --profile core_v1 --execution-mode standard --output-profile site_api --then-compare` | **Yes** on factory failure (`fail_fast` optional) | `Main portfolio/candidate_factory_run.json`, per-candidate snapshots, `Main portfolio/candidate_comparison.json` |
 
 ### 2.3 What is **not** called on this path
 
-| Entrypoint | Called? | Evidence |
+| Entrypoint | Called... | Evidence |
 | --- | --- | --- |
 | `run_optimization.py` | **No** | `build_portfolio_review_plan()` never references it; factory label explicitly says “without legacy policy optimization” |
 | `run_report.py` (legacy Main/policy weights path) | **No** | Only `--materialize-analysis-subject` |
@@ -116,9 +116,9 @@ input → diagnosis → candidates
 
 `run_report.py --materialize-analysis-subject` calls `run_materialize_analysis_subject_report()` → `run_portfolio_report_for_weights()` with:
 
-- `output_dir_final = {cfg.output_dir_final}/analysis_subject` (default `Main portfolio/analysis_subject/`)  
-- `portfolio_role_override = "analysis_subject"`  
-- Weights from `resolve_analysis_subject_materialization(cfg)`  
+- `output_dir_final = {cfg.output_dir_final}/analysis_subject` (default `Main portfolio/analysis_subject/`)
+- `portfolio_role_override = "analysis_subject"`
+- Weights from `resolve_analysis_subject_materialization(cfg)`
 
 This is the **same core metrics/stress/report pipeline** used for candidate reports, parameterized by explicit weights (`run_report.py` docstring lines 301–323).
 
@@ -126,8 +126,8 @@ This is the **same core metrics/stress/report pipeline** used for candidate repo
 
 After subject diagnostics exist, `run_candidate_factory()` (`src/candidate_factory.py`):
 
-1. Resolves candidate IDs from profile (`core_v1` → 6 builders)  
-2. For `execution_mode=standard`: in-process **weights phase** + **lightweight_comparison report phase** per candidate  
+1. Resolves candidate IDs from profile (`core_v1` → 6 builders)
+2. For `execution_mode=standard`: in-process **weights phase** + **lightweight_comparison report phase** per candidate
 3. On success with `--then-compare`: `write_candidate_comparison_outputs()` rebuilds `candidate_comparison.json`
 
 ### 2.6 Flow diagram (code-accurate)
@@ -170,18 +170,18 @@ tickers: [SPY, QQQ, GLD, SLV, BND, SCHD, SCHP, TLT]
 
 Derived at runtime (not necessarily in raw config):
 
-- `base_benchmark_ticker`: SPY (USD default)  
-- `cash_proxy_ticker`: BIL (via `resolve_cash_and_rf()`)  
-- `risk_free_source`: FRED:DTB3 (USD)  
-- `windows_months`: [36, 60, 120]  
+- `base_benchmark_ticker`: SPY (USD default)
+- `cash_proxy_ticker`: BIL (via `resolve_cash_and_rf()`)
+- `risk_free_source`: FRED:DTB3 (USD)
+- `windows_months`: [36, 60, 120]
 - Mandate targets from `config/client_profiles.yml` for Balanced (e.g. `target_vol_annual=0.085`, `target_max_drawdown_pct=-0.2` in artifact)
 
 ### 3.2 Allowed `analysis_subject` types
 
 From `src/analysis_setup.py`:
 
-- `current_portfolio`  
-- `model_portfolio`  
+- `current_portfolio`
+- `model_portfolio`
 - `universe_baseline` (equal-weight if weights omitted)
 
 ### 3.3 Weight format and validation
@@ -210,10 +210,10 @@ Proof artifact: `run_metadata.json` → `analysis_setup.analysis_subject.weight_
 
 Primary machine-readable contract:
 
-- **`Main portfolio/analysis_subject/run_metadata.json`**  
-  - Embeds `analysis_setup` (runtime contract)  
-  - Embeds `input_assumptions` (exported reporting view via `src/input_assumptions.py`)  
-  - `active_assumptions` / `resolved_config` for audit trail  
+- **`Main portfolio/analysis_subject/run_metadata.json`**
+  - Embeds `analysis_setup` (runtime contract)
+  - Embeds `input_assumptions` (exported reporting view via `src/input_assumptions.py`)
+  - `active_assumptions` / `resolved_config` for audit trail
 
 `input_assumptions.portfolio_input.current_weights_provided=false` is **expected** when weights come from `analysis_subject.weights`, not legacy `current_weights` (documented confusion in prior verification report).
 
@@ -235,20 +235,20 @@ Primary machine-readable contract:
 
 ### 4.2 Processing chain
 
-1. **Download** daily prices (`download_all_prices`)  
-2. **FX convert** (`src/fx.convert_prices_to_investor_currency`) — forward-fill FX allowed; **never** interpolate asset returns  
-3. **Resample** to effective month-end (`src/resample.to_month_end`) — last trading day per month  
-4. **Returns** simple: `P_t/P_{t-1}-1` (`src/returns.py`)  
-5. **analysis_end** = last month-end strictly before today (`src/windows.get_analysis_end`) → **2026-04-30** in proof artifact  
+1. **Download** daily prices (`download_all_prices`)
+2. **FX convert** (`src/fx.convert_prices_to_investor_currency`) — forward-fill FX allowed; **never** interpolate asset returns
+3. **Resample** to effective month-end (`src/resample.to_month_end`) — last trading day per month
+4. **Returns** simple: `P_t/P_{t-1}-1` (`src/returns.py`)
+5. **analysis_end** = last month-end strictly before today (`src/windows.get_analysis_end`) → **2026-04-30** in proof artifact
 6. **Truncate** all panels to `analysis_end` (`truncate_to_analysis_end`)
 
 ### 4.3 Cache behavior
 
 From `src/data_loader.py` + `run_report.py` docstring:
 
-- **Daily cache**: raw prices; invalidated daily  
-- **Monthly/panel cache**: returns/rf/benchmark; invalidated on month change or config fingerprint change  
-- `--no-cache` bypasses cache reads  
+- **Daily cache**: raw prices; invalidated daily
+- **Monthly/panel cache**: returns/rf/benchmark; invalidated on month change or config fingerprint change
+- `--no-cache` bypasses cache reads
 
 ### 4.4 Missing data behavior
 
@@ -265,8 +265,8 @@ From `src/data_loader.py` + `run_report.py` docstring:
 
 Examples:
 
-- Historical stress: `_historical_data_quality()` returns `"insufficient_data"` when `n_obs < 2` or coverage rules fail (`src/stress.py` lines 586–596).  
-- Scenario library normalized tiers: `"insufficient_data"` classification in `src/scenario_library_normalized.py`.  
+- Historical stress: `_historical_data_quality()` returns `"insufficient_data"` when `n_obs < 2` or coverage rules fail (`src/stress.py` lines 586–596).
+- Scenario library normalized tiers: `"insufficient_data"` classification in `src/scenario_library_normalized.py`.
 - Tail risk: `unavailable_reason="insufficient_daily_obs_lt_{min_obs}"` in `src/portfolio_analytics.compute_tail_risk_historical`.
 
 No LLM participates in assigning these strings. Commentary may **repeat** them in English prose (`src/portfolio_commentary.py`), still rule-based.
@@ -289,16 +289,16 @@ Default `backtest_mode=dynamic_nan_safe` (`run_report.py`):
 
 Implementation: `src/portfolio_dynamic.portfolio_returns_nan_safe()`:
 
-- At month *t*: use target weight if asset return non-NaN; else weight → 0  
-- `w_miss` → cash proxy return  
-- Optional redistribution among `risk_tickers` when configured  
+- At month *t*: use target weight if asset return non-NaN; else weight → 0
+- `w_miss` → cash proxy return
+- Optional redistribution among `risk_tickers` when configured
 
 Cash proxy aligned to monthly index; missing cash → zero return.
 
 ### 5.4 Alignment for metrics
 
-- Excess-return metrics: **inner join** across portfolio, rf, benchmark (`src/metrics_asset._align`)  
-- Covariance / RC_vol / correlation: synchronous observations on month-end simple returns, `ddof=1`  
+- Excess-return metrics: **inner join** across portfolio, rf, benchmark (`src/metrics_asset._align`)
+- Covariance / RC_vol / correlation: synchronous observations on month-end simple returns, `ddof=1`
 - Windows: calendar `(analysis_end - horizon_months, analysis_end]` (`slice_calendar_window`)
 
 ### 5.5 analysis_end enforcement
@@ -315,8 +315,8 @@ Computed from loaded monthly index, not user-editable in proof config. Stored in
 
 ### 6.2 Schema
 
-- Version: `portfolio_xray_v2`  
-- Sections: `asset_allocation`, `risk_diagnostics`, `factor_exposure`, `hidden_risk_detector`, `portfolio_archetype`, `risk_budget_view`, `weakness_map`  
+- Version: `portfolio_xray_v2`
+- Sections: `asset_allocation`, `risk_diagnostics`, `factor_exposure`, `hidden_risk_detector`, `portfolio_archetype`, `risk_budget_view`, `weakness_map`
 - Each section status: `available` | `partial` | `unavailable` via `_section()` — **`partial` iff items exist but warnings non-empty** (lines 285–290)
 
 ### 6.3 Section breakdown
@@ -335,9 +335,9 @@ Computed from loaded monthly index, not user-editable in proof config. Stored in
 
 From `Main portfolio/analysis_subject/portfolio_xray.json`:
 
-- `asset_allocation.status = "available"`  
-- `factor_exposure.status = "available"` (12 items; 8 production factor keys present)  
-- `stress_report.factor_diagnostics_meta.status = "available"`, `aligned_weekly_observations = 152`  
+- `asset_allocation.status = "available"`
+- `factor_exposure.status = "available"` (12 items; 8 production factor keys present)
+- `stress_report.factor_diagnostics_meta.status = "available"`, `aligned_weekly_observations = 152`
 
 **Note:** An earlier verification snapshot (`docs/audits/2026-05-22_blocks_1_5_verification_report.md`) recorded `factor_exposure.status="partial"` for a prior artifact state. Current on-disk subject run shows full factor keys with regression panels present. Status logic is unchanged; artifact content differed between runs.
 
@@ -345,9 +345,9 @@ From `Main portfolio/analysis_subject/portfolio_xray.json`:
 
 From `_factor_exposure_section()`:
 
-1. Collect betas from `factor_betas_5y`, `factor_betas_10y`, Kalman, variance decomposition  
-2. If **no items** → section forced to `unavailable` with reason from `factor_diagnostics_meta`  
-3. If items exist but **`factor_regression_*` inference panels missing** → warning → section **`partial`**  
+1. Collect betas from `factor_betas_5y`, `factor_betas_10y`, Kalman, variance decomposition
+2. If **no items** → section forced to `unavailable` with reason from `factor_diagnostics_meta`
+3. If items exist but **`factor_regression_*` inference panels missing** → warning → section **`partial`**
 4. All inference present → **`available`**
 
 ---
@@ -384,10 +384,10 @@ Defined in `SCENARIOS` dict (equity_shock, credit_shock, rates_shock, inflation_
 
 Per scenario:
 
-1. Asset betas (weekly OLS, cached daily returns path) × shock vector → portfolio PnL  
-2. Optional stressed covariance blend (`stress_covariance_taxonomy_blend`)  
-3. RC Top1/Top3 diagnostics (do **not** change pass/fail)  
-4. **Pass** = portfolio PnL vs client `target_max_drawdown_pct` (loss gate)  
+1. Asset betas (weekly OLS, cached daily returns path) × shock vector → portfolio PnL
+2. Optional stressed covariance blend (`stress_covariance_taxonomy_blend`)
+3. RC Top1/Top3 diagnostics (do **not** change pass/fail)
+4. **Pass** = portfolio PnL vs client `target_max_drawdown_pct` (loss gate)
 
 Proof artifact: 8 synthetic scenarios with `portfolio_pnl_pct`, `pnl_by_asset_pct`, `pnl_by_factor_pct`, `pass` boolean.
 
@@ -399,11 +399,11 @@ Primary path: **realized portfolio monthly returns only** (`HISTORICAL_PRIMARY_R
 
 Algorithm per episode (`run_stress` loop):
 
-1. Slice monthly returns to episode date range  
-2. Inner-dropna across assets → count `n_obs`  
-3. `_historical_data_quality(n_obs, n_expected_obs)` → coverage + quality label  
-4. If `n_obs < 2`: emit row with `pnl_real_episode=null`, `data_quality="insufficient_data"`  
-5. Else: compound portfolio return, max drawdown, pass vs mandate  
+1. Slice monthly returns to episode date range
+2. Inner-dropna across assets → count `n_obs`
+3. `_historical_data_quality(n_obs, n_expected_obs)` → coverage + quality label
+4. If `n_obs < 2`: emit row with `pnl_real_episode=null`, `data_quality="insufficient_data"`
+5. Else: compound portfolio return, max drawdown, pass vs mandate
 
 Proof artifact:
 
@@ -419,9 +419,9 @@ Proof artifact:
 
 ### 8.4 Factor beta estimation (stress block)
 
-- Weekly alignment, windows `FACTOR_WEEKS_5Y=260`, `FACTOR_WEEKS_10Y=520` (`src/stress_factors.py`)  
-- Portfolio regression with HAC/Newey-West inference (mandatory per project rules)  
-- Rolling 3Y/5Y/10Y betas embedded in `stress_report` JSON; CSV/PNG only if output profile enables export  
+- Weekly alignment, windows `FACTOR_WEEKS_5Y=260`, `FACTOR_WEEKS_10Y=520` (`src/stress_factors.py`)
+- Portfolio regression with HAC/Newey-West inference (mandatory per project rules)
+- Rolling 3Y/5Y/10Y betas embedded in `stress_report` JSON; CSV/PNG only if output profile enables export
 
 ### 8.5 Stress status fields
 
@@ -453,24 +453,24 @@ Proof: `status="DIAG_ATTENTION"`, `failed_scenario="recession_severe"`, `worst_s
 
 **core_v1 candidate order (6):**
 
-1. `equal_weight`  
-2. `risk_parity`  
-3. `equal_weight_by_asset_class`  
-4. `risk_budget_by_asset`  
-5. `risk_budget_by_asset_class`  
-6. `hierarchical_risk_parity`  
+1. `equal_weight`
+2. `risk_parity`
+3. `equal_weight_by_asset_class`
+4. `risk_budget_by_asset`
+5. `risk_budget_by_asset_class`
+6. `hierarchical_risk_parity`
 
 **Not built in core mode** (available in `default_v1` / `--mode full` only):
 
-- Classic optimizers: minimum_variance*, maximum_diversification*, minimum_cvar*, etc.  
-- Robust suite: robust_mv_constrained, robust_mv_uncapped, robust_scenario  
+- Classic optimizers: minimum_variance*, maximum_diversification*, minimum_cvar*, etc.
+- Robust suite: robust_mv_constrained, robust_mv_uncapped, robust_scenario
 
 ### 9.2 standard execution mode (portfolio-first default)
 
 From `src/candidate_weights.py`:
 
-- **Phase 1 — weights:** in-process via `build_candidate_weights()` (no subprocess `run_*.py`)  
-- **Phase 2 — report:** `run_portfolio_report_for_weights(..., report_profile=lightweight_comparison)` → `snapshot_10y.json` minimum for compare  
+- **Phase 1 — weights:** in-process via `build_candidate_weights()` (no subprocess `run_*.py`)
+- **Phase 2 — report:** `run_portfolio_report_for_weights(..., report_profile=lightweight_comparison)` → `snapshot_10y.json` minimum for compare
 
 PDF: suppressed (`pdf_mode=none`, `PORTFOLIO_SKIP_VARIANT_PDF=1`).
 
@@ -492,9 +492,9 @@ PDF: suppressed (`pdf_mode=none`, `PORTFOLIO_SKIP_VARIANT_PDF=1`).
 
 `Main portfolio/candidate_factory_run.json`:
 
-- `factory_profile_id: "core_v1"`  
-- `summary: { total: 6, skipped_existing: 6, succeeded: 0, failed: 0 }`  
-- All six steps: `status="skipped_existing"`, `freshness_status="fresh"`, message “snapshot_10y.json already fresh”  
+- `factory_profile_id: "core_v1"`
+- `summary: { total: 6, skipped_existing: 6, succeeded: 0, failed: 0 }`
+- All six steps: `status="skipped_existing"`, `freshness_status="fresh"`, message “snapshot_10y.json already fresh”
 
 This proves **reuse path**, not a fresh rebuild path.
 
@@ -529,11 +529,11 @@ All use shared eligibility filter `_eligible_universe_from_returns()` (coverage 
 
 Under `--mode full` / profile `default_v1` (16 candidates), additional **true optimizers** run via same factory framework:
 
-- Minimum variance (constrained / uncapped / advanced)  
-- Maximum diversification (constrained / unconstrained)  
-- Minimum CVaR (constrained / uncapped)  
-- Robust MV (constrained / uncapped)  
-- Robust scenario optimization (+ report script chain)  
+- Minimum variance (constrained / uncapped / advanced)
+- Maximum diversification (constrained / unconstrained)
+- Minimum CVaR (constrained / uncapped)
+- Robust MV (constrained / uncapped)
+- Robust scenario optimization (+ report script chain)
 
 These invoke `src/portfolio_variants` optimizer paths and (in `legacy_full` execution mode) subprocess `run_*.py` scripts. **Not executed** in the documented core dry-run.
 
@@ -549,9 +549,9 @@ These invoke `src/portfolio_variants` optimizer paths and (in `legacy_full` exec
 
 `write_candidate_comparison_outputs()` (`src/candidate_comparison.py`) after factory:
 
-- Reads on-disk snapshots/stress for **analysis_subject + all registry candidates with artifacts**  
-- Builds `candidate_comparison.json` with metrics, stress summaries, construction disclosure  
-- Adds `optimization_readiness` for optimizer-backed rows via `src/optimization_readiness.py`  
+- Reads on-disk snapshots/stress for **analysis_subject + all registry candidates with artifacts**
+- Builds `candidate_comparison.json` with metrics, stress summaries, construction disclosure
+- Adds `optimization_readiness` for optimizer-backed rows via `src/optimization_readiness.py`
 
 ### 11.2 Proof artifact menu semantics
 
@@ -570,24 +570,24 @@ From `Main portfolio/candidate_comparison.json`:
 
 For optimizer-backed candidates (when present), `construction_disclosure.optimization_readiness` includes:
 
-- `overall_status` (e.g. `ready`, `degraded`)  
-- `fair_comparison_ready` boolean  
-- `required_checks`: weights, snapshot_10y, stress_summary, construction_disclosure, optimizer_quality, freshness  
+- `overall_status` (e.g. `ready`, `degraded`)
+- `fair_comparison_ready` boolean
+- `required_checks`: weights, snapshot_10y, stress_summary, construction_disclosure, optimizer_quality, freshness
 
 **Blocks 1–5 stop here.** Ranking, selection, and action planning consume this JSON in later blocks.
 
 ### 11.4 What comparison does **not** prove
 
-- Does not select a winning portfolio  
-- Does not generate trade instructions  
-- Does not prove all 16 default_v1 optimizers were rebuilt in a core run  
+- Does not select a winning portfolio
+- Does not generate trade instructions
+- Does not prove all 16 default_v1 optimizers were rebuilt in a core run
 - Does not guarantee fair comparison for `degraded` optimizer rows (readiness warns explicitly)
 
 ---
 
 ## 12. Decision-making boundary
 
-| Step | Who decides? | Input | Output | Deterministic? | Evidence |
+| Step | Who decides... | Input | Output | Deterministic... | Evidence |
 | --- | --- | --- | --- | --- | --- |
 | Input validation | **Code** (`config_schema`, `analysis_setup`) | config.yml | pass/fail exit | Yes | `ConfigValidationError` on bad weights |
 | analysis_end | **Code** (`windows.get_analysis_end`) | price index, today | date string | Yes | `2026-04-30` in artifacts |
@@ -664,11 +664,11 @@ Legend: **Gen** = generated; **SoT** = suitable as machine contract source for t
 
 | Question | Answer (code-based) |
 | --- | --- |
-| Is PDF part of the core algorithm? | **No.** PDF rebuild is a separate step (`rebuild_pdf_reports.py`), omitted when `--skip-pdf` (default). |
-| Is PDF only presentation/export? | **Yes.** `src/output_policy.py` states policy controls artifact routing only and must not change portfolio math. |
-| Are JSON/CSV the machine-readable layer? | **Yes.** `site_api` profile sets `write_json=True`, disables CSV/TXT/HTML/PNG/PDF by default. Core contracts listed in `write_output_manifest()`. |
-| Must PDF generation be required for MVP verification of Blocks 1–5? | **No.** Tests and live core E2E scripts use `--skip-pdf` (`scripts/verify_live_core_e2e.py`). |
-| What does `--skip-pdf` mean for algorithm completeness? | **Algorithm complete without PDF.** All calculations and JSON contracts still run; only Pandoc/LaTeX presentation rebuild is skipped. |
+| Is PDF part of the core algorithm... | **No.** PDF rebuild is a separate step (`rebuild_pdf_reports.py`), omitted when `--skip-pdf` (default). |
+| Is PDF only presentation/export... | **Yes.** `src/output_policy.py` states policy controls artifact routing only and must not change portfolio math. |
+| Are JSON/CSV the machine-readable layer... | **Yes.** `site_api` profile sets `write_json=True`, disables CSV/TXT/HTML/PNG/PDF by default. Core contracts listed in `write_output_manifest()`. |
+| Must PDF generation be required for MVP verification of Blocks 1–5... | **No.** Tests and live core E2E scripts use `--skip-pdf` (`scripts/verify_live_core_e2e.py`). |
+| What does `--skip-pdf` mean for algorithm completeness... | **Algorithm complete without PDF.** All calculations and JSON contracts still run; only Pandoc/LaTeX presentation rebuild is skipped. |
 
 Human-readable `commentary.txt` / `report.txt` are also **optional** under `site_api` (not written unless `full_report` / `legacy_export` profile).
 
@@ -693,27 +693,27 @@ Human-readable `commentary.txt` / `report.txt` are also **optional** under `site
 
 ### Fully deterministic (should remain code-owned)
 
-- Config validation and assumption resolution  
-- Price download, FX, resampling, return math  
-- Portfolio NaN-safe dynamic backtest  
-- Metrics, RC_vol, correlation  
-- Stress PnL and historical episode quality  
-- Factor OLS/HAC regression and rolling betas  
-- Factory freshness/skip/rebuild decisions  
-- Readiness checklist aggregation  
+- Config validation and assumption resolution
+- Price download, FX, resampling, return math
+- Portfolio NaN-safe dynamic backtest
+- Metrics, RC_vol, correlation
+- Stress PnL and historical episode quality
+- Factor OLS/HAC regression and rolling betas
+- Factory freshness/skip/rebuild decisions
+- Readiness checklist aggregation
 
 ### Rule-based / heuristic (deterministic given inputs)
 
-- X-Ray archetype, weakness map, hidden risk flags (`XRAY_THRESHOLDS`)  
-- Stress diagnostic codes (`DIAG_*`) vs mandate thresholds  
-- Factory menu partial flags  
-- Commentary templating  
+- X-Ray archetype, weakness map, hidden risk flags (`XRAY_THRESHOLDS`)
+- Stress diagnostic codes (`DIAG_*`) vs mandate thresholds
+- Factory menu partial flags
+- Commentary templating
 
 ### Data-dependent (still code-owned)
 
-- Which historical episodes compute  
-- Which assets pass coverage threshold  
-- Whether snapshots are fresh vs stale  
+- Which historical episodes compute
+- Which assets pass coverage threshold
+- Whether snapshots are fresh vs stale
 
 ### Where AI is appropriate vs not
 
@@ -729,10 +729,10 @@ Human-readable `commentary.txt` / `report.txt` are also **optional** under `site
 
 ## 17. Final answer
 
-**Is the current Blocks 1–5 path mostly algorithmic?**  
+**Is the current Blocks 1–5 path mostly algorithmic...**
 **Yes.** One orchestrator runs deterministic Python modules; statuses are code-generated; no LLM in the pipeline.
 
-**Where could “AI walking in circles” happen?**  
+**Where could “AI walking in circles” happen...**
 Not inside Blocks 1–5 calculation code. Risk areas are **human or downstream interpretation**: reading mixed core/full artifacts as one menu, treating `DIAG_*` as mandate failure, ignoring `is_partial_menu`, or asking an external LLM to infer missing data instead of reading `data_trust_summary` / `data_quality` fields.
 
 **Root cause if confusion appears**
@@ -745,9 +745,9 @@ Not inside Blocks 1–5 calculation code. Risk areas are **human or downstream i
 
 **Fix first for clarity (evidence-based, not feature proposals)**
 
-1. Treat `run_metadata.json` + `analysis_setup` as the input contract SoT.  
-2. Read `candidate_menu.review_mode` and `is_partial_menu` before interpreting `candidate_comparison.json`.  
-3. Use `stress_report.data_trust_summary` for historical gaps — not inferred narrative.  
+1. Treat `run_metadata.json` + `analysis_setup` as the input contract SoT.
+2. Read `candidate_menu.review_mode` and `is_partial_menu` before interpreting `candidate_comparison.json`.
+3. Use `stress_report.data_trust_summary` for historical gaps — not inferred narrative.
 4. Under `--skip-pdf` + `site_api`, expect JSON-only fresh outputs; ignore stale CSV/HTML unless profile explicitly enables export.
 
 ---
@@ -763,5 +763,5 @@ Not inside Blocks 1–5 calculation code. Risk areas are **human or downstream i
 | Full pytest | **Not run** — no code changed |
 | Live networked re-run of proof | **Not run** — relied on on-disk artifacts timestamped 2026-05-22 |
 
-**Files created:** `docs/audits/2026-05-23_blocks_1_5_actual_algorithm_walkthrough.md`  
+**Files created:** `docs/audits/2026-05-23_blocks_1_5_actual_algorithm_walkthrough.md`
 **Files changed:** none (code/docs elsewhere untouched)

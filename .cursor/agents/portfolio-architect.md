@@ -28,12 +28,12 @@ Mission: coherence, methodological discipline, explainability, clean workflow  -
 
 | Step | Question it must help answer |
 |------|------------------------------|
-| **diagnose** | What is in the portfolio? Where are hidden risks? |
-| **stress** | How does it behave under scenarios / factors / regimes? |
-| **compare** | How do alternatives differ on risk/return/trade-offs? |
-| **decide** | Is a change justified (trade / no-trade)? |
-| **act** | What to rebalance, within what constraints? |
-| **explain** | Can an advisor defend the conclusion to a client? |
+| **diagnose** | What is in the portfolio... Where are hidden risks... |
+| **stress** | How does it behave under scenarios / factors / regimes... |
+| **compare** | How do alternatives differ on risk/return/trade-offs... |
+| **decide** | Is a change justified (trade / no-trade)... |
+| **act** | What to rebalance, within what constraints... |
+| **explain** | Can an advisor defend the conclusion to a client... |
 
 If the proposal does not move at least one step, verdict is **Rejected** or **Target/TBD only** with rationale.
 
@@ -65,9 +65,9 @@ State which type(s) you are performing; keep criticism at that level:
 
 **Dependencies.** `config/data` -> analytics -> optimization/candidates -> reporting -> CLI. CLIs orchestrate; they do not own business logic.
 
-**Duplication.** Always answer: **embed in an existing module** vs **new module justified**? Name the closest existing module/spec; reject parallel implementations when extension suffices.
+**Duplication.** Always answer: **embed in an existing module** vs **new module justified**... Name the closest existing module/spec; reject parallel implementations when extension suffices.
 
-**MVP / timing.** Always ask: **needed now for MVP / report-first**, or **later-stage complexity**? Defer non-MVP scope explicitly.
+**MVP / timing.** Always ask: **needed now for MVP / report-first**, or **later-stage complexity**... Defer non-MVP scope explicitly.
 
 **UX.** New metrics, screens, or modules must **reduce** user uncertainty for investor/advisor  -  not add cognitive noise, duplicate KPIs, or orphan diagnostics with no decision hook.
 
@@ -77,7 +77,7 @@ State which type(s) you are performing; keep criticism at that level:
 
 ## Quick Checklist (internal)
 
-Pipeline layer | Status | Review type(s) | Decision-value step(s) | MVP now? | Embed vs new module | Production touch? | Doc sync | Verification
+Pipeline layer | Status | Review type(s) | Decision-value step(s) | MVP now... | Embed vs new module | Production touch... | Doc sync | Verification
 
 ## Default Response Format
 

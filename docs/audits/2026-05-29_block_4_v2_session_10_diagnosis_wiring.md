@@ -10,12 +10,12 @@ Prerequisite: [Session 09 no-trade gate](2026-05-29_block_4_v2_session_09_no_tra
 
 | Question | Verdict |
 | --- | --- |
-| `build_block_4_diagnosis()` facade? | **Yes** — `src/block_4/diagnosis_builder.py` |
-| `write_block_4_diagnosis_outputs()`? | **Yes** — writes both bundle JSON files |
-| `run_report.py` wired to v2? | **Yes** — replaces V1 write path when not `core_blocks_only` |
-| Manifest `block_4_diagnosis` extra? | **Yes** — via `block_4_manifest_extra()` |
-| V1 `problems[]` shim? | **Yes** — `label`, `evidence`, `medium` → `moderate` |
-| Session 10 tests? | **Yes** — `tests/test_block_4_diagnosis_builder.py` (**5 passed**) |
+| `build_block_4_diagnosis()` facade... | **Yes** — `src/block_4/diagnosis_builder.py` |
+| `write_block_4_diagnosis_outputs()`... | **Yes** — writes both bundle JSON files |
+| `run_report.py` wired to v2... | **Yes** — replaces V1 write path when not `core_blocks_only` |
+| Manifest `block_4_diagnosis` extra... | **Yes** — via `block_4_manifest_extra()` |
+| V1 `problems[]` shim... | **Yes** — `label`, `evidence`, `medium` → `moderate` |
+| Session 10 tests... | **Yes** — `tests/test_block_4_diagnosis_builder.py` (**5 passed**) |
 
 **Session 10 verdict:** **PASS**
 

@@ -209,18 +209,18 @@ For **meaningful** changes, ask which docs are actually touched  -  do **not** u
 
 | Question | Document |
 |----------|----------|
-| Behavior contract changed? | `SPEC.md` |
-| Data pipeline / policy? | `DATA.md` |
-| New/changed artifacts? | `OUTPUTS.md` |
-| Verification strategy? | `TESTING.md` |
-| Layers / modules / flow? | `ARCHITECTURE.md` |
-| Sequencing / priorities? | roadmap documentation if/when it exists |
-| Strategic choice? | `DECISIONS.md` |
-| Shipped meaningful change? | `CHANGELOG.md` |
-| New limitation or debt? | `KNOWN_ISSUES.md` |
-| Agent routing changed? | `AGENTS.md` |
-| Stale links/refs? | repo-wide search |
-| Methodology? | owning `docs/specs/*` + decision + tests |
+| Behavior contract changed... | `SPEC.md` |
+| Data pipeline / policy... | `DATA.md` |
+| New/changed artifacts... | `OUTPUTS.md` |
+| Verification strategy... | `TESTING.md` |
+| Layers / modules / flow... | `ARCHITECTURE.md` |
+| Sequencing / priorities... | roadmap documentation if/when it exists |
+| Strategic choice... | `DECISIONS.md` |
+| Shipped meaningful change... | `CHANGELOG.md` |
+| New limitation or debt... | `KNOWN_ISSUES.md` |
+| Agent routing changed... | `AGENTS.md` |
+| Stale links/refs... | repo-wide search |
+| Methodology... | owning `docs/specs/*` + decision + tests |
 
 ## 8. Verification coordination
 

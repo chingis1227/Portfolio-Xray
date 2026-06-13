@@ -10,10 +10,10 @@ Update this file when the general implementation contract, workflows, inputs/out
 
 `SPEC.md` is the canonical implementation entry point. It has higher authority than product concept documents such as [BUSINESS_VISION.md](BUSINESS_VISION.md), [PRODUCT.md](PRODUCT.md), and [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md) when the question is current implementation behavior.
 
-The current canonical product truth is **ДИАГНОСТИКА 2**. Product concept documents can describe target direction, but the active product interpretation must follow this distinction:
+The current canonical product truth is **Diagnosis 2**. Product concept documents can describe target direction, but the active product interpretation must follow this distinction:
 
-- current Core MVP = diagnosis-first/current-portfolio-first ДИАГНОСТИКА 2 flow;
-- ДИАГНОСТИКА 2 НА ПОТОМ = backlog / advanced / later;
+- current Core MVP = diagnosis-first/current-portfolio-first Diagnosis 2 flow;
+- Diagnosis 2 Later = backlog / advanced / later;
 - older optimizer/report/scorecard-heavy modules may remain implemented as backend evidence, technical artifacts, generated support, legacy compatibility, or advanced research, but they are not the current Core MVP product flow unless explicitly promoted by specs and code.
 
 They do not change formulas, scenarios, optimizer policy, data rules, output contracts, or code behavior until this spec and the relevant detailed specs are updated.
@@ -41,7 +41,7 @@ Input portfolio
 -> Monitoring / What Changed
 ```
 
-This is the ДИАГНОСТИКА 2 product truth. The implementation is still CLI/file-driven and partially report-first, but current product surfaces must be interpreted through this flow, not through the older optimization/scorecard/report package.
+This is the Diagnosis 2 product truth. The implementation is still CLI/file-driven and partially report-first, but current product surfaces must be interpreted through this flow, not through the older optimization/scorecard/report package.
 
 ## Implementation Scope
 
@@ -127,7 +127,7 @@ code, generated artifacts, and owning specs verify that status.
 
 ## Main Workflows
 
-Portfolio-first review workflow (binding transition contract, interpreted through ДИАГНОСТИКА 2):
+Portfolio-first review workflow (binding transition contract, interpreted through Diagnosis 2):
 
 ```text
 analysis_subject / current portfolio

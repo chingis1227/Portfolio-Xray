@@ -116,7 +116,7 @@ Today, `run_compare_variants.py` / `write_candidate_comparison_outputs` correctl
 
 ## Product Boundary
 
-| Role | Entry | Factory includes? |
+| Role | Entry | Factory includes... |
 | --- | --- | --- |
 | **Portfolio-first subject** | `run_report.py --materialize-analysis-subject` via `run_portfolio_review.py` | **No** — must exist before factory output is interpreted |
 | **Legacy production policy** | `run_optimization.py` then `run_report.py` on Main | **No** — run only in compatibility workflows |

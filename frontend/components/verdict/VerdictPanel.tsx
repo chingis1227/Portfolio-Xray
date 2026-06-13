@@ -9,10 +9,10 @@ export function VerdictPanel({ state, headline, explanation, evidenceQuality, bo
     ...metric,
     label: formatUnknownValue(metric.label, "Metric"),
     value: formatUnknownValue(metric.value),
-    detail: metric.detail ? normalizeDisplaySentence(metric.detail) : undefined
+    detail: metric.detail ... normalizeDisplaySentence(metric.detail) : undefined
   }));
   const safeEvidence = keyEvidence.length
-    ? keyEvidence.map((item) => normalizeDisplaySentence(item))
+    ... keyEvidence.map((item) => normalizeDisplaySentence(item))
     : ["No additional evidence rows were returned for this verdict."];
 
   return (

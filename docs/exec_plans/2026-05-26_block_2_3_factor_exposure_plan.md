@@ -116,7 +116,7 @@ Fifth, add focused unit and pipeline tests, update the X-Ray golden contract int
 
 ## Concrete Steps
 
-Work from `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`.
+Work from `D:\Desktop\CURSOR TULA DIAGNOSTICS`.
 
 Use PowerShell commands. For Python checks, prefer `.\.venv\Scripts\python.exe` if `.venv` exists; otherwise use `py -3` after checking availability.
 

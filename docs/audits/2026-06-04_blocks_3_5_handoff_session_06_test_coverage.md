@@ -6,7 +6,7 @@ Plan: `docs/exec_plans/2026-06-04_blocks_3_5_integration_readiness_audit_plan.md
 
 ## Question
 
-Do the current pytest bundles cover the handoff chain strongly enough to support the final readiness verdict, and where are the remaining coverage gaps?
+Do the current pytest bundles cover the handoff chain strongly enough to support the final readiness verdict, and where are the remaining coverage gaps...
 
 This session does not add or edit tests. Missing coverage is recorded for a later post-audit plan.
 
@@ -18,7 +18,7 @@ The required Session 06 coverage table now exists. The Block 4 and Builder/Bundl
 
 ## Commands Run
 
-From repository root `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`.
+From repository root `D:\Desktop\CURSOR TULA DIAGNOSTICS`.
 
 ### Block 4 group
 

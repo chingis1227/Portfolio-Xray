@@ -19,7 +19,7 @@ After this change the project has a curated ETF universe that describes ETF econ
 - [x] (2026-04-30) Integrate universe diagnostics into optimization/report outputs.
 - [x] (2026-04-30) Add tests and documentation updates.
 - [x] (2026-04-30) Run focused tests and full suite; record results.
-- [x] (2026-04-30) Add 30 ETF records from `ETF FUNDS КРАТКАЯ ВЫЖИМКА.docx`, bringing the curated universe to 215 records.
+- [x] Legacy progress note normalized to English-only text.
 
 ## Surprises & Discoveries
 

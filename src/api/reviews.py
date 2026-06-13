@@ -91,7 +91,7 @@ COMPARISON_SCHEMA_VERSION = "current_vs_candidate_v1"
 VERDICT_SCHEMA_VERSION = "decision_verdict_v1"
 REPORT_SCHEMA_VERSION = "report_grounding_v1"
 PAYLOAD_DIR = PROJECT_ROOT / "runs" / "fastapi_review_payloads"
-SAFE_REF_RE = re.compile(r"^[A-Za-z]:[\\/]|^/(?:Users|home|var|tmp|mnt)/")
+SAFE_REF_RE = re.compile(r"^[A-Za-z]:[\\/]|^/(...:Users|home|var|tmp|mnt)/")
 
 
 def _record(value: Any) -> dict[str, Any]:

@@ -1,6 +1,6 @@
 # Diagnostic Product Concept
 
-This document is part of the active project documentation after the documentation migration. It records the **“ДИАГНОСТИКА 2” canonical product concept** and target architecture guide, but it is not a canonical implementation spec. It does not override `../SPEC.md`, `../RULES.md`, `../OUTPUTS.md`, `../DATA.md`, `../TESTING.md`, `specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
+This document is part of the active project documentation after the documentation migration. It records the **“Diagnosis 2” canonical product concept** and target architecture guide, but it is not a canonical implementation spec. It does not override `../SPEC.md`, `../RULES.md`, `../OUTPUTS.md`, `../DATA.md`, `../TESTING.md`, `specs/*.md`, formulas, stress scenario definitions, optimizer policy, generated-output contracts, or current code behavior. Current implementation claims must be verified against the canonical specs and code.
 
 ## 1. Concept Name And Identity
 
@@ -34,7 +34,7 @@ Input portfolio
 -> Monitoring / What Changed
 ```
 
-“ДИАГНОСТИКА 2 НА ПОТОМ” is backlog / advanced / later. Features from that later document must not
+“Diagnosis 2 Later” is backlog / advanced / later. Features from that later document must not
 be treated as the current Core MVP product flow just because some implementation exists. Portfolio
 Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate arena,
 Assumption Sensitivity, Pareto/Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan
@@ -203,12 +203,12 @@ Target outputs:
 
 Questions answered:
 
-- What do I actually own?
-- What is the real economic exposure?
-- Which risk factors dominate?
-- Which assets contribute more risk than their capital weight suggests?
-- Which holdings duplicate the same risk?
-- Is diversification real or only visual?
+- What do I actually own...
+- What is the real economic exposure...
+- Which risk factors dominate...
+- Which assets contribute more risk than their capital weight suggests...
+- Which holdings duplicate the same risk...
+- Is diversification real or only visual...
 
 Boundary:
 
@@ -232,11 +232,11 @@ Target outputs:
 
 Questions answered:
 
-- Where can the portfolio break?
-- Which assets hurt most in stress?
-- Which assets help?
-- Which market risks should be tested through a candidate hypothesis?
-- Is there enough data to support the stress conclusion?
+- Where can the portfolio break...
+- Which assets hurt most in stress...
+- Which assets help...
+- Which market risks should be tested through a candidate hypothesis...
+- Is there enough data to support the stress conclusion...
 
 Boundary:
 
@@ -359,12 +359,12 @@ Target comparison dimensions:
 
 Questions answered:
 
-- What improves?
-- What worsens?
-- Is the improvement material?
-- Is turnover justified?
-- Does the candidate solve the diagnosed problem?
-- Is the evidence strong enough to act?
+- What improves...
+- What worsens...
+- Is the improvement material...
+- Is turnover justified...
+- Does the candidate solve the diagnosed problem...
+- Is the evidence strong enough to act...
 
 ### 5.8 Decision Verdict
 
@@ -518,7 +518,7 @@ These items are not Core MVP requirements. Do not describe them as implemented u
 - Full multi-candidate ranking / advanced research comparison.
 - Out-of-sample / walk-forward analysis.
 - Full Crisis Replay UI.
-- What Happens If? Simulator.
+- What Happens If... Simulator.
 - Portfolio Health Score / Robustness Scorecard as standalone/current primary product modules (not current Core MVP; advanced/backend/backlog only).
 - Assumption Sensitivity / Assumption Testing Mode.
 - Pareto Frontier / Dominance Check.
@@ -598,39 +598,39 @@ The older concept listed 24 product blocks. Reclassify them as follows:
 
 From diagnosis:
 
-- What is actually in the current portfolio?
-- What is the real economic exposure?
-- Where are capital and risk concentrated?
-- Which factors dominate the portfolio?
-- Which assets contribute most to total risk?
-- Where does weight differ from risk contribution?
-- Which hidden exposures exist?
-- Is diversification real?
-- Where is the portfolio most vulnerable?
+- What is actually in the current portfolio...
+- What is the real economic exposure...
+- Where are capital and risk concentrated...
+- Which factors dominate the portfolio...
+- Which assets contribute most to total risk...
+- Where does weight differ from risk contribution...
+- Which hidden exposures exist...
+- Is diversification real...
+- Where is the portfolio most vulnerable...
 
 From stress:
 
-- How does the portfolio behave in historical and synthetic stress scenarios?
-- Which assets drive losses?
-- Which assets help offset losses?
-- Where is the main hedge gap?
-- Which stress problem should be tested through an alternative?
+- How does the portfolio behave in historical and synthetic stress scenarios...
+- Which assets drive losses...
+- Which assets help offset losses...
+- Where is the main hedge gap...
+- Which stress problem should be tested through an alternative...
 
 From candidate generation:
 
-- Which diagnosed problem deserves a candidate hypothesis?
-- Which improvement path is reasonable?
-- Which construction method fits the selected hypothesis?
-- What constraints and parameters are appropriate?
-- Was the candidate actually generated from the diagnosed problem?
+- Which diagnosed problem deserves a candidate hypothesis...
+- Which improvement path is reasonable...
+- Which construction method fits the selected hypothesis...
+- What constraints and parameters are appropriate...
+- Was the candidate actually generated from the diagnosed problem...
 
 From comparison and verdict:
 
-- What improves and what worsens versus the current portfolio?
-- Is the improvement material?
-- Is turnover/cost justified?
-- Is the evidence reliable enough?
-- Should the user keep, rebalance, test another candidate, no-trade, or mark evidence insufficient?
+- What improves and what worsens versus the current portfolio...
+- Is the improvement material...
+- Is turnover/cost justified...
+- Is the evidence reliable enough...
+- Should the user keep, rebalance, test another candidate, no-trade, or mark evidence insufficient...
 
 ## 11. Current Implementation Guardrails
 

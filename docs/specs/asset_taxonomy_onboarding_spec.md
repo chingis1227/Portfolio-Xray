@@ -23,8 +23,8 @@ Taxonomy map: [taxonomy_spec.md](taxonomy_spec.md).
 
 | Layer | Question | Depends on |
 | --- | --- | --- |
-| **Synthetic PnL** | How much loss/gain under factor shocks? | Weekly factor betas × shocks × weights; prices for beta estimation |
-| **Synthetic RC** | Who dominates stressed variance (Top1/Top3)? | Taxonomy → stress block; `taxonomy_blend_v1` vol/correlation tables |
+| **Synthetic PnL** | How much loss/gain under factor shocks... | Weekly factor betas × shocks × weights; prices for beta estimation |
+| **Synthetic RC** | Who dominates stressed variance (Top1/Top3)... | Taxonomy → stress block; `taxonomy_blend_v1` vol/correlation tables |
 
 Volatility multipliers and stressed correlations **do not** change synthetic PnL.
 

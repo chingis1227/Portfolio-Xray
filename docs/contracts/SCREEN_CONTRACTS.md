@@ -120,7 +120,7 @@ Screens must translate backend statuses into user-facing status families.
 | --- | --- |
 | Route | `/client-profile`. |
 | Product role | Capture who the portfolio is for before diagnosis: stated objective, horizon, suggested preset, editable target return, volatility comfort range, maximum temporary loss, and source-quality disclosure. |
-| Primary user question | "Who is this portfolio for?" |
+| Primary user question | "Who is this portfolio for..." |
 | Artifacts / evidence | User-entered Client Fit V1 profile request object; no portfolio diagnostics yet. |
 | Primary adapter / owner | `frontend/app/client-profile/page.tsx`; `frontend/lib/reviewState.tsx`; `frontend/lib/server/fastapiBridge.ts` for forwarding the bounded request object. |
 | Must show | Mandatory questionnaire inputs; suggested preset; editable target rows; profile confidence/source quality; clear planning-profile disclaimer. |
@@ -138,7 +138,7 @@ Screens must translate backend statuses into user-facing status families.
 | --- | --- |
 | Route | `/portfolio-input`. |
 | Product role | Capture the factual current portfolio to diagnose. This is not an optimizer setup, policy mandate, or constraints screen. |
-| Primary user question | "What portfolio am I asking Portfolio MRI to diagnose?" |
+| Primary user question | "What portfolio am I asking Portfolio MRI to diagnose..." |
 | Artifacts / evidence | User input payload plus bounded Client Fit profile request; resolved `analysis_setup` / `input_assumptions` after diagnosis; run-local frontend review result. |
 | Primary adapter / owner | `frontend/components/portfolio/PortfolioInputTable.tsx`; `frontend/app/api/portfolio/diagnose/route.ts`; `frontend/lib/reviewState.tsx` for active review state. |
 | Must show | Compact Client Fit profile chip with edit link; holdings table; instrument label; weight; reporting currency; weight-total validation; clear current-portfolio boundary; Run diagnosis CTA; plain-language assumptions note. |
@@ -156,7 +156,7 @@ Screens must translate backend statuses into user-facing status families.
 | --- | --- |
 | Route | `/diagnosis`. |
 | Product role | Explain what the current portfolio owns, what drives risk, and what looks weak before candidate testing. Includes the Problem Classification bridge as a transition, not a separate route. |
-| Primary user question | "What is actually inside my current portfolio, and what looks risky or weak?" |
+| Primary user question | "What is actually inside my current portfolio, and what looks risky or weak..." |
 | Artifacts / evidence | `analysis_subject/portfolio_xray.json`; compact `analysis_subject/problem_classification.json`; input/assumptions summary; stress evidence only as a cited cross-reference when already available. |
 | Primary adapter / owner | `frontend/lib/reviewState.tsx`; Diagnosis page/components; `frontend/lib/displayLabels.ts` for label cleanup. |
 | Must show | Diagnosis hero; current portfolio identity; reporting currency/window when available; allocation; concentration; risk/return/drawdown summary; factor exposure; hidden exposure; risk budget; weakness map; Problem Classification bridge; data limitations. |
@@ -174,7 +174,7 @@ Screens must translate backend statuses into user-facing status families.
 | --- | --- |
 | Route | `/evidence`. Product label is Stress Test Lab. |
 | Product role | Stress-test the current portfolio and show whether X-Ray weaknesses matter under market shocks. |
-| Primary user question | "Where can this portfolio break, under which scenarios, and why?" |
+| Primary user question | "Where can this portfolio break, under which scenarios, and why..." |
 | Artifacts / evidence | `analysis_subject/stress_report.json`; scenario library sidecars where available; `portfolio_xray.json` and `problem_classification.json` only for bridge context. |
 | Primary adapter / owner | `frontend/components/evidence/stressLabModel.ts`; Stress Lab components; `frontend/lib/displayLabels.ts`; `frontend/lib/reviewState.tsx` summary fields. |
 | Must show | Stress hero; worst meaningful scenario; evidence quality; historical and synthetic scenario availability; loss/drawdown by scenario; helped/hurt contributors; hedge gap; stress scorecard summary in current-portfolio terms; X-Ray-to-Stress bridge; data limitations. |
@@ -192,7 +192,7 @@ Screens must translate backend statuses into user-facing status families.
 | --- | --- |
 | Route | `/client-fit`. |
 | Product role | Compare objective portfolio evidence against the provided profile after Stress Test Lab and before Hypothesis. |
-| Primary user question | "Does this risk fit the provided profile?" |
+| Primary user question | "Does this risk fit the provided profile..." |
 | Artifacts / evidence | Bounded FastAPI/adapter `client_fit` display summary derived from `analysis_subject/client_fit_check.json`; no raw artifact copy in primary UI. |
 | Primary adapter / owner | `frontend/app/client-fit/page.tsx`; `frontend/lib/reviewState.tsx`; FastAPI public `ClientFitDisplaySummary`. |
 | Must show | Four visible sections: `Your stated profile`, `Portfolio vs your limits`, `What this means`, and `Next best test`; status label/tone; target rows; source-quality disclosure; decision boundary. |
@@ -210,7 +210,7 @@ Screens must translate backend statuses into user-facing status families.
 | --- | --- |
 | Route | `/hypothesis`. |
 | Product role | Convert diagnosis and stress evidence into one selected test path, prepare the Builder setup, and optionally generate one diagnostic candidate attempt. |
-| Primary user question | "What should we test to see whether the portfolio can be improved, and what exactly will be tested?" |
+| Primary user question | "What should we test to see whether the portfolio can be improved, and what exactly will be tested..." |
 | Artifacts / evidence | `analysis_subject/problem_classification.json`; `analysis_subject/candidate_launchpad.json`; `analysis_subject/portfolio_alternatives_builder.json`; same-run `candidate_generation.json` only after explicit user action. |
 | Primary adapter / owner | `frontend/app/hypothesis/page.tsx`; `frontend/components/hypothesis/HypothesisCard.tsx`; `frontend/lib/reviewState.tsx`; `frontend/lib/displayLabels.ts`; Builder prepare and candidate generate API routes. |
 | Must show | Primary diagnosis recap; bounded Client Fit overlay as context separate from diagnosis; hypothesis cards; evidence behind each test path; suggested method in plain language; success criteria; Client Fit target criteria when available; trade-off to watch; skip rule; selected test setup; setup validation; candidate-is-not-recommendation boundary; Generate candidate CTA only when ready; generated/failed/infeasible candidate state after explicit action. |
@@ -228,7 +228,7 @@ Screens must translate backend statuses into user-facing status families.
 | --- | --- |
 | Route | `/comparison`. |
 | Product role | Compare the diagnosed current portfolio against the selected generated candidate and explain trade-offs before a verdict. |
-| Primary user question | "Did the tested candidate improve the problem enough, and what did it make worse?" |
+| Primary user question | "Did the tested candidate improve the problem enough, and what did it make worse..." |
 | Artifacts / evidence | Same-run `current_vs_candidate.json`; same-run `candidate_generation.json`; product-scoped `candidate_comparison.json` only behind adapters where needed. |
 | Primary adapter / owner | `frontend/app/comparison/page.tsx`; `frontend/components/comparison/CandidateComparisonPanel.tsx`; `frontend/components/comparison/TradeoffSummary.tsx`; `frontend/lib/reviewState.tsx`; comparison API route. |
 | Must show | Current portfolio label; selected candidate label; comparison availability; bounded Client Fit overlay and Current vs Candidate vs Client Target rows when Client Fit evidence exists; success-criteria result; what improved; what worsened; what stayed similar; risks reduced/added; turnover/cost practicality when available; materiality for decision review; unavailable metrics; candidate-not-recommendation boundary. |
@@ -246,7 +246,7 @@ Screens must translate backend statuses into user-facing status families.
 | --- | --- |
 | Route | `/verdict`. |
 | Product role | Translate comparison evidence into non-binding decision support. |
-| Primary user question | "Given the evidence, should I keep the current portfolio, review this rebalance, test another idea, or stop because evidence is insufficient?" |
+| Primary user question | "Given the evidence, should I keep the current portfolio, review this rebalance, test another idea, or stop because evidence is insufficient..." |
 | Artifacts / evidence | Same-run `decision_verdict.json`; same-run `current_vs_candidate.json`; same-run `candidate_generation.json`; `selection_decision.json` only as translated backend evidence if needed. |
 | Primary adapter / owner | `frontend/app/verdict/page.tsx`; `frontend/components/verdict/VerdictPanel.tsx`; `frontend/lib/reviewState.tsx`; verdict API route. |
 | Must show | Verdict hero with accepted outcome; concise rationale; bounded Client Fit overlay as one input to the verdict; evidence used; improvements and worsening; materiality and success criteria; confidence and limitations; no-trade explanation where applicable; evidence-insufficient explanation where applicable; what would change the verdict; decision-support guardrail; next CTA. |
@@ -264,7 +264,7 @@ Screens must translate backend statuses into user-facing status families.
 | --- | --- |
 | Route | `/report`. |
 | Product role | Present a grounded, client-readable explanation of the diagnosis, tested hypothesis, comparison, and verdict. |
-| Primary user question | "Can I read a clear explanation of what was found, what was tested, and why the verdict says that?" |
+| Primary user question | "Can I read a clear explanation of what was found, what was tested, and why the verdict says that..." |
 | Artifacts / evidence | `ai_commentary_context.json`; same-run `decision_verdict.json`; same-run `current_vs_candidate.json`; diagnosis, stress, hypothesis, and candidate artifacts through allowed grounding references; optional `what_changed_summary.json` as a short deferred-monitoring note. |
 | Primary adapter / owner | `frontend/app/report/page.tsx`; report components; report API route; future report adapter. |
 | Must show | Executive summary; current portfolio diagnosis; stress evidence; hypothesis tested; candidate boundary; current-vs-candidate trade-offs; verdict explanation; evidence quality and limitations; grounding/source summary in user language; decision-support boundary; monitoring/deferred note. |
@@ -282,7 +282,7 @@ Screens must translate backend statuses into user-facing status families.
 | --- | --- |
 | Route | **Deferred.** No current MVP route/component is active. Future route may be `/monitoring` or `/what-changed` only after a route decision. |
 | Product role | Explain what changed since the prior review and what should be retested or watched. |
-| Primary user question | "What changed since the last portfolio review, and do I need to retest anything?" |
+| Primary user question | "What changed since the last portfolio review, and do I need to retest anything..." |
 | Artifacts / evidence | `what_changed_summary.json`; `monitoring_diff.json`; optional verdict/problem/comparison context. |
 | Primary adapter / owner | No active screen adapter. Future Monitoring adapter must be added before user-facing route promotion. Report may show a short grounded note if evidence exists. |
 | Must show when later surfaced | What changed headline; current/prior review dates if available; changed risk contributor; changed stress behavior; changed market context if available; changed verdict/action status if available; retest triggers; warnings; boundary note that monitoring prompts review, not trades. |

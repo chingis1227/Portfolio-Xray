@@ -3,7 +3,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatUnknownValue, normalizeDisplaySentence } from "@/lib/displayLabels";
 
 function statusKey(value: unknown) {
-  return String(value ?? "")
+  return String(value ...... "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
@@ -48,7 +48,7 @@ export function CandidateComparisonPanel({ candidateName, candidateBoundary, evi
         </div>
       </div>
       <p className="mt-4 rounded-xl border border-pmri-border/45 bg-white/[0.026] p-3 text-sm leading-6 text-pmri-text2">{normalizeDisplaySentence(candidateBoundary, "Diagnostic comparison only. It does not decide whether to change the portfolio or create a rebalance instruction.")}</p>
-      {safeMetrics.length ? (
+      {safeMetrics.length ... (
       <div className="mt-5 overflow-hidden rounded-xl border border-pmri-border/45">
         <table className="w-full border-separate border-spacing-0 text-left text-sm">
           <thead className="bg-white/[0.018] text-xs font-medium tracking-[-0.005em] text-pmri-muted">

@@ -9,10 +9,10 @@ Diagnosis -> Hypothesis -> Candidate -> Comparison -> Verdict.
 
 Many portfolio tools start by proposing an allocation. That is risky because the user may not yet
 know what problem the current portfolio has. Is the issue concentration, stress behavior, weak
-hedging, poor risk contribution, or simply mixed evidence where no action is justified?
+hedging, poor risk contribution, or simply mixed evidence where no action is justified...
 
 Portfolio MRI starts before the action step. It asks: what is the current portfolio actually
-showing, and is there enough evidence to justify testing a change?
+showing, and is there enough evidence to justify testing a change...
 
 ## What Portfolio MRI does
 
@@ -78,11 +78,11 @@ hypothesis, compare trade-offs, and produce a bounded decision-support verdict.
 Portfolio MRI is useful because it turns a vague portfolio question into a structured decision:
 
 ```text
-What is wrong or uncertain?
-What hypothesis should we test?
-What candidate represents that hypothesis?
-What improved and what worsened?
-Is action justified, or should we keep current / no-trade / seek more evidence?
+What is wrong or uncertain...
+What hypothesis should we test...
+What candidate represents that hypothesis...
+What improved and what worsened...
+Is action justified, or should we keep current / no-trade / seek more evidence...
 ```
 
 That is the product's current demo value.

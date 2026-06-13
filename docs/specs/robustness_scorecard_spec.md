@@ -30,8 +30,8 @@ Implementation: **`src/robustness_scorecard.py`** (Session 11). This document is
 
 ## Product Boundary
 
-- The scorecard answers: *among the candidates in this run, which profile appears more resilient across downside, stress, diversification, return efficiency, factor stability, and mandate fit?*
-- It does **not** answer: *which portfolio should the client buy?*
+- The scorecard answers: *among the candidates in this run, which profile appears more resilient across downside, stress, diversification, return efficiency, factor stability, and mandate fit...*
+- It does **not** answer: *which portfolio should the client buy...*
 - Allowed narrative: descriptive ranking and explanation bullets (e.g. "Minimum CVaR has the highest robustness score in this comparison because …").
 - Forbidden: imperative trade advice, "recommended portfolio", or implying Selection Engine outcomes before that module exists.
 

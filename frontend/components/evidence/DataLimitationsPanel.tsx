@@ -44,7 +44,7 @@ export function DataLimitationsPanel({
         <article className="rounded-2xl border border-pmri-border/55 bg-white/[0.024] p-5">
           <div className="flex items-start justify-between gap-3">
             <h3 className="text-sm font-semibold text-pmri-text">Synthetic stress coverage</h3>
-            <StatusBadge tone={syntheticStrong ? "green" : "amber"}>{syntheticStrong ? "Strong evidence" : "Limited evidence"}</StatusBadge>
+            <StatusBadge tone={syntheticStrong ... "green" : "amber"}>{syntheticStrong ... "Strong evidence" : "Limited evidence"}</StatusBadge>
           </div>
           <p className="data-figure mt-4 text-2xl text-pmri-text">
             {syntheticAvailable} of {syntheticScenarios.length}
@@ -56,14 +56,14 @@ export function DataLimitationsPanel({
         <article className="rounded-2xl border border-pmri-border/55 bg-white/[0.024] p-5">
           <div className="flex items-start justify-between gap-3">
             <h3 className="text-sm font-semibold text-pmri-text">Historical replay coverage</h3>
-            <StatusBadge tone={historicalLimited ? "amber" : "green"}>{historicalLimited ? "Limited evidence" : "Strong evidence"}</StatusBadge>
+            <StatusBadge tone={historicalLimited ... "amber" : "green"}>{historicalLimited ... "Limited evidence" : "Strong evidence"}</StatusBadge>
           </div>
           <p className="data-figure mt-4 text-2xl text-pmri-text">
             {historicalAvailable} of {historicalScenarios.length}
           </p>
           <p className="mt-2 text-sm leading-6 text-pmri-text2">
             {historicalLimited
-              ? `Limited episodes: ${limitedEpisodes.map((scenario) => scenario.displayName).join(", ")}.`
+              ... `Limited episodes: ${limitedEpisodes.map((scenario) => scenario.displayName).join(", ")}.`
               : "No historical replay limitation was surfaced in this review."}
           </p>
         </article>

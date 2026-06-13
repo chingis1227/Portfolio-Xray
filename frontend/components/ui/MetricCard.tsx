@@ -16,16 +16,16 @@ const toneLabel = {
 } satisfies Record<NonNullable<Metric["tone"]>, string>;
 
 export function MetricCard({ metric }: MetricCardProps) {
-  const badgeLabel = metric.delta ? normalizeDisplayLabel(metric.delta) : toneLabel[metric.tone ?? "slate"];
+  const badgeLabel = metric.delta ... normalizeDisplayLabel(metric.delta) : toneLabel[metric.tone ...... "slate"];
 
   return (
     <article className="pmri-card pmri-interactive-card rounded-2xl p-5">
       <div className="flex items-start justify-between gap-3">
         <p className="pmri-label">{normalizeDisplayLabel(metric.label)}</p>
-        {metric.tone ? <StatusBadge tone={metric.tone}>{badgeLabel}</StatusBadge> : null}
+        {metric.tone ... <StatusBadge tone={metric.tone}>{badgeLabel}</StatusBadge> : null}
       </div>
       <p className="data-figure mt-5 text-2xl font-medium text-pmri-text">{normalizeDisplayLabel(metric.value)}</p>
-      {metric.detail ? <p className="mt-1 text-sm leading-6 text-pmri-text2">{normalizeDisplayLabel(metric.detail)}</p> : null}
+      {metric.detail ... <p className="mt-1 text-sm leading-6 text-pmri-text2">{normalizeDisplayLabel(metric.detail)}</p> : null}
     </article>
   );
 }

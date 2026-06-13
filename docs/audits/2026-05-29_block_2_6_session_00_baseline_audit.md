@@ -18,14 +18,14 @@ Related:
 
 | Question | Verdict |
 | --- | --- |
-| Is Block 2.6 implemented as Core MVP product block? | **Yes** — top-level `block_2_6_portfolio_weakness_map` on `portfolio_xray.json`; `heuristic_v1`; 9 risk types. |
-| Does it avoid reading Stress Lab / `stress_report`? | **Yes** — inputs are Blocks 2.1–2.5 only; `FORBIDDEN_STRESS_KEYS` scan; no `stress_report` import in module. |
-| Are risk type IDs aligned with Stress Lab? | **No** — product uses weakness namespace (`equity_crash`, `rates_up`, …); Stress Lab uses 8 synthetic `scenario_id` values. |
-| Is `usd_shock` properly scored? | **No** — empty `RISK_RULE_TABLES` signals → always `Unavailable`. |
-| Does Block 2.6 consume Block 2.4 `heuristic_v2`? | **No** — only integer `alerts.*.score`; ignores `status`, `confidence`, `contributing_assets`, `limitations`. |
-| Is narrative institutional-grade? | **No** — generic `explanation` boilerplate; no `short_diagnosis` / `why_status` / capped `key_evidence`. |
-| Is downstream single source of truth? | **No** — Problem Classification + X-Ray HTML/text still driven by legacy `sections.weakness_map` (stress-coupled). |
-| Institutional v2 complete? | **No** — Session 02+ required. |
+| Is Block 2.6 implemented as Core MVP product block... | **Yes** — top-level `block_2_6_portfolio_weakness_map` on `portfolio_xray.json`; `heuristic_v1`; 9 risk types. |
+| Does it avoid reading Stress Lab / `stress_report`... | **Yes** — inputs are Blocks 2.1–2.5 only; `FORBIDDEN_STRESS_KEYS` scan; no `stress_report` import in module. |
+| Are risk type IDs aligned with Stress Lab... | **No** — product uses weakness namespace (`equity_crash`, `rates_up`, …); Stress Lab uses 8 synthetic `scenario_id` values. |
+| Is `usd_shock` properly scored... | **No** — empty `RISK_RULE_TABLES` signals → always `Unavailable`. |
+| Does Block 2.6 consume Block 2.4 `heuristic_v2`... | **No** — only integer `alerts.*.score`; ignores `status`, `confidence`, `contributing_assets`, `limitations`. |
+| Is narrative institutional-grade... | **No** — generic `explanation` boilerplate; no `short_diagnosis` / `why_status` / capped `key_evidence`. |
+| Is downstream single source of truth... | **No** — Problem Classification + X-Ray HTML/text still driven by legacy `sections.weakness_map` (stress-coupled). |
+| Institutional v2 complete... | **No** — Session 02+ required. |
 
 **Bottom line:** Block 2.6 v1 delivers a valid pre-stress boundary and rule-based scores, but is **not** advisor-ready: wrong risk IDs vs Stress Lab, thin factor panel, placeholder USD, no 2.4 v2 integration, split downstream surfaces.
 
@@ -154,7 +154,7 @@ Block 2.4 already implements `_currency_concentration_evidence` and `_investor_c
 
 ## 7. Downstream Consumers
 
-| Consumer | Reads | Drives product conclusions? |
+| Consumer | Reads | Drives product conclusions... |
 | --- | --- | --- |
 | `block_2_6_portfolio_weakness_map` | Product v2 block | **Should** (target) |
 | `sections.weakness_map` | Legacy section | **Today yes** for Problem Class + reports |

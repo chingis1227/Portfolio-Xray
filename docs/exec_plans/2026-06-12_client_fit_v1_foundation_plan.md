@@ -9,7 +9,7 @@ Client Fit V1 in Portfolio MRI.
 ## Purpose / Big Picture
 
 Portfolio MRI currently diagnoses a current portfolio, but it does not yet answer the personal
-question, "Does this risk fit the client's stated goals?" Client Fit V1 adds that layer without
+question, "Does this risk fit the client's stated goals..." Client Fit V1 adds that layer without
 turning the product into an optimizer or an advice engine. After implementation, a web user
 completes a short investment-profile questionnaire before diagnosis, Portfolio MRI writes a
 `client_fit_check.json` artifact after Stress Lab, and downstream diagnosis, hypothesis, comparison,
@@ -245,7 +245,7 @@ unresolved diagnostic issue.
 
 - Decision: The web journey will require Client Fit, while backend/CLI paths remain compatible when
   Client Fit is missing.
-  Rationale: The product experience should answer "does it fit you?", but repository entrypoints and
+  Rationale: The product experience should answer "does it fit you...", but repository entrypoints and
   legacy workflows must continue to run for tests, operators, and compatibility.
   Date/Author: 2026-06-12 / Codex.
 
@@ -461,32 +461,32 @@ The mandatory display-model boundary is:
 
 The mandatory UI/UX blueprint is:
 
-- `/client-profile` answers "Who is this portfolio for?" It contains the mandatory web
+- `/client-profile` answers "Who is this portfolio for..." It contains the mandatory web
   questionnaire, suggested preset, editable targets, source-quality disclosure, and the planning
   profile disclaimer. It must not show portfolio diagnostics because the portfolio has not been
   diagnosed yet.
-- `/portfolio-input` answers "What do you own?" It shows holdings, weights, currency, validation,
+- `/portfolio-input` answers "What do you own..." It shows holdings, weights, currency, validation,
   and a compact Client Fit profile chip with an edit link. It must not show optimizer targets as a
   primary input panel and must keep the Run Diagnosis CTA disabled until the web user has a valid
   Client Fit profile.
-- `/diagnosis` answers "What does the portfolio look like?" It shows objective Portfolio X-Ray and
+- `/diagnosis` answers "What does the portfolio look like..." It shows objective Portfolio X-Ray and
   Problem Classification bridge evidence. It may mention that Client Fit will be evaluated after
   Stress Lab, but it must not label the portfolio good/bad for the client on this screen.
-- `/evidence` answers "How does it behave under stress?" It shows objective Stress Lab outcomes,
+- `/evidence` answers "How does it behave under stress..." It shows objective Stress Lab outcomes,
   hedge gaps, limitations, and contributors. It must not make client-fit conclusions directly; the
   next-step CTA should lead to Client Fit.
-- `/client-fit` answers "Does this risk fit the provided profile?" It must have four visible
+- `/client-fit` answers "Does this risk fit the provided profile..." It must have four visible
   sections: `Your stated profile`, `Portfolio vs your limits`, `What this means`, and `Next best
   test`. It must separate fit/watch/breach/conflict/evidence-insufficient states and show the
   source-quality disclosure.
-- `/hypothesis` answers "What should we test?" It must show why the selected hypothesis matters for
+- `/hypothesis` answers "What should we test..." It must show why the selected hypothesis matters for
   both the portfolio diagnosis and Client Fit, while preserving candidate-as-test language.
-- `/comparison` answers "Did the candidate improve the diagnosis and fit?" It must show Current vs
+- `/comparison` answers "Did the candidate improve the diagnosis and fit..." It must show Current vs
   Candidate vs Client Target evidence, and must not issue a verdict.
-- `/verdict` answers "What is the non-binding decision-support action?" It must show three separate
+- `/verdict` answers "What is the non-binding decision-support action..." It must show three separate
   rows or cards: Client Fit Status, Diagnostic Quality Status, and Decision Action. It must state
   decision-support-only language and must not imply suitability approval.
-- `/report` answers "What evidence supports the story?" It must summarize the same diagnosis,
+- `/report` answers "What evidence supports the story..." It must summarize the same diagnosis,
   Client Fit, hypothesis, comparison, and verdict chain without introducing new claims.
 
 The mandatory visual hierarchy for Client Fit UI uses three primary semantic colors only:
@@ -518,7 +518,7 @@ The mandatory Client Fit screen copy pattern is:
 
 Work from repository root:
 
-    D:\Р Р°Р±РѕС‡РёР№ СЃС‚РѕР»\РљРЈР РЎРћР  РўРЈР›Рђ Р”РРђР“РќРћРЎРўРРљРђ
+    D:\Desktop\CURSOR TULA DIAGNOSTICS
 
 Use Windows PowerShell. If Python is needed, prefer:
 
@@ -808,7 +808,7 @@ Session 21 verification commands and observed result:
     npm.cmd run typecheck
     tsc --noEmit passed.
 
-    rg -n -i "full web journey pending|routes are still pending|Planned V1|future Client-Fit Check|later Client-Fit Check|later ? not Core MVP input|Client Fit V1 foundation input contract|Target/TBD.*Client|Client.*Target/TBD|no client profile in Core MVP|does not require client profile|client profile.*not required|not required.*client profile" AGENTS.md SPEC.md OUTPUTS.md README.md PRODUCT.md ARCHITECTURE.md DESIGN.md DATA.md TESTING.md GLOSSARY.md DECISIONS.md CHANGELOG.md docs/contracts docs/specs docs/runtime_artifact_contract.md frontend/README.md src tests config scripts
+    rg -n -i "full web journey pending|routes are still pending|Planned V1|future Client-Fit Check|later Client-Fit Check|later ... not Core MVP input|Client Fit V1 foundation input contract|Target/TBD.*Client|Client.*Target/TBD|no client profile in Core MVP|does not require client profile|client profile.*not required|not required.*client profile" AGENTS.md SPEC.md OUTPUTS.md README.md PRODUCT.md ARCHITECTURE.md DESIGN.md DATA.md TESTING.md GLOSSARY.md DECISIONS.md CHANGELOG.md docs/contracts docs/specs docs/runtime_artifact_contract.md frontend/README.md src tests config scripts
     No matches.
 
     rg -n "\bsuitable\b|\bsuitability approved\b|\bapproved\b|\bbuy\b|\bsell\b|\bmust rebalance\b|\bbest portfolio\b" frontend src docs config tests
@@ -879,7 +879,7 @@ Final acceptance requires:
 - Full backend tests, FastAPI contract governance, documentation verification, frontend typecheck,
   and Browser/Playwright QA pass.
 - UI acceptance must prove the user can read the journey as three distinct questions before action:
-  "what do you own?", "what does the portfolio look like?", and "does it fit you?"
+  "what do you own...", "what does the portfolio look like...", and "does it fit you..."
 
 ## Idempotence and Recovery
 
@@ -1086,15 +1086,15 @@ route chain includes `/client-profile` before `/portfolio-input` and `/client-fi
 
 The active frontend route responsibilities are fixed by this plan:
 
-    /client-profile  -> who is this for?
-    /portfolio-input -> what do you own?
-    /diagnosis       -> what does the portfolio look like?
-    /evidence        -> how does it behave under stress?
-    /client-fit      -> does this risk fit the provided profile?
-    /hypothesis      -> what should we test?
-    /comparison      -> did the candidate improve the diagnosis and fit?
-    /verdict         -> what is the non-binding decision-support action?
-    /report          -> what evidence supports the story?
+    /client-profile  -> who is this for...
+    /portfolio-input -> what do you own...
+    /diagnosis       -> what does the portfolio look like...
+    /evidence        -> how does it behave under stress...
+    /client-fit      -> does this risk fit the provided profile...
+    /hypothesis      -> what should we test...
+    /comparison      -> did the candidate improve the diagnosis and fit...
+    /verdict         -> what is the non-binding decision-support action...
+    /report          -> what evidence supports the story...
 
 Downstream sessions must maintain these enforcement interfaces:
 

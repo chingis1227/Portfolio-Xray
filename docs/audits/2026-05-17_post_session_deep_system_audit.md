@@ -144,7 +144,7 @@ Recommended acceptance criteria for a future language cleanup session:
 
 1. Source scan for literal Cyrillic returns no matches outside explicitly allowed agent/chat
    instructions or localization fixtures.
-2. Source scan for common mojibake markers (`вЂ`, `Р`, `О`, broken arrows/checkmarks) is reviewed and
+Legacy note normalized to English-only text.
    fixed or explicitly accepted.
 3. Representative generated report, TXT, HTML, and PDF-facing text are regenerated and visually/readably
    checked for English output.
@@ -275,7 +275,7 @@ Evidence: Selection V1 can compare `current` to a favored target, but the canoni
 comparison, `current` was unavailable, while `policy` was selected.
 
 Impact: No-Trade is implemented but not always useful in the default policy-only workflow. Product
-concept expects "should I change?" behavior, which needs current and target to be available together.
+concept expects "should I change..." behavior, which needs current and target to be available together.
 
 Next action: define the expected current-vs-policy workflow: either a two-run materialization process,
 a combined runner, or a UI/report workflow that requires current weights before No-Trade is presented as

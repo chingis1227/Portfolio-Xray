@@ -6,7 +6,7 @@ This plan follows `PLANS.md` in the repository root. It is intentionally self-co
 
 ## Purpose / Big Picture
 
-The documentation now says the current canonical product is “ДИАГНОСТИКА 2”: diagnose the current portfolio first, classify the problem, launch a selected candidate hypothesis when requested, compare current versus that candidate, and produce a Decision Verdict plus AI grounding and light What Changed. Runtime still behaves partly like the old optimizer/report/scorecard-heavy project: default review can generate a batch of candidates, compare can use stale candidate folders, and the old technical package can drive the selected candidate and verdict. After this runtime reset, a user can run a diagnosis-only product path or a one-candidate product path and see outputs that are about that current portfolio and that selected candidate, while the older full comparison package remains available only as advanced/research behavior.
+The documentation now says the current canonical product is “Diagnosis 2”: diagnose the current portfolio first, classify the problem, launch a selected candidate hypothesis when requested, compare current versus that candidate, and produce a Decision Verdict plus AI grounding and light What Changed. Runtime still behaves partly like the old optimizer/report/scorecard-heavy project: default review can generate a batch of candidates, compare can use stale candidate folders, and the old technical package can drive the selected candidate and verdict. After this runtime reset, a user can run a diagnosis-only product path or a one-candidate product path and see outputs that are about that current portfolio and that selected candidate, while the older full comparison package remains available only as advanced/research behavior.
 
 The observable outcome is simple: after implementation, `python run_portfolio_review.py --candidates equal_weight` must produce a product bundle where `current_vs_candidate.json` and `decision_verdict.json` are scoped to `equal_weight` or a no-trade/evidence-insufficient decision about `equal_weight`, not a stale or higher-scoring candidate from an old folder.
 
@@ -69,16 +69,16 @@ The observable outcome is simple: after implementation, `python run_portfolio_re
   Date/Author: 2026-05-26 / Codex.
 
 - Decision: Product mode must prefer explicit candidate ids over Selection Engine favoring.
-  Rationale: In the “ДИАГНОСТИКА 2” product, a candidate is a selected hypothesis. Selection Engine may still rank candidates in research mode, but it must not silently replace the user's selected hypothesis in the product verdict.
+  Rationale: In the “Diagnosis 2” product, a candidate is a selected hypothesis. Selection Engine may still rank candidates in research mode, but it must not silently replace the user's selected hypothesis in the product verdict.
   Date/Author: 2026-05-26 / Codex.
 
 - Decision: Plain `run_portfolio_review.py` should now be diagnosis-only, with backend batch retained behind explicit flags.
-  Rationale: Documentation Truth Reset made “ДИАГНОСТИКА 2” the canonical product. A no-argument product command should not silently generate a six-candidate backend batch. `--with-candidates` preserves the old core batch path without deleting it.
+  Rationale: Documentation Truth Reset made “Diagnosis 2” the canonical product. A no-argument product command should not silently generate a six-candidate backend batch. `--with-candidates` preserves the old core batch path without deleting it.
   Date/Author: 2026-05-26 / Codex.
 
 ## Outcomes & Retrospective
 
-**Status: COMPLETED (2026-05-26).** Sessions 01–09 are done. Runtime matches canonical «ДИАГНОСТИКА 2» at the product boundary per [final audit](../audits/2026-05-26_runtime_truth_final_audit.md). Residual operator caveats (technical comparison row count, disk hygiene) are documented there — not ExecPlan blockers.
+**Status: COMPLETED (2026-05-26).** Sessions 01–09 are done. Runtime matches canonical «Diagnosis 2» at the product boundary per [final audit](../audits/2026-05-26_runtime_truth_final_audit.md). Residual operator caveats (technical comparison row count, disk hygiene) are documented there — not ExecPlan blockers.
 
 Session 01 outcome: runtime mode policy is represented in code and tests; dry-run and plan summaries disclose `runtime_mode` for product/research/legacy classification.
 
@@ -100,7 +100,7 @@ Session 09 outcome: final audit confirms all six ExecPlan acceptance criteria PA
 
 ## 1. Executive Summary
 
-Runtime must be reset so the code behaves like the documented “ДИАГНОСТИКА 2” product rather than the older optimizer/report/scorecard-heavy system.
+Runtime must be reset so the code behaves like the documented “Diagnosis 2” product rather than the older optimizer/report/scorecard-heavy system.
 
 The main changes are:
 
@@ -171,7 +171,7 @@ The target rule is: product modes can use technical artifacts internally, but th
 
 ## 4. Gap Analysis
 
-Critical gap: batch candidate default. Files involved are `run_portfolio_review.py`, `src/portfolio_review_workflow.py`, and `src/candidate_factory.py`. This violates “ДИАГНОСТИКА 2” because the user starts with diagnosis and a selected hypothesis, not an automatic six-candidate batch. Recommended fix: add explicit runtime mode resolution and choose a staged default. The safe staged rollout is to keep CLI behavior initially but label it as `research_batch` or `backend_core_batch`, then add `--product-diagnosis-only` and later flip the default if approved. Verification: run `python run_portfolio_review.py --dry-run` and confirm the resolved runtime mode is printed or written in workflow state.
+Critical gap: batch candidate default. Files involved are `run_portfolio_review.py`, `src/portfolio_review_workflow.py`, and `src/candidate_factory.py`. This violates “Diagnosis 2” because the user starts with diagnosis and a selected hypothesis, not an automatic six-candidate batch. Recommended fix: add explicit runtime mode resolution and choose a staged default. The safe staged rollout is to keep CLI behavior initially but label it as `research_batch` or `backend_core_batch`, then add `--product-diagnosis-only` and later flip the default if approved. Verification: run `python run_portfolio_review.py --dry-run` and confirm the resolved runtime mode is printed or written in workflow state.
 
 Critical gap: stale candidate folder scan. File involved is `src/candidate_comparison.py`. The comparison builder can aggregate evidence from disk wider than the last factory run. This violates product truth because stale candidates can influence product verdict. Recommended fix: add product candidate scope to comparison building, or add a product projection that filters comparison rows to `analysis_subject` plus selected ids before selection/current-vs-candidate/verdict. Verification: create a fixture with stale candidate rows and assert product mode excludes them.
 
@@ -344,7 +344,7 @@ Commit scope: one test commit, or combined with the code session that makes the 
 
 ### Session 09 — Final runtime truth audit
 
-Objective: re-run a product-flow demo audit and verify the system now behaves as “ДИАГНОСТИКА 2”.
+Objective: re-run a product-flow demo audit and verify the system now behaves as “Diagnosis 2”.
 
 Files likely affected: new audit file under `docs/audits/` and possibly updates to exec plan progress/outcomes.
 
@@ -413,7 +413,7 @@ Be blunt: the highest pain is selected-candidate scoping, because it can make th
 
 ## 9. Final Verdict
 
-For the project to truly become “ДИАГНОСТИКА 2” at runtime, default and product flows must stop being controlled by the old batch comparison package. Runtime must diagnose the current portfolio first, require an explicit selected candidate for product comparison, scope Current-vs-Candidate and Decision Verdict to that candidate or shortlist, and expose the six product JSON files as the main surface.
+For the project to truly become “Diagnosis 2” at runtime, default and product flows must stop being controlled by the old batch comparison package. Runtime must diagnose the current portfolio first, require an explicit selected candidate for product comparison, scope Current-vs-Candidate and Decision Verdict to that candidate or shortlist, and expose the six product JSON files as the main surface.
 
 Old behavior can remain as advanced/backend: candidate factory full menus, Health Score, Robustness Scorecard, Selection Engine, Action Plan, Monitoring Diff, Decision Journal, Assumption Sensitivity, Pareto, Regret, Model Risk, robust optimizers, legacy policy optimization, and PDF/report exports.
 
@@ -421,7 +421,7 @@ The highest-leverage runtime fix is **selected-candidate scoping**: when the use
 
 ## Context and Orientation
 
-The repository root is `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`. Use Windows PowerShell by default. If Python is needed, prefer `.\.venv\Scripts\python.exe` because the project has a virtual environment.
+The repository root is `D:\Desktop\CURSOR TULA DIAGNOSTICS`. Use Windows PowerShell by default. If Python is needed, prefer `.\.venv\Scripts\python.exe` because the project has a virtual environment.
 
 Important terms:
 
@@ -451,7 +451,7 @@ Each session should make one behavior observable and should not combine source c
 
 The first implementation session should run:
 
-    cd "D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА"
+    cd "D:\Desktop\CURSOR TULA DIAGNOSTICS"
     .\.venv\Scripts\python.exe -m pytest tests\test_portfolio_review_workflow.py -q
 
 Then add the runtime mode resolver and tests. After code edits, run the same test again and dry-run:

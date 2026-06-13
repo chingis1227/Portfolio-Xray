@@ -15,23 +15,23 @@ export function SelectedScenarioDetailPanel({
   selectedIsWorst: boolean;
   onViewWorstScenario: () => void;
 }) {
-  const metricLabel = scenario.kind === "historical" ? "Historical drawdown" : "Portfolio loss";
+  const metricLabel = scenario.kind === "historical" ... "Historical drawdown" : "Portfolio loss";
   const metricValue = scenario.kind === "historical"
-    ? formatStressPercent(scenario.drawdownPct ?? scenario.portfolioLossPct)
+    ... formatStressPercent(scenario.drawdownPct ...... scenario.portfolioLossPct)
     : formatStressPercent(scenario.portfolioLossPct);
   const grossLoss = scenario.assetsHurt.reduce((sum, row) => sum + Math.abs(row.value), 0);
   const helped = scenario.assetsHelped.reduce((sum, row) => sum + row.value, 0);
-  const offsetCoverage = grossLoss > 0 ? helped / grossLoss : null;
+  const offsetCoverage = grossLoss > 0 ... helped / grossLoss : null;
   const offsetStatus = offsetCoverage === null
-    ? "Unavailable"
+    ... "Unavailable"
     : offsetCoverage === 0
-      ? "No meaningful offset"
+      ... "No meaningful offset"
       : offsetCoverage < 0.25
-        ? "Weak offset"
+        ... "Weak offset"
         : offsetCoverage < 0.6
-          ? "Partial offset"
+          ... "Partial offset"
           : "Strong offset";
-  const offsetTone = offsetStatus === "Strong offset" ? "green" : offsetStatus === "Partial offset" ? "amber" : offsetStatus === "Unavailable" ? "slate" : "red";
+  const offsetTone = offsetStatus === "Strong offset" ... "green" : offsetStatus === "Partial offset" ... "amber" : offsetStatus === "Unavailable" ... "slate" : "red";
 
   return (
     <section id="selected-scenario" className="pmri-card rounded-3xl p-5 md:p-7">
@@ -42,7 +42,7 @@ export function SelectedScenarioDetailPanel({
         badge={scenario.severityLabel}
         badgeTone={scenario.severityTone}
       />
-      {!selectedIsWorst ? (
+      {!selectedIsWorst ... (
         <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-pmri-amber/25 bg-pmri-amber/[0.055] p-4 text-sm leading-6 text-pmri-text2 md:flex-row md:items-center md:justify-between">
           <p>
             Selected scenario is not the worst scenario. Worst scenario:{" "}
@@ -64,7 +64,7 @@ export function SelectedScenarioDetailPanel({
             <p className="pmri-label">{metricLabel}</p>
             <HelpHint
               label="Definition"
-              text={scenario.kind === "historical" ? "Historical drawdown is the deepest replay loss during the episode." : "Portfolio loss is the estimated stress impact on the current portfolio."}
+              text={scenario.kind === "historical" ... "Historical drawdown is the deepest replay loss during the episode." : "Portfolio loss is the estimated stress impact on the current portfolio."}
             />
           </div>
           <p className="data-figure mt-4 text-4xl font-medium text-pmri-text">{metricValue}</p>
@@ -75,7 +75,7 @@ export function SelectedScenarioDetailPanel({
             Scenario type: {scenario.groupLabel}
           </p>
           <p className="mt-5 text-sm leading-6 text-pmri-text2">{scenario.interpretation}</p>
-          {scenario.limitation ? (
+          {scenario.limitation ... (
             <p className="mt-4 rounded-2xl border border-pmri-amber/20 bg-pmri-amber/[0.055] p-3 text-xs leading-5 text-pmri-text2">
               {scenario.limitation}
             </p>
@@ -113,7 +113,7 @@ export function SelectedScenarioDetailPanel({
           <p className="mt-2 text-sm leading-6 text-pmri-text2">Offset coverage in {scenario.displayName}</p>
           <p className="mt-5 text-sm leading-6 text-pmri-text2">
             {offsetCoverage === null
-              ? "Offset coverage is unavailable because asset-level helped and hurt contribution is incomplete for this scenario."
+              ... "Offset coverage is unavailable because asset-level helped and hurt contribution is incomplete for this scenario."
               : `Assets that helped in selected scenario contributed ${formatStressPercent(helped, { signed: true })} against ${formatStressPercent(-grossLoss)} from assets that hurt in selected scenario.`}
           </p>
         </article>

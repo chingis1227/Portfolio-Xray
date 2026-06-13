@@ -34,9 +34,9 @@ Implementation: [src/portfolio_health_score.py](../../src/portfolio_health_score
 
 ## Product Boundary
 
-- The Health Score answers: *how balanced, implementable, and fit-for-mandate does this portfolio profile appear overall?*
-- The Robustness Scorecard answers: *among these candidates, which profile appears more crisis-resilient?*
-- It does **not** answer: *which portfolio should the client buy?*
+- The Health Score answers: *how balanced, implementable, and fit-for-mandate does this portfolio profile appear overall...*
+- The Robustness Scorecard answers: *among these candidates, which profile appears more crisis-resilient...*
+- It does **not** answer: *which portfolio should the client buy...*
 - Allowed narrative: descriptive totals, component drivers, and comparative phrasing (e.g. "Current portfolio health is 62/100, mainly dragged by weight concentration and stagflation stress loss.").
 - Forbidden: imperative trade advice, "recommended portfolio", or implying Selection Engine outcomes before that module exists.
 

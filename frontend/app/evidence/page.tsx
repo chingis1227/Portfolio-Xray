@@ -56,17 +56,17 @@ function EvidencePageContent() {
   const searchParams = useSearchParams();
   const sampleMode = searchParams.get("sample") === "1";
   const completedRealReview = Boolean(
-    activeReview?.submitted
+    activeReview....submitted
     && activeReview.runMode === "real_run"
     && activeReview.runStatus === "completed"
   );
   const realStressLab = completedRealReview
-    ? activeReview?.reviewSummary?.stressLabModel ?? null
+    ... activeReview....reviewSummary....stressLabModel ...... null
     : null;
-  const model = realStressLab ?? (sampleMode ? ensureStressLabModel(sampleStressLabData) : null);
-  const stateLabel = realStressLab ? "Stress review ready" : sampleMode ? "Sample review" : "Stress review locked";
-  const stateTone = realStressLab ? "green" : sampleMode ? "amber" : "slate";
-  const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
+  const model = realStressLab ...... (sampleMode ... ensureStressLabModel(sampleStressLabData) : null);
+  const stateLabel = realStressLab ... "Stress review ready" : sampleMode ... "Sample review" : "Stress review locked";
+  const stateTone = realStressLab ... "green" : sampleMode ... "amber" : "slate";
+  const siteExplanation = activeReview....reviewSummary....siteExplanation;
 
   return (
     <div>
@@ -83,7 +83,7 @@ function EvidencePageContent() {
         screen="evidence"
         fallbackTitle="Stress evidence explanation"
       />
-      {!hydrated ? null : model ? (
+      {!hydrated ... null : model ... (
         <>
           <StressTestLab model={model} />
           <section className="pmri-card mt-6 rounded-3xl p-5 md:p-6">
@@ -101,7 +101,7 @@ function EvidencePageContent() {
             </div>
           </section>
         </>
-      ) : completedRealReview ? (
+      ) : completedRealReview ... (
         <MissingStressLabState />
       ) : (
         <LockedStressLabState />

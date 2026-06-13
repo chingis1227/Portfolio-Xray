@@ -12,11 +12,11 @@ ExecPlan: [Block 2.4 institutional upgrade](../exec_plans/2026-05-29_block_2_4_i
 
 | Question | Verdict |
 | --- | --- |
-| Is institutional upgrade `heuristic_v2` complete? | **Yes** — ruleset, confidence v2, six alerts, enrichments, tests, validators. |
-| Is Session 00 matrix signed at v2? | **Yes** — [completion matrix v2 signoff](2026-05-29_block_2_4_completion_matrix_v2_signoff.md) |
-| Are deferred upstream rows documented? | **Yes** — 9 `blocked_upstream_fields` + limitation snippets (pytest-locked). |
-| Closure regression green? | **Yes** — **140 passed** |
-| Live subject contract OK? | **Yes** — `validate_block_2_4_live.py --refresh-xray` **OK** (Session 12 evidence, re-verified S13) |
+| Is institutional upgrade `heuristic_v2` complete... | **Yes** — ruleset, confidence v2, six alerts, enrichments, tests, validators. |
+| Is Session 00 matrix signed at v2... | **Yes** — [completion matrix v2 signoff](2026-05-29_block_2_4_completion_matrix_v2_signoff.md) |
+| Are deferred upstream rows documented... | **Yes** — 9 `blocked_upstream_fields` + limitation snippets (pytest-locked). |
+| Closure regression green... | **Yes** — **140 passed** |
+| Live subject contract OK... | **Yes** — `validate_block_2_4_live.py --refresh-xray` **OK** (Session 12 evidence, re-verified S13) |
 
 **Bottom line:** Block 2.4 institutional upgrade (Sessions 01–13) is **closed**. Core MVP continues to treat Block 2.4 as an optional diagnostic block; contract violations surface as `partial` in fixture-matrix rollup.
 

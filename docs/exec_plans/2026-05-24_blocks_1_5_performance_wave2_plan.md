@@ -379,7 +379,7 @@ python scripts/verify_docs.py
   Rationale: `fetch_macro_indicators` is invariant per review; weight-dependent work stays in `macro_regime_diagnostics_with_panel` → `macro_two_axis_diagnostics_from_frames`.
 
 - Decision: Session 0 closes with **documentation/register only**; no `ReviewRunContext` or `core_fast` code until Session 1+.
-  Rationale: User scope «только Session 0»; baseline and contract stubs are the gate before implementation.
+  Legacy note normalized to English-only text.
 
 - Decision: Session 4 trims lightweight tail-risk to 10Y-only loop and writes `snapshot_10y.json` + 10Y-only `snapshot_index.json`; `full_report` still emits 3Y/5Y/10Y snapshots and assets.
   Rationale: Session 0 baseline showed daily_tail_risk ~35 s and snapshots ~33 s aggregate per candidate; comparison contract requires only `snapshot_10y` per `candidate_comparison.py` PRIMARY_WINDOW.

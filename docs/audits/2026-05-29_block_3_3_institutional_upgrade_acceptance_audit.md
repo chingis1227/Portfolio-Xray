@@ -19,15 +19,15 @@ Related:
 
 | Question | Verdict |
 | --- | --- |
-| Is product contract v1.1 present (`block_status`, `protection_status`, aliases, `client_diagnosis_en`)? | **Yes** — contract tests + Core MVP validator. |
-| Is main-gap selection v1.2 (`hedge_gap_rules_v1_2`, `main_gap_score`, `selection_reason_*`)? | **Yes** — `test_main_gap_score_material_loss_beats_tiny_zero_offset`. |
-| Are Block 2.4 / 2.6 confirmation bridges on v1 when X-Ray builds? | **Yes** — `hidden_exposure_confirmation`, `weakness_map_confirmation`; wire tests in `test_hedge_gap_analysis_v1_contract.py` / X-Ray integration. |
-| Is Problem Classification v1-primary (`hedge_gap_source`)? | **Yes** — `tests/test_problem_classification.py`. |
-| Is Candidate Comparison `hedge_gap_comparison_v1` available when peers have v1? | **Yes** — `tests/test_hedge_gap_candidate_comparison.py`, `test_stress_downstream_integration.py`. |
-| Is AI grounding `hedge_gap_context_v1` v1-primary? | **Yes** — `tests/test_ai_commentary_context.py`; stress commentary prefers v1. |
-| Are snapshot / scorecard / Core MVP validator mirrors in place? | **Yes** — `tests/test_hedge_gap_materialization.py`, `scripts/core_mvp_validation_contract.py`, `tests/test_live_core_e2e_validation.py`. |
-| Is legacy `hedge_gap_analysis` retained secondary? | **Yes** — legacy contract tests unchanged; `stress_conclusions.hedge_gap_status` still legacy mirror only. |
-| Is institutional upgrade ExecPlan accepted (Sessions 01–12)? | **Yes — 12/12** sessions complete (see §2). |
+| Is product contract v1.1 present (`block_status`, `protection_status`, aliases, `client_diagnosis_en`)... | **Yes** — contract tests + Core MVP validator. |
+| Is main-gap selection v1.2 (`hedge_gap_rules_v1_2`, `main_gap_score`, `selection_reason_*`)... | **Yes** — `test_main_gap_score_material_loss_beats_tiny_zero_offset`. |
+| Are Block 2.4 / 2.6 confirmation bridges on v1 when X-Ray builds... | **Yes** — `hidden_exposure_confirmation`, `weakness_map_confirmation`; wire tests in `test_hedge_gap_analysis_v1_contract.py` / X-Ray integration. |
+| Is Problem Classification v1-primary (`hedge_gap_source`)... | **Yes** — `tests/test_problem_classification.py`. |
+| Is Candidate Comparison `hedge_gap_comparison_v1` available when peers have v1... | **Yes** — `tests/test_hedge_gap_candidate_comparison.py`, `test_stress_downstream_integration.py`. |
+| Is AI grounding `hedge_gap_context_v1` v1-primary... | **Yes** — `tests/test_ai_commentary_context.py`; stress commentary prefers v1. |
+| Are snapshot / scorecard / Core MVP validator mirrors in place... | **Yes** — `tests/test_hedge_gap_materialization.py`, `scripts/core_mvp_validation_contract.py`, `tests/test_live_core_e2e_validation.py`. |
+| Is legacy `hedge_gap_analysis` retained secondary... | **Yes** — legacy contract tests unchanged; `stress_conclusions.hedge_gap_status` still legacy mirror only. |
+| Is institutional upgrade ExecPlan accepted (Sessions 01–12)... | **Yes — 12/12** sessions complete (see §2). |
 
 **Bottom line:** Block 3.3 **institutional upgrade is ACCEPTED**. Operators and Core MVP consumers should read `hedge_gap_analysis_v1` on `stress_report.json` (eight protection rows, transparent main-gap scoring, optional post-stress bridges). Legacy taxonomy hedge block remains for compatibility only.
 

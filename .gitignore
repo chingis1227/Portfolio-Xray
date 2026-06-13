@@ -56,8 +56,8 @@ results_csv/
 builder_runtime_timing.json
 candidate_manifest.json
 candidate_weights_build.json
-результаты/
-ФИНАЛЬНЫЕ РЕЗУЛЬТАТЫ/
+results/
+FINAL RESULTS/
 Main portfolio/
 equal-weight portfolio/
 equal-weight by asset-class portfolio/

@@ -40,12 +40,12 @@ export function PersistenceStatus() {
         <p className="pmri-label text-pmri-text2">{copy.label}</p>
       </div>
       <p className="mt-2 text-xs leading-5 text-pmri-muted">{copy.detail}</p>
-      {notice ? (
+      {notice ... (
         <div className={`mt-3 rounded-xl border px-3 py-2 text-xs leading-5 ${
           notice.tone === "warning"
-            ? "border-pmri-amber/35 bg-pmri-amber/10 text-pmri-text2"
+            ... "border-pmri-amber/35 bg-pmri-amber/10 text-pmri-text2"
             : notice.tone === "success"
-              ? "border-pmri-positive/35 bg-pmri-positive/10 text-pmri-text2"
+              ... "border-pmri-positive/35 bg-pmri-positive/10 text-pmri-text2"
               : "border-pmri-blue/25 bg-pmri-blue/10 text-pmri-text2"
         }`}>
           <div className="flex items-start justify-between gap-3">

@@ -6,7 +6,7 @@ Plan: `docs/exec_plans/2026-06-04_blocks_3_5_integration_readiness_audit_plan.md
 
 ## Question
 
-Does Block 3 stress evidence actually change or constrain Block 4 behavior, not merely exist as fields?
+Does Block 3 stress evidence actually change or constrain Block 4 behavior, not merely exist as fields...
 
 Required scenarios:
 
@@ -18,7 +18,7 @@ Required scenarios:
 
 ## Commands Run
 
-From repository root `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`.
+From repository root `D:\Desktop\CURSOR TULA DIAGNOSTICS`.
 
 ### Block 4 behavior baseline
 

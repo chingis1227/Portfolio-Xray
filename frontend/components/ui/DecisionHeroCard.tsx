@@ -5,9 +5,9 @@ type DecisionHeroCardProps = {
   eyebrow: string;
   title: string;
   body: string;
-  status?: string;
-  tone?: "blue" | "gold" | "green" | "amber" | "red" | "slate";
-  children?: ReactNode;
+  status...: string;
+  tone...: "blue" | "gold" | "green" | "amber" | "red" | "slate";
+  children...: ReactNode;
 };
 
 export function DecisionHeroCard({ eyebrow, title, body, status, tone = "slate", children }: DecisionHeroCardProps) {
@@ -18,11 +18,11 @@ export function DecisionHeroCard({ eyebrow, title, body, status, tone = "slate",
       <div className="relative">
         <div className="flex flex-wrap items-center gap-3">
           <p className="pmri-label">{eyebrow}</p>
-          {status ? <StatusBadge tone={tone}>{status}</StatusBadge> : null}
+          {status ... <StatusBadge tone={tone}>{status}</StatusBadge> : null}
         </div>
         <h2 className="pmri-heading-display mt-4 max-w-4xl text-pmri-text">{title}</h2>
         <p className="pmri-body-copy mt-4 max-w-3xl">{body}</p>
-        {children ? <div className="mt-5">{children}</div> : null}
+        {children ... <div className="mt-5">{children}</div> : null}
       </div>
     </section>
   );

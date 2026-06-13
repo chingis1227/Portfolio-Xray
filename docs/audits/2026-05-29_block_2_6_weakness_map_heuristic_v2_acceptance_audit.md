@@ -19,14 +19,14 @@ Related:
 
 | Question | Verdict |
 | --- | --- |
-| Is `block_2_6_portfolio_weakness_map` on live diagnosis path with `heuristic_v2`? | **Yes** — subject X-Ray `metadata.rule_version` **heuristic_v2**, eight canonical `risk_type` rows. |
-| Are `risk_type` values aligned with Stress Lab synthetic ids? | **Yes** — order matches `SYNTHETIC_SCENARIO_IDS`; `volatility_spike` absent from product block. |
-| Is USD shock scored or explicitly blocked? | **Yes** — live subject: **Medium** 55; golden fixture documents `blocked_upstream_fields` when FX fields missing. |
-| Does Block 2.6 consume Block 2.4 v2 fields? | **Yes** — alert `status`, `score`, `confidence`, `contributing_assets`, `limitations` on equity, rates, credit, liquidity, recession rows. |
-| Is Stress Lab boundary enforced? | **Yes** — module import isolation + forbidden-key tests; no stress PnL in product block JSON. |
-| Is narrative institutional (non-boilerplate)? | **Yes** — `short_diagnosis` / `why_status` / `key_evidence` (3–5) tied to evidence rows; anti-boilerplate unit assertion. |
-| Is downstream SSOT Block 2.6? | **Yes** — Problem Classification + AI commentary grounding read `block_2_6_portfolio_weakness_map`; legacy `sections.weakness_map` tagged `legacy: true`. |
-| Is heuristic_v2 ExecPlan accepted (Sessions 00–09)? | **Yes — 10/10** sessions complete (see §2). |
+| Is `block_2_6_portfolio_weakness_map` on live diagnosis path with `heuristic_v2`... | **Yes** — subject X-Ray `metadata.rule_version` **heuristic_v2**, eight canonical `risk_type` rows. |
+| Are `risk_type` values aligned with Stress Lab synthetic ids... | **Yes** — order matches `SYNTHETIC_SCENARIO_IDS`; `volatility_spike` absent from product block. |
+| Is USD shock scored or explicitly blocked... | **Yes** — live subject: **Medium** 55; golden fixture documents `blocked_upstream_fields` when FX fields missing. |
+| Does Block 2.6 consume Block 2.4 v2 fields... | **Yes** — alert `status`, `score`, `confidence`, `contributing_assets`, `limitations` on equity, rates, credit, liquidity, recession rows. |
+| Is Stress Lab boundary enforced... | **Yes** — module import isolation + forbidden-key tests; no stress PnL in product block JSON. |
+| Is narrative institutional (non-boilerplate)... | **Yes** — `short_diagnosis` / `why_status` / `key_evidence` (3–5) tied to evidence rows; anti-boilerplate unit assertion. |
+| Is downstream SSOT Block 2.6... | **Yes** — Problem Classification + AI commentary grounding read `block_2_6_portfolio_weakness_map`; legacy `sections.weakness_map` tagged `legacy: true`. |
+| Is heuristic_v2 ExecPlan accepted (Sessions 00–09)... | **Yes — 10/10** sessions complete (see §2). |
 
 **Bottom line:** Block 2.6 **heuristic_v2** is **accepted**. Operators use eight pre-stress vulnerability hypotheses with canonical Stress Lab ids, transparent scores, and `next_tests` routing; Stress Lab continues to own scenario losses and pass/fail.
 

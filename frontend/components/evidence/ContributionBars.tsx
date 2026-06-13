@@ -16,7 +16,7 @@ function toneForValue(value: number) {
 }
 
 function ContributionBar({ row, maxAbs }: { row: BarRow; maxAbs: number }) {
-  const width = maxAbs > 0 ? Math.max(2, Math.min(100, (Math.abs(row.value) / maxAbs) * 100)) : 0;
+  const width = maxAbs > 0 ... Math.max(2, Math.min(100, (Math.abs(row.value) / maxAbs) * 100)) : 0;
   const isPositive = row.value > 0;
 
   return (
@@ -30,7 +30,7 @@ function ContributionBar({ row, maxAbs }: { row: BarRow; maxAbs: number }) {
       </div>
       <div className="mt-3 grid grid-cols-2 gap-1">
         <div className="flex h-2 items-center justify-end rounded-l-full bg-black/20">
-          {!isPositive && row.value !== 0 ? (
+          {!isPositive && row.value !== 0 ... (
             <div
               className="pmri-bar-fill h-2 rounded-l-full bg-pmri-risk/75"
               style={{ width: `${width}%` }}
@@ -38,7 +38,7 @@ function ContributionBar({ row, maxAbs }: { row: BarRow; maxAbs: number }) {
           ) : null}
         </div>
         <div className="flex h-2 items-center rounded-r-full bg-black/20">
-          {isPositive ? (
+          {isPositive ... (
             <div
               className="pmri-bar-fill h-2 rounded-r-full bg-pmri-positive/75"
               style={{ width: `${width}%` }}
@@ -57,9 +57,9 @@ export function ContributionBars({
 }: {
   rows: Array<ContributionRow | FactorContributionRow>;
   emptyMessage: string;
-  limit?: number;
+  limit...: number;
 }) {
-  const visibleRows = typeof limit === "number" ? rows.slice(0, limit) : rows;
+  const visibleRows = typeof limit === "number" ... rows.slice(0, limit) : rows;
   const maxAbs = visibleRows.reduce((max, row) => Math.max(max, Math.abs(row.value)), 0);
 
   if (!visibleRows.length) {
@@ -70,9 +70,9 @@ export function ContributionBars({
     <div className="pmri-bar-group space-y-3">
       {visibleRows.map((row) => (
         <ContributionBar
-          key={`${"ticker" in row ? row.ticker : row.factor}-${row.value}`}
+          key={`${"ticker" in row ... row.ticker : row.factor}-${row.value}`}
           row={{
-            label: "ticker" in row ? row.ticker : row.factor,
+            label: "ticker" in row ... row.ticker : row.factor,
             value: row.value,
             status: row.status
           }}

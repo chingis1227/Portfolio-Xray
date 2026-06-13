@@ -1,6 +1,6 @@
 # Portfolio MRI / Portfolio X-Ray
 
-Portfolio MRI / Portfolio X-Ray is a Python portfolio diagnostics and investment decision-support system. The **canonical current product truth is “ДИАГНОСТИКА 2”**: diagnosis-first, current-portfolio-first, decision-support oriented, and not optimizer-first.
+Portfolio MRI / Portfolio X-Ray is a Python portfolio diagnostics and investment decision-support system. The **canonical current product truth is “Diagnosis 2”**: diagnosis-first, current-portfolio-first, decision-support oriented, and not optimizer-first.
 
 Canonical current product flow:
 
@@ -130,7 +130,7 @@ Target/TBD areas:
 
 ## Main Pipeline
 
-“ДИАГНОСТИКА 2” is the binding product workflow contract:
+“Diagnosis 2” is the binding product workflow contract:
 
 ```text
 current portfolio / analysis_subject

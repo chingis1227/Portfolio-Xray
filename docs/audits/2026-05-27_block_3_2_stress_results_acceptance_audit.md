@@ -17,12 +17,12 @@ Related:
 
 | Question | Verdict |
 | --- | --- |
-| Is `stress_results_v1` on live portfolio-first diagnosis? | **Yes** — `run_portfolio_review.py --skip-candidates` refreshed `Main portfolio/analysis_subject/stress_report.json`. |
-| Are all 8 synthetic + 5 historical product rows present? | **Yes** — canonical ID order; counts match `SYNTHETIC_SCENARIO_IDS` / `HISTORICAL_SCENARIO_IDS`. |
-| Do worst-case selectors match `stress_conclusions`? | **Yes** — worst synthetic `recession_severe` (-22.0%); worst historical `2022` (max drawdown -19.8%). |
-| Is Core MVP in diagnostic mode without mandate fields on Block 3.2 rows? | **Yes** — `loss_gate_mode: diagnostic`; no `pass` / `loss_ok` / `diagnostic_code` on product rows. |
-| Are English `diagnosis_summary_en` templates populated when data allows? | **Yes** — 8/8 synthetic; 3/5 historical (dotcom / 2008 omit narrative when loss contribution unavailable — §5.3). |
-| Is the full ExecPlan accepted (Sessions 00–08)? | **Yes — 9/9** sessions complete (see §3). |
+| Is `stress_results_v1` on live portfolio-first diagnosis... | **Yes** — `run_portfolio_review.py --skip-candidates` refreshed `Main portfolio/analysis_subject/stress_report.json`. |
+| Are all 8 synthetic + 5 historical product rows present... | **Yes** — canonical ID order; counts match `SYNTHETIC_SCENARIO_IDS` / `HISTORICAL_SCENARIO_IDS`. |
+| Do worst-case selectors match `stress_conclusions`... | **Yes** — worst synthetic `recession_severe` (-22.0%); worst historical `2022` (max drawdown -19.8%). |
+| Is Core MVP in diagnostic mode without mandate fields on Block 3.2 rows... | **Yes** — `loss_gate_mode: diagnostic`; no `pass` / `loss_ok` / `diagnostic_code` on product rows. |
+| Are English `diagnosis_summary_en` templates populated when data allows... | **Yes** — 8/8 synthetic; 3/5 historical (dotcom / 2008 omit narrative when loss contribution unavailable — §5.3). |
+| Is the full ExecPlan accepted (Sessions 00–08)... | **Yes — 9/9** sessions complete (see §3). |
 
 **Bottom line:** Block 3.2 Stress Results MVP is **complete**. Operators read per-scenario stress diagnosis from `stress_results_v1` on subject `stress_report.json`; `stress_conclusions` remains the compatibility worst-case rollup; snapshot carries a compact `stress_results` envelope mirror.
 

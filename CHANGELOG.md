@@ -8,6 +8,11 @@ Date: 2026-06-12
 
 Category: Fixed
 
+- **Portfolio Input UX and diagnosis retry:** removed stale boundary/sidebar copy, restored the
+  sidebar logo, changed onboarding to one smooth question at a time, moved `Adjust intake` into a
+  rounded modal editor, and added a one-time backend retry for transient empty market-data panels
+  during frontend diagnosis runs.
+
 - **Full backend pytest stabilization after Client Fit V1:** fixed pandas `QE` compatibility,
   explicit-empty factor covariance handling, current-vs-policy materialization lineage/status,
   MVP policy-current planning, and the Block 8-only output boundary. Re-baselined intentional Block

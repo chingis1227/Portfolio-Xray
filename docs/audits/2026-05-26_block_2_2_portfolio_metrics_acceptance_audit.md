@@ -18,11 +18,11 @@ Related:
 
 | Question | Verdict |
 | --- | --- |
-| Is `block_2_2_portfolio_metrics` on live diagnosis path? | **Yes** — `run_portfolio_review.py --skip-candidates` refreshed `Main portfolio/analysis_subject/portfolio_xray.json` with populated Block 2.2. |
-| Is Block 2.2 present after one-candidate demo? | **Yes** — same subject artifact after `--candidates equal_weight`; product validator **PASS** (8 checks). |
-| Does real-cash fixture surface correct treatment? | **Yes** — offline pytest: `metadata.cash_treatment` = `real_cash_position_if_present`; real-cash warning present; see §4. |
-| Does Block 2.1 remain unchanged alongside Block 2.2? | **Yes** — both top-level keys coexist on subject X-Ray (§5.1). |
-| Is the full ExecPlan accepted (Sessions 01–08)? | **Yes — 8/8** sessions complete (see §3). |
+| Is `block_2_2_portfolio_metrics` on live diagnosis path... | **Yes** — `run_portfolio_review.py --skip-candidates` refreshed `Main portfolio/analysis_subject/portfolio_xray.json` with populated Block 2.2. |
+| Is Block 2.2 present after one-candidate demo... | **Yes** — same subject artifact after `--candidates equal_weight`; product validator **PASS** (8 checks). |
+| Does real-cash fixture surface correct treatment... | **Yes** — offline pytest: `metadata.cash_treatment` = `real_cash_position_if_present`; real-cash warning present; see §4. |
+| Does Block 2.1 remain unchanged alongside Block 2.2... | **Yes** — both top-level keys coexist on subject X-Ray (§5.1). |
+| Is the full ExecPlan accepted (Sessions 01–08)... | **Yes — 8/8** sessions complete (see §3). |
 
 **Bottom line:** Block 2.2 Portfolio Metrics MVP is **complete**. Operators read portfolio behavior from `block_2_2_portfolio_metrics` on `analysis_subject/portfolio_xray.json`; legacy `sections.risk_diagnostics` remains for formatters and golden contracts.
 

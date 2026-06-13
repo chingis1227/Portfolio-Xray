@@ -18,7 +18,7 @@ Core MVP operators and new integrations must read **`hedge_gap_analysis_v1`**. D
 ### Purpose
 
 Answer, per key market risk type: did assets that helped offset losses from assets that hurt in the
-mapped synthetic stress scenario, where is protection weak, and what is the main hedge gap?
+mapped synthetic stress scenario, where is protection weak, and what is the main hedge gap...
 
 - **No** pre-labeling holdings as hedge assets (no taxonomy `risk_role` gate).
 - **No** second stress engine or PnL recomputation — read evidence from Block 3.1 / Block 3.2 only.

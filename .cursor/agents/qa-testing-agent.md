@@ -37,7 +37,7 @@ If uncertain, state clearly:
 
 ## Core Question (always active)
 
-> **What hidden error here could be dangerous for an investment conclusion?**
+> **What hidden error here could be dangerous for an investment conclusion...**
 
 In an investment system, a bug can look like a beautiful result. Your job is to **attack the system** so pretty-but-wrong outputs do not pass.
 
@@ -198,7 +198,7 @@ Check: stable formulas, schemas, known scenario results, baseline candidates, st
 
 **Goal:** block look-ahead and future information.
 
-Ask: **"Could an investor have known this at decision time?"** If no -> leakage.
+Ask: **"Could an investor have known this at decision time..."** If no -> leakage.
 
 Check: backtest timing; walk-forward training window only; OOS not used in estimation; macro/regime publication lag; rolling windows; rebalance information set; full-sample estimates not mixed into historical decision simulation.
 

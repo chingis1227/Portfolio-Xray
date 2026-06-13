@@ -50,9 +50,9 @@ pipeline trust is fixed.
 
 | Question | Answer |
 | --- | --- |
-| Reliable MVP or prototype? | **Partially working technical prototype** with strong diagnostic core. |
-| UI now or stabilize core first? | **Stabilize core first.** |
-| Is candidate/optimization layer genuinely useful yet? | **Potentially yes; weak in the latest run** due to stale candidates and mandate block on the baseline. |
+| Reliable MVP or prototype... | **Partially working technical prototype** with strong diagnostic core. |
+| UI now or stabilize core first... | **Stabilize core first.** |
+| Is candidate/optimization layer genuinely useful yet... | **Potentially yes; weak in the latest run** due to stale candidates and mandate block on the baseline. |
 | Highest-leverage next step | **P0-2 + P0-4:** consistent baseline metadata + fresh candidate refresh on the same `analysis_end`. |
 
 ## Evidence Reviewed
@@ -83,17 +83,17 @@ pipeline trust is fixed.
 
 | # | Question | Answer |
 | --- | --- | --- |
-| 1 | Real `current_portfolio` or placeholder? | **Real current portfolio** in subject sidecar; placeholder **not** used for diagnostics. |
-| 2 | Clean E2E without manual follow-up? | **Partially** — CLI exits 0; decision PDF fails; regime metrics error; most candidates stale-skipped. |
-| 3 | Partial factory failures handled? | **Yes** — continues on skip/failure unless `--fail-fast`. |
-| 4 | Candidates fresh / stale / failed? | **1 succeeded**, **15 skipped_existing**, **0 failed** (`risk_budget_by_asset_class` only refreshed). |
-| 5 | Optimization improving decisions? | **Weak in this run** — ranking exists but mandate blocks favored selection; stale alternatives. |
-| 6 | Why no favored candidate? | **`mandate_risk_reduction`** — baseline fails `target_vol` and `max_dd` mandate checks. |
-| 7 | Weak outputs when no favored? | **Yes** — trade-off pairs empty, assumption sensitivity `not_evaluated`, favored regret unavailable. |
-| 8 | Legacy leaking into portfolio-first? | **Yes** — see findings PPF-002, PPF-005, PPF-006. |
-| 9 | Stress / factor / macro reliable? | **Factor/stress strong** on subject; **regime portfolio metrics broken**. |
-| 10 | TXT/JSON/HTML/CSV/PDF useful? | **JSON/TXT strong**; **decision PDF missing**; comparison top summary **misleading**. |
-| 11 | What could mislead advisors? | Stale candidates treated as current; summary says universe baseline; policy row beside user current. |
+| 1 | Real `current_portfolio` or placeholder... | **Real current portfolio** in subject sidecar; placeholder **not** used for diagnostics. |
+| 2 | Clean E2E without manual follow-up... | **Partially** — CLI exits 0; decision PDF fails; regime metrics error; most candidates stale-skipped. |
+| 3 | Partial factory failures handled... | **Yes** — continues on skip/failure unless `--fail-fast`. |
+| 4 | Candidates fresh / stale / failed... | **1 succeeded**, **15 skipped_existing**, **0 failed** (`risk_budget_by_asset_class` only refreshed). |
+| 5 | Optimization improving decisions... | **Weak in this run** — ranking exists but mandate blocks favored selection; stale alternatives. |
+| 6 | Why no favored candidate... | **`mandate_risk_reduction`** — baseline fails `target_vol` and `max_dd` mandate checks. |
+| 7 | Weak outputs when no favored... | **Yes** — trade-off pairs empty, assumption sensitivity `not_evaluated`, favored regret unavailable. |
+| 8 | Legacy leaking into portfolio-first... | **Yes** — see findings PPF-002, PPF-005, PPF-006. |
+| 9 | Stress / factor / macro reliable... | **Factor/stress strong** on subject; **regime portfolio metrics broken**. |
+| 10 | TXT/JSON/HTML/CSV/PDF useful... | **JSON/TXT strong**; **decision PDF missing**; comparison top summary **misleading**. |
+| 11 | What could mislead advisors... | Stale candidates treated as current; summary says universe baseline; policy row beside user current. |
 
 ## Workflow Block Assessment
 

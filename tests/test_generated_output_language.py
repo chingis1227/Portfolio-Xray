@@ -80,16 +80,16 @@ def test_portfolio_first_summary_story_qa_rejects_legacy_markers() -> None:
 
 
 def test_mojibake_markers_cover_common_windows_corruption() -> None:
-    for marker in ("вЂ", "О”", "â€”", "Î", "Ð", "\ufffd"):
+    for marker in ("\u0432\u0402", "\u041e\u201d", "\u00e2\u20ac\u201d", "\u00ce", "\u00d0", "\ufffd"):
         assert marker in MOJIBAKE_SUBSTRINGS
 
 
 def test_ascii_safe_text_replaces_fragile_symbols_and_mojibake() -> None:
-    text = "Monitoring — What Changed; Δw ≥ 1×; О”w=0.01; â€”; Î²"
+    text = "Monitoring \u2014 What Changed; \u0394w \u2265 1\u00d7; \u041e\u201dw=0.01; \u00e2\u20ac\u201d; \u00ce\u00b2"
     safe = ascii_safe_text(text)
     assert "Monitoring - What Changed" in safe
     assert "delta w=0.01" in safe
     assert ">=" in safe
     assert "x" in safe
-    assert "â€”" not in safe
-    assert "Î" not in safe
+    assert "\u00e2\u20ac\u201d" not in safe
+    assert "\u00ce" not in safe

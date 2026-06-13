@@ -6,7 +6,7 @@ Plan: `docs/exec_plans/2026-06-04_blocks_3_5_integration_readiness_audit_plan.md
 
 ## Question
 
-Do the current source-of-truth documents contradict implemented behavior around these boundaries?
+Do the current source-of-truth documents contradict implemented behavior around these boundaries...
 
 1. Stress Lab must not issue a rebalance or investment recommendation.
 2. Block 4 must produce an investment diagnosis plus `next_diagnostic_step`.
@@ -27,7 +27,7 @@ Minor caveat: documentation still contains some broader demo/runtime references 
 
 ## Commands Run
 
-From repository root `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`.
+From repository root `D:\Desktop\CURSOR TULA DIAGNOSTICS`.
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\verify_docs.py
@@ -42,7 +42,7 @@ docs verification: OK
 Targeted documentation search:
 
 ```powershell
-rg -n "rebalance recommendation|is_rebalance_recommendation|not.*recommend|recommendation|Decision Verdict|final decision|next diagnostic step|next_diagnostic_step|Builder prefill|prefill|generat.*candidate|candidate generation|equal.?weight|risk.?parity|EW|RP|reference benchmark|benchmark" SPEC.md OUTPUTS.md TESTING.md WORKFLOW.md docs\product_flow_operator_guide.md docs\specs\stress_lab_layer_spec.md docs\specs\block_4_diagnosis_v3_spec.md docs\specs\candidate_launchpad_spec.md docs\specs\portfolio_alternatives_builder_spec.md -S
+rg -n "rebalance recommendation|is_rebalance_recommendation|not.*recommend|recommendation|Decision Verdict|final decision|next diagnostic step|next_diagnostic_step|Builder prefill|prefill|generat.*candidate|candidate generation|equal....weight|risk....parity|EW|RP|reference benchmark|benchmark" SPEC.md OUTPUTS.md TESTING.md WORKFLOW.md docs\product_flow_operator_guide.md docs\specs\stress_lab_layer_spec.md docs\specs\block_4_diagnosis_v3_spec.md docs\specs\candidate_launchpad_spec.md docs\specs\portfolio_alternatives_builder_spec.md -S
 ```
 
 Targeted source/test/validator search:

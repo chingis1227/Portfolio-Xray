@@ -7,7 +7,7 @@ new contributor who has only the current working tree and this file.
 
 ## Purpose / Big Picture
 
-Portfolio MRI / Portfolio X-Ray / ДИАГНОСТИКА 2 now has a local frontend-to-backend
+Portfolio MRI / Portfolio X-Ray / Diagnosis 2 now has a local frontend-to-backend
 vertical flow from Portfolio Input through Report / AI Commentary. The 2026-06-08 full
 project audit found that the integration is logically connected and locally demo-ready
 for a scripted path, but not yet robust enough for a natural product demo. The most

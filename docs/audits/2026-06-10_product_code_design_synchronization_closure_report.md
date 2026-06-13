@@ -138,7 +138,7 @@ Session 13 completed full journey visual QA on:
 - Route chain:
   - `/portfolio-input`
   - `/diagnosis`
-  - `/evidence?sample=1`
+  - `/evidence...sample=1`
   - `/hypothesis`
   - `/comparison`
   - `/verdict`

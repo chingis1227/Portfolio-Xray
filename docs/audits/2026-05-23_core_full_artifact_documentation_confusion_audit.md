@@ -14,7 +14,7 @@ The **code** for portfolio-first review is coherent: `run_portfolio_review.py` m
 
 ---
 
-## 1. What does the code actually do?
+## 1. What does the code actually do...
 
 ### Portfolio-first orchestration
 
@@ -64,7 +64,7 @@ Comparison **reads** factory JSON for freshness/disclosure and **scans candidate
 
 ---
 
-## 2. What do the docs say?
+## 2. What do the docs say...
 
 | Document | Key claims |
 | --- | --- |
@@ -83,7 +83,7 @@ Product block names in `README.md` (Input, X-Ray, Stress, Factory, Optimization 
 
 ---
 
-## 3. Where do code and docs disagree?
+## 3. Where do code and docs disagree...
 
 | Topic | Code / disk behavior | Doc or operator expectation | Severity |
 | --- | --- | --- | --- |
@@ -98,7 +98,7 @@ Product block names in `README.md` (Input, X-Ray, Stress, Factory, Optimization 
 
 ---
 
-## 4. Where do old artifacts on disk create misleading conclusions?
+## 4. Where do old artifacts on disk create misleading conclusions...
 
 Evidence: `Main portfolio/` as of audit date (2026-05-22 factory/comparison timestamps).
 
@@ -132,7 +132,7 @@ Folders such as `minimum cvar constrained portfolio/`, `hierarchical risk parity
 
 ---
 
-## 5. Where can users confuse `core` with `full`?
+## 5. Where can users confuse `core` with `full`...
 
 | Trap | Why |
 | --- | --- |
@@ -210,11 +210,11 @@ Optional hygiene (not doc): operator run with `--no-skip-existing` when changing
 
 | Question | Open first |
 | --- | --- |
-| What portfolio was diagnosed? | `Main portfolio/analysis_subject/run_metadata.json` |
-| Last factory scope? | `Main portfolio/candidate_factory_run.json` → `factory_profile_id`, `steps[]` |
-| Is menu partial / reused? | `Main portfolio/candidate_comparison.json` → `candidate_menu`, `review_bundle_context` |
-| Policy optimizer output? | `Main portfolio/run_result.json` (legacy; not subject) |
-| Client PDF current? | Only if `run_portfolio_review.py --with-pdf` or rebuild was run after JSON |
+| What portfolio was diagnosed... | `Main portfolio/analysis_subject/run_metadata.json` |
+| Last factory scope... | `Main portfolio/candidate_factory_run.json` → `factory_profile_id`, `steps[]` |
+| Is menu partial / reused... | `Main portfolio/candidate_comparison.json` → `candidate_menu`, `review_bundle_context` |
+| Policy optimizer output... | `Main portfolio/run_result.json` (legacy; not subject) |
+| Client PDF current... | Only if `run_portfolio_review.py --with-pdf` or rebuild was run after JSON |
 
 ---
 

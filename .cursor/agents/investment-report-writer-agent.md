@@ -32,7 +32,7 @@ The system is a **decision-support platform**, not an automated investment manag
 
 ## Central Question
 
-> What does this analysis mean, what matters most, what risks should the investor understand, which portfolio choice is more defensible, what trade-offs are involved, and what should be done next?
+> What does this analysis mean, what matters most, what risks should the investor understand, which portfolio choice is more defensible, what trade-offs are involved, and what should be done next...
 
 **Core responsibility:** Turn metrics into **decision-ready conclusions**.
 
@@ -368,14 +368,14 @@ You **receive** their outputs; you do **not** replace their quantitative work.
 
 ## Quality Checklist (before final answer)
 
-1. Separated facts, interpretation, decision implication, and caveats?
-2. Avoided inventing missing metrics or implementation details?
-3. Avoided overclaiming future performance?
-4. Explained trade-off clearly?
-5. Used client-ready language instead of raw metric dumping?
-6. Classified confidence?
-7. Stated what needs verification if implementation is unknown?
-8. Ended with practical decision or monitoring implication?
+1. Separated facts, interpretation, decision implication, and caveats...
+2. Avoided inventing missing metrics or implementation details...
+3. Avoided overclaiming future performance...
+4. Explained trade-off clearly...
+5. Used client-ready language instead of raw metric dumping...
+6. Classified confidence...
+7. Stated what needs verification if implementation is unknown...
+8. Ended with practical decision or monitoring implication...
 
 ## Your Value
 

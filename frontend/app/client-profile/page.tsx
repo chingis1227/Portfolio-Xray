@@ -36,7 +36,7 @@ function pct(value: number) {
 
 function decimalFromPct(value: string) {
   const parsed = Number(value.replace(",", "."));
-  return Number.isFinite(parsed) ? parsed / 100 : Number.NaN;
+  return Number.isFinite(parsed) ... parsed / 100 : Number.NaN;
 }
 
 function pctInput(value: number) {
@@ -46,7 +46,7 @@ function pctInput(value: number) {
 function suggestedPreset(objective: string, horizon: string): PresetId {
   if (objective === "preserve") return "conservative";
   if (objective === "maximum_growth") return "aggressive";
-  if (objective === "high_growth") return horizon === "short" ? "balanced" : "growth";
+  if (objective === "high_growth") return horizon === "short" ... "balanced" : "growth";
   if (horizon === "short") return "conservative";
   if (horizon === "long") return "growth";
   return "balanced";
@@ -61,19 +61,19 @@ function sourceLabel(source: Source) {
 export default function ClientProfilePage() {
   const router = useRouter();
   const { activeReview, saveClientFitProfile } = useReviewState();
-  const saved = activeReview?.clientFitProfile;
-  const savedPreset = saved?.preset_id && presetById.has(saved.preset_id) ? saved.preset_id : "balanced";
+  const saved = activeReview....clientFitProfile;
+  const savedPreset = saved....preset_id && presetById.has(saved.preset_id) ... saved.preset_id : "balanced";
   const [objective, setObjective] = useState("balanced");
   const [horizonChoice, setHorizonChoice] = useState("medium");
   const [presetId, setPresetId] = useState<PresetId>(savedPreset as PresetId);
-  const [source, setSource] = useState<Source>(saved?.source ?? "questionnaire");
-  const preset = presetById.get(presetId) ?? PRESETS[2];
-  const [returnMin, setReturnMin] = useState(pctInput(saved?.target_return_range?.min ?? preset.returnRange.min));
-  const [returnMax, setReturnMax] = useState(pctInput(saved?.target_return_range?.max ?? preset.returnRange.max));
-  const [volMin, setVolMin] = useState(pctInput(saved?.target_vol_range?.min ?? preset.volRange.min));
-  const [volMax, setVolMax] = useState(pctInput(saved?.target_vol_range?.max ?? preset.volRange.max));
-  const [drawdown, setDrawdown] = useState(pctInput(saved?.target_max_drawdown_pct ?? preset.drawdown));
-  const [horizonYears, setHorizonYears] = useState(String(saved?.horizon_years ?? preset.horizon));
+  const [source, setSource] = useState<Source>(saved....source ...... "questionnaire");
+  const preset = presetById.get(presetId) ...... PRESETS[2];
+  const [returnMin, setReturnMin] = useState(pctInput(saved....target_return_range....min ...... preset.returnRange.min));
+  const [returnMax, setReturnMax] = useState(pctInput(saved....target_return_range....max ...... preset.returnRange.max));
+  const [volMin, setVolMin] = useState(pctInput(saved....target_vol_range....min ...... preset.volRange.min));
+  const [volMax, setVolMax] = useState(pctInput(saved....target_vol_range....max ...... preset.volRange.max));
+  const [drawdown, setDrawdown] = useState(pctInput(saved....target_max_drawdown_pct ...... preset.drawdown));
+  const [horizonYears, setHorizonYears] = useState(String(saved....horizon_years ...... preset.horizon));
 
   const suggested = suggestedPreset(objective, horizonChoice);
   const values = useMemo(() => {
@@ -98,7 +98,7 @@ export default function ClientProfilePage() {
   }, [drawdown, horizonYears, returnMax, returnMin, volMax, volMin]);
 
   const applyPreset = (nextPresetId: PresetId, nextSource: Source = source) => {
-    const next = presetById.get(nextPresetId) ?? PRESETS[2];
+    const next = presetById.get(nextPresetId) ...... PRESETS[2];
     setPresetId(next.id);
     setSource(nextSource);
     setReturnMin(pctInput(next.returnRange.min));
@@ -114,7 +114,7 @@ export default function ClientProfilePage() {
     saveClientFitProfile({
       preset_id: presetId,
       source,
-      source_quality: source === "manual_override" ? "high" : "medium",
+      source_quality: source === "manual_override" ... "high" : "medium",
       source_quality_reason: `${sourceLabel(source)} captured in the web Client Profile step.`,
       horizon_years: values.horizonYears,
       target_return_range: { min: values.returnMin, max: values.returnMax },
@@ -127,12 +127,12 @@ export default function ClientProfilePage() {
   return (
     <div>
       <PageHeader
-        kicker="Step 01 / Client Profile"
-        title="Who is this portfolio for?"
-        description="Capture the stated planning profile before portfolio diagnosis. Portfolio MRI uses these limits as non-binding diagnostic context."
+        kicker="Advanced / Client Fit profile editor"
+        title="Manual diagnostic context"
+        description="Edit the stated planning profile used as non-binding context. The main product path now collects this through onboarding before Portfolio Input."
         boundaryNote="Client Fit is not suitability approval and does not change optimizer behavior."
       >
-        <StatusBadge tone={values.valid ? "green" : "amber"}>{values.valid ? "Profile ready" : "Profile incomplete"}</StatusBadge>
+        <StatusBadge tone={values.valid ... "green" : "amber"}>{values.valid ... "Profile ready" : "Profile incomplete"}</StatusBadge>
       </PageHeader>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
@@ -158,12 +158,12 @@ export default function ClientProfilePage() {
               </select>
             </label>
           </div>
-          <div className="mt-5 rounded-2xl border border-pmri-amber/30 bg-pmri-amber/10 p-4">
-            <p className="pmri-label text-pmri-amber">Suggested preset</p>
+          <div className="mt-5 rounded-2xl border border-pmri-border/55 bg-white/[0.025] p-4">
+            <p className="pmri-label text-pmri-blueSoft">Suggested preset</p>
             <p className="mt-2 text-sm leading-6 text-pmri-text2">
-              Questionnaire suggests <span className="font-semibold text-pmri-text">{presetById.get(suggested)?.label}</span>. You can accept it, choose another preset, or customize the target rows below.
+              Questionnaire suggests <span className="font-semibold text-pmri-text">{presetById.get(suggested)....label}</span>. You can accept it, choose another preset, or customize the target rows below.
             </p>
-            <button type="button" onClick={() => applyPreset(suggested, "questionnaire")} className="pmri-focus mt-4 rounded-full border border-pmri-amber/45 bg-pmri-amber/15 px-4 py-2 text-sm font-medium text-pmri-text transition hover:bg-pmri-amber/20">
+            <button type="button" onClick={() => applyPreset(suggested, "questionnaire")} className="pmri-focus mt-4 rounded-full border border-pmri-blue/35 bg-pmri-blue/[0.08] px-4 py-2 text-sm font-medium text-pmri-text transition hover:bg-pmri-blue/[0.12]">
               Use suggested profile
             </button>
           </div>
@@ -178,7 +178,7 @@ export default function ClientProfilePage() {
             <p>Volatility comfort range: {volMin}-{volMax}%</p>
             <p>Maximum temporary loss: -{drawdown}%</p>
             <p>Horizon: {horizonYears} years</p>
-            <p>Profile confidence: {source === "manual_override" ? "High" : "Medium"}</p>
+            <p>Profile confidence: {source === "manual_override" ... "High" : "Medium"}</p>
           </div>
         </aside>
       </div>
@@ -206,7 +206,7 @@ export default function ClientProfilePage() {
           <label><span className="pmri-label block">Max temporary loss %</span><input className="pmri-focus mt-2 w-full rounded-xl border border-pmri-border/55 bg-pmri-secondary/80 px-3 py-2.5 text-sm text-pmri-text" value={drawdown} onChange={(event) => { setSource("manual_override"); setDrawdown(event.target.value); }} /></label>
           <label><span className="pmri-label block">Horizon years</span><input className="pmri-focus mt-2 w-full rounded-xl border border-pmri-border/55 bg-pmri-secondary/80 px-3 py-2.5 text-sm text-pmri-text" value={horizonYears} onChange={(event) => { setSource("manual_override"); setHorizonYears(event.target.value); }} /></label>
           <div className="md:col-span-2 rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
-            <StatusBadge tone={values.valid ? "green" : "amber"}>{sourceLabel(source)}</StatusBadge>
+            <StatusBadge tone={values.valid ... "green" : "amber"}>{sourceLabel(source)}</StatusBadge>
             <p className="mt-3 text-sm leading-6 text-pmri-muted">Source quality is shown on the Client Fit screen so the user can distinguish stated profile confidence from portfolio diagnosis quality.</p>
           </div>
         </div>
@@ -215,7 +215,7 @@ export default function ClientProfilePage() {
           <button type="button" disabled={!values.valid} onClick={saveProfile} className="pmri-focus pmri-primary-action rounded-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-pmri-muted">
             Save profile and continue to Portfolio Input
           </button>
-          {!values.valid ? <p className="text-sm leading-6 text-pmri-amber">Check that ranges increase and percentages stay within realistic bounds.</p> : null}
+          {!values.valid ... <p className="text-sm leading-6 text-pmri-amber">Check that ranges increase and percentages stay within realistic bounds.</p> : null}
         </div>
       </section>
     </div>

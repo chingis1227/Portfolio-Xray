@@ -456,7 +456,7 @@ For Session 00, the concrete steps were:
 3. Save this full plan as `docs/exec_plans/2026-06-10_post_stress_frontend_flow_alignment_plan.md`.
 4. Stop and report that Session 00 is complete.
 
-For later implementation sessions, work from the repository root `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`. Run frontend validation from `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА\frontend`.
+For later implementation sessions, work from the repository root `D:\Desktop\CURSOR TULA DIAGNOSTICS`. Run frontend validation from `D:\Desktop\CURSOR TULA DIAGNOSTICS\frontend`.
 
 Do not stage unrelated dirty files. If committing per session, stage only files intentionally changed for that session, for example:
 

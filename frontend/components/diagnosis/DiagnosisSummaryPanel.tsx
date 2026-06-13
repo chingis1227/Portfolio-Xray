@@ -29,7 +29,7 @@ type DiagnosisSummaryPanelProps = {
   boundaryNote: string;
   drivers: string[];
   metrics: Metric[];
-  xraySummary?: XRaySummary;
+  xraySummary...: XRaySummary;
 };
 
 function clientSafeNote(note: string) {
@@ -48,19 +48,19 @@ function findMetric(metrics: Metric[], label: string) {
   return metrics.find((metric) => metric.label.toLowerCase() === label.toLowerCase());
 }
 
-function metricText(metric?: Metric, fallback = "Unavailable") {
+function metricText(metric...: Metric, fallback = "Unavailable") {
   if (!metric) return fallback;
-  const detail = metric.detail && metric.detail !== "n/a" ? ` ${metric.detail}` : "";
+  const detail = metric.detail && metric.detail !== "n/a" ... ` ${metric.detail}` : "";
   return normalizeDisplayLabel(`${metric.value}${detail}`, fallback);
 }
 
-function parsePercent(value?: string) {
+function parsePercent(value...: string) {
   if (!value) return null;
   const parsed = Number(value.replace("%", "").trim());
-  return Number.isFinite(parsed) ? parsed : null;
+  return Number.isFinite(parsed) ... parsed : null;
 }
 
-function concentrationSeverity(value?: string) {
+function concentrationSeverity(value...: string) {
   const parsed = parsePercent(value);
   if (parsed === null) return "Unavailable";
   if (parsed >= 65) return "High risk";
@@ -68,39 +68,39 @@ function concentrationSeverity(value?: string) {
   return "Low risk";
 }
 
-function mainDiagnosis(headline: string, xraySummary?: XRaySummary) {
-  const metrics = xraySummary?.snapshotCards ?? [];
-  const exposure = findMetric(metrics, "Dominant exposure")?.value;
-  const top3 = parsePercent(findMetric(metrics, "Top 3 concentration")?.value);
+function mainDiagnosis(headline: string, xraySummary...: XRaySummary) {
+  const metrics = xraySummary....snapshotCards ...... [];
+  const exposure = findMetric(metrics, "Dominant exposure")....value;
+  const top3 = parsePercent(findMetric(metrics, "Top 3 concentration")....value);
 
   if (exposure && top3 !== null) {
-    const concentrationText = top3 >= 50 ? "and concentrated in the top holdings" : "with capital spread across the leading holdings";
+    const concentrationText = top3 >= 50 ... "and concentrated in the top holdings" : "with capital spread across the leading holdings";
     return `The portfolio is ${normalizeDisplayLabel(exposure).toLowerCase()}-led ${concentrationText}.`;
   }
 
   return clientSafeNote(headline);
 }
 
-function primaryEvidence(xraySummary?: XRaySummary) {
-  const metrics = xraySummary?.snapshotCards ?? [];
+function primaryEvidence(xraySummary...: XRaySummary) {
+  const metrics = xraySummary....snapshotCards ...... [];
   const top3 = findMetric(metrics, "Top 3 concentration");
   const dominant = findMetric(metrics, "Dominant exposure");
   const topHolding = findMetric(metrics, "Top holding");
-  const weakness = findMetric(metrics, "Worst pre-stress weakness") ?? findMetric(metrics, "Primary weakness");
+  const weakness = findMetric(metrics, "Worst pre-stress weakness") ...... findMetric(metrics, "Primary weakness");
 
   return [
-    top3 ? `Top 3 holdings: ${normalizeDisplayLabel(top3.value)}` : "",
-    dominant ? `Dominant exposure: ${metricText(dominant)}` : "",
-    topHolding ? `Largest holding: ${normalizeDisplayLabel(topHolding.value)}` : "",
-    weakness ? `Main pre-stress weakness: ${normalizeDisplayLabel(weakness.value)}` : ""
+    top3 ... `Top 3 holdings: ${normalizeDisplayLabel(top3.value)}` : "",
+    dominant ... `Dominant exposure: ${metricText(dominant)}` : "",
+    topHolding ... `Largest holding: ${normalizeDisplayLabel(topHolding.value)}` : "",
+    weakness ... `Main pre-stress weakness: ${normalizeDisplayLabel(weakness.value)}` : ""
   ].filter(Boolean);
 }
 
-function nextReviewStep(nextStep: string, xraySummary?: XRaySummary) {
-  const weakness = findMetric(xraySummary?.snapshotCards ?? [], "Worst pre-stress weakness")?.value;
+function nextReviewStep(nextStep: string, xraySummary...: XRaySummary) {
+  const weakness = findMetric(xraySummary....snapshotCards ...... [], "Worst pre-stress weakness")....value;
   if (weakness && weakness !== "n/a") {
     const weaknessLabel = normalizeDisplayLabel(weakness).toLowerCase();
-    const pairedStress = weaknessLabel.includes("severe recession") ? "equity sell-off" : "severe recession";
+    const pairedStress = weaknessLabel.includes("severe recession") ... "equity sell-off" : "severe recession";
     return `Review stress evidence for ${weaknessLabel} and ${pairedStress} before testing a candidate.`;
   }
   return clientSafeNote(nextStep);
@@ -119,7 +119,7 @@ function DiagnosisHero({
   evidenceQuality,
   nextStep,
   xraySummary
-}: Pick<DiagnosisSummaryPanelProps, "headline" | "evidenceQuality" | "nextStep" | "boundaryNote"> & { xraySummary?: XRaySummary }) {
+}: Pick<DiagnosisSummaryPanelProps, "headline" | "evidenceQuality" | "nextStep" | "boundaryNote"> & { xraySummary...: XRaySummary }) {
   const evidence = primaryEvidence(xraySummary);
   const quality = evidenceQualityLabel(evidenceQuality);
 
@@ -143,7 +143,7 @@ function DiagnosisHero({
           <div className="rounded-2xl border border-pmri-border/60 bg-white/[0.024] p-4">
             <h3 className="text-sm font-semibold text-pmri-text">Primary evidence</h3>
             <div className="mt-3 space-y-2">
-              {(evidence.length ? evidence : ["Primary evidence is unavailable in the compact review."]).map((item) => (
+              {(evidence.length ... evidence : ["Primary evidence is unavailable in the compact review."]).map((item) => (
                 <p key={item} className="flex gap-2 text-sm leading-6 text-pmri-text2">
                   <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-pmri-blueSoft/70" aria-hidden="true" />
                   <span>{clientSafeNote(item)}</span>
@@ -181,56 +181,56 @@ type SummaryCard = {
   title: string;
   value: string;
   explanation: string;
-  badge?: string;
+  badge...: string;
 };
 
 function summaryCards(xraySummary: XRaySummary | undefined, fallbackMetrics: Metric[]): SummaryCard[] {
-  const metrics = xraySummary?.snapshotCards?.length ? xraySummary.snapshotCards : fallbackMetrics;
+  const metrics = xraySummary....snapshotCards....length ... xraySummary.snapshotCards : fallbackMetrics;
   const top3 = findMetric(metrics, "Top 3 concentration");
-  const exposure = findMetric(metrics, "Dominant exposure") ?? findMetric(metrics, "Equity sleeve");
+  const exposure = findMetric(metrics, "Dominant exposure") ...... findMetric(metrics, "Equity sleeve");
   const drawdown = findMetric(metrics, "Max drawdown");
-  const weakness = findMetric(metrics, "Worst pre-stress weakness") ?? findMetric(metrics, "Primary weakness");
-  const top3Severity = concentrationSeverity(top3?.value);
+  const weakness = findMetric(metrics, "Worst pre-stress weakness") ...... findMetric(metrics, "Primary weakness");
+  const top3Severity = concentrationSeverity(top3....value);
 
   return [
     {
       title: "Capital concentration",
-      value: top3 ? `Top 3 = ${normalizeDisplayLabel(top3.value)}` : "Unavailable",
+      value: top3 ... `Top 3 = ${normalizeDisplayLabel(top3.value)}` : "Unavailable",
       explanation: "The largest holdings dominate capital allocation.",
       badge: top3Severity
     },
     {
       title: "Economic exposure",
-      value: exposure ? metricText(exposure) : "Unavailable",
+      value: exposure ... metricText(exposure) : "Unavailable",
       explanation: "The portfolio is primarily exposed to the dominant economic risk sleeve.",
-      badge: exposure?.tone === "amber" || exposure?.tone === "red" ? "Medium risk" : "Strong evidence"
+      badge: exposure....tone === "amber" || exposure....tone === "red" ... "Medium risk" : "Strong evidence"
     },
     {
       title: "Risk behavior",
-      value: drawdown ? normalizeDisplayLabel(drawdown.value) : "Unavailable",
+      value: drawdown ... normalizeDisplayLabel(drawdown.value) : "Unavailable",
       explanation: "The portfolio has experienced material downside in the diagnostic window.",
-      badge: drawdown?.tone === "red" ? "High risk" : drawdown?.tone === "amber" ? "Medium risk" : "Low risk"
+      badge: drawdown....tone === "red" ... "High risk" : drawdown....tone === "amber" ... "Medium risk" : "Low risk"
     },
     {
       title: "Main pre-stress weakness",
-      value: weakness ? normalizeDisplayLabel(weakness.value) : "Unavailable",
+      value: weakness ... normalizeDisplayLabel(weakness.value) : "Unavailable",
       explanation: "This is the main weakness to review in Stress Lab before testing a candidate.",
-      badge: weakness?.tone === "red" ? "High risk" : weakness?.tone === "amber" ? "Medium risk" : "Data limitation"
+      badge: weakness....tone === "red" ... "High risk" : weakness....tone === "amber" ... "Medium risk" : "Data limitation"
     }
   ];
 }
 
 function ExecutiveSummaryCard({ card }: { card: SummaryCard }) {
-  const isEvidence = card.badge?.includes("evidence");
+  const isEvidence = card.badge....includes("evidence");
   const isReviewState = card.badge === "Data limitation";
-  const tone = isReviewState ? "slate" : isEvidence ? evidenceTone(card.badge) : riskSeverityTone(card.badge);
-  const badgeLabel = isReviewState ? "Data limitation" : isEvidence ? evidenceQualityLabel(card.badge) : riskSeverityLabel(card.badge);
+  const tone = isReviewState ... "slate" : isEvidence ... evidenceTone(card.badge) : riskSeverityTone(card.badge);
+  const badgeLabel = isReviewState ... "Data limitation" : isEvidence ... evidenceQualityLabel(card.badge) : riskSeverityLabel(card.badge);
 
   return (
     <article className="pmri-card pmri-interactive-card rounded-2xl p-5">
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-sm font-semibold text-pmri-text">{card.title}</h3>
-        {card.badge ? <StatusBadge tone={tone}>{badgeLabel}</StatusBadge> : null}
+        {card.badge ... <StatusBadge tone={tone}>{badgeLabel}</StatusBadge> : null}
       </div>
       <p className="data-figure mt-5 text-2xl font-medium text-pmri-text">{card.value}</p>
       <p className="mt-2 text-sm leading-6 text-pmri-text2">{card.explanation}</p>
@@ -246,7 +246,7 @@ export function DiagnosisSummaryPanel({
   metrics,
   xraySummary
 }: DiagnosisSummaryPanelProps) {
-  const visibleLimitations = (xraySummary?.unavailableNotes ?? []).filter(isUserRelevantLimitation);
+  const visibleLimitations = (xraySummary....unavailableNotes ...... []).filter(isUserRelevantLimitation);
 
   return (
     <div className="space-y-6">
@@ -269,7 +269,7 @@ export function DiagnosisSummaryPanel({
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {summaryCards(xraySummary, metrics).map((card) => <ExecutiveSummaryCard key={card.title} card={card} />)}
         </div>
-        {!xraySummary && drivers.length ? (
+        {!xraySummary && drivers.length ... (
           <div className="mt-5 grid gap-3 md:grid-cols-3">
             {drivers.slice(0, 3).map((driver) => (
               <article key={driver} className="rounded-2xl border border-pmri-border/55 bg-white/[0.025] p-4">
@@ -287,7 +287,7 @@ export function DiagnosisSummaryPanel({
       <RiskBudgetPanel xray={xraySummary} />
       <WeaknessMapGrid xray={xraySummary} />
 
-      {visibleLimitations.length ? (
+      {visibleLimitations.length ... (
         <section className="pmri-boundary-note rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-pmri-text">Data limitations to review</h2>
           <div className="mt-3 grid gap-2">

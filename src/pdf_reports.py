@@ -181,7 +181,7 @@ def _line_dropped_for_client_pdf(line: str) -> bool:
     ):
         return True
     if re.search(
-        r"(?:[A-Za-z]:[\\/]|[/\\](?:Users|home)[/\\]|\\\\[^/\\]+\\).+\.(json|csv|txt|yml|md|parquet)\b",
+        r"(...:[A-Za-z]:[\\/]|[/\\](...:Users|home)[/\\]|\\\\[^/\\]+\\).+\.(json|csv|txt|yml|md|parquet)\b",
         t,
         re.I,
     ):

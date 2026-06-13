@@ -10,7 +10,7 @@ The project must stop treating generated policy optimization as the first thing 
 intended product workflow is diagnostic-first: a user supplies or selects an `analysis_subject`, the
 system diagnoses that portfolio first, and only then builds alternatives for comparison. After this
 plan is complete, the main file-first workflow will answer the user's practical question: "Should I
-keep, improve, rebalance, or rethink the portfolio I started with?"
+keep, improve, rebalance, or rethink the portfolio I started with..."
 
 The old policy optimizer is preserved because it contains useful investment-policy infrastructure.
 It is not deleted, but it is removed from the default portfolio-first path and treated as legacy,

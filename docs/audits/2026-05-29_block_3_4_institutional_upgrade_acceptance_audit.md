@@ -19,16 +19,16 @@ Related:
 
 | Question | Verdict |
 | --- | --- |
-| Is product contract v1.1 present (`block_status`, `ruleset_version`, `stress_diagnosis`, summaries)? | **Yes** — 40 contract tests in `tests/test_current_portfolio_stress_scorecard_v1_contract.py`. |
-| Are worst selectors envelope-owned (no PnL/DD mix)? | **Yes** — `test_worst_selectors_use_required_rules`, `test_worst_historical_uses_drawdown_not_worst_pnl_episode`. |
-| Is `hedge_gap_summary` sourced from Block 3.3 only? | **Yes** — `test_hedge_gap_summary_links_to_block_3_3_main_gap`. |
-| Is optional `pre_stress_confirmation_summary` graceful when 2.4/2.6 missing? | **Yes** — Session 07 tests; `block_status` independent of bridges. |
-| Is Problem Classification v1-primary (`stress_scorecard_source`)? | **Yes** — `tests/test_problem_classification.py`. |
-| Is Candidate Comparison `stress_scorecard_comparison_v1` available when peers have v1? | **Yes** — `tests/test_stress_downstream_integration.py`. |
-| Is AI grounding `current_portfolio_stress_scorecard_context_v1` v1-primary? | **Yes** — `tests/test_ai_commentary_context.py`; stress commentary prefers v1. |
-| Are snapshot mirror / Core MVP validator / live E2E gates in place? | **Yes** — `tests/test_stress_scorecard_materialization.py`, `check_current_portfolio_stress_scorecard_v1`, `tests/test_live_core_e2e_validation.py`. |
-| Is legacy `stress_scorecard_v1` retained secondary? | **Yes** — legacy contract tests unchanged; mandate rollup explicit via `legacy_fallback_used`. |
-| Is institutional upgrade ExecPlan accepted (Sessions 01–13)? | **Yes — 13/13** sessions complete (see §2). |
+| Is product contract v1.1 present (`block_status`, `ruleset_version`, `stress_diagnosis`, summaries)... | **Yes** — 40 contract tests in `tests/test_current_portfolio_stress_scorecard_v1_contract.py`. |
+| Are worst selectors envelope-owned (no PnL/DD mix)... | **Yes** — `test_worst_selectors_use_required_rules`, `test_worst_historical_uses_drawdown_not_worst_pnl_episode`. |
+| Is `hedge_gap_summary` sourced from Block 3.3 only... | **Yes** — `test_hedge_gap_summary_links_to_block_3_3_main_gap`. |
+| Is optional `pre_stress_confirmation_summary` graceful when 2.4/2.6 missing... | **Yes** — Session 07 tests; `block_status` independent of bridges. |
+| Is Problem Classification v1-primary (`stress_scorecard_source`)... | **Yes** — `tests/test_problem_classification.py`. |
+| Is Candidate Comparison `stress_scorecard_comparison_v1` available when peers have v1... | **Yes** — `tests/test_stress_downstream_integration.py`. |
+| Is AI grounding `current_portfolio_stress_scorecard_context_v1` v1-primary... | **Yes** — `tests/test_ai_commentary_context.py`; stress commentary prefers v1. |
+| Are snapshot mirror / Core MVP validator / live E2E gates in place... | **Yes** — `tests/test_stress_scorecard_materialization.py`, `check_current_portfolio_stress_scorecard_v1`, `tests/test_live_core_e2e_validation.py`. |
+| Is legacy `stress_scorecard_v1` retained secondary... | **Yes** — legacy contract tests unchanged; mandate rollup explicit via `legacy_fallback_used`. |
+| Is institutional upgrade ExecPlan accepted (Sessions 01–13)... | **Yes — 13/13** sessions complete (see §2). |
 
 **Bottom line:** Block 3.4 **institutional upgrade is ACCEPTED**. Operators and Core MVP consumers should read `current_portfolio_stress_scorecard_v1` on `stress_report.json` first (`current_portfolio_stress_scorecard_rules_v1_1`). Legacy `stress_scorecard_v1` remains for explicit mandate rollup only.
 

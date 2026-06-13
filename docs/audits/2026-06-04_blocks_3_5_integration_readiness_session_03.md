@@ -10,10 +10,10 @@ Scope: Session 03 only — recheck the canonical one-candidate product path afte
 
 | Question | Verdict |
 | --- | --- |
-| Did the canonical one-candidate command complete fresh subject materialization? | **No** — still blocked by the live FRED `DTB3` risk-free dependency. |
-| Did the lower-level FRED loader succeed for `DTB3`? | **No** — direct `fetch_fred_series("DTB3", ...)` ended in `TimeoutError`. |
-| Did the existing one-candidate product bundle remain validator-clean? | **Yes** — `scripts/verify_live_core_e2e.py --profile product_one_candidate` returned OK. |
-| Did Session 03 change implementation behavior or formulas? | **No** — audit/plan documentation only. |
+| Did the canonical one-candidate command complete fresh subject materialization... | **No** — still blocked by the live FRED `DTB3` risk-free dependency. |
+| Did the lower-level FRED loader succeed for `DTB3`... | **No** — direct `fetch_fred_series("DTB3", ...)` ended in `TimeoutError`. |
+| Did the existing one-candidate product bundle remain validator-clean... | **Yes** — `scripts/verify_live_core_e2e.py --profile product_one_candidate` returned OK. |
+| Did Session 03 change implementation behavior or formulas... | **No** — audit/plan documentation only. |
 
 **Session 03 verdict:** **BLOCKER_RECONFIRMED_CURRENT_BUNDLE_VALID**. The fully fresh `run_portfolio_review.py --candidates equal_weight` path remains blocked by external FRED access, but the existing materialized `product_one_candidate` bundle still validates.
 

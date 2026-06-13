@@ -18,12 +18,12 @@ Related:
 
 | Question | Verdict |
 | --- | --- |
-| Is `hedge_gap_analysis_v1` present on live portfolio-first diagnosis? | **Yes** — `run_portfolio_review.py --skip-candidates` refreshed `Main portfolio/analysis_subject/stress_report.json` with the v1 block. |
-| Does Block 3.3 expose seven risk types with linked synthetic scenarios? | **Yes** — one `by_risk_type[]` row per Core MVP risk type, each mapped to its synthetic scenario. |
-| Is `offset_coverage_ratio` computed wherever contribution data allows? | **Yes** — rows with available `pnl_by_asset_pct` carry `gross_loss_from_assets_hurt`, `positive_contribution_from_assets_helped`, and numeric `offset_coverage_ratio`. |
-| Does the summary identify a main hedge gap and weakest/strongest protection areas? | **Yes** — `summary.main_hedge_gap`, `weakest_protection_area`, and `strongest_protection_area` are populated when ratios are available. |
-| Is Core MVP in diagnostic mode without mandate fields on Block 3.3 rows? | **Yes** — `loss_gate_mode: diagnostic`; no mandate pass/fail fields on v1 rows. |
-| Is the full ExecPlan accepted (Sessions 00–08)? | **Yes — 9/9** sessions complete (see §3). |
+| Is `hedge_gap_analysis_v1` present on live portfolio-first diagnosis... | **Yes** — `run_portfolio_review.py --skip-candidates` refreshed `Main portfolio/analysis_subject/stress_report.json` with the v1 block. |
+| Does Block 3.3 expose seven risk types with linked synthetic scenarios... | **Yes** — one `by_risk_type[]` row per Core MVP risk type, each mapped to its synthetic scenario. |
+| Is `offset_coverage_ratio` computed wherever contribution data allows... | **Yes** — rows with available `pnl_by_asset_pct` carry `gross_loss_from_assets_hurt`, `positive_contribution_from_assets_helped`, and numeric `offset_coverage_ratio`. |
+| Does the summary identify a main hedge gap and weakest/strongest protection areas... | **Yes** — `summary.main_hedge_gap`, `weakest_protection_area`, and `strongest_protection_area` are populated when ratios are available. |
+| Is Core MVP in diagnostic mode without mandate fields on Block 3.3 rows... | **Yes** — `loss_gate_mode: diagnostic`; no mandate pass/fail fields on v1 rows. |
+| Is the full ExecPlan accepted (Sessions 00–08)... | **Yes — 9/9** sessions complete (see §3). |
 
 **Bottom line:** Block 3.3 Hedge Gap Analysis MVP is **complete**. Operators read contribution-based hedge gap diagnostics from `hedge_gap_analysis_v1` on subject `stress_report.json`; legacy `hedge_gap_analysis` remains for backward compatibility but product-facing flows use the v1 block.
 

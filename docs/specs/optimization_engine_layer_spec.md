@@ -79,7 +79,7 @@ they do not change optimizer formulas, eligible-universe rules, or comparison ra
 
 ## Block 5.3 - Expected Return Estimation Matrix
 
-| Path/objective | Expected return used? | Current estimator |
+| Path/objective | Expected return used... | Current estimator |
 | --- | --- | --- |
 | Legacy policy `max_return` | Yes | Sample mean of monthly simple returns over optimization window, or precomputed dual-covariance `mu` where that path is used. |
 | Legacy policy `risk_parity` mode | No | Not applicable; objective is risk parity. |
@@ -201,7 +201,7 @@ that the favored target used an approximate optimizer solve or fallback.
 
 ## Block 5.8 - Optimizer Path Role Matrix
 
-| Path or construction | Current role | Implemented? | Notes |
+| Path or construction | Current role | Implemented... | Notes |
 | --- | --- | --- | --- |
 | `run_optimization.py` / `max_return` | Legacy policy | Yes | Can write policy weights after release checks. |
 | Legacy `risk_parity` objective mode | Diagnostic/code-supported | Yes | Not the default policy objective. |

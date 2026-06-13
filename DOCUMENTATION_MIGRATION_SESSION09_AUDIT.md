@@ -37,7 +37,7 @@ files = [
     'DOCUMENTATION_MIGRATION_PLAN.md','NEW_BUSINESS_VISION.md','NEW_PRODUCT.md',
     'NEW_DIAGNOSTIC_PRODUCT_CONCEPT.md','NEW_ARCHITECTURE.md'
 ]
-link_re = re.compile(r'(?<!!)' + r'\[([^\]]+)\]\(([^)]+)\)')
+link_re = re.compile(r'(...<!!)' + r'\[([^\]]+)\]\(([^)]+)\)')
 errors=[]
 checked=0
 for f in files:

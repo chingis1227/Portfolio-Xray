@@ -148,7 +148,7 @@ Session 00 established the current baseline without implementation changes. Sess
 
 ## Context and Orientation
 
-The repository root is `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`. The current canonical product flow is:
+The repository root is `D:\Desktop\CURSOR TULA DIAGNOSTICS`. The current canonical product flow is:
 
     Input portfolio
     -> Portfolio X-Ray
@@ -308,7 +308,7 @@ Session 10 closes readiness. The final verdict is `BLOCK_6_READY` and `READY_FOR
 
 ## Concrete Steps
 
-From repository root `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`, Session 00 used these audit commands:
+From repository root `D:\Desktop\CURSOR TULA DIAGNOSTICS`, Session 00 used these audit commands:
 
     rg -n "builder|Builder|portfolio_alternatives_builder|builder_prefill|Generate candidate" src tests docs *.py *.md
     rg -n "candidate_launchpad|Candidate Launchpad|Launchpad" src tests docs *.py *.md

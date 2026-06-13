@@ -145,8 +145,8 @@ def main() -> None:
         "  instrument: string;\n"
         "  kind: InstrumentKind;\n"
         "  sleeve: InstrumentSleeve;\n"
-        "  currency?: string;\n"
-        "  searchTerms?: string[];\n"
+        "  currency...: string;\n"
+        "  searchTerms...: string[];\n"
         "};\n\n"
         f"export const instrumentUniverse: Instrument[] = {body};\n\n"
         "export const instrumentByTicker = new Map(instrumentUniverse.map((item) => [item.ticker, item]));\n",

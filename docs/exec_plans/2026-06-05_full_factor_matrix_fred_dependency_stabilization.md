@@ -93,11 +93,11 @@ Do not add an equity-only replacement to `build_factor_matrix`. Equity-only fall
 
 ## Concrete Steps
 
-From repository root `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`:
+From repository root `D:\Desktop\CURSOR TULA DIAGNOSTICS`:
 
 1. Inspect factor loading and cache behavior:
 
-    rg -n "build_factor_matrix|real_rates_weekly|DTB3|FRED|risk.?free|factor_matrix" -S .
+    rg -n "build_factor_matrix|real_rates_weekly|DTB3|FRED|risk....free|factor_matrix" -S .
     rg -n "fetch_fred_series\(" src tests -S
 
 2. Implement bounded FRED fetches in `src/data_fred.py`.

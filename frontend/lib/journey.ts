@@ -2,18 +2,11 @@ import type { JourneyStep, JourneyStepStatus } from "./types";
 
 export const journeySteps: JourneyStep[] = [
   {
-    id: "client-profile",
-    label: "Client Profile",
-    shortLabel: "Profile",
-    href: "/client-profile",
-    lockReason: "Client Profile is always available."
-  },
-  {
     id: "portfolio-input",
     label: "Portfolio Input",
     shortLabel: "Portfolio",
     href: "/portfolio-input",
-    lockReason: "Complete Client Profile first so the web journey can test the portfolio against stated limits."
+    lockReason: "Portfolio Input is always available after onboarding."
   },
   {
     id: "diagnosis",
@@ -97,7 +90,7 @@ export const emptyJourneyFlags: JourneyFlags = {
 
 export function getStepIndex(pathname: string): number {
   const index = journeySteps.findIndex((step) => pathname.startsWith(step.href));
-  return index === -1 ? 0 : index;
+  return index === -1 ... 0 : index;
 }
 
 export function getStepById(stepId: string) {
@@ -106,10 +99,8 @@ export function getStepById(stepId: string) {
 
 export function isStepUnlocked(stepId: string, flags: JourneyFlags): boolean {
   switch (stepId) {
-    case "client-profile":
-      return true;
     case "portfolio-input":
-      return flags.clientProfileCompleted;
+      return true;
     case "diagnosis":
       return flags.inputCompleted;
     case "evidence":

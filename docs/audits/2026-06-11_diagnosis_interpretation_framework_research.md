@@ -8,11 +8,11 @@ dependencies, generated outputs, or `config.yml`.
 
 ## User question in plain language
 
-The question is not "how do we calculate volatility, drawdown, beta, or stress loss?" The question is:
+The question is not "how do we calculate volatility, drawdown, beta, or stress loss..." The question is:
 
 > After Portfolio X-Ray and Stress Test Lab calculate many metrics, what professional process turns
 > those metrics into a clear diagnosis, a root cause, and a suggested next test without hallucinating
-> or pretending to give trade advice?
+> or pretending to give trade advice...
 
 The short answer is: the product needs an explicit **evidence-to-diagnosis framework**. Metrics should
 not speak directly to the user. Each metric should first become a bounded evidence signal; related
@@ -61,7 +61,7 @@ one vendor gives us a complete copyable system.
 
 1. Morningstar Portfolio X-Ray help and report materials describe portfolio look-through as a way to
    inspect holdings from multiple angles: asset allocation, style, region, sector, and overlap. This
-   supports Portfolio MRI's idea that X-Ray should answer "what do I really own?" before any
+   supports Portfolio MRI's idea that X-Ray should answer "what do I really own..." before any
    optimization step. Sources: `https://www.morningstar.com/help-center/portfolio/xray`,
    `https://workstation.morningstar.com/support/article/bltb6b826111507c791/UnderstandingtheclassicPortfolioX-RayReport`,
    and Morningstar Portfolio X-Ray report examples.
@@ -102,7 +102,7 @@ one vendor gives us a complete copyable system.
    explains why stress tests are useful: they connect potential loss to a named event, which is often
    more meaningful to portfolio managers than a single distribution statistic. This supports Stress
    Lab as a confirmation layer for X-Ray weaknesses. Source:
-   `https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID1708243_code1141713.pdf?abstractid=1708243&mirid=1`.
+   `https://papers.ssrn.com/sol3/Delivery.cfm/SSRN_ID1708243_code1141713.pdf...abstractid=1708243&mirid=1`.
 
 8. AQR's practical guide to measuring factor exposures supports the idea that regression/factor
    analysis helps investors understand what risks are actually present in the portfolio. This is useful
@@ -292,9 +292,9 @@ Think of the system like a doctor:
 2. Problem Classification is the doctor reading the evidence.
 3. A metric by itself is not a diagnosis. High volatility is like a fever: it tells us something is
    wrong, but not why.
-4. The framework should ask: what is the underlying cause? Concentration? Weak hedge behavior? Rates
-   sensitivity? Bad data?
-5. Then it should say: what test would confirm whether fixing that cause helps?
+4. The framework should ask: what is the underlying cause... Concentration... Weak hedge behavior... Rates
+   sensitivity... Bad data...
+5. Then it should say: what test would confirm whether fixing that cause helps...
 6. Only after testing a candidate should the system give a verdict: keep current, no-trade, test
    another idea, evidence insufficient, or consider a rebalance review.
 

@@ -10,13 +10,13 @@ Prerequisite: [Session 04 problem scoring](2026-05-29_block_4_v2_session_04_prob
 
 | Question | Verdict |
 | --- | --- |
-| `config/block_4_thresholds.yml` added? | **Yes** |
-| Threshold loader implemented? | **Yes** — `src/block_4/thresholds.py` |
-| Scoring uses config thresholds? | **Yes** — `score_problems(..., thresholds=...)` |
-| Severity classifier? | **Yes** — `classify_severity()` |
-| Confidence classifier? | **Yes** — `classify_confidence()` |
-| Row fields populated? | **Yes** — `ProblemScoreRow.severity`, `.confidence` |
-| Session 05 tests? | **Yes** — `tests/test_block_4_severity_confidence.py` (**6 passed**) |
+| `config/block_4_thresholds.yml` added... | **Yes** |
+| Threshold loader implemented... | **Yes** — `src/block_4/thresholds.py` |
+| Scoring uses config thresholds... | **Yes** — `score_problems(..., thresholds=...)` |
+| Severity classifier... | **Yes** — `classify_severity()` |
+| Confidence classifier... | **Yes** — `classify_confidence()` |
+| Row fields populated... | **Yes** — `ProblemScoreRow.severity`, `.confidence` |
+| Session 05 tests... | **Yes** — `tests/test_block_4_severity_confidence.py` (**6 passed**) |
 
 **Session 05 verdict:** **PASS**
 

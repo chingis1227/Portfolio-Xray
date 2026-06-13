@@ -62,7 +62,7 @@ Finally, update `run_report.py` and `run_optimization.py` to compute and export 
 
 All commands run from the repository root:
 
-    C:\Users\ShumeikoYe\OneDrive\Рабочий стол\Курсор Модель Блекрока 2
+    C:\Users\ShumeikoYe\OneDrive\Desktop\Cursor BlackRock Model 2
 
 Run focused tests:
 

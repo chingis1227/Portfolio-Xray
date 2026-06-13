@@ -10,12 +10,12 @@ Prerequisite: [Session 03 evidence extraction](2026-05-29_block_4_v2_session_03_
 
 | Question | Verdict |
 | --- | --- |
-| `score_problems()` implemented? | **Yes** — `src/block_4/problem_scoring.py` |
-| All 15 taxonomy ids evaluated? | **Yes** — `problems_evaluated == 15` |
-| Required / supporting / negative signal logic? | **Yes** — OR-groups for multi-signal problems |
-| Composite signals (`no_material_problem`, `conflicting_signal_bundle`)? | **Yes** |
-| Scoring audit fields (`raw_score`, `decision_score`, `stress_confirmation`, `materiality`)? | **Yes** |
-| Session 04 tests? | **Yes** — `tests/test_block_4_problem_scoring.py` (**6 passed**) |
+| `score_problems()` implemented... | **Yes** — `src/block_4/problem_scoring.py` |
+| All 15 taxonomy ids evaluated... | **Yes** — `problems_evaluated == 15` |
+| Required / supporting / negative signal logic... | **Yes** — OR-groups for multi-signal problems |
+| Composite signals (`no_material_problem`, `conflicting_signal_bundle`)... | **Yes** |
+| Scoring audit fields (`raw_score`, `decision_score`, `stress_confirmation`, `materiality`)... | **Yes** |
+| Session 04 tests... | **Yes** — `tests/test_block_4_problem_scoring.py` (**6 passed**) |
 
 **Session 04 verdict:** **PASS**
 

@@ -36,7 +36,7 @@ Three Minimum-Variance construction modes:
 - **minimum_variance_constrained** — **primary** project baseline for the lowest-volatility portfolio
   under the same long-only box bounds as ``run_optimization`` (feasibility + config min/max + Young
   caps when dual covariance is enabled). Answers: *what is the lowest volatility achievable under
-  these constraints?*
+  these constraints...*
 - **minimum_variance_uncapped_long_only** — only ``w \\ge 0``, ``\\sum w = 1`` (no min/max
   weight, no young caps, no basket caps). Diagnostic / relaxed-bounds reference, not the primary
   constrained lowest-vol baseline.

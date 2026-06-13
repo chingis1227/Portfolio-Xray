@@ -497,7 +497,7 @@ def _parse_percent_value(val: Any, field_name: str) -> float | None:
     
     if isinstance(val, str):
         val = val.strip()
-        match = re.match(r'^(-?\d+(?:\.\d+)?)\s*%$', val)
+        match = re.match(r'^(-...\d+(...:\.\d+)...)\s*%$', val)
         if match:
             return float(match.group(1)) / 100.0
         raise ConfigValidationError(

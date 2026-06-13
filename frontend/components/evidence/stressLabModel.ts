@@ -79,19 +79,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function record(value: unknown): Record<string, unknown> {
-  return isRecord(value) ? value : {};
+  return isRecord(value) ... value : {};
 }
 
 function array(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : [];
+  return Array.isArray(value) ... value : [];
 }
 
 function text(value: unknown, fallback = "") {
-  return typeof value === "string" && value.trim() ? value : fallback;
+  return typeof value === "string" && value.trim() ... value : fallback;
 }
 
 function number(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
+  return typeof value === "number" && Number.isFinite(value) ... value : null;
 }
 
 function firstNumber(...values: unknown[]) {
@@ -102,27 +102,27 @@ function firstNumber(...values: unknown[]) {
   return null;
 }
 
-export function formatStressPercent(value: number | null | undefined, options: { signed?: boolean; digits?: number } = {}) {
+export function formatStressPercent(value: number | null | undefined, options: { signed...: boolean; digits...: number } = {}) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "Unavailable";
-  const digits = options.digits ?? 1;
+  const digits = options.digits ...... 1;
   const pct = value * 100;
-  const sign = options.signed && pct > 0 ? "+" : "";
+  const sign = options.signed && pct > 0 ... "+" : "";
   return `${sign}${pct.toFixed(digits).replace(/\.0$/, "")}%`;
 }
 
 function scenarioLabel(id: unknown) {
   const key = text(id);
-  return SCENARIO_LABELS[key] ?? normalizeDisplayLabel(key, "Unavailable");
+  return SCENARIO_LABELS[key] ...... normalizeDisplayLabel(key, "Unavailable");
 }
 
 function protectionLabel(id: unknown) {
   const key = text(id);
-  return PROTECTION_LABELS[key] ?? normalizeDisplayLabel(key, "Stress protection");
+  return PROTECTION_LABELS[key] ...... normalizeDisplayLabel(key, "Stress protection");
 }
 
 function factorLabel(id: unknown, fallback = "Factor") {
   const key = text(id);
-  return FACTOR_LABELS[key] ?? normalizeDisplayLabel(key, fallback);
+  return FACTOR_LABELS[key] ...... normalizeDisplayLabel(key, fallback);
 }
 
 function statusToneFromLoss(value: number | null, isWorst: boolean): StatusTone {
@@ -142,8 +142,8 @@ function scenarioSeverity(value: number | null, isWorst: boolean) {
   return "Less damaging";
 }
 
-function scenarioEvidenceQuality(row: Record<string, unknown>, rawRow?: Record<string, unknown>) {
-  const syntheticAssumptions = record(rawRow?.synthetic_assumptions);
+function scenarioEvidenceQuality(row: Record<string, unknown>, rawRow...: Record<string, unknown>) {
+  const syntheticAssumptions = record(rawRow....synthetic_assumptions);
   const syntheticConfidence = syntheticAssumptions.beta_confidence;
   const historicalQuality = row.data_quality;
   const availability = text(row.availability);
@@ -156,7 +156,7 @@ function scenarioEvidenceQuality(row: Record<string, unknown>, rawRow?: Record<s
     if (quality.includes("insufficient")) return "Insufficient data";
     return evidenceQualityLabel(quality);
   }
-  return availability === "available" ? "Strong evidence" : "Limited evidence";
+  return availability === "available" ... "Strong evidence" : "Limited evidence";
 }
 
 function mapContributionRows(value: unknown): ContributionRow[] {
@@ -165,7 +165,7 @@ function mapContributionRows(value: unknown): ContributionRow[] {
     .map(([ticker, raw]) => {
       const parsed = number(raw);
       if (parsed === null) return null;
-      const status = parsed > 0 ? "Helped" : parsed < 0 ? "Hurt" : "Neutral";
+      const status = parsed > 0 ... "Helped" : parsed < 0 ... "Hurt" : "Neutral";
       return { ticker, value: parsed, status } satisfies ContributionRow;
     })
     .filter((item): item is ContributionRow => Boolean(item))
@@ -208,7 +208,7 @@ function factorRowsFromMap(value: unknown): FactorContributionRow[] {
       return {
         factor: factorLabel(factor),
         value: parsed,
-        status: parsed < 0 ? "Loss driver" : parsed > 0 ? "Offset" : "Neutral"
+        status: parsed < 0 ... "Loss driver" : parsed > 0 ... "Offset" : "Neutral"
       } satisfies FactorContributionRow;
     })
     .filter((item): item is FactorContributionRow => Boolean(item))
@@ -222,9 +222,9 @@ function factorRowsFromLists(driverRows: unknown, helpedRows: unknown): FactorCo
       const parsed = number(item.pnl_pct);
       if (parsed === null) return null;
       return {
-        factor: factorLabel(item.factor_short ?? item.beta_key ?? item.factor, "Factor"),
+        factor: factorLabel(item.factor_short ...... item.beta_key ...... item.factor, "Factor"),
         value: parsed,
-        status: parsed < 0 ? "Loss driver" : parsed > 0 ? "Offset" : "Neutral"
+        status: parsed < 0 ... "Loss driver" : parsed > 0 ... "Offset" : "Neutral"
       } satisfies FactorContributionRow;
     })
     .filter((item): item is FactorContributionRow => Boolean(item))
@@ -237,26 +237,26 @@ function syntheticScenarioFromRow({
   worstScenarioId
 }: {
   row: Record<string, unknown>;
-  rawRow?: Record<string, unknown>;
+  rawRow...: Record<string, unknown>;
   worstScenarioId: string;
 }): StressScenarioDetail {
   const id = text(row.scenario_id);
   const portfolioLossPct = firstNumber(row.portfolio_loss_pct, row.portfolio_pnl_pct);
   const isWorst = Boolean(id && id === worstScenarioId);
   const lossContribution = record(row.loss_contribution);
-  const contributionMap = lossContribution.pnl_by_asset_pct ?? row.pnl_by_asset_pct;
+  const contributionMap = lossContribution.pnl_by_asset_pct ...... row.pnl_by_asset_pct;
   const rows = mapContributionRows(contributionMap);
   const split = splitContributions(rows);
   const assetsHurt = assetRowsFromList(lossContribution.assets_hurt, "Hurt");
-  const assetsHelped = assetRowsFromList(row.assets_helped ?? lossContribution.assets_helped, "Helped");
+  const assetsHelped = assetRowsFromList(row.assets_helped ...... lossContribution.assets_helped, "Helped");
   const factorAttribution = record(row.factor_attribution);
   const factors = factorRowsFromMap(factorAttribution.pnl_by_factor_pct).length
-    ? factorRowsFromMap(factorAttribution.pnl_by_factor_pct)
+    ... factorRowsFromMap(factorAttribution.pnl_by_factor_pct)
     : factorRowsFromLists(factorAttribution.top_factor_drivers, factorAttribution.helped_factors);
-  const helped = assetsHelped.length ? assetsHelped : split.helped;
-  const hurt = assetsHurt.length ? assetsHurt : split.hurt;
+  const helped = assetsHelped.length ... assetsHelped : split.helped;
+  const hurt = assetsHurt.length ... assetsHurt : split.hurt;
   const quality = scenarioEvidenceQuality(row, rawRow);
-  const availability = text(row.availability, portfolioLossPct === null ? "unavailable" : "available");
+  const availability = text(row.availability, portfolioLossPct === null ... "unavailable" : "available");
 
   return {
     id,
@@ -282,7 +282,7 @@ function syntheticScenarioFromRow({
       assetsHelped: helped,
       kind: "synthetic"
     }),
-    limitation: availability === "available" ? undefined : "Scenario result is unavailable for this stress run."
+    limitation: availability === "available" ... undefined : "Scenario result is unavailable for this stress run."
   };
 }
 
@@ -293,24 +293,24 @@ function historicalScenarioFromRow({
   row: Record<string, unknown>;
   worstEpisode: string;
 }): StressScenarioDetail {
-  const id = text(row.episode ?? row.scenario_id);
+  const id = text(row.episode ...... row.scenario_id);
   const portfolioLossPct = firstNumber(row.portfolio_loss_pct, row.pnl_real_episode);
   const drawdownPct = firstNumber(row.drawdown_pct, row.max_dd);
   const isWorst = Boolean(id && id === worstEpisode);
   const lossContribution = record(row.loss_contribution);
-  const rows = mapContributionRows(lossContribution.pnl_by_asset_pct ?? row.pnl_by_asset_pct);
+  const rows = mapContributionRows(lossContribution.pnl_by_asset_pct ...... row.pnl_by_asset_pct);
   const split = splitContributions(rows);
   const assetsHurt = assetRowsFromList(lossContribution.assets_hurt, "Hurt");
-  const assetsHelped = assetRowsFromList(row.assets_helped ?? lossContribution.assets_helped, "Helped");
+  const assetsHelped = assetRowsFromList(row.assets_helped ...... lossContribution.assets_helped, "Helped");
   const factorAttribution = record(row.factor_attribution);
   const factors = factorRowsFromMap(factorAttribution.pnl_by_factor_pct).length
-    ? factorRowsFromMap(factorAttribution.pnl_by_factor_pct)
+    ... factorRowsFromMap(factorAttribution.pnl_by_factor_pct)
     : factorRowsFromLists(factorAttribution.top_factor_drivers, factorAttribution.helped_factors);
   const quality = scenarioEvidenceQuality(row);
-  const availability = text(row.availability, drawdownPct === null ? "unavailable" : "available");
+  const availability = text(row.availability, drawdownPct === null ... "unavailable" : "available");
   const limitation = availability === "available"
-    ? undefined
-    : text(row.limitation_summary ?? row.user_note, "Historical replay is limited for this episode.");
+    ... undefined
+    : text(row.limitation_summary ...... row.user_note, "Historical replay is limited for this episode.");
 
   return {
     id,
@@ -320,21 +320,21 @@ function historicalScenarioFromRow({
     portfolioLossPct,
     drawdownPct,
     availability,
-    severityLabel: scenarioSeverity(drawdownPct ?? portfolioLossPct, isWorst),
-    severityTone: statusToneFromLoss(drawdownPct ?? portfolioLossPct, isWorst),
+    severityLabel: scenarioSeverity(drawdownPct ...... portfolioLossPct, isWorst),
+    severityTone: statusToneFromLoss(drawdownPct ...... portfolioLossPct, isWorst),
     evidenceQualityLabel: quality,
     evidenceTone: evidenceTone(quality),
     isWorst,
     dataNote: limitation,
     lossContributions: rows,
-    assetsHurt: assetsHurt.length ? assetsHurt : split.hurt,
-    assetsHelped: assetsHelped.length ? assetsHelped : split.helped,
+    assetsHurt: assetsHurt.length ... assetsHurt : split.hurt,
+    assetsHelped: assetsHelped.length ... assetsHelped : split.helped,
     factorAttribution: factors,
     interpretation: buildScenarioInterpretation({
       displayName: scenarioLabel(id),
-      portfolioLossPct: drawdownPct ?? portfolioLossPct,
-      assetsHurt: assetsHurt.length ? assetsHurt : split.hurt,
-      assetsHelped: assetsHelped.length ? assetsHelped : split.helped,
+      portfolioLossPct: drawdownPct ...... portfolioLossPct,
+      assetsHurt: assetsHurt.length ... assetsHurt : split.hurt,
+      assetsHelped: assetsHelped.length ... assetsHelped : split.helped,
       kind: "historical"
     }),
     limitation
@@ -356,15 +356,15 @@ function buildScenarioInterpretation({
 }) {
   if (portfolioLossPct === null) {
     return kind === "historical"
-      ? `${displayName} replay is limited because the current holdings do not have enough usable history for this period.`
+      ... `${displayName} replay is limited because the current holdings do not have enough usable history for this period.`
       : `${displayName} is in the scenario set, but the portfolio result is unavailable for this run.`;
   }
   const hurt = assetsHurt.slice(0, 3).map((item) => item.ticker).join(", ");
   const helped = assetsHelped.slice(0, 3).map((item) => item.ticker).join(", ");
   const offset = helped
-    ? `${helped} helped offset part of the loss.`
+    ... `${helped} helped offset part of the loss.`
     : "No meaningful helped assets were detected in this scenario.";
-  return `${displayName} shows ${formatStressPercent(portfolioLossPct)} stress impact for the current portfolio. ${hurt ? `${hurt} drove the largest losses. ` : ""}${offset}`;
+  return `${displayName} shows ${formatStressPercent(portfolioLossPct)} stress impact for the current portfolio. ${hurt ... `${hurt} drove the largest losses. ` : ""}${offset}`;
 }
 
 function rowById(rows: unknown[], field: "scenario_id" | "episode", id: string) {
@@ -374,9 +374,9 @@ function rowById(rows: unknown[], field: "scenario_id" | "episode", id: string) 
 function buildSyntheticScenarios(stress: Record<string, unknown>) {
   const stressResults = record(stress.stress_results_v1);
   const envelope = record(stressResults.envelope);
-  const worstSynthetic = record(envelope.worst_synthetic ?? record(stress.current_portfolio_stress_scorecard_v1).worst_synthetic_scenario);
+  const worstSynthetic = record(envelope.worst_synthetic ...... record(stress.current_portfolio_stress_scorecard_v1).worst_synthetic_scenario);
   const worstScenarioId = text(worstSynthetic.scenario_id, "recession_severe");
-  const rows = array(stressResults.synthetic_scenarios ?? stressResults.synthetic);
+  const rows = array(stressResults.synthetic_scenarios ...... stressResults.synthetic);
   const rawRows = array(stress.scenario_results);
   return SYNTHETIC_ORDER.map((id) => {
     const row = rowById(rows, "scenario_id", id);
@@ -389,11 +389,11 @@ function buildSyntheticScenarios(stress: Record<string, unknown>) {
 function buildHistoricalScenarios(stress: Record<string, unknown>) {
   const stressResults = record(stress.stress_results_v1);
   const envelope = record(stressResults.envelope);
-  const worstHistorical = record(envelope.worst_historical ?? record(stress.current_portfolio_stress_scorecard_v1).worst_historical_scenario);
+  const worstHistorical = record(envelope.worst_historical ...... record(stress.current_portfolio_stress_scorecard_v1).worst_historical_scenario);
   const worstEpisode = text(worstHistorical.episode, "2022");
-  const rows = array(stressResults.historical_episodes ?? stressResults.historical);
+  const rows = array(stressResults.historical_episodes ...... stressResults.historical);
   return HISTORICAL_ORDER.map((id) => {
-    const row = rowById(rows, "episode", id) ?? rowById(rows, "scenario_id", id);
+    const row = rowById(rows, "episode", id) ...... rowById(rows, "scenario_id", id);
     if (!row) return unavailableScenario(id, "historical", id === worstEpisode);
     return historicalScenarioFromRow({ row, worstEpisode });
   });
@@ -403,7 +403,7 @@ function unavailableScenario(id: string, kind: "synthetic" | "historical", isWor
   return {
     id,
     displayName: scenarioLabel(id),
-    groupLabel: kind === "synthetic" ? "Synthetic shock" : "Historical episode",
+    groupLabel: kind === "synthetic" ... "Synthetic shock" : "Historical episode",
     kind,
     portfolioLossPct: null,
     drawdownPct: null,
@@ -413,16 +413,16 @@ function unavailableScenario(id: string, kind: "synthetic" | "historical", isWor
     evidenceQualityLabel: "Insufficient data",
     evidenceTone: "slate",
     isWorst,
-    dataNote: kind === "historical" ? "Replay limited" : "Scenario result unavailable",
+    dataNote: kind === "historical" ... "Replay limited" : "Scenario result unavailable",
     lossContributions: [],
     assetsHurt: [],
     assetsHelped: [],
     factorAttribution: [],
     interpretation: kind === "historical"
-      ? `${scenarioLabel(id)} replay is limited for the current portfolio.`
+      ... `${scenarioLabel(id)} replay is limited for the current portfolio.`
       : `${scenarioLabel(id)} is in the scenario set, but this run did not return a usable result.`,
     limitation: kind === "historical"
-      ? "Historical replay is limited because asset-level history is incomplete."
+      ... "Historical replay is limited because asset-level history is incomplete."
       : "Synthetic stress result is unavailable for this run."
   };
 }
@@ -450,20 +450,20 @@ function buildHedgeGap(stress: Record<string, unknown>, scenarios: StressScenari
   const summary = record(hedge.summary);
   const scorecard = record(stress.current_portfolio_stress_scorecard_v1);
   const scorecardOffset = record(scorecard.offset_coverage_summary);
-  const mainGap = record(summary.main_hedge_gap ?? record(scorecard.main_hedge_gap).main_hedge_gap);
-  const riskType = text(mainGap.risk_type ?? mainGap.protection_type ?? scorecardOffset.risk_type ?? summary.weakest_protection_area);
-  const scenarioId = text(mainGap.linked_scenario_id ?? mainGap.scenario_id ?? scorecardOffset.linked_scenario_id);
+  const mainGap = record(summary.main_hedge_gap ...... record(scorecard.main_hedge_gap).main_hedge_gap);
+  const riskType = text(mainGap.risk_type ...... mainGap.protection_type ...... scorecardOffset.risk_type ...... summary.weakest_protection_area);
+  const scenarioId = text(mainGap.linked_scenario_id ...... mainGap.scenario_id ...... scorecardOffset.linked_scenario_id);
   const row = array(hedge.by_risk_type).map(record).find((item) => {
     return text(item.risk_type) === riskType || text(item.linked_scenario_id) === scenarioId;
   });
-  const grossLoss = firstNumber(row?.gross_loss_from_assets_hurt, scorecardOffset.gross_loss_from_assets_hurt);
-  const positive = firstNumber(row?.positive_contribution_from_assets_helped, scorecardOffset.positive_contribution_from_assets_helped);
-  const offset = firstNumber(row?.offset_coverage_ratio, mainGap.offset_coverage_ratio, scorecardOffset.offset_coverage_ratio);
+  const grossLoss = firstNumber(row....gross_loss_from_assets_hurt, scorecardOffset.gross_loss_from_assets_hurt);
+  const positive = firstNumber(row....positive_contribution_from_assets_helped, scorecardOffset.positive_contribution_from_assets_helped);
+  const offset = firstNumber(row....offset_coverage_ratio, mainGap.offset_coverage_ratio, scorecardOffset.offset_coverage_ratio);
   const scenario = scenarios.find((item) => item.id === scenarioId);
-  const hurt = row ? assetRowsFromList(row.assets_hurt, "Hurt") : scenario?.assetsHurt ?? [];
-  const helped = row ? assetRowsFromList(row.assets_helped, "Helped") : scenario?.assetsHelped ?? [];
-  const statusLabel = protectionStatusLabel(row?.protection_status ?? mainGap.protection_status);
-  const grossText = formatStressPercent(grossLoss ? -Math.abs(grossLoss) : grossLoss);
+  const hurt = row ... assetRowsFromList(row.assets_hurt, "Hurt") : scenario....assetsHurt ...... [];
+  const helped = row ... assetRowsFromList(row.assets_helped, "Helped") : scenario....assetsHelped ...... [];
+  const statusLabel = protectionStatusLabel(row....protection_status ...... mainGap.protection_status);
+  const grossText = formatStressPercent(grossLoss ... -Math.abs(grossLoss) : grossLoss);
   const helpedText = formatStressPercent(positive, { signed: true });
   const offsetText = formatStressPercent(offset);
 
@@ -474,18 +474,18 @@ function buildHedgeGap(stress: Record<string, unknown>, scenarios: StressScenari
     positiveContributionFromHelped: positive,
     offsetCoverageRatio: offset,
     statusLabel,
-    statusTone: protectionTone(row?.protection_status ?? mainGap.protection_status),
+    statusTone: protectionTone(row....protection_status ...... mainGap.protection_status),
     assetsHurt: hurt,
     assetsHelped: helped,
     interpretation: offset === null
-      ? "Offset coverage is unavailable because the stress run did not return enough asset contribution detail."
+      ... "Offset coverage is unavailable because the stress run did not return enough asset contribution detail."
       : `Only ${offsetText} of losses from hurt assets were offset by assets that helped in ${scenarioLabel(scenarioId)}. Hurt assets contributed ${grossText}; helped assets contributed ${helpedText}.`
   };
 }
 
 function joinTickers(rows: ContributionRow[], fallback: string) {
   const labels = rows.slice(0, 3).map((row) => row.ticker);
-  return labels.length ? labels.join(", ") : fallback;
+  return labels.length ... labels.join(", ") : fallback;
 }
 
 function buildScorecard({
@@ -504,13 +504,13 @@ function buildScorecard({
   const scorecard = record(stress.current_portfolio_stress_scorecard_v1);
   const diagnosis = record(scorecard.stress_diagnosis);
   const coverage = record(scorecard.stress_coverage);
-  const worstSynthetic = synthetic.find((item) => item.isWorst) ?? selectedScenario;
-  const worstHistorical = historical.find((item) => item.isWorst) ?? historical.find((item) => item.drawdownPct !== null);
-  const syntheticAvailable = firstNumber(coverage.n_synthetic_available) ?? synthetic.filter((item) => item.availability === "available").length;
-  const syntheticTotal = firstNumber(coverage.n_synthetic_total) ?? synthetic.length;
-  const historicalAvailable = firstNumber(coverage.n_historical_available) ?? historical.filter((item) => item.availability === "available").length;
-  const historicalTotal = firstNumber(coverage.n_historical_total) ?? historical.length;
-  const quality = evidenceQualityLabel(diagnosis.diagnosis_confidence ?? scorecard.block_status ?? "partial");
+  const worstSynthetic = synthetic.find((item) => item.isWorst) ...... selectedScenario;
+  const worstHistorical = historical.find((item) => item.isWorst) ...... historical.find((item) => item.drawdownPct !== null);
+  const syntheticAvailable = firstNumber(coverage.n_synthetic_available) ...... synthetic.filter((item) => item.availability === "available").length;
+  const syntheticTotal = firstNumber(coverage.n_synthetic_total) ...... synthetic.length;
+  const historicalAvailable = firstNumber(coverage.n_historical_available) ...... historical.filter((item) => item.availability === "available").length;
+  const historicalTotal = firstNumber(coverage.n_historical_total) ...... historical.length;
+  const quality = evidenceQualityLabel(diagnosis.diagnosis_confidence ...... scorecard.block_status ...... "partial");
 
   return [
     {
@@ -521,27 +521,27 @@ function buildScorecard({
     },
     {
       label: "Worst historical episode",
-      value: worstHistorical?.drawdownPct !== null && worstHistorical?.drawdownPct !== undefined ? worstHistorical.displayName : "Historical replay limited",
-      detail: worstHistorical?.drawdownPct !== null && worstHistorical?.drawdownPct !== undefined
-        ? `Max drawdown: ${formatStressPercent(worstHistorical.drawdownPct)}`
+      value: worstHistorical....drawdownPct !== null && worstHistorical....drawdownPct !== undefined ... worstHistorical.displayName : "Historical replay limited",
+      detail: worstHistorical....drawdownPct !== null && worstHistorical....drawdownPct !== undefined
+        ... `Max drawdown: ${formatStressPercent(worstHistorical.drawdownPct)}`
         : "Older episodes have incomplete holding history.",
-      tone: worstHistorical?.drawdownPct !== null && worstHistorical?.drawdownPct !== undefined ? worstHistorical.severityTone : "amber"
+      tone: worstHistorical....drawdownPct !== null && worstHistorical....drawdownPct !== undefined ... worstHistorical.severityTone : "amber"
     },
     {
       label: "Main loss drivers",
       value: joinTickers(selectedScenario.assetsHurt, "Unavailable"),
       detail: selectedScenario.assetsHurt.length
-        ? "These positions drive most of the selected stress loss."
+        ... "These positions drive most of the selected stress loss."
         : "Asset-level loss contribution is unavailable.",
-      tone: selectedScenario.assetsHurt.length ? "red" : "slate"
+      tone: selectedScenario.assetsHurt.length ... "red" : "slate"
     },
     {
       label: "Assets that helped in worst scenario",
       value: joinTickers(selectedScenario.assetsHelped, "No meaningful offset detected"),
       detail: selectedScenario.assetsHelped.length
-        ? `Only positive contribution in ${selectedScenario.displayName} is counted as helped.`
+        ... `Only positive contribution in ${selectedScenario.displayName} is counted as helped.`
         : `No assets had positive contribution in ${selectedScenario.displayName}.`,
-      tone: selectedScenario.assetsHelped.length ? "green" : "amber"
+      tone: selectedScenario.assetsHelped.length ... "green" : "amber"
     },
     {
       label: "Main hedge gap",
@@ -559,7 +559,7 @@ function buildScorecard({
 }
 
 function confirmationDetail(row: Record<string, unknown>) {
-  const scenario = scenarioLabel(row.linked_scenario_id ?? row.risk_type);
+  const scenario = scenarioLabel(row.linked_scenario_id ...... row.risk_type);
   const status = protectionStatusLabel(row.protection_status).toLowerCase();
   const offset = formatStressPercent(firstNumber(row.offset_coverage_ratio));
   const loss = formatStressPercent(firstNumber(row.portfolio_loss_pct));
@@ -575,19 +575,19 @@ function buildXRayConfirmation(stress: Record<string, unknown>, historical: Stre
     .filter((row) => ["confirmed", "partially_confirmed"].includes(text(row.confirmation_status)))
     .slice(0, 4)
     .map((row) => ({
-      label: scenarioLabel(row.linked_scenario_id ?? row.risk_type),
+      label: scenarioLabel(row.linked_scenario_id ...... row.risk_type),
       detail: confirmationDetail(row),
-      tone: text(row.confirmation_status) === "confirmed" ? "amber" : "slate"
+      tone: text(row.confirmation_status) === "confirmed" ... "amber" : "slate"
     }));
 
   const lessMaterial: XRayConfirmationRow[] = rows
     .filter((row) => ["not_confirmed", "not_applicable"].includes(text(row.confirmation_status)))
     .slice(0, 4)
     .map((row) => ({
-      label: scenarioLabel(row.linked_scenario_id ?? row.risk_type),
+      label: scenarioLabel(row.linked_scenario_id ...... row.risk_type),
       detail: text(row.confirmation_status) === "not_confirmed"
-        ? `${scenarioLabel(row.linked_scenario_id ?? row.risk_type)} did not confirm the pre-stress weakness in this review.`
-        : `${scenarioLabel(row.linked_scenario_id ?? row.risk_type)} was less material in the pre-stress weakness review.`,
+        ... `${scenarioLabel(row.linked_scenario_id ...... row.risk_type)} did not confirm the pre-stress weakness in this review.`
+        : `${scenarioLabel(row.linked_scenario_id ...... row.risk_type)} was less material in the pre-stress weakness review.`,
       tone: "slate"
     }));
 
@@ -596,7 +596,7 @@ function buildXRayConfirmation(stress: Record<string, unknown>, historical: Stre
     .slice(0, 3)
     .map((item) => ({
       label: item.displayName,
-      detail: item.limitation ?? "Historical replay is limited for this episode.",
+      detail: item.limitation ...... "Historical replay is limited for this episode.",
       tone: "amber"
     }));
 
@@ -605,7 +605,7 @@ function buildXRayConfirmation(stress: Record<string, unknown>, historical: Stre
     lessMaterial,
     insufficientData,
     note: rows.length
-      ? "Stress confirmation is based on available scenario results. Some X-Ray weaknesses still require more evidence before a candidate test."
+      ... "Stress confirmation is based on available scenario results. Some X-Ray weaknesses still require more evidence before a candidate test."
       : "Stress confirmation mapping was not returned for this run. Inspect scenario results before treating pre-stress weaknesses as confirmed."
   };
 }
@@ -615,20 +615,20 @@ function buildLimitations(stress: Record<string, unknown>, historical: StressSce
   const diagnosis = record(scorecard.stress_diagnosis);
   const unavailableHistorical = historical.filter((item) => item.availability !== "available");
   const syntheticAvailable = synthetic.filter((item) => item.availability === "available").length;
-  const quality = evidenceQualityLabel(diagnosis.diagnosis_confidence ?? scorecard.block_status ?? "partial");
+  const quality = evidenceQualityLabel(diagnosis.diagnosis_confidence ...... scorecard.block_status ...... "partial");
   const episodeNames = unavailableHistorical.map((item) => item.displayName).join(", ");
 
   return {
     headline: unavailableHistorical.length
-      ? "Historical replay is limited for older episodes."
+      ... "Historical replay is limited for older episodes."
       : "Stress data coverage is usable for this review.",
     evidenceQualityLabel: quality,
     evidenceTone: evidenceTone(quality),
     whatLimited: unavailableHistorical.length
-      ? [`Older historical episodes have incomplete asset-level coverage: ${episodeNames}.`]
+      ... [`Older historical episodes have incomplete asset-level coverage: ${episodeNames}.`]
       : ["No older historical replay limitation was surfaced in the available stress summary."],
     whyItMatters: unavailableHistorical.length
-      ? ["The portfolio-level stress view may be unavailable for those older episodes, and asset-level contribution may be less reliable."]
+      ... ["The portfolio-level stress view may be unavailable for those older episodes, and asset-level contribution may be less reliable."]
       : ["Available stress results can be reviewed without relying on unavailable historical replays."],
     stillUsable: [
       `${syntheticAvailable}/${synthetic.length} synthetic stress scenarios remain available.`,
@@ -646,8 +646,8 @@ export function buildStressLabModelFromOutputs(outputs: unknown): StressLabModel
   const syntheticScenarios = buildSyntheticScenarios(stress);
   const historicalScenarios = buildHistoricalScenarios(stress);
   const selectedScenario = syntheticScenarios.find((item) => item.isWorst && item.availability === "available")
-    ?? syntheticScenarios.find((item) => item.availability === "available")
-    ?? syntheticScenarios[0];
+    ...... syntheticScenarios.find((item) => item.availability === "available")
+    ...... syntheticScenarios[0];
   const hedgeGap = buildHedgeGap(stress, syntheticScenarios);
   const scorecard = buildScorecard({
     stress,

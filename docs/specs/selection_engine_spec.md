@@ -36,7 +36,7 @@ The No-Trade Recommendation is a **first-class outcome** of the same module when
 
 ## Product Boundary
 
-- The Selection Engine answers: *given this comparison run, which candidate profile is favored for further review, and is a move from the user's current allocation materially worthwhile?*
+- The Selection Engine answers: *given this comparison run, which candidate profile is favored for further review, and is a move from the user's current allocation materially worthwhile...*
 - It does **not** answer: *execute these trades now* or *this portfolio will outperform*.
 - Allowed narrative: "Policy profile is favored in this comparison", "No material rebalance suggested versus current weights", "Decision inconclusive due to missing current portfolio weights".
 - Forbidden: imperative trade advice ("buy X", "sell Y"), performance guarantees, overriding stress **pass/fail** or optimizer **release** status, or presenting diagnostic scores as automatic investment truth.
@@ -357,7 +357,7 @@ See selection_decision.json for composite ranking and rejected candidates.
 
 ## Diagnostic Artifacts Remain Non-Binding
 
-| Artifact | Still diagnostic-only? |
+| Artifact | Still diagnostic-only... |
 | --- | --- |
 | `candidate_comparison.json` | Yes (`diagnostic_only: true` unchanged). |
 | `robustness_scorecard.json` | Yes. |

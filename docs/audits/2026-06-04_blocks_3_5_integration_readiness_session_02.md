@@ -10,11 +10,11 @@ Scope: controlled live-output validation for Block 3 Stress Lab → Block 4 diag
 
 | Question | Verdict |
 | --- | --- |
-| Did the canonical one-candidate command complete fresh subject materialization? | **No** — blocked before Block 3 refresh by live FRED risk-free loading. |
-| Did the workspace validate as `product_one_candidate` after candidate factory / compare materialization? | **Yes** — `scripts/verify_live_core_e2e.py --profile product_one_candidate` returned OK. |
-| Did Session 02 rebuild the selected candidate? | **No** — `equal_weight` was reused from an existing snapshot (`skipped_existing`). |
-| Are Block 3 product keys present on the subject stress report? | **Yes** — `stress_results_v1`, `hedge_gap_analysis_v1`, and `current_portfolio_stress_scorecard_v1` are present. |
-| Are Block 4 and Block 5 product contracts validator-clean together? | **Yes** — live E2E validator passed after factory/compare materialization. |
+| Did the canonical one-candidate command complete fresh subject materialization... | **No** — blocked before Block 3 refresh by live FRED risk-free loading. |
+| Did the workspace validate as `product_one_candidate` after candidate factory / compare materialization... | **Yes** — `scripts/verify_live_core_e2e.py --profile product_one_candidate` returned OK. |
+| Did Session 02 rebuild the selected candidate... | **No** — `equal_weight` was reused from an existing snapshot (`skipped_existing`). |
+| Are Block 3 product keys present on the subject stress report... | **Yes** — `stress_results_v1`, `hedge_gap_analysis_v1`, and `current_portfolio_stress_scorecard_v1` are present. |
+| Are Block 4 and Block 5 product contracts validator-clean together... | **Yes** — live E2E validator passed after factory/compare materialization. |
 
 **Session 02 verdict:** **QUALIFIED_LIVE_VALIDATION_PASS**. The one-candidate product bundle is validator-clean after direct factory/compare materialization, but this session does **not** prove a fully fresh subject Stress Lab refresh because the canonical `run_portfolio_review.py --candidates equal_weight` path was blocked by FRED.
 

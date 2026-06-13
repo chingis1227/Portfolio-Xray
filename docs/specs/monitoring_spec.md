@@ -140,7 +140,7 @@ with the current run.
 
 ## Diagnostic Boundary
 
-| Artifact | Binding? |
+| Artifact | Binding... |
 | --- | --- |
 | `analysis_snapshot.json` | Evidence only; generated output. |
 | `monitoring_diff.json` | Decision-support summary; **non-executing**. |

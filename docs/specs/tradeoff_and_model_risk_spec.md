@@ -31,7 +31,7 @@ The trade-off and model-risk layers:
 
 ## Product Boundary
 
-- Answers: *If I move from baseline A to favored B, what gets better, what gets worse, and what does it cost?* and *Where should I treat conclusions with extra caution?*
+- Answers: *If I move from baseline A to favored B, what gets better, what gets worse, and what does it cost...* and *Where should I treat conclusions with extra caution...*
 - Does **not** answer: *execute these trades*, *this portfolio will outperform*, or *override selection because model risk is high*.
 - Forbidden in exported text: imperative buy/sell, performance guarantees, raw internal codes (`FAIL_*`, `DIAG_*`, `WARN_*`) in PDF-facing paths (map to English labels per [decision_package_reporting_spec.md](decision_package_reporting_spec.md)).
 

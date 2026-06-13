@@ -2,8 +2,8 @@ import type { ClientFitDisplaySummary } from "@/lib/generated/api-types";
 import { formatUnknownValue, normalizeDisplaySentence } from "@/lib/displayLabels";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
-function compactRows(clientFit?: ClientFitDisplaySummary) {
-  return (clientFit?.target_rows ?? [])
+function compactRows(clientFit...: ClientFitDisplaySummary) {
+  return (clientFit....target_rows ...... [])
     .filter((row) => row.dimension_label || row.status_label)
     .slice(0, 4);
 }
@@ -15,11 +15,11 @@ export function ClientFitContextCard({
   structuralIssueNote,
   compact = false
 }: {
-  clientFit?: ClientFitDisplaySummary;
-  title?: string;
-  description?: string;
-  structuralIssueNote?: string;
-  compact?: boolean;
+  clientFit...: ClientFitDisplaySummary;
+  title...: string;
+  description...: string;
+  structuralIssueNote...: string;
+  compact...: boolean;
 }) {
   if (!clientFit) {
     return (
@@ -34,7 +34,7 @@ export function ClientFitContextCard({
 
   const rows = compactRows(clientFit);
   const note = structuralIssueNote
-    ?? "A Client Fit pass does not clear concentration, stress, drawdown, or other structural issues found by the diagnosis.";
+    ...... "A Client Fit pass does not clear concentration, stress, drawdown, or other structural issues found by the diagnosis.";
 
   return (
     <section className="rounded-2xl border border-pmri-border/55 bg-white/[0.026] p-4">
@@ -51,11 +51,11 @@ export function ClientFitContextCard({
       </div>
 
       <p className="mt-4 rounded-xl border border-pmri-border/55 bg-white/[0.026] p-3 text-sm leading-6 text-pmri-text2">
-        {normalizeDisplaySentence(clientFit.main_explanation ?? note, note)}
+        {normalizeDisplaySentence(clientFit.main_explanation ...... note, note)}
       </p>
       <p className="mt-3 text-sm leading-6 text-pmri-muted">{normalizeDisplaySentence(clientFit.decision_boundary)}</p>
 
-      {!compact && rows.length ? (
+      {!compact && rows.length ... (
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           {rows.map((row) => (
             <article key={`${row.dimension_label}-${row.status_label}`} className="rounded-xl border border-pmri-border/45 bg-pmri-secondary/25 p-3">
@@ -71,7 +71,7 @@ export function ClientFitContextCard({
         </div>
       ) : null}
 
-      {clientFit.next_best_test ? (
+      {clientFit.next_best_test ... (
         <p className="mt-4 text-sm leading-6 text-pmri-text2">
           <span className="font-medium text-pmri-text">Next Client Fit test:</span> {normalizeDisplaySentence(clientFit.next_best_test)}
         </p>

@@ -14,7 +14,7 @@ main audit question.
 The user-visible question for this plan is narrow and product-first: does Stress Lab evidence really
 flow into an investment diagnosis, does that diagnosis become a testable Candidate Launchpad card,
 does the selected card become safe Builder prefill, and is this chain covered by tests, live
-artifacts, and documentation? The target product workflow is:
+artifacts, and documentation... The target product workflow is:
 
     Stress evidence -> Investment diagnosis -> Testable Launchpad card -> Builder prefill
 
@@ -26,22 +26,22 @@ the follow-up work gets a separate post-audit ExecPlan.
 
 The audit does not ask whether the full one-candidate Decision Verdict path can run. Earlier work on
 that broader question is retained here only as supporting evidence. The controlling question remains:
-"Р СџРЎР‚Р В°Р Р†Р С‘Р В»РЎРЉР Р…Р С• Р В»Р С‘ Stress evidence Р Р†Р В»Р С‘РЎРЏР ВµРЎвЂљ Р Р…Р В° Р Т‘Р С‘Р В°Р С–Р Р…Р С•Р В·, Р Т‘Р С‘Р В°Р С–Р Р…Р С•Р В· РІР‚вЂќ Р Р…Р В° Launchpad, Launchpad РІР‚вЂќ Р Р…Р В° Builder, Р С‘ Р Р†РЎРѓРЎвЂ
-Р В»Р С‘ РЎРЊРЎвЂљР С• Р С—Р С•Р С”РЎР‚РЎвЂ№РЎвЂљР С• РЎвЂљР ВµРЎРѓРЎвЂљР В°Р СР С‘/Р Т‘Р С•Р С”Р В°Р СР С‘?"
+Legacy note normalized to English-only text.
+Legacy note normalized to English-only text.
 
 ## Progress
 
 - [x] (2026-06-04) Unified the repository plan around the user's canonical handoff audit question and made this file the single active ExecPlan for that work.
 - [x] (2026-06-04) Imported supporting evidence from the earlier broader Blocks 3-5 readiness plan: `docs/audits/2026-06-04_blocks_3_5_integration_readiness_session_01.md` through `session_04.md` prove some cross-block validators and one-candidate/live blocker facts, but they do not by themselves close the canonical handoff sessions below.
 - [x] (2026-06-04) Imported supporting evidence from the Block 4 -> Builder handoff plan: `docs/exec_plans/2026-06-04_block_4_portfolio_alternatives_builder_handoff.md` proves Builder prefill implementation, validator strengthening, live diagnosis-only proof, and documentation synchronization for the Launchpad -> Builder boundary.
-- [x] (2026-06-04) Session 00 РІР‚вЂќ Baseline & Source-of-Truth Check. Status: closed in canonical format. Evidence: `docs/audits/2026-06-04_blocks_3_5_handoff_session_00_baseline.md`; source-of-truth documents and real handoff owners were identified without source-code changes, optimizer runs, candidate generation, or weight writes.
-- [x] (2026-06-04) Session 00.1 РІР‚вЂќ Baseline normalization. Status: closed. Evidence: `docs/audits/2026-06-04_blocks_3_5_handoff_session_00_baseline.md`; the current ExecPlan was separated from older one-candidate readiness evidence and the Block 4 -> Builder plan, which remain supporting evidence only.
-- [x] (2026-06-04) Session 01 РІР‚вЂќ Contract Map Audit. Status: closed with minor coverage gaps. Evidence: `docs/audits/2026-06-04_blocks_3_5_handoff_session_01_contract_map.md`; field-level table records Stress/X-Ray -> Block 4 signals, Block 4 -> Launchpad fields, and Launchpad -> Builder prefill fields, including no automatic generation and `is_rebalance_recommendation = false`.
-- [x] (2026-06-04) Session 02 РІР‚вЂќ Block 3 -> Block 4 Behavior Audit. Status: closed with minor coverage gaps and one stress commentary test failure. Evidence: `docs/audits/2026-06-04_blocks_3_5_handoff_session_02_behavior.md`; Block 4 baseline passed (`25 passed`), archetype/no-trade/severity behavior checks passed (`28 passed`), targeted recession Hedge Gap checks passed (`2 passed`), and the stress/hedge-gap bundle showed `240 passed, 1 failed` due to generated commentary wording rather than a proven JSON handoff break.
-- [x] Session 03 РІР‚вЂќ Block 4 -> Launchpad Audit. Status: closed with one minor coverage note. Evidence: `docs/audits/2026-06-04_blocks_3_5_handoff_session_03_launchpad.md`; the requested Launchpad/action/no-trade bundle passed (`20 passed`) and the audit confirms actionable diagnoses map to targeted hypothesis cards, acceptable portfolios map to reference/monitor cards, data-quality cases block candidate methods, and Launchpad wording/flags do not imply a rebalance recommendation.
-- [x] Session 04 РІР‚вЂќ Launchpad -> Builder Prefill Audit. Status: closed in canonical format. Evidence: `docs/audits/2026-06-04_blocks_3_5_handoff_session_04_builder_prefill.md`; the current Session 04 rerun recorded `24 passed` for `tests/test_portfolio_alternatives_builder.py` and `tests/test_candidate_launchpad_builder_handoff.py`, confirms targeted context preservation, EW/RP reference handling, data-quality blocking, and no automatic factory/optimizer/weight execution.
-- [x] Session 05 РІР‚вЂќ Live Portfolio Proof. Status: closed with caveats by supporting evidence. The handoff plan Session 07 recorded `scripts/validate_block_4_live.py --refresh-diagnosis` OK, `scripts/verify_live_core_e2e.py --profile diagnosis_only` OK after diagnosis-only tombstones, and `23 passed` for focused tests. This proves diagnosis-only live handoff; it does not prove fresh one-candidate materialization, which is outside this canonical handoff plan.
-- [x] Session 06 РІР‚вЂќ Test Coverage Audit. Status: closed with minor gaps. Evidence: `docs/audits/2026-06-04_blocks_3_5_handoff_session_06_test_coverage.md`; the required coverage table records `92 passed` for the expanded Block 4 bundle, `30 passed` for Builder/product bundle/diagnostic journey tests, and `240 passed, 1 failed` for the expanded Stress/Hedge Gap bundle, with the remaining failure limited to generated commentary wording.
+- [x] (2026-06-04) Session 00 mojibake-marker” Baseline & Source-of-Truth Check. Status: closed in canonical format. Evidence: `docs/audits/2026-06-04_blocks_3_5_handoff_session_00_baseline.md`; source-of-truth documents and real handoff owners were identified without source-code changes, optimizer runs, candidate generation, or weight writes.
+- [x] (2026-06-04) Session 00.1 mojibake-marker” Baseline normalization. Status: closed. Evidence: `docs/audits/2026-06-04_blocks_3_5_handoff_session_00_baseline.md`; the current ExecPlan was separated from older one-candidate readiness evidence and the Block 4 -> Builder plan, which remain supporting evidence only.
+- [x] (2026-06-04) Session 01 mojibake-marker” Contract Map Audit. Status: closed with minor coverage gaps. Evidence: `docs/audits/2026-06-04_blocks_3_5_handoff_session_01_contract_map.md`; field-level table records Stress/X-Ray -> Block 4 signals, Block 4 -> Launchpad fields, and Launchpad -> Builder prefill fields, including no automatic generation and `is_rebalance_recommendation = false`.
+- [x] (2026-06-04) Session 02 mojibake-marker” Block 3 -> Block 4 Behavior Audit. Status: closed with minor coverage gaps and one stress commentary test failure. Evidence: `docs/audits/2026-06-04_blocks_3_5_handoff_session_02_behavior.md`; Block 4 baseline passed (`25 passed`), archetype/no-trade/severity behavior checks passed (`28 passed`), targeted recession Hedge Gap checks passed (`2 passed`), and the stress/hedge-gap bundle showed `240 passed, 1 failed` due to generated commentary wording rather than a proven JSON handoff break.
+- [x] Session 03 mojibake-marker” Block 4 -> Launchpad Audit. Status: closed with one minor coverage note. Evidence: `docs/audits/2026-06-04_blocks_3_5_handoff_session_03_launchpad.md`; the requested Launchpad/action/no-trade bundle passed (`20 passed`) and the audit confirms actionable diagnoses map to targeted hypothesis cards, acceptable portfolios map to reference/monitor cards, data-quality cases block candidate methods, and Launchpad wording/flags do not imply a rebalance recommendation.
+- [x] Session 04 mojibake-marker” Launchpad -> Builder Prefill Audit. Status: closed in canonical format. Evidence: `docs/audits/2026-06-04_blocks_3_5_handoff_session_04_builder_prefill.md`; the current Session 04 rerun recorded `24 passed` for `tests/test_portfolio_alternatives_builder.py` and `tests/test_candidate_launchpad_builder_handoff.py`, confirms targeted context preservation, EW/RP reference handling, data-quality blocking, and no automatic factory/optimizer/weight execution.
+- [x] Session 05 mojibake-marker” Live Portfolio Proof. Status: closed with caveats by supporting evidence. The handoff plan Session 07 recorded `scripts/validate_block_4_live.py --refresh-diagnosis` OK, `scripts/verify_live_core_e2e.py --profile diagnosis_only` OK after diagnosis-only tombstones, and `23 passed` for focused tests. This proves diagnosis-only live handoff; it does not prove fresh one-candidate materialization, which is outside this canonical handoff plan.
+- [x] Session 06 mojibake-marker” Test Coverage Audit. Status: closed with minor gaps. Evidence: `docs/audits/2026-06-04_blocks_3_5_handoff_session_06_test_coverage.md`; the required coverage table records `92 passed` for the expanded Block 4 bundle, `30 passed` for Builder/product bundle/diagnostic journey tests, and `240 passed, 1 failed` for the expanded Stress/Hedge Gap bundle, with the remaining failure limited to generated commentary wording.
 - [x] Session 07 - Docs vs Code Audit. Status: closed. Evidence: `docs/audits/2026-06-04_blocks_3_5_handoff_session_07_docs_vs_code.md`; `scripts/verify_docs.py` passed (`docs verification: OK`) and the required contradiction-by-document table found docs/code consistency for no Stress Lab recommendation, Block 4 diagnosis plus `next_diagnostic_step`, Launchpad testable non-portfolio cards, Builder prefill as setup only, EW/RP as reference benchmarks, and Decision Verdict as the downstream final decision layer.
 - [x] Session 08 - Final Readiness Verdict. Status: closed with strict `NOT_READY` verdict for immediate move-forward. Evidence: `docs/audits/2026-06-04_blocks_3_5_handoff_session_08_final_readiness_verdict.md`; source/docs/tests mostly support the canonical handoff, but fresh diagnosis-only live E2E failed because stale root candidate/compare artifacts remain and the allowed diagnosis-only refresh was blocked by FRED `DTB3` timeout.
 
@@ -143,7 +143,7 @@ Session 00 and Session 00.1 are closed in canonical format. Session 01 is now al
 
 ## Context and Orientation
 
-The repository root is `D:\Р В Р В°Р В±Р С•РЎвЂЎР С‘Р в„– РЎРѓРЎвЂљР С•Р В»\Р С™Р Р€Р В Р РЋР С›Р В  Р СћР Р€Р вЂєР С’ Р вЂќР ВР С’Р вЂњР СњР С›Р РЋР СћР ВР С™Р С’`. User-facing chat should be in Russian by default, but project files remain in English unless explicitly requested otherwise.
+Legacy note normalized to English-only text.
 
 The current product is diagnosis-first and current-portfolio-first. The relevant canonical flow for this plan is:
 
@@ -184,7 +184,7 @@ Session 08 gives the final readiness verdict: `READY_TO_MOVE_FORWARD`, `READY_WI
 
 All commands run from:
 
-    D:\Р В Р В°Р В±Р С•РЎвЂЎР С‘Р в„– РЎРѓРЎвЂљР С•Р В»\Р С™Р Р€Р В Р РЋР С›Р В  Р СћР Р€Р вЂєР С’ Р вЂќР ВР С’Р вЂњР СњР С›Р РЋР СћР ВР С™Р С’
+    Legacy note normalized to English-only text.
 
 Use the repository virtual environment:
 

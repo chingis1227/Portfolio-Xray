@@ -61,7 +61,7 @@ def main() -> None:
         blocks = (diag.get("taxonomy_coverage") or {}).get("blocks_by_ticker") or {}
         by_block: dict[str, float] = defaultdict(float)
         for t, p in s.items():
-            by_block[str(blocks.get(t, "?"))] += float(p)
+            by_block[str(blocks.get(t, "..."))] += float(p)
         dom = max(by_block, key=lambda k: by_block[k]) if by_block else None
         top3 = list(s.head(3).index)
         out["scenarios"].append(

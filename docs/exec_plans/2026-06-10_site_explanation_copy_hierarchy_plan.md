@@ -174,7 +174,7 @@ records the final verification matrix.
 
 ## Concrete Steps
 
-From the repository root `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`, Session 1 creates:
+From the repository root `D:\Desktop\CURSOR TULA DIAGNOSTICS`, Session 1 creates:
 
     docs/exec_plans/2026-06-10_site_explanation_copy_hierarchy_plan.md
     docs/specs/site_explanation_bundle_spec.md
@@ -231,14 +231,14 @@ into a recommendation.
 
 Session 2 verification transcript:
 
-    D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА> .\.venv\Scripts\python.exe -m pytest tests/test_site_explanation_bundle.py
+    D:\Desktop\CURSOR TULA DIAGNOSTICS> .\.venv\Scripts\python.exe -m pytest tests/test_site_explanation_bundle.py
     collected 4 items
     tests\test_site_explanation_bundle.py .... [100%]
     4 passed
 
 Session 3 verification transcript:
 
-    D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА> .\.venv\Scripts\python.exe -m pytest tests/test_site_explanation_bundle.py tests/test_site_explanation_guardrails.py -q
+    D:\Desktop\CURSOR TULA DIAGNOSTICS> .\.venv\Scripts\python.exe -m pytest tests/test_site_explanation_bundle.py tests/test_site_explanation_guardrails.py -q
     ............                                                             [100%]
     12 passed in 0.31s
 
@@ -248,7 +248,7 @@ history.
 
 Session 4 verification transcript:
 
-    D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА> .\.venv\Scripts\python.exe -m pytest tests/test_site_explanation_bundle.py tests/test_site_explanation_guardrails.py tests/test_site_explanation_sources.py -q
+    D:\Desktop\CURSOR TULA DIAGNOSTICS> .\.venv\Scripts\python.exe -m pytest tests/test_site_explanation_bundle.py tests/test_site_explanation_guardrails.py tests/test_site_explanation_sources.py -q
     .................                                                        [100%]
     17 passed in 0.47s
 
@@ -258,7 +258,7 @@ history.
 
 Session 5 verification transcript:
 
-    D:\Р Р°Р±РѕС‡РёР№ СЃС‚РѕР»\РљРЈР РЎРћР  РўРЈР›Рђ Р”РРђР“РќРћРЎРўРРљРђ> .\.venv\Scripts\python.exe -m pytest tests/test_site_explanation_bundle.py tests/test_site_explanation_guardrails.py tests/test_site_explanation_sources.py tests/test_site_explanation_diagnosis_stress.py -q
+    D:\Desktop\CURSOR TULA DIAGNOSTICS> .\.venv\Scripts\python.exe -m pytest tests/test_site_explanation_bundle.py tests/test_site_explanation_guardrails.py tests/test_site_explanation_sources.py tests/test_site_explanation_diagnosis_stress.py -q
     ....................                                                     [100%]
     20 passed in 0.59s
 
@@ -267,7 +267,7 @@ rules. The note exists so a future agent can resume Session 6 from this file wit
 
 Session 6 verification transcript:
 
-    D:\Р В Р В°Р В±Р С•РЎвЂЎР С‘Р в„– РЎРѓРЎвЂљР С•Р В»\Р С™Р Р€Р В Р РЋР С›Р В  Р СћР Р€Р вЂєР С’ Р вЂќР ВР С’Р вЂњР СњР С›Р РЋР СћР ВР С™Р С’> .\.venv\Scripts\python.exe -m pytest tests/test_site_explanation_bundle.py tests/test_site_explanation_guardrails.py tests/test_site_explanation_sources.py tests/test_site_explanation_diagnosis_stress.py tests/test_site_explanation_candidate_comparison_verdict.py -q
+    Legacy note normalized to English-only text.
     .......................                                                  [100%]
     23 passed in 0.60s
 

@@ -123,7 +123,7 @@ Top three diagnostic blocks (`macro_regime` + `daily_tail_risk` + `portfolio_pca
 
 ## 3. Bottleneck Diagnosis
 
-| Rank | Bottleneck | Measured cost | Why slow | Required for comparison-critical output? |
+| Rank | Bottleneck | Measured cost | Why slow | Required for comparison-critical output... |
 | --- | --- | --- | --- | --- |
 | 1 | **Lightweight comparison reports × N candidates** | ~410 s (core) / ~853 s (full factory report sum) | Each candidate still runs full diagnostic report pipeline under `lightweight_comparison` profile; weight-dependent portfolio metrics, stress PnL, snapshots recomputed per candidate | **Partially.** Weights, `snapshot_10y`, `stress_report.json` summary fields, and construction disclosure are comparison-critical per [candidate_comparison_spec.md](../specs/candidate_comparison_spec.md). Deep macro/PCA/tail blocks are **not** listed as required checks for `fair_comparison_ready`. |
 | 2 | **`macro_regime` (per candidate)** | ~10 s/candidate; 60 s (core) / 134 s (13× full) | Regime label build, indicator panels, regime-factor analytics, CSV-equivalent JSON paths; **repeated per candidate** with no shared macro panel cache | **No** for comparison-critical readiness; **Yes** for health score macro component and optional comparison row fields when present |

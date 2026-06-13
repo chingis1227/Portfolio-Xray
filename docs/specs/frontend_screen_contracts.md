@@ -155,7 +155,7 @@ The UI must map backend statuses into the following user-facing badge families. 
 | --- | --- |
 | Route | `/portfolio-input` (current MVP route; `/input` may be a future alias only after a route decision). |
 | Product role | Capture the factual current portfolio to diagnose. This is not an optimizer setup screen. |
-| Primary user question | "What portfolio am I asking Portfolio MRI to diagnose?" |
+| Primary user question | "What portfolio am I asking Portfolio MRI to diagnose..." |
 | Backend artifacts used | User input payload; runtime `analysis_setup` / `input_assumptions` projection after diagnosis; frontend API diagnosis result; active run-local review folder. |
 | MVP status | **Core MVP**. |
 | Next step in journey | Diagnosis / Portfolio X-Ray (`/diagnosis`) after valid input and successful diagnosis run. |
@@ -206,7 +206,7 @@ Status/badge taxonomy:
 | --- | --- |
 | Route | `/diagnosis`. |
 | Product role | Explain what the current portfolio owns, what drives risk, and what the main current-portfolio problem appears to be before any candidate. |
-| Primary user question | "What is actually inside my current portfolio, and what looks risky or weak?" |
+| Primary user question | "What is actually inside my current portfolio, and what looks risky or weak..." |
 | Backend artifacts used | `portfolio_xray.json`; compact `problem_classification.json` bridge; input/assumptions summary; stress evidence only as cross-reference where X-Ray sections already cite it. |
 | MVP status | **Core MVP**. |
 | Next step in journey | Evidence / Stress Test Lab (`/evidence`) to test the diagnosis under stress. |
@@ -269,7 +269,7 @@ Status/badge taxonomy:
 | --- | --- |
 | Route | `/evidence`. |
 | Product role | Stress-test the current portfolio and show whether X-Ray weaknesses matter under market shocks. |
-| Primary user question | "Where can this portfolio break, under which scenarios, and why?" |
+| Primary user question | "Where can this portfolio break, under which scenarios, and why..." |
 | Backend artifacts used | `stress_report.json`; optional `scenario_library.json` / `scenario_library_normalized.json` as supporting evidence; `portfolio_xray.json` and `problem_classification.json` only for bridge context. |
 | MVP status | **Core MVP**. |
 | Next step in journey | Hypothesis (`/hypothesis`) after the user understands the stress evidence and main diagnosis. |
@@ -326,7 +326,7 @@ Status/badge taxonomy:
 | --- | --- |
 | Route | `/hypothesis`. |
 | Product role | Convert the diagnosis into one or more testable hypotheses without implying a rebalance recommendation. |
-| Primary user question | "What should we test to see whether the portfolio can be improved?" |
+| Primary user question | "What should we test to see whether the portfolio can be improved..." |
 | Backend artifacts used | `problem_classification.json`, `candidate_launchpad.json`, `portfolio_alternatives_builder.json` for selected-card setup; `candidate_generation.json` only because Candidate / Builder is merged into this route for MVP. |
 | MVP status | **Core MVP**, with Candidate / Builder **merged** into this screen for MVP. |
 | Next step in journey | Comparison (`/comparison`) after one selected hypothesis has a generated candidate; otherwise stay on Hypothesis or return to Evidence. |
@@ -379,7 +379,7 @@ Status/badge taxonomy:
 | --- | --- |
 | Route | **Merged into `/hypothesis` for MVP.** Future split route, if approved: `/candidate`. |
 | Product role | Prepare and run exactly one diagnostic candidate attempt from the selected hypothesis. |
-| Primary user question | "What candidate test did we generate, and is it ready to compare against the current portfolio?" |
+| Primary user question | "What candidate test did we generate, and is it ready to compare against the current portfolio..." |
 | Backend artifacts used | `portfolio_alternatives_builder.json`, `candidate_generation.json`, candidate weights/evidence from the selected generation attempt when available. |
 | MVP status | **Merged with Hypothesis for Core MVP**. Separate screen is **deferred**. |
 | Next step in journey | Comparison (`/comparison`) only when one active candidate attempt is generated and comparable. |
@@ -444,7 +444,7 @@ Status/badge taxonomy:
 | --- | --- |
 | Route | `/comparison`. |
 | Product role | Compare the current portfolio against the selected generated candidate and show trade-offs before a verdict. |
-| Primary user question | "Did the tested candidate improve the problem enough, and what did it make worse?" |
+| Primary user question | "Did the tested candidate improve the problem enough, and what did it make worse..." |
 | Backend artifacts used | `current_vs_candidate.json`; `candidate_generation.json` for hypothesis/weights context; technical `candidate_comparison.json` only as backend evidence behind the product adapter. |
 | MVP status | **Core MVP** for one selected candidate. Full multi-candidate arena is **advanced/deferred**. |
 | Next step in journey | Verdict (`/verdict`) after comparison is available or after the system determines evidence is insufficient. |
@@ -505,7 +505,7 @@ Status/badge taxonomy:
 | --- | --- |
 | Route | `/verdict`. |
 | Product role | Convert comparison evidence into a non-binding decision-support verdict. |
-| Primary user question | "Given the evidence, should I keep the current portfolio, review this rebalance, test another idea, or stop because evidence is insufficient?" |
+| Primary user question | "Given the evidence, should I keep the current portfolio, review this rebalance, test another idea, or stop because evidence is insufficient..." |
 | Backend artifacts used | `decision_verdict.json`; `current_vs_candidate.json`; `candidate_generation.json` or `selection_decision.json` as backend decision evidence; optional action context only as support. |
 | MVP status | **Core MVP**. |
 | Next step in journey | Report (`/report`) for grounded explanation and decision record preview. |
@@ -563,7 +563,7 @@ Status/badge taxonomy:
 | --- | --- |
 | Route | `/report`. |
 | Product role | Present a grounded, client-readable explanation of the diagnosis, tested hypothesis, comparison, and verdict. |
-| Primary user question | "Can I read a clear explanation of what was found, what was tested, and why the verdict says that?" |
+| Primary user question | "Can I read a clear explanation of what was found, what was tested, and why the verdict says that..." |
 | Backend artifacts used | `ai_commentary_context.json`; `decision_verdict.json`; `current_vs_candidate.json`; diagnosis/stress/hypothesis artifacts through allowed grounding references. |
 | MVP status | **Core MVP report preview / grounded explanation**. Polished PDF export and full Decision Journal are **advanced/deferred**. |
 | Next step in journey | Monitoring / What Changed when a UI surface exists; otherwise end with review/monitoring note. |
@@ -617,7 +617,7 @@ Status/badge taxonomy:
 | --- | --- |
 | Route | **Deferred.** No current MVP frontend route/component is active. Future route may be `/monitoring` or `/what-changed` only after a route decision. |
 | Product role | Explain what changed since the prior review and what should be retested or watched. |
-| Primary user question | "What changed since the last portfolio review, and do I need to retest anything?" |
+| Primary user question | "What changed since the last portfolio review, and do I need to retest anything..." |
 | Backend artifacts used | `what_changed_summary.json`; `monitoring_diff.json`; optional `decision_verdict.json`, `problem_classification.json`, `current_vs_candidate.json`. |
 | MVP status | **Deferred / Monitoring layer**. Backend artifact may exist; UI surface is intentionally deferred, not missing by accident. |
 | Next step in journey | Return to Input/Diagnosis for a new review, or retest the relevant hypothesis when a future Monitoring surface is implemented. |

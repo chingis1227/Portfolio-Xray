@@ -32,13 +32,13 @@ Portfolio Setup (Block 1)
 
 | Sub-section | User question | Top-level (always visible) | Drill-down (`<details>`) |
 | --- | --- | --- | --- |
-| 2.0 Executive diagnosis | What matters overall? | 5–7 plain-language findings | — |
-| 2.1 What you own | What do I really hold? | Composition KPIs + one diagnosis | Allocation breakdowns, concentration flags |
-| 2.2 How it behaved | How did it perform? | CAGR, vol, Sharpe, MDD, beta, underwater | Tail metrics, correlation pairs, warnings |
-| 2.3 Factor drivers | What moves it? | Top 3 factors + interpretation | Regression stats in JSON only (by design) |
-| 2.4 Hidden risks | What looks diversified but isn’t? | Alert cards (level, diagnosis, evidence, next tests) | Scores, limitations |
-| 2.5 Who creates risk | Where is risk vs capital? | Top RC contributor, top-3 share, gap | Full RC table |
-| 2.6 Weakness map | What to stress-test? | High / Medium / Low buckets | Scores, full evidence |
+| 2.0 Executive diagnosis | What matters overall... | 5–7 plain-language findings | — |
+| 2.1 What you own | What do I really hold... | Composition KPIs + one diagnosis | Allocation breakdowns, concentration flags |
+| 2.2 How it behaved | How did it perform... | CAGR, vol, Sharpe, MDD, beta, underwater | Tail metrics, correlation pairs, warnings |
+| 2.3 Factor drivers | What moves it... | Top 3 factors + interpretation | Regression stats in JSON only (by design) |
+| 2.4 Hidden risks | What looks diversified but isn’t... | Alert cards (level, diagnosis, evidence, next tests) | Scores, limitations |
+| 2.5 Who creates risk | Where is risk vs capital... | Top RC contributor, top-3 share, gap | Full RC table |
+| 2.6 Weakness map | What to stress-test... | High / Medium / Low buckets | Scores, full evidence |
 
 **Copy rule:** Block 2.6 is **pre-stress hypothesis**; Block 3 confirms or refutes via `pre_stress_confirmation_summary` on the stress scorecard.
 
@@ -46,11 +46,11 @@ Portfolio Setup (Block 1)
 
 | Sub-section | User question | Top-level | Drill-down |
 | --- | --- | --- | --- |
-| 3.0 Stress diagnosis | Where does it break? | Worst scenario, loss, hurt/helped, hedge gap, one-line diagnosis | — |
-| 3.1 Scenario overview | Which scenarios hurt most? | Sorted damaging vs less damaging | Full tables, historical limits |
-| 3.2 Assets hurt/helped | Who drove the loss? | Top hurt/helped in worst scenario | Per-scenario attribution |
-| 3.3 Hedge gap | Is there internal offset? | Gap label, coverage ratio, protection status | Per-scenario hedge rows |
-| 3.4 Stress scorecard | What next for decisions? | Main weakness, confirmed/not confirmed X-Ray risks, failure mode | Full scorecard JSON |
+| 3.0 Stress diagnosis | Where does it break... | Worst scenario, loss, hurt/helped, hedge gap, one-line diagnosis | — |
+| 3.1 Scenario overview | Which scenarios hurt most... | Sorted damaging vs less damaging | Full tables, historical limits |
+| 3.2 Assets hurt/helped | Who drove the loss... | Top hurt/helped in worst scenario | Per-scenario attribution |
+| 3.3 Hedge gap | Is there internal offset... | Gap label, coverage ratio, protection status | Per-scenario hedge rows |
+| 3.4 Stress scorecard | What next for decisions... | Main weakness, confirmed/not confirmed X-Ray risks, failure mode | Full scorecard JSON |
 
 **Language:** Use *hurt*, *helped*, *did not materially help* — not *hedge* unless scenario evidence supports offset.
 

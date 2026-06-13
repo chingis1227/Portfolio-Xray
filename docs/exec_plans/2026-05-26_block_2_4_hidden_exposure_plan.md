@@ -6,7 +6,7 @@ This document follows `PLANS.md` from the repository root. It is self-contained 
 
 ## Purpose / Big Picture
 
-Portfolio MRI needs a product-facing Block 2.4 that answers a client question: “What do I actually own from a risk-behavior perspective, not just from labels and ticker names?” After this change, `portfolio_xray.json` contains a top-level `block_2_4_hidden_exposure` object with six rule-based alerts for hidden equity beta, duration concentration, credit/liquidity risk, correlation concentration, preliminary weak hedge behavior, and tail risk. The block is diagnostic-only: it reads already-built Blocks 2.1, 2.2, and 2.3, and it does not optimize, generate candidates, run Stress Lab, or calculate factor models.
+Portfolio MRI needs a product-facing Block 2.4 that answers a client question: “What do I actually own from a risk-behavior perspective, not just from labels and ticker names...” After this change, `portfolio_xray.json` contains a top-level `block_2_4_hidden_exposure` object with six rule-based alerts for hidden equity beta, duration concentration, credit/liquidity risk, correlation concentration, preliminary weak hedge behavior, and tail risk. The block is diagnostic-only: it reads already-built Blocks 2.1, 2.2, and 2.3, and it does not optimize, generate candidates, run Stress Lab, or calculate factor models.
 
 ## Progress
 
@@ -64,7 +64,7 @@ The implementation is additive. First, create `src/block_2_4_hidden_exposure.py`
 
 ## Concrete Steps
 
-From repository root `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`, use the project virtual environment Python: `.\.venv\Scripts\python.exe`.
+From repository root `D:\Desktop\CURSOR TULA DIAGNOSTICS`, use the project virtual environment Python: `.\.venv\Scripts\python.exe`.
 
 Run focused new tests:
 

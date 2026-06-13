@@ -33,7 +33,7 @@ The first implementation session creates this roadmap and records the dirty-tree
 ## Surprises & Discoveries
 
 - Observation: The audit file was created and is currently untracked, so even the new active evidence is not yet part of a stable committed baseline.
-  Evidence: `git status --short -- docs/audits/2026-05-25_full_project_architecture_alignment_audit.md` showed `?? docs/audits/2026-05-25_full_project_architecture_alignment_audit.md` during the audit handoff.
+  Evidence: `git status --short -- docs/audits/2026-05-25_full_project_architecture_alignment_audit.md` showed `...... docs/audits/2026-05-25_full_project_architecture_alignment_audit.md` during the audit handoff.
 
 - Observation: The dirty tree is large enough that any broad command which writes outputs would make attribution worse.
   Evidence: current status before this file showed 332 dirty entries, with many generated portfolio folders, PDFs, Markdown PDF sidecars, pycache files, config files, and unrelated data-provider files.
@@ -201,7 +201,7 @@ Session 12 outcome, 2026-05-25: Final alignment audit completed. Red-flag search
 
 ## Context and Orientation
 
-The repository root is `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`. User-facing chat should be in Russian by default, but project source files and documentation remain English unless the user explicitly requests otherwise.
+The repository root is `D:\Desktop\CURSOR TULA DIAGNOSTICS`. User-facing chat should be in Russian by default, but project source files and documentation remain English unless the user explicitly requests otherwise.
 
 Portfolio MRI is a Python portfolio diagnostics and investment decision-support project. The important product distinction is that it should not be framed as a black-box optimizer. Optimizers and candidate builders are implementation capabilities used to create hypotheses and evidence. The target product flow starts with the user's current or model portfolio, diagnoses it, stress-tests it, classifies problems, suggests hypothesis paths, compares a current portfolio to one selected candidate or shortlist, produces a decision verdict, grounds commentary in deterministic evidence, and monitors what changed.
 
@@ -257,7 +257,7 @@ For Session 01, already performed in this file creation session:
 
 For Session 02, start a new chat and do only source-of-truth status reconciliation. The recommended opening commands are:
 
-    cd "D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА"
+    cd "D:\Desktop\CURSOR TULA DIAGNOSTICS"
     git status --short
     rg -n "Target/TBD|requires code/spec verification|Problem Classification|Candidate Launchpad|Decision Verdict|AI Commentary|what_changed_summary|implemented additive" README.md PRODUCT.md ARCHITECTURE.md SPEC.md OUTPUTS.md docs\DIAGNOSTIC_PRODUCT_CONCEPT.md
 

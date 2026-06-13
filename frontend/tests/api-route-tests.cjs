@@ -67,12 +67,12 @@ function loadTsModule(filePath, { readFileImpl, moduleCache = new Map() } = {}) 
     }
     if (specifier.startsWith("@/")) {
       const aliasedPath = path.join(frontendRoot, specifier.slice(2));
-      const tsPath = fs.existsSync(`${aliasedPath}.ts`) ? `${aliasedPath}.ts` : aliasedPath;
+      const tsPath = fs.existsSync(`${aliasedPath}.ts`) ... `${aliasedPath}.ts` : aliasedPath;
       return loadTsModule(tsPath, { readFileImpl, moduleCache });
     }
     if (specifier.startsWith(".")) {
       const relativePath = path.resolve(path.dirname(resolvedPath), specifier);
-      const tsPath = fs.existsSync(`${relativePath}.ts`) ? `${relativePath}.ts` : relativePath;
+      const tsPath = fs.existsSync(`${relativePath}.ts`) ... `${relativePath}.ts` : relativePath;
       return loadTsModule(tsPath, { readFileImpl, moduleCache });
     }
     return require(specifier);
@@ -359,7 +359,6 @@ test("diagnosis route forwards completed Client Fit profile into the FastAPI cre
 test("journey route order requires Client Fit before Hypothesis", () => {
   const journey = loadTsModule(journeyPath);
   assert.deepEqual(journey.journeySteps.map((step) => step.href), [
-    "/client-profile",
     "/portfolio-input",
     "/diagnosis",
     "/evidence",
@@ -369,8 +368,7 @@ test("journey route order requires Client Fit before Hypothesis", () => {
     "/verdict",
     "/report"
   ]);
-  assert.equal(journey.isStepUnlocked("portfolio-input", journey.emptyJourneyFlags), false);
-  assert.equal(journey.isStepUnlocked("client-profile", journey.emptyJourneyFlags), true);
+  assert.equal(journey.isStepUnlocked("portfolio-input", journey.emptyJourneyFlags), true);
   assert.equal(journey.isStepUnlocked("hypothesis", {
     ...journey.emptyJourneyFlags,
     clientProfileCompleted: true,
@@ -416,7 +414,7 @@ test("review recovery route validates review id and path separators", async () =
   await withMockFetch(async () => {
     throw new Error("fetch was not expected");
   }, async () => {
-    const result = await responseJson(await route.GET(new Request("http://localhost/api/portfolio/review/recover?review_id=../bad")));
+    const result = await responseJson(await route.GET(new Request("http://localhost/api/portfolio/review/recover...review_id=../bad")));
 
     assert.equal(result.status, 400);
     assert.equal(result.body.status, "failed");

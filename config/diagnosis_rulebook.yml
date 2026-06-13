@@ -219,10 +219,10 @@ problems:
     technical_definition_en: Annualized portfolio volatility exceeds the materiality band on Block 2.2 and is not fully explained
       by a stress-confirmed crisis narrative alone.
     portfolio_manager_interpretation_en: The portfolio swings more than the investor's risk budget may tolerate in normal
-      periods. Volatility alone does not prove a bad portfolio ? it must be weighed against return and stress behavior.
+      periods. Volatility alone does not prove a bad portfolio ... it must be weighed against return and stress behavior.
     professional_rationale_en: This diagnosis matters because it can explain downstream risk outcomes through the controlled
       Block 4 evidence chain rather than through unsourced narrative copy. The portfolio swings more than the investor's risk
-      budget may tolerate in normal periods. Volatility alone does not prove a bad portfolio ? it must be weighed against
+      budget may tolerate in normal periods. Volatility alone does not prove a bad portfolio ... it must be weighed against
       return and stress behavior.
     evidence:
       required_signals:

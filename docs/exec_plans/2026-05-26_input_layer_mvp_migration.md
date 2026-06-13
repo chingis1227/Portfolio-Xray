@@ -8,7 +8,7 @@ should be able to continue this work from this file alone without prior chat con
 
 **Canonical spec (updated Session 01):** [docs/specs/input_assumptions_spec.md](../specs/input_assumptions_spec.md).
 
-**Origin:** User-approved Input Layer redesign for «ДИАГНОСТИКА 2» Core MVP — diagnosis-first
+**Origin:** User-approved Input Layer redesign for «Diagnosis 2» Core MVP — diagnosis-first
 product flow with minimal first-screen input (tickers, weights, investor currency).
 
 ## Purpose / Big Picture
@@ -58,7 +58,7 @@ for Block 1 acceptance checks in [OUTPUTS.md](../../OUTPUTS.md).
 ## Decision Log
 
 - Decision: Core MVP first-screen input is exactly three user-facing groups: tickers, weights/`current_weights`, `investor_currency`.
-  Rationale: User brief and «ДИАГНОСТИКА 2» product flow start with portfolio diagnosis, not mandate building.
+  Rationale: User brief and «Diagnosis 2» product flow start with portfolio diagnosis, not mandate building.
   Date/Author: 2026-05-26 / user + agent.
 
 - Decision: `analysis_subject.type=current_portfolio` and `analysis_mode=analyze_current_weights` are system-internal for Core MVP when the user supplies weights; not first-screen fields.

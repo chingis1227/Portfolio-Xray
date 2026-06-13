@@ -13,7 +13,7 @@ Audit mode: evidence-only; no code or existing documentation was modified.
 
 ## 1. Executive Summary
 
-The project is **partially aligned** with the canonical current product, “ДИАГНОСТИКА 2”, but it is **not yet cleanly reset** around that product truth.
+The project is **partially aligned** with the canonical current product, “Diagnosis 2”, but it is **not yet cleanly reset** around that product truth.
 
 The desired canonical product is:
 
@@ -44,7 +44,7 @@ The repository still carries a large amount of older optimizer/report/scorecard-
 
 The biggest source of confusion is the word **“implemented”** being used without product classification.
 
-Many features from “ДИАГНОСТИКА 2 НА ПОТОМ” are implemented as backend/generated artifacts, but the canonical product meaning is: they are **not current Core MVP product flow**. The repo often says they are implemented, then later says they are advanced or not UI. That is accurate at the engineering level but confusing at the product-truth level.
+Many features from “Diagnosis 2 Later” are implemented as backend/generated artifacts, but the canonical product meaning is: they are **not current Core MVP product flow**. The repo often says they are implemented, then later says they are advanced or not UI. That is accurate at the engineering level but confusing at the product-truth level.
 
 ### What must be fixed first
 
@@ -58,15 +58,15 @@ First fix should be a **documentation truth reset for agent entrypoints and prod
 6. `ARCHITECTURE.md`
 7. `docs/DIAGNOSTIC_PRODUCT_CONCEPT.md`
 
-The first message any future agent sees must say: current product = “ДИАГНОСТИКА 2”; Health Score / Robustness / Action / Journal / macro / full candidate arena are advanced/backend/backlog unless explicitly promoted.
+The first message any future agent sees must say: current product = “Diagnosis 2”; Health Score / Robustness / Action / Journal / macro / full candidate arena are advanced/backend/backlog unless explicitly promoted.
 
 Second fix should be a **runtime cleanup plan**: make default review produce the six-file product bundle as the main path and hide/filter advanced downstream artifacts from current product flow.
 
 ## 2. Canonical Product Definition
 
-### Current canonical product: “ДИАГНОСТИКА 2”
+### Current canonical product: “Diagnosis 2”
 
-“ДИАГНОСТИКА 2” is the current product truth. It is diagnosis-first, current-portfolio-first, decision-support oriented, and not optimizer-first.
+“Diagnosis 2” is the current product truth. It is diagnosis-first, current-portfolio-first, decision-support oriented, and not optimizer-first.
 
 Canonical current flow:
 
@@ -85,11 +85,11 @@ Input portfolio
 
 The core user question is:
 
-> What is really inside the current portfolio, where is risk concentrated, what problem exists, what candidate hypothesis is worth testing, and is any action justified?
+> What is really inside the current portfolio, where is risk concentrated, what problem exists, what candidate hypothesis is worth testing, and is any action justified...
 
-### “ДИАГНОСТИКА 2 НА ПОТОМ”
+### “Diagnosis 2 Later”
 
-“ДИАГНОСТИКА 2 НА ПОТОМ” is not the current Core MVP. It is backlog / advanced / later.
+“Diagnosis 2 Later” is not the current Core MVP. It is backlog / advanced / later.
 
 Features in that document must not be presented as current Core MVP even if code exists. If code exists, classify it as one of:
 
@@ -104,25 +104,25 @@ Features in that document must not be presented as current Core MVP even if code
 
 | Term | Meaning for this project |
 |---|---|
-| Current Core MVP | The “ДИАГНОСТИКА 2” path and its product-facing bundle. Should be what agents and users understand as the project. |
+| Current Core MVP | The “Diagnosis 2” path and its product-facing bundle. Should be what agents and users understand as the project. |
 | Advanced/backend evidence | Useful generated evidence or diagnostics that may support product outputs but must not lead the product story. |
 | Legacy | Older optimizer/report/policy behavior preserved for compatibility or research, not the current product. |
-| Future backlog | Desired later features from “ДИАГНОСТИКА 2 НА ПОТОМ”. |
+| Future backlog | Desired later features from “Diagnosis 2 Later”. |
 | Generated artifact | Output produced by runtime. It is not source-of-truth documentation and may be stale unless regenerated. |
 
 ## 3. Documentation Truth Audit
 
-| File path | Presents “ДИАГНОСТИКА 2” as current? | Old/advanced leakage as current/core? | Risk | Recommended action |
+| File path | Presents “Diagnosis 2” as current... | Old/advanced leakage as current/core... | Risk | Recommended action |
 |---|---:|---:|---|---|
-| `AGENTS.md` | Partially | Yes, high prominence of V1 score/action/journal bundle | Critical | Rewrite project summary around canonical “ДИАГНОСТИКА 2”; move Health/Robustness/Action/Journal to advanced/backend/support note. |
+| `AGENTS.md` | Partially | Yes, high prominence of V1 score/action/journal bundle | Critical | Rewrite project summary around canonical “Diagnosis 2”; move Health/Robustness/Action/Journal to advanced/backend/support note. |
 | `README.md` | Partially | Yes, “Implemented today” lists V1 decision artifacts before product distinction | High | Reorder around canonical flow and six-file product bundle; demote scorecards/action/journal to advanced/generated evidence. |
 | `SPEC.md` | Partially | Yes, current implementation matrix gives old artifacts equal weight | High | Add canonical product truth section first; classify implemented capabilities by product role, not just existence. |
 | `OUTPUTS.md` | Mostly | Some | Medium | It already classifies bundles well; strengthen “Core product surfaces must ignore advanced artifacts by default.” |
-| `PRODUCT.md` | Mostly | Some | Medium | Keep “НА ПОТОМ” features clearly future/advanced; remove any “primary module” wording for scorecards/action/journal. |
+| `PRODUCT.md` | Mostly | Some | Medium | Keep “Later” features clearly future/advanced; remove any “primary module” wording for scorecards/action/journal. |
 | `ARCHITECTURE.md` | Mostly | Some | Medium | Make canonical flow the top architecture; put old pipeline under compatibility/backend. |
 | `BUSINESS_VISION.md` | Mostly | Some | Medium | Ensure no old product modules are described as current product modules. |
-| `docs/DIAGNOSTIC_PRODUCT_CONCEPT.md` | Mostly | Some contradictory remnants | Medium | Treat as canonical concept only if it matches “ДИАГНОСТИКА 2”; move later list to backlog section. |
-| `RULES.md` | Not deeply contradicted in search | Low | Low | Add brief routing rule: product truth = “ДИАГНОСТИКА 2”. |
+| `docs/DIAGNOSTIC_PRODUCT_CONCEPT.md` | Mostly | Some contradictory remnants | Medium | Treat as canonical concept only if it matches “Diagnosis 2”; move later list to backlog section. |
+| `RULES.md` | Not deeply contradicted in search | Low | Low | Add brief routing rule: product truth = “Diagnosis 2”. |
 | `WORKFLOW.md` | Partially | Possible because workflow still discusses old generated artifacts | Medium | Make workflow distinguish product changes vs advanced/generated support changes. |
 | `GLOSSARY.md` | Partially | Yes, V1 generated decision-support bundle definition can anchor agents in old frame | Medium | Reclassify generated decision-support bundle as advanced/backend support, not core product. |
 | `DATA.md` | Not primary source of leakage | Low | Low | No first-pass change unless data assumptions mention macro/client-fit as core. |
@@ -144,7 +144,7 @@ Assessment: technically true, but dangerous as first-contact agent instruction. 
 
 Recommended action: rewrite to:
 
-- canonical current project = “ДИАГНОСТИКА 2”;
+- canonical current project = “Diagnosis 2”;
 - current product flow = Input -> X-Ray -> Stress -> Problem -> Launchpad -> Builder -> Current vs Candidate -> Verdict -> AI grounding -> What Changed;
 - old V1 artifacts exist only as advanced/backend/generated support unless explicitly requested.
 
@@ -292,7 +292,7 @@ What it does:
 Alignment:
 
 - Old behavior. It treats full-menu comparison as the product menu.
-- This contradicts canonical “ДИАГНОСТИКА 2”, where the product should be current-vs-selected-candidate or a small user-created shortlist, not a hidden full candidate arena.
+- This contradicts canonical “Diagnosis 2”, where the product should be current-vs-selected-candidate or a small user-created shortlist, not a hidden full candidate arena.
 
 Recommended fix:
 
@@ -317,7 +317,7 @@ What they do:
 
 Alignment:
 
-- These are the strongest code alignment with “ДИАГНОСТИКА 2”.
+- These are the strongest code alignment with “Diagnosis 2”.
 - Caveat: several depend on old comparison/selection/action/monitoring artifacts, so they are not yet an independent product pipeline.
 
 Recommended fix:
@@ -345,7 +345,7 @@ What it does:
 Alignment:
 
 - Useful backend/generated support.
-- Full Action Plan / Rebalancing Advisor is listed in “НА ПОТОМ”; it should not be current core product.
+- Full Action Plan / Rebalancing Advisor is listed in “Later”; it should not be current core product.
 
 ### `src/monitoring.py` and `src/light_monitoring_summary.py`
 
@@ -356,8 +356,8 @@ What they do:
 
 Alignment:
 
-- `what_changed_summary.json` aligns with “ДИАГНОСТИКА 2”.
-- Advanced monitoring/history is “НА ПОТОМ” unless hidden/support.
+- `what_changed_summary.json` aligns with “Diagnosis 2”.
+- Advanced monitoring/history is “Later” unless hidden/support.
 
 ### `src/decision_journal.py`
 
@@ -367,7 +367,7 @@ What it does:
 
 Alignment:
 
-- Full Decision Journal is “НА ПОТОМ”; current core only needs light journal/grounding inside commentary if any.
+- Full Decision Journal is “Later”; current core only needs light journal/grounding inside commentary if any.
 
 ### `src/portfolio_xray.py` and `src/stress.py`
 
@@ -378,7 +378,7 @@ What they do:
 Alignment:
 
 - X-Ray and Stress are core.
-- Portfolio Archetype is already implemented despite “НА ПОТОМ” mentioning it. It is acceptable as diagnostic evidence inside X-Ray if not marketed as a separate later product module.
+- Portfolio Archetype is already implemented despite “Later” mentioning it. It is acceptable as diagnostic evidence inside X-Ray if not marketed as a separate later product module.
 - What Happens If UI remains backlog; programmatic primitive can remain backend.
 
 ### `run_optimization.py`
@@ -404,23 +404,23 @@ Alignment:
 | `what_changed_summary.json` | Current Core Product Output | Low | Light monitoring summary; use instead of technical monitoring diff. |
 | `candidate_comparison.json` | Advanced / Backend Evidence / technical contract | Medium | Useful input, but not current product answer. |
 | `selection_decision.json` | Technical artifact / backend evidence | High | Must be hidden behind Decision Verdict. |
-| `portfolio_health_score.json` | Advanced / Backend Evidence | High | From “НА ПОТОМ”; do not present as core. |
-| `robustness_scorecard.json` | Advanced / Backend Evidence | High | From “НА ПОТОМ”; do not present as core. |
-| `assumption_sensitivity.json` | Advanced / Backend Evidence | High | From “НА ПОТОМ”; current code writes it after compare. |
+| `portfolio_health_score.json` | Advanced / Backend Evidence | High | From “Later”; do not present as core. |
+| `robustness_scorecard.json` | Advanced / Backend Evidence | High | From “Later”; do not present as core. |
+| `assumption_sensitivity.json` | Advanced / Backend Evidence | High | From “Later”; current code writes it after compare. |
 | `pareto_dominance.json` | Advanced / Backend Evidence | High | Full comparison/research; not core. |
 | `regret_analysis.json` | Advanced / Backend Evidence | High | Full comparison/research; not core. |
 | `model_risk_diagnostics.json` | Advanced / Backend Evidence | Medium | Can support verdict, not product front. |
 | `tradeoff_explanation.json` | Advanced/backend support or product support | Medium | Trade-off belongs in Current vs Candidate, but standalone artifact should be support unless product spec promotes it. |
-| `action_plan.json` | Generated support artifact / advanced action evidence | High | Full Action Plan/Rebalancing Advisor is “НА ПОТОМ”. |
+| `action_plan.json` | Generated support artifact / advanced action evidence | High | Full Action Plan/Rebalancing Advisor is “Later”. |
 | `monitoring_diff.json` | Technical artifact / advanced monitoring | Medium | Product should use `what_changed_summary.json`. |
-| `decision_journal.json` | Generated support artifact / future full journal | High | Full journal is “НА ПОТОМ”; keep as generated support. |
+| `decision_journal.json` | Generated support artifact / future full journal | High | Full journal is “Later”; keep as generated support. |
 | `decision_package_summary.json/txt` | Generated report/support artifact | Medium | Not current product source of truth. |
 | `portfolio_comparison.json/txt` | Legacy compatibility | Medium | Old policy/equal/risk/robust comparison; hide from current product. |
 | CSV/TXT/HTML/PNG/PDF sidecars | Generated export artifacts | Medium | Not source-of-truth; optional export only. |
 
-## 6. “НА ПОТОМ” Leakage Audit
+## 6. “Later” Leakage Audit
 
-| Feature from “НА ПОТОМ” | Where it appears now | Acceptable as backend evidence? | Needs doc demotion? | Runtime hide/filter? |
+| Feature from “Later” | Where it appears now | Acceptable as backend evidence... | Needs doc demotion... | Runtime hide/filter... |
 |---|---|---:|---:|---:|
 | Portfolio Health Score | `SPEC.md`, `README.md`, `OUTPUTS.md`, `src/portfolio_health_score.py`, compare writer | Yes | Yes | Yes |
 | Robustness Scorecard | `SPEC.md`, `README.md`, `OUTPUTS.md`, `src/robustness_scorecard.py`, compare writer | Yes | Yes | Yes |
@@ -514,7 +514,7 @@ Based on code inspection:
 ### Medium
 
 1. **Macro/regime diagnostics exist while Macro Dashboard is backlog**. Needs clearer distinction.
-2. **Portfolio Archetype exists despite being listed as later in “НА ПОТОМ”**. Acceptable if described as X-Ray diagnostic evidence, not separate product module.
+2. **Portfolio Archetype exists despite being listed as later in “Later”**. Acceptable if described as X-Ray diagnostic evidence, not separate product module.
 3. **Action Plan exists but full Rebalancing Advisor is backlog**. Needs product filtering.
 4. **Decision Journal exists but full journal/workflow is backlog**. Needs product filtering.
 5. **PDF/export docs remain prominent in some places**. Should be export-only.
@@ -528,7 +528,7 @@ Based on code inspection:
 
 ### Session 01 — Documentation Truth Reset
 
-Objective: make “ДИАГНОСТИКА 2” the unmistakable current product across top-level docs.
+Objective: make “Diagnosis 2” the unmistakable current product across top-level docs.
 
 Files likely affected:
 
@@ -544,7 +544,7 @@ Files likely affected:
 What to change:
 
 - Put canonical current flow at the top.
-- Define “ДИАГНОСТИКА 2 НА ПОТОМ” as backlog/advanced/later.
+- Define “Diagnosis 2 Later” as backlog/advanced/later.
 - Move Health Score, Robustness, Action, Journal, macro dashboard, full candidate arena, etc. out of current product wording.
 - Preserve implemented capability notes but classify them as advanced/backend/generated support.
 
@@ -563,7 +563,7 @@ rg -n "Portfolio Health Score|Robustness Scorecard|Action Plan|Decision Journal|
 
 Expected output:
 
-- All top-level docs say canonical product = “ДИАГНОСТИКА 2”.
+- All top-level docs say canonical product = “Diagnosis 2”.
 - Old modules appear only with advanced/backend/backlog qualifiers.
 
 ### Session 02 — Output Classification Cleanup
@@ -738,7 +738,7 @@ Expected output:
 
 ### Session 07 — Final Validation Run
 
-Objective: prove the project now behaves and documents itself as “ДИАГНОСТИКА 2”.
+Objective: prove the project now behaves and documents itself as “Diagnosis 2”.
 
 Verification:
 
@@ -758,28 +758,28 @@ Expected output:
 
 ## 10. Final Verdict
 
-### What is the project today?
+### What is the project today...
 
 Today the project is a **hybrid**:
 
 ```text
 old optimizer/report/scorecard-heavy backend
 +
-new diagnosis-first “ДИАГНОСТИКА 2” product adapter layer
+new diagnosis-first “Diagnosis 2” product adapter layer
 +
 partially corrected documentation
 +
 default runtime that still generates too much old/advanced evidence
 ```
 
-It is not a clean “ДИАГНОСТИКА 2” project yet.
+It is not a clean “Diagnosis 2” project yet.
 
-### What should the project become after remediation?
+### What should the project become after remediation...
 
 It should become:
 
 ```text
-ДИАГНОСТИКА 2 as the canonical current product
+Diagnosis 2 as the canonical current product
 with old optimizer/report/scorecard capabilities preserved as advanced/backend/legacy support
 ```
 
@@ -793,11 +793,11 @@ Input portfolio -> X-Ray -> Stress -> Problems -> Launchpad -> Builder -> one se
 
 The highest-leverage fix is:
 
-> Rewrite `AGENTS.md`, `README.md`, `SPEC.md`, and `OUTPUTS.md` so the six-file product bundle and “ДИАГНОСТИКА 2” flow are the first and dominant truth, while Health/Robustness/Action/Journal/Macro/full candidate arena are explicitly advanced/backend/backlog.
+> Rewrite `AGENTS.md`, `README.md`, `SPEC.md`, and `OUTPUTS.md` so the six-file product bundle and “Diagnosis 2” flow are the first and dominant truth, while Health/Robustness/Action/Journal/Macro/full candidate arena are explicitly advanced/backend/backlog.
 
 This prevents future agents from inheriting the old project identity.
 
-### What should be hidden from current product flow?
+### What should be hidden from current product flow...
 
 Hide or demote by default:
 
@@ -817,7 +817,7 @@ Hide or demote by default:
 - legacy PDF/report suite;
 - legacy policy optimization.
 
-### What can remain in code but only as advanced/backend evidence?
+### What can remain in code but only as advanced/backend evidence...
 
 These can remain:
 

@@ -15,6 +15,7 @@ It defines the project-wide principles, boundaries, and required working discipl
 ## Rule Discipline
 
 - Assumptions must be explicit and visible in code, reports, configs, or documentation.
+- Repository-authored artifacts are English-only regardless of chat language: documentation, code prose, comments, tests, UI copy, generated text, and file/directory names must not introduce Russian, mixed-language prose, or mojibake.
 - Diagnostics are not production policy unless a canonical spec says they are binding.
 - Do not invent formulas, estimators, scenarios, constraints, statuses, or data rules when a spec exists.
 - Before changing formulas, portfolio logic, data flow, stress behavior, optimizer policy, report outputs, interfaces, or product-facing workflows, check the relevant source of truth first.

@@ -2,7 +2,7 @@
 
 ## Status
 
-This file is the canonical UI/UX design direction for Portfolio MRI / Portfolio X-Ray / ДИАГНОСТИКА 2 product UI work.
+This file is the canonical UI/UX design direction for Portfolio MRI / Portfolio X-Ray / Diagnosis 2 product UI work.
 
 It governs product screens, navigation, visual hierarchy, decision cards, generated HTML surfaces, and client-ready UI presentation. It does not override [SPEC.md](../../SPEC.md), [RULES.md](../../RULES.md), [OUTPUTS.md](../../OUTPUTS.md), implementation code, formulas, data rules, policy logic, or output contracts.
 
@@ -237,13 +237,13 @@ Progress rules:
 
 Main content should answer one question per screen:
 
-- What did we receive?
-- What is the diagnosis?
-- What evidence supports it?
-- What hypothesis are we testing?
-- What changed versus current?
-- Is the evidence enough for a verdict?
-- How can this be explained to a client?
+- What did we receive...
+- What is the diagnosis...
+- What evidence supports it...
+- What hypothesis are we testing...
+- What changed versus current...
+- Is the evidence enough for a verdict...
+- How can this be explained to a client...
 
 ### Optional Right Panel
 
@@ -283,7 +283,7 @@ Technical detail belongs in:
 ### 7.1 Portfolio Input
 
 **User question:**  
-What portfolio am I diagnosing, and is the input good enough to continue?
+What portfolio am I diagnosing, and is the input good enough to continue...
 
 **Top-level content:**
 
@@ -316,7 +316,7 @@ Users may think the system already validated investment suitability. It has not.
 ### 7.2 Decision Summary
 
 **User question:**  
-What is the current decision state in plain language?
+What is the current decision state in plain language...
 
 **Top-level content:**
 
@@ -348,7 +348,7 @@ Users may read a compact status as a recommendation. Use boundary notes directly
 ### 7.3 Evidence Center: X-Ray + Stress
 
 **User question:**  
-What evidence explains the portfolio problem?
+What evidence explains the portfolio problem...
 
 **Top-level content:**
 
@@ -381,7 +381,7 @@ Users may confuse a stress scenario result with a forecast. Label it as diagnost
 ### 7.4 Hypothesis Launchpad + Builder
 
 **User question:**  
-Which candidate hypothesis should we test against the diagnosis?
+Which candidate hypothesis should we test against the diagnosis...
 
 **Top-level content:**
 
@@ -413,7 +413,7 @@ Users may treat the first candidate as the system’s preferred choice. Use expl
 ### 7.5 Current vs Candidate Comparison
 
 **User question:**  
-What improved, what worsened, and what trade-off did the candidate create?
+What improved, what worsened, and what trade-off did the candidate create...
 
 **Top-level content:**
 
@@ -446,7 +446,7 @@ Users may equate more green metrics with “best portfolio.” Force trade-off f
 ### 7.6 Decision Verdict + AI Commentary
 
 **User question:**  
-Is the evidence strong enough to support a decision?
+Is the evidence strong enough to support a decision...
 
 **Top-level content:**
 
@@ -479,7 +479,7 @@ Users may see AI language as authority. Keep commentary grounded and label it as
 ### 7.7 Report / Client-ready Explanation
 
 **User question:**  
-Can this result be explained clearly to a client or stakeholder?
+Can this result be explained clearly to a client or stakeholder...
 
 **Top-level content:**
 
@@ -804,16 +804,16 @@ If any of these exist in code or generated outputs, classify them as `Advanced`,
 
 Before accepting any Portfolio MRI UI work, check:
 
-- [ ] Does the UI answer what the user should do next?
-- [ ] Is the diagnosis visible before metrics?
-- [ ] Is the candidate clearly marked as a test?
-- [ ] Is the verdict clearly decision-support?
-- [ ] Are technical details in drill-down?
-- [ ] Is no-trade treated as a real outcome?
-- [ ] Is evidence insufficient explained honestly?
-- [ ] Does the UI avoid false precision?
-- [ ] Can a user understand the result in 5 minutes?
-- [ ] Does the UI avoid looking like a crypto exchange, retail trading app, Excel UI, optimizer cockpit, or noisy chart terminal?
+- [ ] Does the UI answer what the user should do next...
+- [ ] Is the diagnosis visible before metrics...
+- [ ] Is the candidate clearly marked as a test...
+- [ ] Is the verdict clearly decision-support...
+- [ ] Are technical details in drill-down...
+- [ ] Is no-trade treated as a real outcome...
+- [ ] Is evidence insufficient explained honestly...
+- [ ] Does the UI avoid false precision...
+- [ ] Can a user understand the result in 5 minutes...
+- [ ] Does the UI avoid looking like a crypto exchange, retail trading app, Excel UI, optimizer cockpit, or noisy chart terminal...
 
 ---
 

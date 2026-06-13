@@ -70,7 +70,7 @@ The orchestration part of this plan is implemented: diagnosis-only core plans no
 
 ## Context and Orientation
 
-The repository root is `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`. Use Windows PowerShell from that directory. Use `\.venv\Scripts\python.exe` if it exists; otherwise follow the repository's normal Python setup.
+The repository root is `D:\Desktop\CURSOR TULA DIAGNOSTICS`. Use Windows PowerShell from that directory. Use `\.venv\Scripts\python.exe` if it exists; otherwise follow the repository's normal Python setup.
 
 The command in scope is:
 
@@ -155,7 +155,7 @@ Fifth, run the readiness gate again. If green, this blocker is closed and the pr
 
 Run all commands from:
 
-    D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА
+    D:\Desktop\CURSOR TULA DIAGNOSTICS
 
 Inspect the current plan builder and shared context default:
 

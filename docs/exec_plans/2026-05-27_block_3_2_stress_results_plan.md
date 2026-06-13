@@ -15,7 +15,7 @@ This document follows [PLANS.md](../../PLANS.md) from the repository root.
 
 ## Purpose / Big Picture
 
-After this migration, a portfolio-first operator running `python run_portfolio_review.py` on the current [config.yml](../../config.yml) reads `{output_dir_final}/analysis_subject/stress_report.json` and gets a **stable product-facing Block 3.2** that answers: *for each active stress scenario, what happened to the portfolio, what drove the loss, what offset it, and how confident is the evidence?* — without parsing raw `scenario_results` / `historical_results` rows or reintroducing client mandate pass/fail in Core MVP diagnostic mode.
+After this migration, a portfolio-first operator running `python run_portfolio_review.py` on the current [config.yml](../../config.yml) reads `{output_dir_final}/analysis_subject/stress_report.json` and gets a **stable product-facing Block 3.2** that answers: *for each active stress scenario, what happened to the portfolio, what drove the loss, what offset it, and how confident is the evidence...* — without parsing raw `scenario_results` / `historical_results` rows or reintroducing client mandate pass/fail in Core MVP diagnostic mode.
 
 Block 3.2 is delivered as **`stress_results_v1`** on `stress_report.json` (Stress Test Lab boundary — **not** `portfolio_xray.json`). Existing **`stress_conclusions`** (`stress_conclusions_v1`) remains the worst-case rollup for snapshot, comparison, and commentary backward compatibility.
 

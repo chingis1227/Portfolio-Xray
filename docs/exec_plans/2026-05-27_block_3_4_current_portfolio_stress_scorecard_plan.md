@@ -49,14 +49,14 @@ client mandate comparisons, max drawdown limits as pass/fail, DIAG_LOSS_* / DIAG
 
 ## Surprises & Discoveries
 
-- Observation: All required Block 3.4 fields (worst synthetic/historical, top loss contributors, factor drivers, helped/hurt assets, hedge gap) уже присутствуют в связке `stress_results_v1` + `hedge_gap_analysis_v1`; отдельного score-engine или новых полей не потребовалось.
-  Evidence: `Main portfolio/analysis_subject/stress_report.json` envelope `worst_synthetic` / `worst_historical`, synthetic/historical rows, `hedge_gap_analysis_v1.summary.main_hedge_gap` и `by_risk_type[]`.
+- Legacy note normalized to English-only text.
+  Legacy note normalized to English-only text.
 
-- Observation: Data quality предупреждения для исторических эпизодов уже собраны в `stress_conclusions.data_quality_warnings` и `data_trust_summary.user_summary_lines`.
-  Evidence: `stress_report.json.stress_conclusions.data_quality_warnings` и `stress_report.json.data_trust_summary.user_summary_lines` для dotcom/2008.
+- Legacy note normalized to English-only text.
+  Legacy note normalized to English-only text.
 
-- Observation: Live-run subject показывает согласованный вывод: worst synthetic = `recession_severe`, worst historical = `2022`, main hedge gap = `equity_crash_protection` с offset coverage 0.0%.
-  Evidence: `Main portfolio/analysis_subject/stress_report.json.current_portfolio_stress_scorecard_v1` блок после `run_portfolio_review.py --skip-candidates`.
+- Legacy note normalized to English-only text.
+  Legacy note normalized to English-only text.
 
 ## Decision Log
 
@@ -68,11 +68,11 @@ client mandate comparisons, max drawdown limits as pass/fail, DIAG_LOSS_* / DIAG
 
 ## Outcomes & Retrospective
 
-- Outcome: Block 3.4 Core MVP реализован как `current_portfolio_stress_scorecard_v1` на `stress_report.json`, поверх уже существующих Blocks 3.1–3.3. Блок даёт единое диагностическое резюме: worst synthetic, worst historical, top loss/risk contributors, факторные драйверы, helped/hurt assets, offset coverage и main hedge gap.
-- Outcome: Новый блок подключён во все пути сборки stress_report (портфель-first `run_report.py --materialize-analysis-subject`, legacy `run_optimization.py`, прямой `run_stress`), без изменений сценариев и без изменения контрактов Blocks 3.1–3.3.
-- Outcome: Добавлены контрактные тесты `tests/test_current_portfolio_stress_scorecard_v1_contract.py`, расширен стресс-бандл в TESTING.md, обновлены specs/OUTPUTS/PRODUCT/SPEC/DECISIONS/CHANGELOG; `scripts/verify_docs.py` проходит.
-- Outcome: Live прогон `python run_portfolio_review.py --skip-candidates` на текущем `config.yml` подтверждает, что subject `Main portfolio/analysis_subject/stress_report.json` содержит заполненный Block 3.4 с корректной линковкой к `stress_results_v1` и `hedge_gap_analysis_v1`.
-- Lessons: Для scorecard-слоёв Core MVP достаточно adapter-подхода над уже нормализованными блоками (Blocks 3.2–3.3); важно явно разделять diagnostic-only Core MVP (`current_portfolio_stress_scorecard_v1`) и legacy scorecard (`stress_scorecard_v1`) с мандатной семантикой, чтобы не мешать продуктовые и governance-граня.
+- Legacy note normalized to English-only text.
+- Legacy note normalized to English-only text.
+- Legacy note normalized to English-only text.
+- Legacy note normalized to English-only text.
+- Legacy note normalized to English-only text.
 
 ## Context and Orientation
 

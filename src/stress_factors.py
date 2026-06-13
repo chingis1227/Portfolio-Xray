@@ -6397,7 +6397,7 @@ def write_rolling_betas_plot_html(
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Rolling Factor Betas</title>
   <!-- Styling per DESIGN.md (project root): Inter/DM Sans, RUI tokens, flat (no chart chrome shadows in layout). -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@9..40,500&family=Inter:ital,opsz,wght@0,14..32,400;500&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2...family=DM+Sans:ital,opsz,wght@9..40,500&family=Inter:ital,opsz,wght@0,14..32,400;500&display=swap" />
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
     :root {{

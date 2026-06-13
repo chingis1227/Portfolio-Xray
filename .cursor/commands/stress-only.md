@@ -1,30 +1,30 @@
 ---
-description: Прогнать выбранный вариант и вывести только stress-результат
+description: Run the selected variant and show only the stress result
 ---
 
-Запусти stress-only прогон для выбранного варианта портфеля.
+Run a stress-only pass for the selected portfolio variant.
 
-Требования:
-1) Определи вариант:
-   - если пользователь явно указал `equal-weight` / `risk-parity` / `main`, используй его;
-   - если не указал, задай уточняющий вопрос (один из трёх вариантов).
+Requirements:
+1) Determine the variant:
+   - if the user explicitly specified `equal-weight`, `risk-parity`, or `main`, use it;
+   - if not specified, ask one concise clarification question with those three options.
 
-2) Запусти:
-   - python run_stress_variant.py --variant <equal-weight|risk-parity|main>
-   - при явной просьбе пользователя добавить без кеша:
-     - python run_stress_variant.py --variant <...> --no-cache
+2) Run:
+   - `python run_stress_variant.py --variant <equal-weight|risk-parity|main>`
+   - if the user explicitly asks to bypass cache, run:
+     - `python run_stress_variant.py --variant <...> --no-cache`
 
-3) После выполнения покажи только stress-блок:
+3) After completion, show only the stress block:
    - status
-   - reason (fail_reason_code / warning_code)
-   - worst_scenario_loss_pct
-   - failed_scenario
-   - failed_test
-   - factor_betas_5y
-   - factor_betas_10y
-   - сценарии: scenario_id, pnl, pass, top1_rc, top3_rc_sum
+   - reason (`fail_reason_code` / `warning_code`)
+   - `worst_scenario_loss_pct`
+   - `failed_scenario`
+   - `failed_test`
+   - `factor_betas_5y`
+   - `factor_betas_10y`
+   - scenarios: `scenario_id`, `pnl`, `pass`, `top1_rc`, `top3_rc_sum`
 
-4) Если прогон завершился ошибкой:
-   - покажи код ошибки
-   - кратко покажи хвост stdout/stderr
-   - предложи следующий шаг.
+4) If the run fails:
+   - show the error code
+   - briefly show the tail of stdout/stderr
+   - suggest the next step.

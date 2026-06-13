@@ -12,7 +12,7 @@ const host = '127.0.0.1';
 const startupTimeoutMs = Number(process.env.PMRI_QA_STARTUP_TIMEOUT_MS || 120000);
 const requestTimeoutMs = Number(process.env.PMRI_QA_REQUEST_TIMEOUT_MS || 15 * 60 * 1000);
 const scenarioLimitArgIndex = process.argv.indexOf('--scenario-limit');
-const scenarioLimit = scenarioLimitArgIndex >= 0 ? Number(process.argv[scenarioLimitArgIndex + 1]) : 5;
+const scenarioLimit = scenarioLimitArgIndex >= 0 ... Number(process.argv[scenarioLimitArgIndex + 1]) : 5;
 const headless = !process.argv.includes('--headed');
 const keepServers = process.argv.includes('--keep-servers');
 
@@ -122,14 +122,14 @@ const scenarios = [
       ]
     }
   }
-].slice(0, Number.isFinite(scenarioLimit) && scenarioLimit > 0 ? scenarioLimit : 5);
+].slice(0, Number.isFinite(scenarioLimit) && scenarioLimit > 0 ... scenarioLimit : 5);
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function outputTail(lines, maxLines = 100) {
-  return lines.join('').split(/\r?\n/).slice(-maxLines).join('\n');
+  return lines.join('').split(/\r...\n/).slice(-maxLines).join('\n');
 }
 
 function ensureDir(dir) {
@@ -194,10 +194,10 @@ function stopProcess(child) {
 
 function startFastApi(port) {
   const python = fs.existsSync(path.join(repoRoot, '.venv', 'Scripts', 'python.exe'))
-    ? path.join(repoRoot, '.venv', 'Scripts', 'python.exe')
+    ... path.join(repoRoot, '.venv', 'Scripts', 'python.exe')
     : 'py';
   const args = python === 'py'
-    ? ['-3', '-m', 'uvicorn', 'src.api.app:app', '--host', host, '--port', String(port)]
+    ... ['-3', '-m', 'uvicorn', 'src.api.app:app', '--host', host, '--port', String(port)]
     : ['-m', 'uvicorn', 'src.api.app:app', '--host', host, '--port', String(port)];
   const lines = [];
   const child = spawn(python, args, {
@@ -266,13 +266,13 @@ async function browserJson(page, method, url, body) {
     try {
       const response = await fetch(url, {
         method,
-        headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-        body: body === undefined ? undefined : JSON.stringify(body),
+        headers: body === undefined ... undefined : { 'Content-Type': 'application/json' },
+        body: body === undefined ... undefined : JSON.stringify(body),
         signal: controller.signal
       });
       const text = await response.text();
       let parsed = null;
-      try { parsed = text ? JSON.parse(text) : null; } catch (_error) { parsed = { rawText: text }; }
+      try { parsed = text ... JSON.parse(text) : null; } catch (_error) { parsed = { rawText: text }; }
       return { ok: response.ok, status: response.status, body: parsed };
     } finally {
       clearTimeout(timer);
@@ -281,18 +281,18 @@ async function browserJson(page, method, url, body) {
 }
 
 function record(value) {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  return value && typeof value === 'object' && !Array.isArray(value) ... value : {};
 }
 
 function text(value) {
-  return typeof value === 'string' && value.trim() ? value.trim() : '';
+  return typeof value === 'string' && value.trim() ... value.trim() : '';
 }
 
 function findCards(diagnosisBody) {
   const reviewResult = record(diagnosisBody.review_result || diagnosisBody);
   const outputs = record(reviewResult.outputs);
   const launchpad = record(outputs.candidate_launchpad);
-  const rawCards = Array.isArray(launchpad.cards) ? launchpad.cards : [];
+  const rawCards = Array.isArray(launchpad.cards) ... launchpad.cards : [];
   return rawCards.filter((item) => item && typeof item === 'object');
 }
 
@@ -332,7 +332,7 @@ function assertLineage(body, expected, label) {
 
 function sourceArtifacts(body) {
   const evidence = record(envelope(body).evidence);
-  const refs = Array.isArray(evidence.source_artifacts) ? evidence.source_artifacts : [];
+  const refs = Array.isArray(evidence.source_artifacts) ... evidence.source_artifacts : [];
   return refs.map((ref) => text(record(ref).kind)).filter(Boolean);
 }
 
@@ -353,13 +353,13 @@ function assertBoundedClientFit(body, label) {
 }
 
 function holdingsForState(portfolio) {
-  return (Array.isArray(portfolio.holdings) ? portfolio.holdings : []).map((holding, index) => ({
+  return (Array.isArray(portfolio.holdings) ... portfolio.holdings : []).map((holding, index) => ({
     id: `${holding.type || 'instrument'}-${holding.ticker || holding.currency || index}`,
-    label: holding.type === 'cash' ? `${holding.currency || 'USD'} cash` : holding.ticker,
-    ticker: holding.type === 'cash' ? (holding.currency || 'USD') : holding.ticker,
-    instrument: holding.type === 'cash' ? 'Cash' : holding.ticker,
+    label: holding.type === 'cash' ... `${holding.currency || 'USD'} cash` : holding.ticker,
+    ticker: holding.type === 'cash' ... (holding.currency || 'USD') : holding.ticker,
+    instrument: holding.type === 'cash' ... 'Cash' : holding.ticker,
     weight: Number(holding.weight) || 0,
-    type: holding.type === 'cash' ? 'cash' : 'instrument',
+    type: holding.type === 'cash' ... 'cash' : 'instrument',
     currency: holding.currency
   }));
 }
@@ -372,8 +372,8 @@ function minimalDiagnosis(data) {
     evidenceQuality: text(diagnosis.evidence_quality) || 'Evidence available',
     nextStep: text(diagnosis.next_step) || 'Review the next diagnostic test.',
     boundaryNote: text(diagnosis.boundary_note) || 'Diagnostic evidence only; decision action is separate.',
-    drivers: Array.isArray(diagnosis.drivers) ? diagnosis.drivers.filter((item) => typeof item === 'string') : ['Portfolio evidence was generated for this review.'],
-    metrics: Array.isArray(diagnosis.metrics) ? diagnosis.metrics : [],
+    drivers: Array.isArray(diagnosis.drivers) ... diagnosis.drivers.filter((item) => typeof item === 'string') : ['Portfolio evidence was generated for this review.'],
+    metrics: Array.isArray(diagnosis.metrics) ... diagnosis.metrics : [],
     selectedDiagnosisRole: text(diagnosis.selected_diagnosis_role) || undefined,
     sourceArtifacts: sourceArtifacts({ fastapi_envelope: { evidence: envelope({ fastapi_envelope: { data } }).evidence } }),
     rejectedAlternatives: [],
@@ -466,15 +466,15 @@ function buildStoredState({ scenario, reviewId, selectedCardId, candidateId, com
       candidateBoundary: text(comparisonData.candidate_boundary) || 'Comparison is evidence, not an instruction.',
       evidenceQuality: text(comparisonData.evidence_quality) || 'Evidence available',
       summary: text(comparisonData.summary) || `Comparison ${comparisonId} is available.`,
-      metrics: Array.isArray(comparisonData.metrics) ? comparisonData.metrics : [],
-      improved: Array.isArray(comparisonData.improved) ? comparisonData.improved : [],
-      worsened: Array.isArray(comparisonData.worsened) ? comparisonData.worsened : [],
-      neutral: Array.isArray(comparisonData.neutral) ? comparisonData.neutral : [],
-      unclear: Array.isArray(comparisonData.unclear) ? comparisonData.unclear : [],
+      metrics: Array.isArray(comparisonData.metrics) ... comparisonData.metrics : [],
+      improved: Array.isArray(comparisonData.improved) ... comparisonData.improved : [],
+      worsened: Array.isArray(comparisonData.worsened) ... comparisonData.worsened : [],
+      neutral: Array.isArray(comparisonData.neutral) ... comparisonData.neutral : [],
+      unclear: Array.isArray(comparisonData.unclear) ... comparisonData.unclear : [],
       turnover: text(comparisonData.turnover) || 'n/a',
       estimatedCost: text(comparisonData.estimated_cost) || 'n/a',
       materiality: text(comparisonData.materiality) || 'Evidence review',
-      warnings: Array.isArray(comparisonData.warnings) ? comparisonData.warnings : [],
+      warnings: Array.isArray(comparisonData.warnings) ... comparisonData.warnings : [],
       clientFit,
       generatedAt: now
     },
@@ -491,13 +491,13 @@ function buildStoredState({ scenario, reviewId, selectedCardId, candidateId, com
       explanation: text(verdictData.explanation) || 'Read this as non-binding decision support.',
       evidenceQuality: text(verdictData.evidence_quality) || 'Evidence available',
       boundaryNote: text(verdictData.boundary_note) || 'Not a trade instruction.',
-      keyEvidence: Array.isArray(verdictData.key_evidence) ? verdictData.key_evidence : [],
+      keyEvidence: Array.isArray(verdictData.key_evidence) ... verdictData.key_evidence : [],
       monitoringTrigger: text(verdictData.monitoring_trigger) || 'Retest if evidence changes.',
-      metrics: Array.isArray(verdictData.metrics) ? verdictData.metrics : [],
+      metrics: Array.isArray(verdictData.metrics) ... verdictData.metrics : [],
       actionFraming: text(verdictData.action_framing) || 'Decision-support framing only.',
-      limitations: Array.isArray(verdictData.limitations) ? verdictData.limitations : [],
-      evidenceUsed: Array.isArray(verdictData.evidence_used) ? verdictData.evidence_used : [],
-      whatWouldChangeVerdict: Array.isArray(verdictData.what_would_change_verdict) ? verdictData.what_would_change_verdict : [],
+      limitations: Array.isArray(verdictData.limitations) ... verdictData.limitations : [],
+      evidenceUsed: Array.isArray(verdictData.evidence_used) ... verdictData.evidence_used : [],
+      whatWouldChangeVerdict: Array.isArray(verdictData.what_would_change_verdict) ... verdictData.what_would_change_verdict : [],
       clientFit,
       generatedAt: now
     },
@@ -508,12 +508,12 @@ function buildStoredState({ scenario, reviewId, selectedCardId, candidateId, com
       candidateId,
       title: text(reportData.title) || 'Grounded client-ready report summary',
       subtitle: text(reportData.subtitle) || 'Evidence-backed report preview.',
-      sections: Array.isArray(reportData.sections) ? reportData.sections : [],
-      evidenceUsed: Array.isArray(reportData.evidence_used) ? reportData.evidence_used : [],
-      unavailableEvidence: Array.isArray(reportData.unavailable_evidence) ? reportData.unavailable_evidence : [],
+      sections: Array.isArray(reportData.sections) ... reportData.sections : [],
+      evidenceUsed: Array.isArray(reportData.evidence_used) ... reportData.evidence_used : [],
+      unavailableEvidence: Array.isArray(reportData.unavailable_evidence) ... reportData.unavailable_evidence : [],
       nextObservation: text(reportData.next_observation) || 'Retest if evidence changes.',
       boundaryNote: text(reportData.boundary_note) || 'Decision-support only.',
-      warnings: Array.isArray(reportData.warnings) ? reportData.warnings : [],
+      warnings: Array.isArray(reportData.warnings) ... reportData.warnings : [],
       clientFit,
       generatedAt: now
     },
@@ -596,7 +596,7 @@ function sanitizedForAdviceScan(bodyText) {
   return bodyText
     .replace(/Equity sell-off/gi, 'Equity stress event')
     .replace(/not a trade instruction/gi, 'not an instruction')
-    .replace(/not .*?profile sign-off/gi, 'not a profile sign off');
+    .replace(/not .*...profile sign-off/gi, 'not a profile sign off');
 }
 
 function assertNoForbiddenAdvice(bodyText, label) {
@@ -617,8 +617,8 @@ async function capturePageArtifact(page, artifactBase) {
     try { html = await page.content(); } catch (_contentError) { html = '<!-- page.content unavailable -->'; }
     try { bodyText = await page.locator('body').innerText({ timeout: 5000 }); } catch (_textError) { bodyText = 'body text unavailable'; }
     fs.writeFileSync(htmlPath, html, 'utf8');
-    fs.writeFileSync(textPath, `Screenshot failed: ${error && error.message ? error.message : String(error)}\n\n${bodyText}`, 'utf8');
-    return { screenshot: null, fallback: { html: htmlPath, text: textPath, error: error && error.message ? error.message : String(error) } };
+    fs.writeFileSync(textPath, `Screenshot failed: ${error && error.message ... error.message : String(error)}\n\n${bodyText}`, 'utf8');
+    return { screenshot: null, fallback: { html: htmlPath, text: textPath, error: error && error.message ... error.message : String(error) } };
   }
 }
 
@@ -692,7 +692,7 @@ async function runScenario(page, baseUrl, scenario, index) {
       downstream_status: 'skipped_non_candidate_card',
       diagnosis_primary: text(diagnosisSummary.primary_diagnosis),
       diagnosis_headline: text(diagnosisSummary.headline),
-      diagnosis_evidence_count: Array.isArray(diagnosisSummary.diagnosis_evidence_items) ? diagnosisSummary.diagnosis_evidence_items.length : 0,
+      diagnosis_evidence_count: Array.isArray(diagnosisSummary.diagnosis_evidence_items) ... diagnosisSummary.diagnosis_evidence_items.length : 0,
       diagnosis_attempt: diagnosis.attempt || 1,
       client_fit_status_label: text(apiClientFit(diagnosis.body).status_label),
       client_fit_status_tone: text(apiClientFit(diagnosis.body).status_tone),
@@ -795,7 +795,7 @@ async function runScenario(page, baseUrl, scenario, index) {
     verdict_id: verdictId,
     diagnosis_primary: text(diagnosisSummary.primary_diagnosis),
     diagnosis_headline: text(diagnosisSummary.headline),
-    diagnosis_evidence_count: Array.isArray(diagnosisSummary.diagnosis_evidence_items) ? diagnosisSummary.diagnosis_evidence_items.length : 0,
+    diagnosis_evidence_count: Array.isArray(diagnosisSummary.diagnosis_evidence_items) ... diagnosisSummary.diagnosis_evidence_items.length : 0,
     diagnosis_attempt: diagnosis.attempt || 1,
     client_fit_status_label: text(apiClientFit(report.body).status_label),
     client_fit_status_tone: text(apiClientFit(report.body).status_tone),
@@ -871,7 +871,7 @@ async function main() {
     report.status = 'passed';
   } catch (error) {
     report.status = 'failed';
-    report.failures.push(error && error.stack ? error.stack : String(error));
+    report.failures.push(error && error.stack ... error.stack : String(error));
     throw error;
   } finally {
     report.finished_at = new Date().toISOString();
@@ -891,6 +891,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error && error.stack ? error.stack : error);
+  console.error(error && error.stack ... error.stack : error);
   process.exitCode = 1;
 });

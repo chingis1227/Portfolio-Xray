@@ -130,8 +130,8 @@ Offline gate remains the regression contract; this snapshot is **live disk evide
 
 | Question | Answer |
 | --- | --- |
-| Six-file product bundle on disk under `Main portfolio/`? | **Yes** — checklist PASS |
-| RM-ARCH-011 sidecar consumed in commentary/what-changed? | **Yes** — spot check PASS |
-| Demo-ready backend (audit closure)? | **Yes (MVP)** — Session 08 closed audit with C1/C2 as **accepted operator caveats** (stale compare scope; factory manifest vs product_bundle manifest keys) |
+| Six-file product bundle on disk under `Main portfolio/`... | **Yes** — checklist PASS |
+| RM-ARCH-011 sidecar consumed in commentary/what-changed... | **Yes** — spot check PASS |
+| Demo-ready backend (audit closure)... | **Yes (MVP)** — Session 08 closed audit with C1/C2 as **accepted operator caveats** (stale compare scope; factory manifest vs product_bundle manifest keys) |
 
 **Closure:** [Product-Flow Validation Audit](2026-05-25_product_flow_validation_audit.md) Session 08 (2026-05-26); `RM-ARCH-011` → Done in [ROADMAP.md](../ROADMAP.md).

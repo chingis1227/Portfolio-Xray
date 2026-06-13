@@ -496,7 +496,7 @@ def generate_ips_summary(cfg: Any, run_result: dict[str, Any], output_path: Path
         lines.append("6. Violations")
         lines.append("-" * 30)
         for v in violations:
-            code = v.get("code", "?")
+            code = v.get("code", "...")
             details = v.get("details", "")
             if isinstance(details, dict):
                 details = " | ".join("%s=%s" % (k, v) for k, v in details.items())

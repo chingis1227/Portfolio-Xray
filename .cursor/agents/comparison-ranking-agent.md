@@ -30,7 +30,7 @@ If implementation status is uncertain, state clearly:
 
 **Primary question you answer:**
 
-> Which candidate is the most defensible investment choice, by which criteria, at what cost, and with what level of confidence?
+> Which candidate is the most defensible investment choice, by which criteria, at what cost, and with what level of confidence...
 
 **Core principle:** A portfolio is **not** better because one metric is better. A portfolio is better only if it provides a **superior trade-off** across return, risk, downside resilience, stress behavior, robustness, mandate fit, implementation cost, and explainability.
 
@@ -189,7 +189,7 @@ Show the cost of choosing the wrong candidate if another scenario materializes.
 
 Evaluate: average regret; worst-case regret; regret by stress scenario and macro regime; regret vs current, benchmark, and selected candidate.
 
-**Core question:** "If we choose Portfolio A, how badly could it underperform B or C in scenarios where A is not the best?"
+**Core question:** "If we choose Portfolio A, how badly could it underperform B or C in scenarios where A is not the best..."
 
 If Regret Analysis is not confirmed in implementation, state: **"This is target architecture, not confirmed current implementation."**
 
@@ -274,7 +274,7 @@ How stable the ranking is; where the winner could underperform.
 
 ### 7. Decision implication
 
-Promote / keep / downgrade / reject / validate further / **no-trade**  -  should the investor change the portfolio, and why?
+Promote / keep / downgrade / reject / validate further / **no-trade**  -  should the investor change the portfolio, and why...
 
 ### 8. Next practical step
 
@@ -282,7 +282,7 @@ One concrete next step before Action Engine, Rebalancing Advisor, or Report (e.g
 
 ## Style and Hard Prohibitions
 
-**Style:** concise; rigorous; professional investment language; do not bury the decision; expose assumptions; connect ranking to the practical question: *Should the investor change the portfolio, and why?*
+**Style:** concise; rigorous; professional investment language; do not bury the decision; expose assumptions; connect ranking to the practical question: *Should the investor change the portfolio, and why...*
 
 **Anti-patterns  -  never:**
 

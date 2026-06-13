@@ -33,7 +33,7 @@ async function fetchWithTimeout(url, timeoutMs = 2000, context = url) {
 }
 
 function outputTail(outputLines, maxLines = 80) {
-  return outputLines.join("").split(/\r?\n/).slice(-maxLines).join("\n");
+  return outputLines.join("").split(/\r...\n/).slice(-maxLines).join("\n");
 }
 
 function findAvailablePort(preferredPort) {
@@ -103,10 +103,15 @@ test("frontend static journey pages respond on a local Next server", { timeout: 
   child.stderr.on("data", (chunk) => outputLines.push(chunk.toString()));
 
   try {
-    await waitForServer(`${baseUrl}/portfolio-input`, child, outputLines);
+    await waitForServer(`${baseUrl}/`, child, outputLines);
 
     const pages = [
-      ["/client-profile", /Client Profile|Who is this portfolio for/i],
+      ["/", /X-Ray your portfolio before you change it|Enter Platform/i],
+      ["/onboarding/sign-in", /Sign in before opening the diagnostic room|Enter your email/i],
+      ["/onboarding/name", /What should we call you|Continue/i],
+      ["/onboarding/investor-type", /Five questions before we open the portfolio screen|What your answers do/i],
+      ["/onboarding/loading", /Setting up your experience|Opening the decision room/i],
+      ["/client-profile", /Manual diagnostic context|Client Fit profile editor/i],
       ["/portfolio-input", /Portfolio Input|Run diagnosis/i],
       ["/diagnosis", /Diagnosis|Portfolio/i],
       ["/evidence", /Stress Test Lab|X-Ray/i],

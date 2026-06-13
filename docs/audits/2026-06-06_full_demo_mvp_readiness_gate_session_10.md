@@ -32,7 +32,7 @@ This is not `NOT_READY_BLOCKED` because the demo can still be run and explained 
 
 ## Focused verification evidence
 
-Commands were run from the repository root `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА` with `\.venv\Scripts\python.exe`.
+Commands were run from the repository root `D:\Desktop\CURSOR TULA DIAGNOSTICS` with `\.venv\Scripts\python.exe`.
 
 - Block 6 Builder setup tests: **45 passed** in 4.46s.
 - Candidate Generation tests: **18 passed** in 0.46s.

@@ -1,24 +1,22 @@
 ---
-description: 
+description: Scope rules for portfolio runs, variant refreshes, and PDF rebuilds
 alwaysApply: true
 ---
 
-# Portfolio run scope (EW / Risk Parity / Main)
+1. **One request = one variant:** if the user asks for a full run of only **Equal-Weight**, only **Risk Parity**, or only **Main (policy)**, use the current `config.yml` and **do not recalculate** other variants unless separately requested.
 
-1. **Один запрос = один вариант:** если пользователь просит полный прогон только **Equal-Weight**, только **Risk Parity** или только **Main (policy)**, используй актуальный `config.yml` и **не пересчитывай** остальные варианты без отдельной просьбы.
+2. **Variant folder:** after a successful run, all artifacts must belong to the matching directory (`equal-weight portfolio/`, `risk parity portfolio/`, `Main portfolio/` plus root `results_csv/` for Main according to config): weights, summary, `commentary.txt` from `run_portfolio_report_for_weights`, reports, JSON, and CSV.
 
-2. **Папка варианта:** после успешного прогона все артефакты в соответствующей директории (`equal-weight portfolio/`, `risk parity portfolio/`, `Main portfolio/` + для Main — корневой `results_csv/` по конфигу) должны соответствовать этому прогону: веса, summary, `commentary.txt` (авто из `run_portfolio_report_for_weights`), отчёты, JSON, CSV.
+3. **EW vs RP comparison:** after a **successful** EW or RP run, the pipeline calls `run_compare_ew_rp.py` and rebuilds PDFs through `try_rebuild_pdfs_after_variant`. If only RP was refreshed, the on-disk EW artifact may be older, but the delta in `ew_rp_comparison.*` and comparison PDF is refreshed.
 
-3. **Сравнение EW vs RP:** после **успешного** прогона EW или RP пайплайн вызывает `run_compare_ew_rp.py` и пересборку PDF (`try_rebuild_pdfs_after_variant`). Если обновили только RP, EW на диске остаётся прежним, но **разница** в `ew_rp_comparison.*` и PDF сравнения обновляется.
+4. **Policy vs EW vs RP vs Robust Scenario comparison:** after a **successful** Main report (`run_report.py`, including from `run_optimization.py`), the pipeline calls `run_compare_variants.py`, then rebuilds PDFs through `try_rebuild_pdfs_after_main_report`. The `robust_scenario` key is added when `robust scenario portfolio/` with `snapshot_10y.json` exists after `run_robust_scenario_portfolio_report.py`. Baseline folders are not recalculated; only the summary from current on-disk files is refreshed.
 
-4. **Сравнение Policy vs EW vs RP vs Robust Scenario:** после **успешного** отчёта Main (`run_report.py`, в т.ч. из `run_optimization.py`) вызывается `run_compare_variants.py`, затем пересборка PDF (`try_rebuild_pdfs_after_main_report`). Ключ **`robust_scenario`** добавляется, если существует папка **`robust scenario portfolio/`** со `snapshot_10y.json` (после `run_robust_scenario_portfolio_report.py`). Baseline-папки не пересчитываются; обновляется только сводка по **текущим** файлам на диске.
+5. **Do not mix with a mega-run:** changing `config.yml` does not run anything by itself. An explicit script run is required. Do not expect all three variants to auto-run without the user's command.
 
-5. **Не смешивать с «мегапрогоном»:** изменение `config.yml` само по себе ничего не пересчитывает — нужен явный запуск скрипта(ов). Не ожидай авто-прогона всех трёх вариантов без команды пользователя.
+6. **Portfolio-first review (`run_portfolio_review.py`):** default `site_api` does **not** refresh `pdf files/`. PDFs are generated only with `--with-pdf` for the portfolio-first decision package and subject, or `--legacy-full-pdf`. After routine core/full review without those flags, do not require or check PDF rebuilds; on-disk PDFs may be stale relative to fresh JSON.
 
-6. **Portfolio-first review (`run_portfolio_review.py`):** default `site_api` **не** обновляет `pdf files/`. PDF только при `--with-pdf` (portfolio-first decision package + subject) или `--legacy-full-pdf`. После routine core/full review **без** этих флагов не требовать и не проверять пересборку PDF — on-disk PDF могут быть stale относительно свежего JSON.
+7. **PDF (legacy policy / EW / RP):** after a successful `run_report.py` run, including from `run_optimization.py`, `try_rebuild_pdfs_after_main_report` rebuilds the Policy vs EW vs RP summary and the PDF set in `pdf files/` (commentary, stress commentary, weights, IPS summary, comparisons, and optional copy to `00_IMPORTANT/11_pdf files`). If rebuilding manually without a full report, run `python rebuild_pdf_reports.py --after-main` for Main/policy or `--after-variant` after EW/RP. If copy fails because the destination does not exist, that is a warning only.
 
-7. **PDF (legacy policy / EW / RP):** после успешного `run_report.py` (в т.ч. из `run_optimization.py`) вызывается `try_rebuild_pdfs_after_main_report` — сводка Policy vs EW vs RP и весь набор PDF в `pdf files/` (commentary, **stress_commentary**, weights, ips_summary, сравнения; при возможности копия в `00_ВАЖНОЕ/11_pdf files`). Если агент вручную пересобирает PDF без полного отчёта: `python rebuild_pdf_reports.py --after-main` (Main/policy) или `--after-variant` (после EW/RP). При ошибке копирования в `00_ВАЖНОЕ` смотри лог — источник истины: корневые `pdf files/`.
+8. **Agent check (legacy policy / EW / RP):** for requests such as "run only RP / EW / Main" or policy optimization, verify after completion that PDFs were rebuilt (`PDF written` log or explicit `rebuild_pdf_reports.py` with the right flag). Do not leave PDFs stale relative to the latest run. This rule does not apply to default `run_portfolio_review.py` without `--with-pdf` / `--legacy-full-pdf`; see item 6.
 
-8. **Агент (legacy policy / EW / RP):** при «прогони только RP / EW / Main» или policy-optimize — по завершении **обязательно** убедиться, что PDF пересобраны (лог `PDF written` или явный запуск `rebuild_pdf_reports.py` с нужным флагом); не оставлять устаревшие PDF относительно последнего прогона. Это правило **не** распространяется на default `run_portfolio_review.py` без `--with-pdf` / `--legacy-full-pdf` (см. п. 6).
-
-9. **Main optimization:** `run_optimization.py` — **одностадийная** схема (max expected return + soft targets + RC caps + ProLiquidity); флага `--single-stage` нет.
+9. **Main optimization:** `run_optimization.py` is a policy optimizer with max expected return, soft targets, RC caps, and ProLiquidity. The old `--single-stage` mode was removed.

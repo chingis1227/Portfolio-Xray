@@ -112,7 +112,7 @@ Before trusting a browser observation:
 
 1. Start from a clean, active local target. Use a fresh localhost port when possible.
 2. Record the exact URL and port.
-3. Record the route tested, for example `/hypothesis?sample=1`.
+3. Record the route tested, for example `/hypothesis...sample=1`.
 4. Record active `reviewId` when the run is a real vertical flow.
 5. Record whether sample mode, demo data, or a real run was used.
 6. Reset browser state or intentionally recover it; do not silently trust old `localStorage`.

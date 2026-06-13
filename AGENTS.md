@@ -11,7 +11,7 @@ Update this file only when agent-specific operating instructions, source-of-trut
 
 ## Project Summary
 
-Portfolio MRI / Portfolio X-Ray is aligned around the **“ДИАГНОСТИКА 2” canonical product truth**. The current product is a Python portfolio diagnostics and investment decision-support system that is diagnosis-first, current-portfolio-first, and not optimizer-first.
+Portfolio MRI / Portfolio X-Ray is aligned around the **“Diagnosis 2” canonical product truth**. The current product is a Python portfolio diagnostics and investment decision-support system that is diagnosis-first, current-portfolio-first, and not optimizer-first.
 
 Canonical current product flow:
 
@@ -70,7 +70,7 @@ Legacy policy weights are optimizer outputs, not manual user inputs. User-suppli
 `analysis_subject` weights are allowed for `current_portfolio` and `model_portfolio` diagnostics.
 Manual post-optimization tilt is allowed only through View After Optimization.
 
-Product concept documents guide direction but do not override `SPEC.md`, canonical formulas, stress scenarios, policy logic, data rules, output contracts, or current code behavior. The current canonical product direction is “ДИАГНОСТИКА 2”; “ДИАГНОСТИКА 2 НА ПОТОМ” features are backlog/advanced/later unless explicitly promoted by specs and implementation.
+Product concept documents guide direction but do not override `SPEC.md`, canonical formulas, stress scenarios, policy logic, data rules, output contracts, or current code behavior. The current canonical product direction is “Diagnosis 2”; “Diagnosis 2 Later” features are backlog/advanced/later unless explicitly promoted by specs and implementation.
 Documentation migration records and archived legacy docs are retained for traceability only. They do not override current implementation contracts, canonical specs, or code.
 
 ## Main Commands
@@ -154,7 +154,9 @@ Do not invent formulas, estimators, scenarios, constraints, statuses, or data ru
 
 ## Core Agent Rules
 
-- In chat with the user, communicate in Russian by default and as with a non-professional developer: explain ongoing work in simple terms, point out misunderstandings or risky assumptions clearly and respectfully, and ask necessary project questions in plain language without unexplained technical jargon. This applies to assistant-user communication only; source code, product copy, generated reports, project documentation, and other in-project artifacts remain in English unless explicitly requested otherwise.
+- In chat with the user, communicate in Russian by default and as with a non-professional developer: explain ongoing work in simple terms, point out misunderstandings or risky assumptions clearly and respectfully, and ask necessary project questions in plain language without unexplained technical jargon. This applies to assistant-user communication only.
+- Repository language policy is strict: all in-project artifacts must be created, edited, named, and documented in English regardless of the language used in chat, voice dictation, source prompts, or user phrasing. This includes source code prose, comments, tests, docs, Cursor rules, commands, generated report text, product copy, UI labels, file names, directory names, descriptions, examples, fixtures, logs committed as source, and generated artifacts when they are intentionally refreshed or checked in.
+- Do not introduce Russian, mixed-language prose, non-English file names, or mojibake into repository files. If legacy Russian text or broken encoding is found while touching a file, normalize it to clear English or remove/replace the legacy text with an English-only note when exact translation is not required for current behavior.
 - Keep changes scoped to the requested behavior and owning files.
 - Prefer existing helpers and repo patterns over new parallel implementations.
 - Treat diagnostics as non-binding unless a canonical spec says otherwise.

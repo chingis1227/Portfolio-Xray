@@ -86,7 +86,7 @@ Session 07 proved the handoff on the current live portfolio. The refreshed live 
 
 ## Context and Orientation
 
-The repository root is `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`. The project is a Python portfolio diagnostics and investment decision-support system. The current canonical product direction is diagnosis-first and current-portfolio-first, not optimizer-first.
+The repository root is `D:\Desktop\CURSOR TULA DIAGNOSTICS`. The project is a Python portfolio diagnostics and investment decision-support system. The current canonical product direction is diagnosis-first and current-portfolio-first, not optimizer-first.
 
 The relevant product flow is:
 
@@ -152,7 +152,7 @@ Session 07 should run a live proof on the current portfolio. Refresh current dia
 
 All commands should be run from the repository root:
 
-    D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА
+    D:\Desktop\CURSOR TULA DIAGNOSTICS
 
 Use the repository virtual environment when available:
 
@@ -257,7 +257,7 @@ Do not revert unrelated dirty working-tree changes. Before any edit session, run
 
 Session 01 audit evidence:
 
-    PWD: D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА
+    PWD: D:\Desktop\CURSOR TULA DIAGNOSTICS
     EXISTS src/block_4/launchpad_cards.py
     EXISTS src/block_4/diagnosis_builder.py
     EXISTS src/portfolio_alternatives_builder.py

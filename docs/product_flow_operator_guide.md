@@ -125,14 +125,14 @@ Paths are relative to `{output_dir_final}` (typically `Main portfolio/`).
 
 | # | Artifact | Default path | When present | Schema (offline gate) | Primary reader question |
 | --- | --- | --- | --- | --- | --- |
-| 1 | `problem_classification.json` | `analysis_subject/problem_classification.json` | After default diagnosis / materialize | `problem_classification_v3` | What is wrong with the current portfolio? |
-| 2 | `candidate_launchpad.json` | `analysis_subject/candidate_launchpad.json` | After default diagnosis / materialize | `candidate_launchpad_v3` | What hypotheses should we test next? |
-| 3 | `portfolio_alternatives_builder.json` | `analysis_subject/portfolio_alternatives_builder.json` | After Launchpad when a primary card can be mapped | `portfolio_alternatives_builder_v1` | What setup would be tested if the user explicitly generates a candidate? |
-| 4 | `candidate_generation.json` | `candidate_generation.json` | After explicit Generate Candidate / vertical demo | `candidate_generation_v1` | What one candidate attempt was created or why did it fail? |
-| 5 | `current_vs_candidate.json` | `current_vs_candidate.json` | After Block 8 compare | `current_vs_candidate_v1` | How does current compare to the candidate? |
-| 6 | `decision_verdict.json` | `decision_verdict.json` | After Block 9 verdict | `decision_verdict_v1` | Is action justified, or is no-trade / evidence-insufficient the right answer? |
+| 1 | `problem_classification.json` | `analysis_subject/problem_classification.json` | After default diagnosis / materialize | `problem_classification_v3` | What is wrong with the current portfolio... |
+| 2 | `candidate_launchpad.json` | `analysis_subject/candidate_launchpad.json` | After default diagnosis / materialize | `candidate_launchpad_v3` | What hypotheses should we test next... |
+| 3 | `portfolio_alternatives_builder.json` | `analysis_subject/portfolio_alternatives_builder.json` | After Launchpad when a primary card can be mapped | `portfolio_alternatives_builder_v1` | What setup would be tested if the user explicitly generates a candidate... |
+| 4 | `candidate_generation.json` | `candidate_generation.json` | After explicit Generate Candidate / vertical demo | `candidate_generation_v1` | What one candidate attempt was created or why did it fail... |
+| 5 | `current_vs_candidate.json` | `current_vs_candidate.json` | After Block 8 compare | `current_vs_candidate_v1` | How does current compare to the candidate... |
+| 6 | `decision_verdict.json` | `decision_verdict.json` | After Block 9 verdict | `decision_verdict_v1` | Is action justified, or is no-trade / evidence-insufficient the right answer... |
 | 7 | `ai_commentary_context.json` | `ai_commentary_context.json` | After verdict | `ai_commentary_context_v1` | Grounding only (`purpose=grounded_ai_commentary_context`; no LLM in V1) |
-| 8 | `what_changed_summary.json` | `what_changed_summary.json` | After compare/monitoring; optional if no prior snapshot | `what_changed_summary_v1` | What changed since the last review? |
+| 8 | `what_changed_summary.json` | `what_changed_summary.json` | After compare/monitoring; optional if no prior snapshot | `what_changed_summary_v1` | What changed since the last review... |
 
 **RM-ARCH-011 sidecar rule:** diagnosis files **prefer** `analysis_subject/`; compare, AI commentary,
 and What Changed resolve via `src/product_bundle_paths.py` (legacy root copies still work).

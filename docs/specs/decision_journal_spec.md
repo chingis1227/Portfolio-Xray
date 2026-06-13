@@ -282,7 +282,7 @@ See artifact_refs in decision_journal.json for selection, action, and monitoring
 
 ## Diagnostic Boundary
 
-| Artifact | Binding? |
+| Artifact | Binding... |
 | --- | --- |
 | `decision_journal.json` | Process record and evidence index; **non-executing**. |
 | `selection_decision.json` | Formal decision; journal must not contradict `decision_status`. |

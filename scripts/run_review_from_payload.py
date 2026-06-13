@@ -376,9 +376,9 @@ def scrub_failure_text(text: object, *, max_chars: int = 4000) -> str:
     root = str(PROJECT_ROOT)
     value = value.replace(root, "[project]").replace(root.replace("\\", "/"), "[project]")
     value = re.sub(r"Traceback \(most recent call last\):[\s\S]*", "Backend failure details were captured safely.", value)
-    value = re.sub(r'File "[^"]+", line \d+(?:, in [^\r\n]+)?', "Backend file reference hidden.", value)
+    value = re.sub(r'File "[^"]+", line \d+(...:, in [^\r\n]+)...', "Backend file reference hidden.", value)
     value = re.sub(r"[A-Za-z]:[\\/][^\s'\")<>]+", "[path]", value)
-    value = re.sub(r"/(?:Users|home|var|tmp|mnt)/[^\s'\")<>]+", "[path]", value)
+    value = re.sub(r"/(...:Users|home|var|tmp|mnt)/[^\s'\")<>]+", "[path]", value)
     return value.strip()
 
 
@@ -1111,6 +1111,24 @@ def build_backend_command(config_path: Path, *, mode: str) -> list[str]:
     raise ValueError(f"Unsupported bridge mode: {mode}")
 
 
+def backend_failure_looks_like_transient_market_data_empty(completed: subprocess.CompletedProcess[str]) -> bool:
+    """Detect a transient empty market-data panel that is worth retrying once.
+
+    The normal frontend/FastAPI path depends on live provider data on a cold cache.
+    yfinance/IBKR fallback can occasionally return an empty batch for all tickers
+    while a repeat request succeeds and writes the same canonical artifacts. This
+    retry does not change formulas or accept partial results; it only repeats the
+    same backend command once before surfacing a failure to the UI.
+    """
+
+    combined = f"{completed.stdout or ''}\n{completed.stderr or ''}".lower()
+    return (
+        completed.returncode != 0
+        and "market data produced no usable prices" in combined
+        and "market data produced an empty panel" in combined
+    )
+
+
 def run_backend(
     config_path: Path, *, mode: str = MODE_CORE_ONLY, timeout_seconds: int
 ) -> subprocess.CompletedProcess[str]:
@@ -1185,6 +1203,19 @@ def run_from_payload(
         )
 
         completed = run_backend(input_path, mode=mode, timeout_seconds=timeout_seconds)
+        if backend_failure_looks_like_transient_market_data_empty(completed):
+            first_attempt = completed
+            completed = run_backend(input_path, mode=mode, timeout_seconds=timeout_seconds)
+            completed.stdout = (
+                f"{first_attempt.stdout}\n\n[frontend_bridge_retry] "
+                "Retried once after transient empty market-data panel.\n"
+                f"{completed.stdout}"
+            )
+            completed.stderr = (
+                f"{first_attempt.stderr}\n\n[frontend_bridge_retry] "
+                "Retried once after transient empty market-data panel.\n"
+                f"{completed.stderr}"
+            )
         if completed.returncode != 0:
             backend_script = build_backend_command(input_path, mode=mode)[1]
             write_json(

@@ -41,11 +41,11 @@ MIN_BATCH2_ACCEPTED = 500
 DEFAULT_SP500_WIKIPEDIA_URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 DEFAULT_ISHARES_IWB_HOLDINGS_URL = (
     "https://www.ishares.com/us/products/239710/ishares-russell-1000-etf/"
-    "1467271812596.ajax?fileType=csv&fileName=IWB_holdings&dataType=fund"
+    "1467271812596.ajax...fileType=csv&fileName=IWB_holdings&dataType=fund"
 )
 DEFAULT_ISHARES_IWV_HOLDINGS_URL = (
     "https://www.ishares.com/us/products/239714/ishares-russell-3000-etf/"
-    "1467271812596.ajax?fileType=csv&fileName=IWV_holdings&dataType=fund"
+    "1467271812596.ajax...fileType=csv&fileName=IWV_holdings&dataType=fund"
 )
 DEFAULT_BATCH_USER_AGENT = "PortfolioMRI/1.0 (research; stock-batch-ingestion@local)"
 DEFAULT_R3000_GITHUB_URL = (

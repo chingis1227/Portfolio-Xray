@@ -16,12 +16,12 @@ Related:
 
 | Question | Answer |
 | --- | --- |
-| Did the product flow run successfully? | **Yes (CLI exit 0).** Subject materialization, factory step, and compare/decision package completed in ~81 s. |
-| Can this be demoed today? | **Partially.** The **diagnosis → problems → launchpad → six JSON bundle** story is demoable. The **“we tested Equal Weight and here is the verdict”** story is **not** honest on this disk without operator fixes. |
-| What worked? | End-to-end orchestration; fresh subject X-Ray/stress; `problem_classification` + `candidate_launchpad` in sidecar; all six product JSON files present with stable `schema_version`; grounded `ai_commentary_context`; monitoring baseline written. |
-| What failed? | **Compare/selection ignored the CLI hypothesis:** `current_vs_candidate.json` and `decision_verdict.json` feature **`risk_parity`**, not `equal_weight`, because compare ranked **12 stale variant folders** on disk. Factory only **reused** EW snapshot (`skipped_existing`). Root `output_manifest.json` is factory-only (no product-bundle index). |
-| Strongest product output? | **`analysis_subject/problem_classification.json`** + **`candidate_launchpad.json`** — readable problems, evidence refs, launchpad cards tied to stress/X-Ray. |
-| Still confusing / not product-ready? | Verdict layer contradicts `--candidates equal_weight`; `view_mode: one_candidate` with `selected_candidate_ids: ["risk_parity"]`; 23k-line `candidate_comparison.json` vs thin product bundle; internal codes (`DIAG_*`) still in technical JSON; no LLM commentary output (grounding only). |
+| Did the product flow run successfully... | **Yes (CLI exit 0).** Subject materialization, factory step, and compare/decision package completed in ~81 s. |
+| Can this be demoed today... | **Partially.** The **diagnosis → problems → launchpad → six JSON bundle** story is demoable. The **“we tested Equal Weight and here is the verdict”** story is **not** honest on this disk without operator fixes. |
+| What worked... | End-to-end orchestration; fresh subject X-Ray/stress; `problem_classification` + `candidate_launchpad` in sidecar; all six product JSON files present with stable `schema_version`; grounded `ai_commentary_context`; monitoring baseline written. |
+| What failed... | **Compare/selection ignored the CLI hypothesis:** `current_vs_candidate.json` and `decision_verdict.json` feature **`risk_parity`**, not `equal_weight`, because compare ranked **12 stale variant folders** on disk. Factory only **reused** EW snapshot (`skipped_existing`). Root `output_manifest.json` is factory-only (no product-bundle index). |
+| Strongest product output... | **`analysis_subject/problem_classification.json`** + **`candidate_launchpad.json`** — readable problems, evidence refs, launchpad cards tied to stress/X-Ray. |
+| Still confusing / not product-ready... | Verdict layer contradicts `--candidates equal_weight`; `view_mode: one_candidate` with `selected_candidate_ids: ["risk_parity"]`; 23k-line `candidate_comparison.json` vs thin product bundle; internal codes (`DIAG_*`) still in technical JSON; no LLM commentary output (grounding only). |
 
 **Bottom line:** Backend **can** run the flow and emit the six-file bundle, but **this run is not a clean Equal Weight demo** — it is a **bundle-contract + diagnosis demo** with a **stale multi-candidate verdict**. Do not tell stakeholders “Equal Weight won” from this run.
 
@@ -32,7 +32,7 @@ Related:
 | Field | Value |
 | --- | --- |
 | Exact command | `python run_portfolio_review.py --candidates equal_weight` |
-| Working directory | Repository root (`D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`) |
+| Working directory | Repository root (`D:\Desktop\CURSOR TULA DIAGNOSTICS`) |
 | Exit code | **0** |
 | Wall-clock duration | **~81.5 s** (`RUNTIME_SECONDS=81.4774805`) |
 | Network / data access | **Required and used.** Monthly return cache loaded (9 tickers); daily cache for tail-risk; yfinance fallbacks and FRED risk-free (USD). Many non-fatal Yahoo “possibly delisted” warnings on long historical factor windows. |
@@ -74,7 +74,7 @@ No run-stopping exception observed.
 
 ## 4. Six Product JSON Bundle Check
 
-| # | File | Exists | Path | `schema_version` | Key fields (sample) | Useful for product UI? | Understandable to advisor/investor? |
+| # | File | Exists | Path | `schema_version` | Key fields (sample) | Useful for product UI... | Understandable to advisor/investor... |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Problem Classification | **yes** | `Main portfolio/analysis_subject/problem_classification.json` | `problem_classification_v1` | `problems[]`, `summary.primary_problem_id`, `current_portfolio_acceptable: false` | **Yes** — card list + severity | **Yes** — plain labels; evidence paths are technical |
 | 2 | Candidate Launchpad | **yes** | `Main portfolio/analysis_subject/candidate_launchpad.json` | `candidate_launchpad_v1` | `cards[]`, `suggested_methods`, `summary.n_cards: 4` | **Yes** — next-step menu | **Yes** — goals readable; method ids need UI mapping |
@@ -90,28 +90,28 @@ No run-stopping exception observed.
 
 ## 5. Verdict Quality Review
 
-### What verdict did the system produce?
+### What verdict did the system produce...
 
 - **`decision_verdict.json`:** `verdict_id` = `rebalance_to_selected_candidate`; label “Rebalance to selected candidate for review”; `selected_candidate_id` = **`risk_parity`** (Risk Parity Portfolio); `recommended_action` = review implementation plan; `action_plan.json` → `action_status: trades_for_review`.
 - **`selection_decision.json`:** `decision_status: selected_candidate`; `favored_candidate_id: risk_parity`; composite score **67.15** vs **equal_weight 59.5** (rank **7** of 12); `no_trade.materiality_pass: true` (health +10, robustness +10, turnover 17.9%, drawdown improvement 1.6 pp).
 - **`current_vs_candidate.json`:** 10y deltas vs current — Risk Parity **improves** vol (-1.5 pp), max drawdown (+1.6 pp less negative), worst stress loss (+6.8 pp); **worsens** CAGR (-2.1 pp) and Sharpe (-0.11).
 
-### Economically / intuitively reasonable?
+### Economically / intuitively reasonable...
 
 - **For Risk Parity vs current:** Plausible trade-off (lower vol/stress loss, give up return/Sharpe). Materiality flag consistent with modest drawdown/stress improvement.
 - **For the stated demo (Equal Weight):** **Not represented** in product-facing compare/verdict. EW 10y metrics vs current (from `candidate_comparison.json`): CAGR **10.6%** vs **9.9%**, vol **10.3%** vs **9.6%**, max DD similar (**-19.7%** vs **-19.8%**), Sharpe slightly higher (**0.819** vs **0.799**), but EW **worse** on `recession_severe` stress (**-26.2%** vs **-22.2%**). A concentration-focused hypothesis does not obviously fix the **primary** classified problem (weak crisis resilience).
 
-### Trade-offs explained?
+### Trade-offs explained...
 
 - **Partial.** `current_vs_candidate` has dimension directions; `selection_decision.rationale` is thin (one bullet). Full trade-offs live in `tradeoff_explanation.json` (technical package), not in the six-file bundle.
 
-### Avoids “best portfolio” framing?
+### Avoids “best portfolio” framing...
 
 - **Mostly yes** in verdict copy (“for review”, guardrails, `diagnostic_only` on several artifacts). **No** at selection layer — “Highest composite selection score” language still ranks a **winner** among many disk candidates.
 
-### Supports no-trade / rebalance / test another / insufficient evidence?
+### Supports no-trade / rebalance / test another / insufficient evidence...
 
-| Logic | Supported? | Evidence |
+| Logic | Supported... | Evidence |
 | --- | --- | --- |
 | No-trade | **Evaluated, not chosen** | `no_trade.applies: false`, materiality_pass true |
 | Rebalance / review | **Yes** | `rebalance_to_selected_candidate` |
@@ -124,27 +124,27 @@ No run-stopping exception observed.
 
 *Based only on artifacts from this run (analysis end **2026-04-30**).*
 
-### What is inside the current portfolio?
+### What is inside the current portfolio...
 
 Eight USD ETFs: largest weights **SCHD 17%**, **BND 16%**, **QQQ / SCHP / TLT 13%** each, **SPY 10%**, **GLD / SLV 9%** each (subject snapshot / `action_plan` baseline). X-Ray breakdown: **~42% fixed income**, **~40% equity**, **~18% commodity**; US region **~82%**.
 
-### Where is the main risk?
+### Where is the main risk...
 
 Problem classification primary: **weak crisis resilience** (high severity). Stress: **`recession_severe`** synthetic loss **~-22%**, overall **`DIAG_ATTENTION`**. Risk contribution emphasis: **QQQ, SCHD, SLV** among top contributors (subject snapshot log).
 
-### What did Equal Weight improve? (metrics only — not selected)
+### What did Equal Weight improve... (metrics only — not selected)
 
 Versus current on **10y** window in `candidate_comparison.json`: **higher CAGR** (10.6% vs 9.9%), **similar max drawdown**, **slightly higher Sharpe**; **higher vol** (10.3% vs 9.6%). Stress: **worse** severe recession loss (**~-26%** vs **~-22%**).
 
-### What got worse? (vs current, for **Risk Parity** — what the verdict actually used)
+### What got worse... (vs current, for **Risk Parity** — what the verdict actually used)
 
 **Lower return and Sharpe**; **better** vol, max drawdown, and worst stress loss in `current_vs_candidate.json`.
 
-### Is action justified?
+### Is action justified...
 
 System says **review rebalance toward Risk Parity** (`trades_for_review`), **not** auto-execution. For the **Equal Weight** hypothesis the operator requested, the system **did not** surface EW as the selected comparison — **no product verdict for EW** in `current_vs_candidate` / `decision_verdict`.
 
-### What should be monitored?
+### What should be monitored...
 
 `what_changed_summary`: first monitoring baseline; **retest triggers** `rebalance_trigger`, `monitoring_warning`. Track decision status, favored id, and future diff once a prior snapshot exists under `monitoring/latest/`.
 
@@ -207,10 +207,10 @@ System says **review rebalance toward Risk Parity** (`trades_for_review`), **not
 
 | Question | Answer |
 | --- | --- |
-| Can I show this to someone as a backend demo? | **Yes for diagnosis + JSON contract; no for end-to-end Equal Weight decision story without caveats.** |
-| What should I show? | `problem_classification.json`, `candidate_launchpad.json`, subject `portfolio_xray.json` + `stress_report.json` (excerpts), six-file bundle checklist, `ai_commentary_context.json` guardrails, offline test gate reference. |
-| What should I hide? | `decision_verdict` / `current_vs_candidate` **as “the Equal Weight result”**; full `candidate_comparison.json`; raw `DIAG_*` codes in client views; stale multi-candidate ranking. |
-| What must be fixed before UI/API? | Compare scope tied to requested candidates; manifest bundle index; single canonical paths under `analysis_subject/`; slim compare API; optional fresh isolated output root per demo. |
+| Can I show this to someone as a backend demo... | **Yes for diagnosis + JSON contract; no for end-to-end Equal Weight decision story without caveats.** |
+| What should I show... | `problem_classification.json`, `candidate_launchpad.json`, subject `portfolio_xray.json` + `stress_report.json` (excerpts), six-file bundle checklist, `ai_commentary_context.json` guardrails, offline test gate reference. |
+| What should I hide... | `decision_verdict` / `current_vs_candidate` **as “the Equal Weight result”**; full `candidate_comparison.json`; raw `DIAG_*` codes in client views; stale multi-candidate ranking. |
+| What must be fixed before UI/API... | Compare scope tied to requested candidates; manifest bundle index; single canonical paths under `analysis_subject/`; slim compare API; optional fresh isolated output root per demo. |
 
 ---
 

@@ -10,11 +10,11 @@ Prerequisite: [Session 13 documentation sync](2026-05-29_block_4_v2_session_13_d
 
 | Question | Verdict |
 | --- | --- |
-| V1 product validators removed? | **Yes** — from `scripts/core_mvp_validation_contract.py` |
-| Live E2E + decision-entry tests on v2 only? | **Yes** |
-| JSON `problems[]` shim retained? | **Yes** — in `diagnosis_builder.py` |
-| Legacy V1 builders frozen (unit tests)? | **Yes** — `src/problem_classification.py`, `src/candidate_launchpad.py` |
-| ExecPlan Sessions 00–14 closed? | **Yes** |
+| V1 product validators removed... | **Yes** — from `scripts/core_mvp_validation_contract.py` |
+| Live E2E + decision-entry tests on v2 only... | **Yes** |
+| JSON `problems[]` shim retained... | **Yes** — in `diagnosis_builder.py` |
+| Legacy V1 builders frozen (unit tests)... | **Yes** — `src/problem_classification.py`, `src/candidate_launchpad.py` |
+| ExecPlan Sessions 00–14 closed... | **Yes** |
 | Session 14 gate | **PASS** |
 
 **Session 14 verdict:** **PASS** — Block 4 v2 institutional upgrade **ACCEPTED**.

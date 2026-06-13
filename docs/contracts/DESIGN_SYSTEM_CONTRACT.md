@@ -49,7 +49,7 @@ Recommended visual roles remain aligned to the design source:
 
 ## Color semantics
 
-Color is a semantic system, not decoration. Every colored badge, border, chart mark, icon, or CTA must answer: what state does this color communicate?
+Color is a semantic system, not decoration. Every colored badge, border, chart mark, icon, or CTA must answer: what state does this color communicate...
 
 | Color family | Meaning | Allowed uses | Limits |
 | --- | --- | --- | --- |

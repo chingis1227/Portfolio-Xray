@@ -6,7 +6,7 @@ This file governs visual/UI/report-surface styling for web interfaces, dashboard
 
 Use [WORKFLOW.md](WORKFLOW.md) for the task process, [OUTPUTS.md](OUTPUTS.md) for generated report/output ownership, and [TESTING.md](TESTING.md) for verification expectations after UI, dashboard, HTML, or visual report changes.
 
-**Portfolio MRI UI routing:** for new Portfolio MRI / Portfolio X-Ray / ДИАГНОСТИКА 2 product UI work, use the canonical design direction in [docs/design/portfolio_mri_design_system.md](docs/design/portfolio_mri_design_system.md). The rest of this legacy Revolut-inspired file is retained as historical visual reference only and should not override the Portfolio MRI design canon.
+**Portfolio MRI UI routing:** for new Portfolio MRI / Portfolio X-Ray / Diagnosis 2 product UI work, use the canonical design direction in [docs/design/portfolio_mri_design_system.md](docs/design/portfolio_mri_design_system.md). The rest of this legacy Revolut-inspired file is retained as historical visual reference only and should not override the Portfolio MRI design canon.
 
 ## 1. Visual Theme & Atmosphere
 

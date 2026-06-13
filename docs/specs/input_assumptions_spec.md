@@ -133,15 +133,15 @@ reports after the user chooses `investor_currency`.
 Resolution is implemented in `src/config.py` (`resolve_cash_and_rf`, benchmark defaults by currency).
 Unsupported currencies must still set cash proxy and risk-free explicitly.
 
-### 1.3 Liquidity and Cash Context (later / Advanced Mandate ? not Client Fit V1)
+### 1.3 Liquidity and Cash Context (later / Advanced Mandate ... not Client Fit V1)
 
-**Purpose (future):** Cash adequacy and practical suitability ? life floor, expense coverage,
+**Purpose (future):** Cash adequacy and practical suitability ... life floor, expense coverage,
 whether a candidate violates liquidity needs.
 
 **Fields (optional / later layers):** `liquidity_need` (legacy derived flag), `liquidity_need_months`,
 `monthly_expenses`, `cash_policy`.
 
-**Core MVP:** not required. If the user already holds cash in the portfolio (?1.1 Real Cash), that
+**Core MVP:** not required. If the user already holds cash in the portfolio (...1.1 Real Cash), that
 position is diagnosed as-is. `cash_policy` (vol scaling via cash, required floor, prohibited) applies
 to **Candidate Builder / optimization** later, not to mandatory first-screen input.
 
@@ -151,14 +151,14 @@ Liquidity is explicitly excluded from Client Fit V1.
 ### 1.4 Client Profile and Objectives (Client Fit V1 and backend-compatible optional input)
 
 **Purpose:** Compare deterministic portfolio evidence to stated goals (drawdown tolerance, volatility
-target, return objective, and horizon) through Client Fit V1 ? interpretive, not auto-trading.
+target, return objective, and horizon) through Client Fit V1 ... interpretive, not auto-trading.
 
 **Fields:** `client_profile`, `target_nominal_return_annual`, `target_vol_annual`,
 `target_max_drawdown_pct`, `min_acceptable_return`, `horizon_years`, and the optional structured
 `client_fit` request object.
 
-**Blocks 1?3 boundary:** not required for backend/CLI `run_portfolio_review` diagnosis and must not
-gate or label Blocks 1?3 product outputs. The web journey now requires a saved Client Fit profile
+**Blocks 1...3 boundary:** not required for backend/CLI `run_portfolio_review` diagnosis and must not
+gate or label Blocks 1...3 product outputs. The web journey now requires a saved Client Fit profile
 before diagnosis, but the profile is evaluated after Stress Lab. `horizon_years` remains
 report/context only in V1 (does not change optimizer or stress gates in Core MVP).
 
@@ -393,7 +393,7 @@ policy optimizer output.
 
 `current_weights` may be entered manually only for existing-portfolio diagnostics. In `analyze_current_weights` mode, current weights become fixed report weights. In `optimize_from_universe` mode, current weights are preserved as input context but do not replace generated policy weights.
 
-For the **combined current-vs-policy workflow** (policy optimize + report on Main, current materialized to `{output_dir_final}/current_portfolio/`, then comparison), see [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md). Users should not toggle the whole config to `analyze_current_weights` to answer "should I move to policy?"
+For the **combined current-vs-policy workflow** (policy optimize + report on Main, current materialized to `{output_dir_final}/current_portfolio/`, then comparison), see [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md). Users should not toggle the whole config to `analyze_current_weights` to answer "should I move to policy..."
 
 When the user wants **current-vs-policy No-Trade** in the same comparison run, keep `analysis_mode: optimize_from_universe`, set `current_weights`, run the policy path, then **materialize current** into `{output_dir_final}/current_portfolio/` without overwriting Main policy artifacts. See [current_vs_policy_workflow_spec.md](current_vs_policy_workflow_spec.md).
 

@@ -17,7 +17,7 @@ Related:
 
 | Question | Answer |
 | --- | --- |
-| Session 07 accepted? | **Yes.** Dry-run, offline stale-folder test, live run, and on-disk validator all **PASS**. |
+| Session 07 accepted... | **Yes.** Dry-run, offline stale-folder test, live run, and on-disk validator all **PASS**. |
 | Canonical command | `python run_portfolio_review.py --candidates equal_weight` |
 | Product scoping | **PASS** — `current_vs_candidate.selected_candidate_ids` = `["equal_weight"]`; `decision_verdict.selected_candidate_id` = `equal_weight`. |
 | Stale folder hijack | **PASS (product layer)** — technical `candidate_comparison.json` still lists 19 rows on disk, but `product_candidate_scope` = `equal_weight` only; product adapters and verdict use EW. |

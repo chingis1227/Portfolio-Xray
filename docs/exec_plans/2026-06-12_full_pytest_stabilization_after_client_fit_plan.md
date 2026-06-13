@@ -196,7 +196,7 @@ Portfolio X-Ray contracts change, update the owning specs or changelog so tests 
 
 Work from repository root:
 
-    D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА
+    D:\Desktop\CURSOR TULA DIAGNOSTICS
 
 Use Windows PowerShell and the project virtual environment:
 

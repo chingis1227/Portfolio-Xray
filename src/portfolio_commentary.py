@@ -91,7 +91,7 @@ def _scenario_snippets(stress_report: dict[str, Any] | None) -> list[str]:
         return []
     lines = []
     for row in stress_report.get("scenario_results") or []:
-        sid = row.get("scenario_id", "?")
+        sid = row.get("scenario_id", "...")
         pnl = row.get("portfolio_pnl_pct")
         ok = row.get("pass")
         if pnl is not None:
@@ -235,7 +235,7 @@ def _append_factor_multicollinearity_section(lines: list[str], mc: Any) -> None:
             f"Strongest pairwise correlation: {sp.get('factor_i')} vs {sp.get('factor_j')}, "
             f"rho={_fmt_float(sp.get('rho'), 4)}."
         )
-    assess = mc.get("assessment_en") or mc.get("assessment_ru")
+    assess = mc.get("assessment_en") or mc.get("assessment_en_legacy")
     if assess:
         lines.append(f"Assessment: {assess}")
     pairs = mc.get("pairwise_correlations") or []
@@ -1623,7 +1623,7 @@ def write_stress_commentary(
             "not an extra pass/fail gate in stress_report. See pnl_by_asset_pct / pnl_by_factor_pct in JSON."
         )
         for row in display_syn:
-            sid = row.get("scenario_id", "?")
+            sid = row.get("scenario_id", "...")
             pnl = row.get("portfolio_pnl_pct")
             top1a = row.get("top1_rc_asset")
             top1p = row.get("top1_rc_pct")
@@ -1754,7 +1754,7 @@ def write_stress_commentary(
                 "it is not a pure realized causal decomposition."
             )
         for h in hist:
-            ep = h.get("episode", "?")
+            ep = h.get("episode", "...")
             mdd = h.get("max_dd")
             pnl_real_ep = h.get("pnl_real_episode")
             vp = h.get("pass")
@@ -1813,7 +1813,7 @@ def write_stress_commentary(
             if not isinstance(e, dict):
                 continue
             lines.append(
-                f"- {e.get('episode', '?')}: real={_fmt_pct(e.get('pnl_real_episode'))}, "
+                f"- {e.get('episode', '...')}: real={_fmt_pct(e.get('pnl_real_episode'))}, "
                 f"model_5y={_fmt_pct(e.get('pnl_model_5y'))}, model_10y={_fmt_pct(e.get('pnl_model_10y'))}, "
                 f"model_roll3y={_fmt_pct(e.get('pnl_model_roll3y_pre'))}; "
                 f"|err|: 5y={_fmt_pct(e.get('abs_error_5y'))}, 10y={_fmt_pct(e.get('abs_error_10y'))}, roll3y={_fmt_pct(e.get('abs_error_roll3y_pre'))}."

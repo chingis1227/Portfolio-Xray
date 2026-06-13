@@ -14,7 +14,7 @@ export function ClientReadyReportPreview({ title, subtitle, sections, nextObserv
         <p className="mt-3 max-w-3xl text-base leading-7 text-pmri-text2">{subtitle}</p>
       </div>
 
-      {executiveSummary ? (
+      {executiveSummary ... (
         <article className="mt-6 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-6">
           <p className="pmri-label">Executive summary</p>
           <h3 className="pmri-heading-section mt-2 text-2xl text-pmri-text">{executiveSummary.title}</h3>

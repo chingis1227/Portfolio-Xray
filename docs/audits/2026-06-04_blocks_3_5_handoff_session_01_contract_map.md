@@ -32,7 +32,7 @@ Commands / targeted reads:
 
 ## Contract map table
 
-| Source block | Field | Produced? | Consumed by next block? | Used in decision? | Gap |
+| Source block | Field | Produced... | Consumed by next block... | Used in decision... | Gap |
 | --- | --- | --- | --- | --- | --- |
 | Block 3.4 Current Portfolio Stress Scorecard | `current_portfolio_stress_scorecard_v1.stress_diagnosis` | Yes. Built by `src/current_portfolio_stress_scorecard_block.py`; spec says the object contains headline, summary, confidence, and findings. | Yes. `src/block_4/evidence_extraction.py::_extract_scorecard_v1` emits signal `stress_diagnosis` from this field. | Yes, but as diagnosis evidence/support and confidence input, not as a standalone action. It supports `weak_crisis_resilience` in `src/block_4/problem_taxonomy.py` and can cap/lower confidence through `src/block_4/severity_confidence.py`. | No blocking gap found. Session 02 should verify behavior under the requested severe-recession scenarios. |
 | Block 3.3 Hedge Gap | `hedge_gap_analysis_v1.summary.main_hedge_gap.offset_coverage_ratio` | Yes. Built by `src/hedge_gap_analysis_block.py` and summarized into scorecard. | Yes. `_extract_hedge_gap_v1` emits `offset_coverage_ratio`, and also `strong_offset_coverage` / `strong_hedge_offset` when ratio is strong. | Yes. Required for `weak_hedge_behavior`; also supports `weak_crisis_resilience` and can contradict equity-beta/stress-loss interpretations. | No field-level gap found. Behavior still needs Session 02 proof that weak hedge behavior activates only with Hedge Gap evidence, not labels alone. |

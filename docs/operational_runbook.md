@@ -554,12 +554,12 @@ python -m pytest tests/test_optimizer_fair_comparison_full_menu.py -q
 
 | Question | Open |
 | --- | --- |
-| Which step failed and why? | `candidate_factory_run.txt` (summary + reason codes) or `steps[]` in JSON |
-| Resume state? | `candidate_factory_manifest.json` (`completed_steps`, `run_checksum`) |
-| Parallel report mode? | `candidate_factory_run.json` -> `parallel_lightweight_report_summary`; human line in `candidate_factory_run.txt` |
-| Fair comparison ready? | `candidate_comparison.json` → `construction_disclosure.optimization_readiness.fair_comparison_ready` |
-| Construction hypothesis? | Row `construction_disclosure` (not recomputed in factory) |
-| Robust λ / Main deps? | Step `robust_paths_disclosure` or §0 robust suite table |
+| Which step failed and why... | `candidate_factory_run.txt` (summary + reason codes) or `steps[]` in JSON |
+| Resume state... | `candidate_factory_manifest.json` (`completed_steps`, `run_checksum`) |
+| Parallel report mode... | `candidate_factory_run.json` -> `parallel_lightweight_report_summary`; human line in `candidate_factory_run.txt` |
+| Fair comparison ready... | `candidate_comparison.json` → `construction_disclosure.optimization_readiness.fair_comparison_ready` |
+| Construction hypothesis... | Row `construction_disclosure` (not recomputed in factory) |
+| Robust λ / Main deps... | Step `robust_paths_disclosure` or §0 robust suite table |
 
 `next_recommended_command` in the factory run JSON is contextual: failed runs suggest `--resume`;
 stale manifest suggests full rebuild; success suggests `run_compare_variants.py`.

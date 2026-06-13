@@ -9,8 +9,8 @@ export type Instrument = {
   instrument: string;
   kind: InstrumentKind;
   sleeve: InstrumentSleeve;
-  currency?: string;
-  searchTerms?: string[];
+  currency...: string;
+  searchTerms...: string[];
 };
 
 export const instrumentUniverse: Instrument[] = [
@@ -29318,7 +29318,7 @@ export const instrumentUniverse: Instrument[] = [
   },
   {
     "ticker": "TIPX",
-    "instrument": "State Street SPDR Bloomberg 1a??10 Year TIPS ETF",
+    "instrument": "State Street SPDR Bloomberg 1a......10 Year TIPS ETF",
     "kind": "fund",
     "sleeve": "fixed_income",
     "currency": "USD",

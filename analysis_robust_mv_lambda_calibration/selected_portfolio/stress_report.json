@@ -1811,7 +1811,7 @@
         "rho": -0.7945
       },
       "severity": "low",
-      "assessment_ru": "Низкая: типичные VIF и cond(R); коллинеарность не доминирует, но попарные корреляции всё равно учитывать."
+      "assessment_en_legacy": "Low: typical VIF and cond(R); collinearity is not dominant, but pairwise correlations should still be considered."
     }
   },
   "factor_regression_10y": {
@@ -2191,7 +2191,7 @@
         "rho": -0.7192
       },
       "severity": "low",
-      "assessment_ru": "Низкая: типичные VIF и cond(R); коллинеарность не доминирует, но попарные корреляции всё равно учитывать."
+      "assessment_en_legacy": "Low: typical VIF and cond(R); collinearity is not dominant, but pairwise correlations should still be considered."
     }
   },
   "factor_betas_rolling_windows_weeks": {

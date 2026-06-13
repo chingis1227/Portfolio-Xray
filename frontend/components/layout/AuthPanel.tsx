@@ -31,17 +31,17 @@ export function AuthPanel() {
         <div>
           <p className="pmri-label text-pmri-text2">Cloud sign-in</p>
           <p className="mt-1 text-xs leading-5 text-pmri-muted">
-            {status === "signed_in" ? "Signed in for optional cloud persistence." : "Email OTP unlocks optional saved portfolios and review history."}
+            {status === "signed_in" ... "Signed in for optional cloud persistence." : "Email OTP unlocks optional saved portfolios and review history."}
           </p>
         </div>
-        <span className={`h-2 w-2 rounded-full ${status === "signed_in" ? "bg-pmri-positive" : "bg-pmri-amber"}`} aria-hidden="true" />
+        <span className={`h-2 w-2 rounded-full ${status === "signed_in" ... "bg-pmri-positive" : "bg-pmri-amber"}`} aria-hidden="true" />
       </div>
 
-      {status === "loading" ? (
+      {status === "loading" ... (
         <p className="mt-3 text-xs text-pmri-muted">Checking Supabase session…</p>
-      ) : status === "signed_in" ? (
+      ) : status === "signed_in" ... (
         <div className="mt-3 space-y-3">
-          <p className="truncate text-xs text-pmri-text2" title={user?.email ?? undefined}>{user?.email ?? "Signed-in user"}</p>
+          <p className="truncate text-xs text-pmri-text2" title={user....email ...... undefined}>{user....email ...... "Signed-in user"}</p>
           <button
             type="button"
             className="pmri-focus rounded-xl border border-pmri-border/55 px-3 py-2 text-xs font-semibold text-pmri-text2 transition hover:border-pmri-border hover:bg-white/[0.04]"
@@ -72,7 +72,7 @@ export function AuthPanel() {
             disabled={isSubmitting}
             className="pmri-focus w-full rounded-xl bg-pmri-blue px-3 py-2 text-xs font-semibold text-pmri-primary transition hover:bg-pmri-blue/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmitting ? "Sending…" : "Email sign-in link"}
+            {isSubmitting ... "Sending…" : "Email sign-in link"}
           </button>
           <div className="space-y-2 border-t border-pmri-border/35 pt-3">
             <label className="block text-xs text-pmri-muted" htmlFor="supabase-auth-otp">
@@ -96,14 +96,14 @@ export function AuthPanel() {
               className="pmri-focus w-full rounded-xl border border-pmri-border/55 px-3 py-2 text-xs font-semibold text-pmri-text2 transition hover:border-pmri-border hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-60"
               onClick={() => void handleVerifyOtp()}
             >
-              {isVerifying ? "Verifying…" : "Verify OTP code"}
+              {isVerifying ... "Verifying…" : "Verify OTP code"}
             </button>
           </div>
         </form>
       )}
 
-      {message ? <p className="mt-3 text-xs leading-5 text-pmri-positive">{message}</p> : null}
-      {error ? <p className="mt-3 text-xs leading-5 text-pmri-amber">{error}</p> : null}
+      {message ... <p className="mt-3 text-xs leading-5 text-pmri-positive">{message}</p> : null}
+      {error ... <p className="mt-3 text-xs leading-5 text-pmri-amber">{error}</p> : null}
     </div>
   );
 }

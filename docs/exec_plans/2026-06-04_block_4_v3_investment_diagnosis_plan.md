@@ -50,10 +50,10 @@ verdict because it can sound like the system failed to understand the portfolio.
 
 Block 4 v3 must answer four user-facing questions:
 
-1. What is wrong?
-2. Why does it matter?
-3. How confident are we?
-4. What hypothesis should be tested next?
+1. What is wrong...
+2. Why does it matter...
+3. How confident are we...
+4. What hypothesis should be tested next...
 
 User-facing diagnosis model:
 

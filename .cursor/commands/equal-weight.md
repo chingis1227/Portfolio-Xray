@@ -1,48 +1,48 @@
 ---
-description: Полный прогон Equal-Weight baseline, метрик, стресса и финализация (EW vs RP + PDF)
+description: Full Equal-Weight baseline run, metrics, stress, finalization, EW vs RP comparison, and PDF refresh
 ---
 
-Сделай **полный прогон Equal-Weight** строго по правилам проекта (один вариант за запрос — не пересчитывай Main / Risk Parity без отдельной просьбы).
+Run the **full Equal-Weight baseline** strictly under the project rules. Handle one variant per request; do not recalculate Main or Risk Parity unless the user explicitly asks.
 
-### 1) Запуск (единственная обязательная команда)
+### 1) Run command (the only required command)
 
-Из **корня репозитория** (где лежат `config.yml` и скрипты):
+From the **repository root** where `config.yml` and the scripts live:
 
 ```bash
 python run_equal_weight.py
 ```
 
-Этот скрипт уже:
-- строит равные веса по той же вселенной и правилам покрытия, что и policy-отчёт;
-- прогоняет **полный** отчёт через `run_portfolio_report_for_weights` (метрики, стресс, CSV, JSON, `commentary.txt` / stress commentary по пайплайну);
-- в конце вызывает **`try_rebuild_pdfs_after_variant`**: обновляет сравнение **EW vs RP** (`run_compare_ew_rp.py`) и пересобирает PDF в `pdf files/`.
+This script already:
+- builds equal weights from the same universe and coverage rules as the policy report;
+- runs the **full** report through `run_portfolio_report_for_weights` (metrics, stress, CSV, JSON, `commentary.txt`, and stress commentary through the pipeline);
+- calls **`try_rebuild_pdfs_after_variant`** at the end: it refreshes **EW vs RP** comparison (`run_compare_ew_rp.py`) and rebuilds PDFs in `pdf files/`.
 
-**Не** добавляй ручных правок весов в `config.yml`.
+**Do not** add manual weight edits to `config.yml`.
 
-### 2) После успеха — прочитай и кратко покажи ключевые результаты
+### 2) After a successful run, read and briefly report the key results
 
-Каталог артефактов: **`equal-weight portfolio/`** (не выдумывай другие корни).
+Artifact directory: **`equal-weight portfolio/`**. Do not invent another root.
 
-Обязательно проверь наличие и смысл:
+Always check existence and meaning of:
 - `equal-weight portfolio/summary.txt`, `equal-weight portfolio/summary.json`
-- `equal-weight portfolio/weights.json`, `weights.txt` (если есть)
+- `equal-weight portfolio/weights.json`, `weights.txt` if present
 - `equal-weight portfolio/stress_report.json`
-- `equal-weight portfolio/commentary.txt`, `stress_commentary.txt` (если сгенерированы)
-- `equal-weight portfolio/results_csv/` — rolling betas, матрицы и пр. по правилам стресс-факторов
+- `equal-weight portfolio/commentary.txt`, `stress_commentary.txt` if generated
+- `equal-weight portfolio/results_csv/` for rolling betas, matrices, and other stress-factor outputs
 
-В ответе пользователю выведи:
-- статус baseline (`summary.json` / `summary.txt`)
-- топ весов по убыванию
-- ключевые метрики окна (CAGR, Vol, MaxDD, Sharpe, Sortino, Beta, Corr_base — что есть в summary)
-- stress: `status`, причина сбоя/предупреждения, client-fit / portfolio_valid если есть в meta/summary
-- подтверждение, что лог/вывод не показал падения `run_compare_ew_rp.py` или PDF (если были — цитируй warning)
+In the user-facing answer, include:
+- baseline status from `summary.json` / `summary.txt`
+- top weights in descending order
+- key window metrics that exist in summary: CAGR, Vol, MaxDD, Sharpe, Sortino, Beta, Corr_base
+- stress `status`, failure or warning reason, and client-fit / `portfolio_valid` if present in meta or summary
+- confirmation that the log/output did not show failures in `run_compare_ew_rp.py` or PDF rebuild; if failures occurred, quote the warning
 
-### 3) Если прогон упал
+### 3) If the run fails
 
-- Покажи точную причину и этап (данные / feasibility / стресс / PDF).
-- Укажи, какие файлы в `equal-weight portfolio/` всё же созданы.
-- Предложи следующий шаг (например, проверка `config.yml`, кэш, pandoc/xelatex для PDF).
+- Show the exact reason and stage: data, feasibility, stress, or PDF.
+- List which files were still created in `equal-weight portfolio/`.
+- Suggest the next step, such as checking `config.yml`, cache, or pandoc/xelatex for PDF generation.
 
-### 4) Опционально (только если пользователь явно просит)
+### 4) Optional only when the user explicitly asks
 
-- **Триплет Policy vs EW vs RP** обновляется после полного отчёта Main (`run_report` / оптимизация с отчётом), не этим скриптом. Не запускай `run_compare_variants.py` без явной просьбы обновить сравнение с Policy.
+- The **Policy vs EW vs RP** triplet is refreshed after the full Main report (`run_report` / optimization with report), not by this script. Do not run `run_compare_variants.py` unless the user explicitly asks to refresh the Policy comparison.

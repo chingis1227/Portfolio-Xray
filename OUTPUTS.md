@@ -12,7 +12,7 @@ Generated outputs are evidence and deliverables, not source files, unless a task
 
 Source files define behavior. Generated files show the result of a run.
 
-The canonical current product truth is **ДИАГНОСТИКА 2**. Output interpretation must follow this product boundary:
+The canonical current product truth is **Diagnosis 2**. Output interpretation must follow this product boundary:
 
 ```text
 Input portfolio
@@ -79,7 +79,7 @@ advanced/research menu.
 | One explicit backend candidate compatibility path | `python run_portfolio_review.py --candidates equal_weight` (or another factory id) | explicit id only; not `core_fast` menu |
 | Core backend candidate batch (advanced/research) | `python run_portfolio_review.py --with-candidates` | `core_fast` |
 | Full advanced/research review (16 builders + compare) | `python run_portfolio_review.py --mode full` | `default_v1` |
-| Compare / technical decision package only (no subject/factory) | `python run_compare_variants.py` | ? |
+| Compare / technical decision package only (no subject/factory) | `python run_compare_variants.py` | ... |
 | Portfolio-first PDF export | `python run_portfolio_review.py --with-pdf` | same as mode |
 | Full legacy PDF suite | `python run_portfolio_review.py --legacy-full-pdf` or `python rebuild_pdf_reports.py` | — |
 
@@ -130,7 +130,7 @@ not invoked unless `full_report`, `legacy_export`, or an explicit PDF/export com
 ## Main Output Flow
 
 The current implementation is site/API-first and CLI/file-driven, but product-facing output should
-be interpreted through the ДИАГНОСТИКА 2 bundle first.
+be interpreted through the Diagnosis 2 bundle first.
 
 Portfolio-first output flow contract:
 

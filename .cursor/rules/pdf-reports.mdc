@@ -15,7 +15,7 @@ structured run outputs.
 - **Markdown to PDF build:** `src/pdf_reports.py` (Pandoc + XeLaTeX).
 - **Styles, margins, header/footer, and KPI blocks:** `pdf_latex/pandoc_preamble.tex` and generated `pdf_latex/pandoc_doc_meta.tex`.
 - **Rebuild entry point:** `rebuild_pdf_reports.py`; after Main use `try_rebuild_pdfs_after_main_report` / `python rebuild_pdf_reports.py` with the relevant flag; after EW/RP use `try_rebuild_pdfs_after_variant` / rebuild.
-- **Final PDFs:** `pdf files/`; on success, copy to `00_ВАЖНОЕ/11_pdf files/` if that folder exists.
+- **Final PDFs:** `pdf files/`; on success, copy to `00_IMPORTANT/11_pdf files/` if that folder exists.
 
 Record any new front-facing PDF rule here first, then implement it in `pdf_reports.py` /
 the preamble so report behavior stays consistent.

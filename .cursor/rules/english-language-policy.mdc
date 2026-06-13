@@ -16,15 +16,16 @@ This rule applies to:
 - Portfolio commentary, stress commentary, weights summaries, IPS summaries, comparison notes, and dashboard/report prose.
 - Documentation, Cursor rules, prompts/commands, descriptions, headings, labels, chart captions, table labels, and status messages.
 - Any new or updated explanatory text in config examples, README/SPEC/docs files, and report builders.
-- New file and directory names, unless they are external inputs, existing project paths, ticker symbols, or explicitly requested otherwise.
+- New file and directory names, unless they are immutable external inputs, ticker symbols, or third-party canonical names.
 
 ## Requirements
 
 - Use clear professional English for all visible text.
 - Do not introduce Russian text, mixed-language prose, or mojibake in generated artifacts.
-- Translate existing Russian-facing wording when touching related files or report-generation logic.
+- User chat language, voice dictation language, source prompts, or user phrasing do not change repository language: commit English only.
+- Translate existing Russian-facing wording when touching related files or report-generation logic. If exact translation is not needed for current behavior, replace legacy non-English text with a concise English-only note.
 - Keep internal identifiers, ticker symbols, code symbols, JSON keys, and file names unchanged unless the task explicitly asks to rename them.
-- Preserve quoted source data as-is only when it is factual input that must remain unchanged; provide the surrounding explanation in English.
+- Preserve non-English quoted source data only when it is immutable factual input that must remain unchanged; provide the surrounding explanation in English and do not use non-English text for project-authored prose.
 
 ## Output Checks
 

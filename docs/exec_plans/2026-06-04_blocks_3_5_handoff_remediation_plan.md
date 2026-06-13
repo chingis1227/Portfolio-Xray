@@ -204,7 +204,7 @@ Session 03 verification:
 
 ## Context and Orientation
 
-The repository root is `D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА`. Use Windows PowerShell commands
+The repository root is `D:\Desktop\CURSOR TULA DIAGNOSTICS`. Use Windows PowerShell commands
 from that directory. Use `.\.venv\Scripts\python.exe` as the Python interpreter.
 
 The current product is diagnosis-first. In this plan, "diagnosis-only" means current portfolio
@@ -253,7 +253,7 @@ readiness gate and updates this ExecPlan with the final verdict.
 
 All commands run from:
 
-    D:\Рабочий стол\КУРСОР ТУЛА ДИАГНОСТИКА
+    D:\Desktop\CURSOR TULA DIAGNOSTICS
 
 Session 01 baseline commands already run:
 
