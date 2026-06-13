@@ -8,8 +8,8 @@ export function Reveal({
   delay = 0
 }: {
   children: ReactNode;
-  className...: string;
-  delay...: number;
+  className?: string;
+  delay?: number;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [visible, setVisible] = useState(false);
@@ -20,7 +20,7 @@ export function Reveal({
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry....isIntersecting) {
+        if (entry?.isIntersecting) {
           setVisible(true);
           observer.disconnect();
         }
@@ -35,7 +35,7 @@ export function Reveal({
   return (
     <div
       ref={ref}
-      className={`${className} pmri-scroll-reveal ${visible ... "pmri-scroll-reveal-visible" : ""}`}
+      className={`${className} pmri-scroll-reveal ${visible ? "pmri-scroll-reveal-visible" : ""}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
       {children}

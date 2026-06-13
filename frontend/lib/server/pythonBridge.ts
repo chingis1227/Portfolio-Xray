@@ -12,5 +12,5 @@ export function resolvePythonExecutable(projectRoot: string) {
     return posixVenvPython;
   }
 
-  return process.platform === "win32" ... "python.exe" : "python3";
+  return process.platform === "win32" ? "python.exe" : "python3";
 }

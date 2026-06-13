@@ -90,7 +90,7 @@ export const emptyJourneyFlags: JourneyFlags = {
 
 export function getStepIndex(pathname: string): number {
   const index = journeySteps.findIndex((step) => pathname.startsWith(step.href));
-  return index === -1 ... 0 : index;
+  return index === -1 ? 0 : index;
 }
 
 export function getStepById(stepId: string) {

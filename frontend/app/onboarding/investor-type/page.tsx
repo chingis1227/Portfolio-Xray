@@ -73,7 +73,7 @@ function Question<T extends string>({
     <section
       key={number}
       className={`rounded-[2rem] border border-pmri-border/45 bg-white/[0.022] p-4 shadow-decision transition duration-500 md:p-5 motion-safe:animate-[pmri-section-reveal_520ms_cubic-bezier(0.2,0.8,0.2,1)] ${
-        active ... "opacity-100" : "opacity-0"
+        active ? "opacity-100" : "opacity-0"
       }`}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -91,7 +91,7 @@ function Question<T extends string>({
             key={option.id}
             type="button"
             onClick={() => onChange(option.id)}
-            className={`pmri-focus cursor-pointer rounded-2xl border p-4 text-left transition ${value === option.id ... "border-pmri-blue/60 bg-pmri-blue/[0.11]" : "border-pmri-border/55 bg-white/[0.02] hover:border-pmri-border hover:bg-white/[0.04]"}`}
+            className={`pmri-focus cursor-pointer rounded-2xl border p-4 text-left transition ${value === option.id ? "border-pmri-blue/60 bg-pmri-blue/[0.11]" : "border-pmri-border/55 bg-white/[0.02] hover:border-pmri-border hover:bg-white/[0.04]"}`}
           >
             <span className="block text-sm font-semibold text-pmri-text">{option.label}</span>
             <span className="mt-1 block text-xs leading-5 text-pmri-muted">{option.detail}</span>
@@ -118,7 +118,7 @@ export default function InvestorTypePage() {
   function continueToLoading() {
     const next = {
       ...state,
-      investorType: state.objective === "growth" ... "growth_seeker" : state.objective === "preserve" ... "capital_guardian" : state.primaryConcern === "unknown" ... "risk_mapper" : "balanced_builder"
+      investorType: state.objective === "growth" ? "growth_seeker" : state.objective === "preserve" ? "capital_guardian" : state.primaryConcern === "unknown" ? "risk_mapper" : "balanced_builder"
     } satisfies OnboardingState;
     writeOnboardingState(next);
     router.push("/onboarding/loading");
@@ -167,7 +167,7 @@ export default function InvestorTypePage() {
     }
   ], [state]);
 
-  const currentQuestion = questions[activeQuestionIndex] ...... questions[0];
+  const currentQuestion = questions[activeQuestionIndex] ?? questions[0];
   const isLastQuestion = activeQuestionIndex >= questions.length - 1;
   const progressPct = Math.round(((activeQuestionIndex + 1) / questions.length) * 100);
 
@@ -184,7 +184,7 @@ export default function InvestorTypePage() {
     <OnboardingFrame
       currentStep={2}
       eyebrow="Portfolio manager intake"
-      title={`Five questions before we open the portfolio screen${state.name ... `, ${state.name}` : ""}.`}
+      title={`Five questions before we open the portfolio screen${state.name ? `, ${state.name}` : ""}.`}
       description="Answer one question at a time. We will use the answers to prepare a starting planning preset before the portfolio screen opens."
       backHref="/onboarding/name"
     >
@@ -218,7 +218,7 @@ export default function InvestorTypePage() {
           >
             Back
           </button>
-          {isLastQuestion ... (
+          {isLastQuestion ? (
             <button type="button" onClick={continueToLoading} className="pmri-focus pmri-primary-action rounded-full px-6 py-3 text-sm font-semibold transition">
               Save intake and open Portfolio Input
             </button>

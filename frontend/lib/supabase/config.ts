@@ -1,12 +1,12 @@
-﻿export type SupabaseRuntimeStatus = {
+export type SupabaseRuntimeStatus = {
   enabled: boolean;
-  url...: string;
-  publishableKey...: string;
+  url?: string;
+  publishableKey?: string;
   reason: "enabled" | "flag_disabled" | "missing_env";
 };
 
 function envValue(value: string | undefined) {
-  return typeof value === "string" && value.trim() ... value.trim() : undefined;
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
 export function getSupabaseRuntimeStatus(): SupabaseRuntimeStatus {

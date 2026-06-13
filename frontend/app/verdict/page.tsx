@@ -18,7 +18,7 @@ function isRecord(value: unknown): value is JsonRecord {
 }
 
 function textValue(value: unknown, fallback = "Unavailable") {
-  return typeof value === "string" && value.trim() ... formatUnknownValue(value, fallback) : fallback;
+  return typeof value === "string" && value.trim() ? formatUnknownValue(value, fallback) : fallback;
 }
 
 function errorTextFromResponse(value: unknown) {
@@ -28,10 +28,10 @@ function errorTextFromResponse(value: unknown) {
   if (typeof details === "string" && details.trim()) return `${message} ${normalizeDisplaySentence(details)}`;
   if (Array.isArray(details)) {
     const safeDetails = details
-      .map((item) => (typeof item === "string" ... normalizeDisplaySentence(item) : ""))
+      .map((item) => (typeof item === "string" ? normalizeDisplaySentence(item) : ""))
       .filter(Boolean)
       .join(" ");
-    return safeDetails ... `${message} ${safeDetails}` : message;
+    return safeDetails ? `${message} ${safeDetails}` : message;
   }
   return message;
 }
@@ -48,23 +48,23 @@ function EmptyState({
 }: {
   title: string;
   description: string;
-  href...: string;
-  action...: string;
-  why...: string;
-  nextStep...: string;
-  decisionBoundary...: string;
-  details...: string[];
+  href?: string;
+  action?: string;
+  why?: string;
+  nextStep?: string;
+  decisionBoundary?: string;
+  details?: string[];
 }) {
   return (
     <section className="pmri-card rounded-3xl p-6">
       <p className="pmri-heading-section text-lg text-pmri-text">{title}</p>
       <p className="mt-2 max-w-2xl text-sm leading-7 text-pmri-muted">{description}</p>
-      {why ... (
+      {why ? (
         <p className="mt-4 max-w-3xl text-sm leading-7 text-pmri-text2">
           <span className="font-medium text-pmri-text">Why:</span> {why}
         </p>
       ) : null}
-      {details....length ... (
+      {details?.length ? (
         <div className="mt-5 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
           <p className="pmri-label">What we know</p>
           <ul className="mt-3 space-y-2 text-sm leading-6 text-pmri-text2">
@@ -72,12 +72,12 @@ function EmptyState({
           </ul>
         </div>
       ) : null}
-      {nextStep ... (
+      {nextStep ? (
         <p className="mt-4 max-w-3xl text-sm leading-7 text-pmri-text2">
           <span className="font-medium text-pmri-text">Next step:</span> {nextStep}
         </p>
       ) : null}
-      {decisionBoundary ... (
+      {decisionBoundary ? (
         <p className="mt-4 max-w-3xl rounded-xl border border-pmri-border/70 bg-white/[0.035] p-3 text-sm leading-6 text-pmri-text2">
           <span className="font-medium text-pmri-text">Decision boundary:</span> {decisionBoundary}
         </p>
@@ -93,7 +93,7 @@ function EmptyState({
 }
 
 function statusKey(value: unknown) {
-  return String(value ...... "")
+  return String(value ?? "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
@@ -131,7 +131,7 @@ function isFailedCandidateGeneration(status: unknown) {
 
 function confidenceTone(value: string) {
   const key = statusKey(value);
-  return key === "low" || key.includes("insufficient") ... "amber" : "blue";
+  return key === "low" || key.includes("insufficient") ? "amber" : "blue";
 }
 
 export default function VerdictPage() {
@@ -140,13 +140,13 @@ export default function VerdictPage() {
   const [isRunningVerdict, setIsRunningVerdict] = useState(false);
   const [verdictError, setVerdictError] = useState<string | undefined>();
 
-  const reviewId = activeReview....reviewId ...... activeReview....reviewSummary....reviewId ...... activeReview....reviewResult....review_id;
-  const candidateGeneration = activeReview....candidateGeneration;
-  const comparison = activeReview....comparisonResult;
-  const verdict = activeReview....verdictResult;
-  const selectedCardId = candidateGeneration....selectedCardId;
-  const candidateId = candidateGeneration....candidateId;
-  const candidateDisplayName = formatUnknownValue(comparison....candidateName ...... candidateId, "generated diagnostic candidate");
+  const reviewId = activeReview?.reviewId ?? activeReview?.reviewSummary?.reviewId ?? activeReview?.reviewResult?.review_id;
+  const candidateGeneration = activeReview?.candidateGeneration;
+  const comparison = activeReview?.comparisonResult;
+  const verdict = activeReview?.verdictResult;
+  const selectedCardId = candidateGeneration?.selectedCardId;
+  const candidateId = candidateGeneration?.candidateId;
+  const candidateDisplayName = formatUnknownValue(comparison?.candidateName ?? candidateId, "generated diagnostic candidate");
   const comparisonMatchesCandidate = Boolean(
     comparison
     && selectedCardId
@@ -165,17 +165,17 @@ export default function VerdictPage() {
     hydrated
     && reviewId
     && selectedCardId
-    && candidateGeneration....status === "completed"
+    && candidateGeneration?.status === "completed"
     && comparisonMatchesCandidate
-    && activeReview....comparisonReady
+    && activeReview?.comparisonReady
   );
   const evidenceInsufficient = verdictMatchesCandidate && isEvidenceInsufficientVerdict(verdict);
   const candidateFailed = verdictMatchesCandidate && isCandidateFailedVerdict(verdict);
   const staleVerdictIgnored = Boolean(verdict && selectedCardId && candidateId && !verdictMatchesCandidate);
   const staleComparisonIgnored = Boolean(comparison && selectedCardId && candidateId && !comparisonMatchesCandidate);
-  const generationFailed = isFailedCandidateGeneration(candidateGeneration....status);
-  const siteExplanation = activeReview....reviewSummary....siteExplanation;
-  const clientFitForStage = verdict....clientFit ...... comparison....clientFit ...... activeReview....reviewSummary....clientFit;
+  const generationFailed = isFailedCandidateGeneration(candidateGeneration?.status);
+  const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
+  const clientFitForStage = verdict?.clientFit ?? comparison?.clientFit ?? activeReview?.reviewSummary?.clientFit;
 
   useEffect(() => {
     setVerdictError(undefined);
@@ -183,7 +183,7 @@ export default function VerdictPage() {
 
   const limitationRows = useMemo(() => {
     if (!verdictMatchesCandidate || !verdict) return [];
-    return verdict.limitations.length ... verdict.limitations : ["No confidence limitations were returned."];
+    return verdict.limitations.length ? verdict.limitations : ["No confidence limitations were returned."];
   }, [verdict, verdictMatchesCandidate]);
 
   const evidenceInsufficientDetails = useMemo(() => {
@@ -233,8 +233,8 @@ export default function VerdictPage() {
           title="Decision verdict"
           description="The verdict evaluates one generated diagnostic candidate against the active comparison evidence. No-trade and evidence-insufficient are normal outcomes."
         >
-          <StatusBadge tone={verdictMatchesCandidate ... (evidenceInsufficient ... "amber" : "green") : "amber"}>
-            {verdictMatchesCandidate ... (evidenceInsufficient ... "Evidence insufficient" : "Active verdict") : "Verdict required"}
+          <StatusBadge tone={verdictMatchesCandidate ? (evidenceInsufficient ? "amber" : "green") : "amber"}>
+            {verdictMatchesCandidate ? (evidenceInsufficient ? "Evidence insufficient" : "Active verdict") : "Verdict required"}
           </StatusBadge>
         </PageHeader>
         <SiteExplanationHierarchy
@@ -243,7 +243,7 @@ export default function VerdictPage() {
           fallbackTitle="Verdict explanation"
         />
 
-        {staleVerdictIgnored ... (
+        {staleVerdictIgnored ? (
           <section className="mb-6 rounded-2xl border border-pmri-amber/35 bg-pmri-amber/10 p-4">
             <StatusBadge tone="amber">Previous verdict ignored</StatusBadge>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-text2">
@@ -252,7 +252,7 @@ export default function VerdictPage() {
           </section>
         ) : null}
 
-        {generationFailed && !verdictMatchesCandidate ... (
+        {generationFailed && !verdictMatchesCandidate ? (
           <EmptyState
             title="Candidate test could not be used"
             description="The selected candidate attempt failed or was infeasible, so Portfolio MRI cannot form an evidence-supported verdict from it."
@@ -262,7 +262,7 @@ export default function VerdictPage() {
           />
         ) : null}
 
-        {staleComparisonIgnored && !canRunVerdict && !verdictMatchesCandidate && !generationFailed ... (
+        {staleComparisonIgnored && !canRunVerdict && !verdictMatchesCandidate && !generationFailed ? (
           <EmptyState
             title="Previous comparison ignored"
             description="The saved comparison does not match the active candidate test, so no verdict is shown from it."
@@ -274,21 +274,21 @@ export default function VerdictPage() {
           />
         ) : null}
 
-        {!canRunVerdict && !verdictMatchesCandidate ... (
-          !generationFailed && !staleComparisonIgnored ... (
+        {!canRunVerdict && !verdictMatchesCandidate ? (
+          !generationFailed && !staleComparisonIgnored ? (
           <EmptyState
             title="Verdict unavailable"
             description="A valid Current vs Candidate Comparison is required before a decision-support verdict can be formed."
             why="Portfolio MRI cannot determine whether changing the portfolio improves the diagnosed weakness without a valid candidate comparison."
-            nextStep={candidateGeneration ... "Return to Comparison and complete a valid same-candidate comparison." : "Return to Hypothesis Builder and generate a valid candidate."}
-            href={candidateGeneration ... "/comparison" : "/hypothesis"}
-            action={candidateGeneration ... "Return to Comparison" : "Return to Hypothesis Builder"}
+            nextStep={candidateGeneration ? "Return to Comparison and complete a valid same-candidate comparison." : "Return to Hypothesis Builder and generate a valid candidate."}
+            href={candidateGeneration ? "/comparison" : "/hypothesis"}
+            action={candidateGeneration ? "Return to Comparison" : "Return to Hypothesis Builder"}
             decisionBoundary="No verdict is shown until current comparison evidence exists."
           />
           ) : null
         ) : null}
 
-        {canRunVerdict && !verdictMatchesCandidate ... (
+        {canRunVerdict && !verdictMatchesCandidate ? (
           <section className="pmri-card rounded-3xl p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
@@ -306,13 +306,13 @@ export default function VerdictPage() {
               onClick={handleRunVerdict}
               className={`mt-6 rounded-full border px-5 py-3 text-sm font-medium transition ${
                 isRunningVerdict
-                  ... "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
+                  ? "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
                   : "pmri-focus border-pmri-blue/50 bg-pmri-blue text-pmri-bg shadow-decision hover:bg-pmri-blueSoft"
               }`}
             >
-              {isRunningVerdict ... "Generating verdict..." : "Generate verdict"}
+              {isRunningVerdict ? "Generating verdict..." : "Generate verdict"}
             </button>
-            {verdictError ... (
+            {verdictError ? (
               <p className="mt-4 rounded-xl border border-pmri-red/35 bg-pmri-red/10 p-3 text-sm leading-6 text-pmri-red">
                 {verdictError}
               </p>
@@ -320,7 +320,7 @@ export default function VerdictPage() {
           </section>
         ) : null}
 
-        {candidateFailed && verdict ... (
+        {candidateFailed && verdict ? (
           <div className="space-y-6">
             <EmptyState
               title="Candidate failed or infeasible"
@@ -328,12 +328,12 @@ export default function VerdictPage() {
               why="A failed or infeasible candidate can explain why no action/no-action verdict is supported, but it is not a reason to change the portfolio."
               nextStep="Test another diagnostic hypothesis or keep the current portfolio under monitoring."
               decisionBoundary="This is a blocked evidence state, not a trade instruction."
-              details={evidenceInsufficientDetails.length ... evidenceInsufficientDetails : ["The verdict did not return enough evidence to support action review."]}
+              details={evidenceInsufficientDetails.length ? evidenceInsufficientDetails : ["The verdict did not return enough evidence to support action review."]}
             />
           </div>
         ) : null}
 
-        {evidenceInsufficient && !candidateFailed && verdict ... (
+        {evidenceInsufficient && !candidateFailed && verdict ? (
           <div className="space-y-6">
             <EmptyState
               title="Evidence insufficient"
@@ -341,7 +341,7 @@ export default function VerdictPage() {
               why="The candidate comparison is incomplete or degraded. Portfolio MRI cannot determine whether the candidate improves the diagnosed weakness."
               nextStep="Generate a valid candidate, test another hypothesis, or keep the current portfolio under monitoring."
               decisionBoundary="This is not a trade instruction or rebalance recommendation."
-              details={evidenceInsufficientDetails.length ... evidenceInsufficientDetails : ["The verdict did not return enough evidence to support an action/no-action decision."]}
+              details={evidenceInsufficientDetails.length ? evidenceInsufficientDetails : ["The verdict did not return enough evidence to support an action/no-action decision."]}
             />
             <section className="grid gap-4 lg:grid-cols-2">
               <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
@@ -357,7 +357,7 @@ export default function VerdictPage() {
           </div>
         ) : null}
 
-        {verdictMatchesCandidate && verdict && !evidenceInsufficient && !candidateFailed ... (
+        {verdictMatchesCandidate && verdict && !evidenceInsufficient && !candidateFailed ? (
           <div className="space-y-6">
             <VerdictPanel
               state={verdict.state}

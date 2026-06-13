@@ -19,7 +19,7 @@ function isRecord(value: unknown): value is JsonRecord {
 }
 
 function textValue(value: unknown, fallback = "Unavailable") {
-  return typeof value === "string" && value.trim() ... formatUnknownValue(value, fallback) : fallback;
+  return typeof value === "string" && value.trim() ? formatUnknownValue(value, fallback) : fallback;
 }
 
 function errorTextFromResponse(value: unknown) {
@@ -29,16 +29,16 @@ function errorTextFromResponse(value: unknown) {
   if (typeof details === "string" && details.trim()) return `${message} ${normalizeDisplaySentence(details)}`;
   if (Array.isArray(details)) {
     const safeDetails = details
-      .map((item) => (typeof item === "string" ... normalizeDisplaySentence(item) : ""))
+      .map((item) => (typeof item === "string" ? normalizeDisplaySentence(item) : ""))
       .filter(Boolean)
       .join(" ");
-    return safeDetails ... `${message} ${safeDetails}` : message;
+    return safeDetails ? `${message} ${safeDetails}` : message;
   }
   return message;
 }
 
 function statusKey(value: unknown) {
-  return String(value ...... "")
+  return String(value ?? "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
@@ -86,17 +86,17 @@ function comparisonMissingReasons({
   candidateNotComparable
 }: {
   comparison: NonNullable<ReturnType<typeof useReviewState>["activeReview"]>["comparisonResult"] | undefined;
-  comparisonError...: string;
-  candidateNotComparable...: boolean;
+  comparisonError?: string;
+  candidateNotComparable?: boolean;
 }) {
   const reasons = new Set<string>();
   if (candidateNotComparable) reasons.add("The generated candidate is not compare-ready for this review.");
   if (!candidateNotComparable) reasons.add("Candidate metrics are unavailable");
   reasons.add("Trade-off comparison evidence could not be completed");
-  if (comparison....comparisonStatus && statusKey(comparison.comparisonStatus) !== "available") {
+  if (comparison?.comparisonStatus && statusKey(comparison.comparisonStatus) !== "available") {
     reasons.add(formatUnknownValue(comparison.comparisonStatus, "Comparison unavailable"));
   }
-  comparison....warnings.forEach((item) => reasons.add(normalizeDisplaySentence(item)));
+  comparison?.warnings.forEach((item) => reasons.add(normalizeDisplaySentence(item)));
   if (comparisonError) reasons.add(normalizeDisplaySentence(comparisonError));
   return Array.from(reasons).slice(0, 5);
 }
@@ -111,16 +111,16 @@ function EmptyState({
 }: {
   title: string;
   description: string;
-  href...: string;
-  action...: string;
-  missing...: string[];
-  nextStep...: string;
+  href?: string;
+  action?: string;
+  missing?: string[];
+  nextStep?: string;
 }) {
   return (
     <section className="pmri-card rounded-3xl p-6">
       <p className="pmri-heading-section text-lg text-pmri-text">{title}</p>
       <p className="mt-2 max-w-2xl text-sm leading-7 text-pmri-muted">{description}</p>
-      {missing....length ... (
+      {missing?.length ? (
         <div className="mt-5 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
           <p className="pmri-label">What is missing</p>
           <ul className="mt-3 space-y-2 text-sm leading-6 text-pmri-text2">
@@ -128,7 +128,7 @@ function EmptyState({
           </ul>
         </div>
       ) : null}
-      {nextStep ... (
+      {nextStep ? (
         <p className="mt-4 max-w-2xl text-sm leading-7 text-pmri-text2">
           <span className="font-medium text-pmri-text">Next step:</span> {nextStep}
         </p>
@@ -149,12 +149,12 @@ export default function ComparisonPage() {
   const [isComparing, setIsComparing] = useState(false);
   const [comparisonError, setComparisonError] = useState<string | undefined>();
 
-  const reviewId = activeReview....reviewId ...... activeReview....reviewSummary....reviewId ...... activeReview....reviewResult....review_id;
-  const candidateGeneration = activeReview....candidateGeneration;
-  const selectedCardId = candidateGeneration....selectedCardId;
-  const candidateId = candidateGeneration....candidateId;
-  const comparison = activeReview....comparisonResult;
-  const hasGeneratedCandidate = Boolean(candidateGeneration....status === "completed" && candidateId && selectedCardId);
+  const reviewId = activeReview?.reviewId ?? activeReview?.reviewSummary?.reviewId ?? activeReview?.reviewResult?.review_id;
+  const candidateGeneration = activeReview?.candidateGeneration;
+  const selectedCardId = candidateGeneration?.selectedCardId;
+  const candidateId = candidateGeneration?.candidateId;
+  const comparison = activeReview?.comparisonResult;
+  const hasGeneratedCandidate = Boolean(candidateGeneration?.status === "completed" && candidateId && selectedCardId);
   const comparisonMatchesCandidate = Boolean(
     comparison
     && selectedCardId
@@ -167,20 +167,20 @@ export default function ComparisonPage() {
     && reviewId
     && selectedCardId
     && candidateId
-    && candidateGeneration....status === "completed"
+    && candidateGeneration?.status === "completed"
     && candidateGeneration.canCompare
   );
   const validComparisonAvailable = comparisonMatchesCandidate && comparisonIsAvailable(comparison);
   const canGenerateEvidenceVerdict = comparisonMatchesCandidate && comparisonCanGenerateVerdict(comparison);
   const displayableMetrics = useMemo(
-    () => comparison....metrics.filter(isDisplayableMetric) ...... [],
+    () => comparison?.metrics.filter(isDisplayableMetric) ?? [],
     [comparison]
   );
   const comparisonForDisplay = comparison && displayableMetrics.length
-    ... { ...comparison, metrics: displayableMetrics }
+    ? { ...comparison, metrics: displayableMetrics }
     : comparison;
-  const siteExplanation = activeReview....reviewSummary....siteExplanation;
-  const clientFitForStage = comparison....clientFit ...... activeReview....reviewSummary....clientFit;
+  const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
+  const clientFitForStage = comparison?.clientFit ?? activeReview?.reviewSummary?.clientFit;
 
   useEffect(() => {
     setComparisonError(undefined);
@@ -225,7 +225,7 @@ export default function ComparisonPage() {
   if (!hydrated) return null;
 
   const showCandidateMissingState = !hasGeneratedCandidate;
-  const showCandidateNotComparableState = hasGeneratedCandidate && !candidateGeneration....canCompare;
+  const showCandidateNotComparableState = hasGeneratedCandidate && !candidateGeneration?.canCompare;
   const showMetricsUnavailableState = !showCandidateMissingState
     && (showCandidateNotComparableState || Boolean(comparisonError) || (comparisonMatchesCandidate && !validComparisonAvailable));
   const showReadyToCompareState = canRunComparison
@@ -235,14 +235,14 @@ export default function ComparisonPage() {
     && !showCandidateNotComparableState;
 
   const validComparisonForDisplay = validComparisonAvailable && comparisonForDisplay
-    ... comparisonForDisplay
+    ? comparisonForDisplay
     : undefined;
 
   const comparisonAvailabilityTitle = showCandidateNotComparableState
-    ... "Candidate cannot be compared yet"
+    ? "Candidate cannot be compared yet"
     : "Comparison metrics unavailable";
   const comparisonAvailabilityDescription = showCandidateNotComparableState
-    ... "A candidate was generated, but it is not ready for a current-vs-candidate trade-off comparison."
+    ? "A candidate was generated, but it is not ready for a current-vs-candidate trade-off comparison."
     : "The candidate exists, but Portfolio MRI does not have enough current candidate metrics to compare it against the current portfolio.";
 
   return (
@@ -252,8 +252,8 @@ export default function ComparisonPage() {
           title="Current vs Candidate Comparison"
           description="This step compares the current portfolio with one generated diagnostic candidate. It does not make a final decision or create a rebalance instruction."
         >
-          <StatusBadge tone={validComparisonAvailable ... "green" : "amber"}>
-            {validComparisonAvailable ... "Active comparison" : "Comparison required"}
+          <StatusBadge tone={validComparisonAvailable ? "green" : "amber"}>
+            {validComparisonAvailable ? "Active comparison" : "Comparison required"}
           </StatusBadge>
         </PageHeader>
         <SiteExplanationHierarchy
@@ -262,7 +262,7 @@ export default function ComparisonPage() {
           fallbackTitle="Comparison explanation"
         />
 
-        {showCandidateMissingState ... (
+        {showCandidateMissingState ? (
           <EmptyState
             title="Generate a test candidate first"
             description="Portfolio MRI needs one generated diagnostic test candidate before it can compare current vs candidate trade-offs."
@@ -270,7 +270,7 @@ export default function ComparisonPage() {
           />
         ) : null}
 
-        {showMetricsUnavailableState ... (
+        {showMetricsUnavailableState ? (
           <section className="pmri-card rounded-3xl p-6">
             <p className="pmri-heading-section text-lg text-pmri-text">{comparisonAvailabilityTitle}</p>
             <p className="mt-2 max-w-2xl text-sm leading-7 text-pmri-muted">{comparisonAvailabilityDescription}</p>
@@ -283,11 +283,11 @@ export default function ComparisonPage() {
             <p className="mt-4 max-w-2xl text-sm leading-7 text-pmri-text2">
               <span className="font-medium text-pmri-text">Next step:</span>{" "}
               {canGenerateEvidenceVerdict
-                ... "Generate an evidence-insufficient verdict, or return to Hypothesis Builder to test another setup."
+                ? "Generate an evidence-insufficient verdict, or return to Hypothesis Builder to test another setup."
                 : "Regenerate candidate, adjust setup, or resolve data quality."}
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
-              {canGenerateEvidenceVerdict ... (
+              {canGenerateEvidenceVerdict ? (
                 <button
                   type="button"
                   className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
@@ -309,7 +309,7 @@ export default function ComparisonPage() {
           </section>
         ) : null}
 
-        {showReadyToCompareState ... (
+        {showReadyToCompareState ? (
           <section className="pmri-card rounded-3xl p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
@@ -327,13 +327,13 @@ export default function ComparisonPage() {
               onClick={handleRunComparison}
               className={`mt-6 rounded-full border px-5 py-3 text-sm font-medium transition ${
                 isComparing
-                  ... "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
+                  ? "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
                   : "pmri-focus border-pmri-blue/50 bg-pmri-blue text-pmri-bg shadow-decision hover:bg-pmri-blueSoft"
               }`}
             >
-              {isComparing ... "Comparing candidate..." : "Compare candidate"}
+              {isComparing ? "Comparing candidate..." : "Compare candidate"}
             </button>
-            {comparisonError ... (
+            {comparisonError ? (
               <p className="mt-4 rounded-xl border border-pmri-red/35 bg-pmri-red/10 p-3 text-sm leading-6 text-pmri-red">
                 {comparisonError}
               </p>
@@ -341,7 +341,7 @@ export default function ComparisonPage() {
           </section>
         ) : null}
 
-        {validComparisonForDisplay ... (
+        {validComparisonForDisplay ? (
           <div className="space-y-6">
             <TradeoffSummary
               improved={validComparisonForDisplay.improved}
@@ -372,7 +372,7 @@ export default function ComparisonPage() {
               <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
                 <StatusBadge tone="slate">Warnings</StatusBadge>
                 <ul className="mt-3 space-y-2 text-sm leading-7 text-pmri-muted">
-                  {(validComparisonForDisplay.warnings.length ... validComparisonForDisplay.warnings : ["No additional comparison warnings are available."]).map((item) => (
+                  {(validComparisonForDisplay.warnings.length ? validComparisonForDisplay.warnings : ["No additional comparison warnings are available."]).map((item) => (
                     <li key={item}>• {item}</li>
                   ))}
                 </ul>

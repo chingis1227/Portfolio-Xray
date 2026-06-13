@@ -36,7 +36,7 @@ export function XRayStressConfirmationPanel({ confirmation }: { confirmation: St
           <span>Confirmation status</span>
         </div>
         <div className="divide-y divide-pmri-border/45">
-          {rows.length ... rows.map((row) => (
+          {rows.length ? rows.map((row) => (
             <article key={`${row.status}-${row.label}-${row.detail}`} className="grid gap-3 px-4 py-4 text-sm md:grid-cols-[0.9fr_1.4fr_0.55fr] md:items-start">
               <h3 className="font-semibold text-pmri-text">{row.label}</h3>
               <p className="leading-6 text-pmri-text2">{row.detail}</p>

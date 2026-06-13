@@ -25,6 +25,8 @@ governed by `SPEC.md`, `OUTPUTS.md`, detailed specs, and code.
 
 ## Current Pointer
 
+**Completed:** [Current Frontend Design Documentation Synchronization](2026-06-13_current_frontend_design_docs_sync_plan.md) - 2026-06-13 docs/code sync that made the implemented frontend the source of truth for design tokens, route structure, landing/onboarding flow, 8-step platform shell, and local-only dev bypass.
+
 **Active:** [FastAPI Foundation and Contract-First Frontend Migration](2026-06-11_fastapi_foundation_plan.md) - current project-level plan for replacing the local Next.js-to-Python bridge with a FastAPI/OpenAPI/Pydantic/TypeScript contract foundation. Sessions 00-09 are complete; the next chat should begin with Session 10 (final acceptance, browser QA, and handoff).
 
 **Focused Active UI Plan:** [Landing and Onboarding Before Portfolio Input](2026-06-12_frontend_landing_onboarding_plan.md) - scoped frontend entry-experience plan that adds a public landing page, required email sign-in, onboarding, and a loading handoff before the existing Portfolio Input flow. It does not change Python analytics, FastAPI contracts, generated artifacts, or backend behavior.

@@ -1,144 +1,103 @@
 # Client Fit Questionnaire Specification
 
-This document owns the planned Client Fit V1 questionnaire, preset, and source-quality contract. It
-is documentation-only until the implementation sessions add configuration, validators, API fields,
-frontend routes, and persistence.
+Status: current Client Fit V1 questionnaire and web-placement contract.
 
-## Purpose
+This document owns the compact planning-profile questionnaire used by the web journey before Portfolio Input. Client Fit is diagnostic context only. It is not legal suitability approval, a trade instruction, or an optimizer mandate.
 
-The Client Fit Questionnaire gathers a compact investment profile before the web user runs a
-portfolio diagnosis. The goal is not to provide legal suitability approval. The goal is to give
-Portfolio MRI enough stated objectives to interpret portfolio risk against the user's return,
-volatility, drawdown, and horizon preferences.
+## Current web placement
 
-## Web Placement
-
-The primary web journey must ask for Client Fit after sign-in/onboarding and before portfolio
-diagnosis:
+Canonical web path:
 
 ```text
-/client-profile
+/
+-> /onboarding/sign-in
+-> /onboarding/name
+-> /onboarding/investor-type
+-> /onboarding/loading
 -> /portfolio-input
 ```
 
-The primary UI copy should say:
+Local preview shortcut:
 
 ```text
-Tell us your investment profile
-Quick profile — about 2 minutes
+/onboarding/name?dev_bypass=1
 ```
 
-The web flow requires a valid Client Fit profile before "Run diagnosis". Backend/CLI paths remain
-compatible when the profile is missing.
+The shortcut is allowed only while local email sign-in is unavailable or unstable. It is not the product path.
 
-## Questions
+`/client-profile` remains an advanced/manual Client Fit editor for changing the saved context. The normal user journey collects the profile through onboarding and enters Portfolio Input with Client Fit context already saved.
 
-Client Fit V1 uses eight questions:
+## Current five-question intake
 
-1. Main objective
-   - Preserve capital
-   - Moderate growth
-   - Balanced growth and risk
-   - High growth
-   - Maximum growth
+The implemented onboarding screen asks one question at a time:
 
-2. Target annual return expectation
-   - 2-4%
-   - 3-6%
-   - 5-7%
-   - 7-10%
-   - 10%+
+1. `What is the portfolio's primary job?`
+   - Preserve capital first.
+   - Balance growth and resilience.
+   - Grow over a full cycle.
+   - Understand what I already own.
 
-3. Investment horizon
-   - Less than 3 years
-   - 3-5 years
-   - 6-10 years
-   - More than 10 years
+2. `What is the real decision horizon?`
+   - Shorter horizon.
+   - Medium horizon.
+   - Longer horizon.
 
-4. Maximum temporary portfolio loss the user can accept
-   - Up to -10%
-   - Up to -15%
-   - Up to -20%
-   - Up to -30%
-   - More than -30%
+3. `How much temporary loss can the plan tolerate?`
+   - Small temporary losses.
+   - Moderate drawdowns.
+   - Larger drawdowns.
 
-5. Reaction to a -20% decline
-   - Sell most or reduce risk strongly
-   - Reduce some risk
-   - Hold
-   - Add more
+4. `How should the system treat changes?`
+   - Be conservative about change.
+   - Test changes when evidence is clear.
+   - Look actively for improvements.
 
-6. Comfortable normal yearly fluctuation
-   - Very low: 0-5%
-   - Low/moderate: 5-8%
-   - Moderate: 8-12%
-   - High: 12-18%
-   - Very high: 18%+
+5. `What worries you most about the current portfolio?`
+   - Hidden concentration.
+   - Loss in a stress event.
+   - Rates and bond sensitivity.
+   - Inflation / real asset protection.
+   - I am not sure yet.
 
-7. Investment experience
-   - Beginner
-   - Some experience
-   - Experienced
-   - Professional / advanced
+## Profile mapping
 
-8. Profile confirmation
-   - Use suggested profile
-   - Choose a different preset
-   - Customize targets manually
+The frontend stores onboarding state and maps it to the existing `ClientFitInput` shape through `frontend/lib/onboarding.ts`. The saved profile provides bounded display/test context for:
 
-No liquidity question is included in V1.
+- target return range;
+- volatility comfort range;
+- maximum temporary-loss limit;
+- horizon;
+- profile label and confidence/source-quality display.
 
-## Presets
+The mapping must remain conservative and explanatory. Client Fit targets may inform display and hypothesis-test criteria, but they must not become optimizer constraints or suitability approval.
 
-Reuse existing legacy profile ranges as Client Fit presets while preserving legacy optimizer
-compatibility:
+## Required UI behavior
 
-- `ultra_conservative`: return 2-4%, volatility 2-5%, target maximum drawdown -10%.
-- `conservative`: return 3-6%, volatility 4-7%, target maximum drawdown -15%.
-- `balanced`: return 5-7%, volatility 7-10%, target maximum drawdown -20%.
-- `growth`: return 7-10%, volatility 10-14%, target maximum drawdown -27.5%.
-- `aggressive`: return 10-20%, volatility 14-20%, target maximum drawdown -35%.
+- Portfolio Input must show the saved Client Fit profile summary before diagnosis.
+- Run diagnosis must remain blocked until a valid Client Fit profile exists in the normal web journey.
+- The manual `/client-profile` editor may update the same bounded profile context.
+- Backend/CLI compatibility may still produce a `not_provided` Client Fit state when no profile exists.
 
-Presets are starting points, not advice. A user may confirm the suggested preset, choose a different
-preset, or customize targets manually.
+## Copy boundaries
 
-## Source and Source Quality
+Allowed language:
 
-Every Client Fit profile must carry:
+- planning profile;
+- diagnostic context;
+- target range;
+- comfort range;
+- temporary-loss limit;
+- non-binding Client Fit check.
 
-- `source`: `questionnaire`, `preset_override`, `manual_override`, `imported`, or `missing`
-- `source_quality`: `high`, `medium`, `low`, or `missing`
-- `source_quality_reason`: a short readable explanation
+Forbidden language:
 
-Defaults:
+- suitability approved;
+- recommendation;
+- mandate;
+- trade instruction;
+- guaranteed fit;
+- no action needed solely because Client Fit is acceptable.
 
-- questionnaire plus user confirmation: `medium`
-- full manual override: `high`
-- preset only: `medium`
-- missing profile: `missing`
+## Documentation sync
 
-The UI should expose source quality in plain language, for example:
-
-```text
-Profile confidence: Medium — based on a short questionnaire and user confirmation.
-```
-
-## Compatibility Boundary
-
-The web journey requires Client Fit, but backend/CLI diagnosis must not fail only because no profile
-was provided. Missing profile creates `client_fit_status = not_provided` and downstream copy should
-explain that only generic portfolio diagnosis is available.
-
-## Product Copy Boundary
-
-Allowed:
-
-```text
-This profile helps compare portfolio risk with your stated comfort range.
-```
-
-Forbidden:
-
-```text
-This questionnaire approves the portfolio as suitable.
-```
+When onboarding questions, answer options, profile mapping, or Client Fit placement change, update this document, `docs/design/current_website_structure.md`, `frontend/README.md`, `docs/contracts/SCREEN_CONTRACTS.md`, and `docs/specs/frontend_screen_contracts.md` in the same change.

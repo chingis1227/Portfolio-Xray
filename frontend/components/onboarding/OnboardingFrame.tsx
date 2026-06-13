@@ -23,8 +23,8 @@ export function OnboardingFrame({
   eyebrow: string;
   title: string;
   description: string;
-  backHref...: string;
-  aside...: ReactNode;
+  backHref?: string;
+  aside?: ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -32,7 +32,7 @@ export function OnboardingFrame({
 
   useEffect(() => {
     const isLocalhost = typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname);
-    const devBypassParam = typeof window !== "undefined" ... new URLSearchParams(window.location.search).get("dev_bypass") : null;
+    const devBypassParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("dev_bypass") : null;
     if (isLocalhost && devBypassParam === "1") {
       window.sessionStorage.setItem("pmri.auth.devBypass", "1");
     }
@@ -57,7 +57,7 @@ export function OnboardingFrame({
               const active = index + 1 <= currentStep;
               return (
                 <div key={step} className="flex items-center gap-2">
-                  <span className={`h-1.5 w-10 rounded-full transition ${active ... "bg-pmri-blue" : "bg-pmri-border/55"}`} aria-hidden="true" />
+                  <span className={`h-1.5 w-10 rounded-full transition ${active ? "bg-pmri-blue" : "bg-pmri-border/55"}`} aria-hidden="true" />
                   <span className="hidden text-xs text-pmri-muted md:inline">{step}</span>
                 </div>
               );
@@ -81,7 +81,7 @@ export function OnboardingFrame({
             <div className="mt-9">{children}</div>
           </div>
 
-          {aside ... (
+          {aside ? (
             <aside className="mx-auto w-full max-w-md lg:mx-0">
               {aside}
             </aside>

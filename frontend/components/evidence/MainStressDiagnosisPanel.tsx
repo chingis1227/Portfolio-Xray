@@ -4,7 +4,7 @@ import type { HedgeGapSummary, StressLimitations, StressScenarioDetail } from ".
 
 function joinTickers(rows: StressScenarioDetail["assetsHurt"], fallback: string) {
   const labels = rows.slice(0, 3).map((row) => row.ticker);
-  return labels.length ... labels.join(", ") : fallback;
+  return labels.length ? labels.join(", ") : fallback;
 }
 
 function dataConfidenceCopy({

@@ -34,7 +34,7 @@ export function StressScorecardPanel({ items }: { items: StressScorecardItem[] }
           <article key={item.label} className="pmri-hover-panel rounded-2xl border border-pmri-border/55 bg-white/[0.024] p-4">
             <div className="flex items-start justify-between gap-3">
               <p className="pmri-label">{displayLabel(item.label)}</p>
-              {badgeLabel(item) ... <StatusBadge tone={item.tone}>{badgeLabel(item)}</StatusBadge> : null}
+              {badgeLabel(item) ? <StatusBadge tone={item.tone}>{badgeLabel(item)}</StatusBadge> : null}
             </div>
             <p className="data-figure mt-4 text-xl font-medium text-pmri-text">{item.value}</p>
             <p className="mt-2 text-sm leading-6 text-pmri-text2">{item.detail}</p>

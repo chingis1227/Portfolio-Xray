@@ -6,15 +6,15 @@ This plan follows `PLANS.md` in the repository root. It is scoped to a frontend 
 
 ## Purpose / Big Picture
 
-After this change, a user can open a new `frontend/` app and view a clean Portfolio MRI prototype as an institutional Investment Decision Room. The prototype shows seven screens—Portfolio Input, Diagnosis Summary, Evidence Center, Hypothesis Launchpad, Current vs Candidate Comparison, Decision Verdict, and Client-ready Report—using local static JSON data. It deliberately avoids live Python backend integration and treats imported Stitch files only as visual reference, not as source code to copy.
+After this change, a user can open a new `frontend/` app and view an early Portfolio MRI prototype as an institutional Investment Decision Room. This historical plan is superseded by the current eight-step frontend journey documented in `DESIGN.md` and `docs/design/current_website_structure.md`.
 
 ## Progress
 
-- [x] (2026-06-07 00:00Z) Reviewed repository rules, `DESIGN.md`, canonical `docs/design/portfolio_mri_design_system.md`, imported Stitch design-system markdown, imported tokens JSON, and selected Stitch screenshots as visual reference.
+- [x] (2026-06-07 00:00Z) Reviewed repository rules, `DESIGN.md`, canonical `docs/design/portfolio_mri_design_system.md`, imported design-system markdown, imported tokens JSON, and selected screenshots as visual reference.
 - [x] (2026-06-07 00:00Z) Created a separate `frontend/` Next.js/React/TypeScript/Tailwind prototype folder with no changes to Python analytics files.
-- [x] (2026-06-07 00:00Z) Added local demo JSON files for all seven requested screens.
+- [x] (2026-06-07 00:00Z) Added local demo JSON files for the initial requested screens.
 - [x] (2026-06-07 00:00Z) Added reusable layout, UI, portfolio, diagnosis, evidence, hypothesis, comparison, verdict, and report components.
-- [x] (2026-06-07 00:00Z) Added seven route screens plus root redirect.
+- [x] (2026-06-07 00:00Z) Added initial route screens plus root redirect.
 - [x] (2026-06-07 00:00Z) Added frontend README and run commands.
 
 ## Surprises & Discoveries
@@ -29,8 +29,8 @@ After this change, a user can open a new `frontend/` app and view a clean Portfo
 - Decision: Use a standalone `frontend/` app and local JSON imports instead of adding an API or connecting Python.
   Rationale: The user explicitly requested no Python backend modification, no live backend connection, and no API yet.
   Date/Author: 2026-06-07 / Codex.
-- Decision: Rebuild the UI from clean React components rather than converting Stitch HTML.
-  Rationale: The Stitch audit said the imported output was plain HTML with Tailwind CDN, inline CSS/JS, duplicated styles, and weak accessibility. Option C requires using Stitch only as visual reference.
+- Decision: Rebuild the UI from clean React components rather than converting imported prototype HTML.
+  Rationale: The imported output was plain HTML with Tailwind CDN, inline CSS/JS, duplicated styles, and weak accessibility. The implementation needed maintainable React components.
   Date/Author: 2026-06-07 / Codex.
 - Decision: Use dark institutional tokens, blue action states, sparse gold boundaries, green only for improvement, amber only for caution/evidence insufficiency, and red only for risk/worsening.
   Rationale: This matches `docs/design/portfolio_mri_design_system.md` and the imported Portfolio MRI token reference.
@@ -38,7 +38,7 @@ After this change, a user can open a new `frontend/` app and view a clean Portfo
 
 ## Outcomes & Retrospective
 
-The completed prototype provides the requested frontend foundation: a clean Next.js App Router structure, reusable components, static JSON data, and seven screens that frame Portfolio MRI as a decision-support room rather than a dashboard, trading app, optimizer cockpit, or backend JSON viewer. The remaining work is to install dependencies on a machine with npm, run the dev server, visually review in a browser, and only later design a backend/API contract after the user confirms the frontend direction.
+The completed prototype provided the initial frontend foundation: a clean Next.js App Router structure, reusable components, and static JSON data that framed Portfolio MRI as a decision-support room rather than a dashboard, trading app, optimizer cockpit, or backend JSON viewer. The current product has since moved to the documented eight-step journey.
 
 ## Context and Orientation
 
@@ -48,7 +48,7 @@ A candidate is a portfolio hypothesis to test, not a recommendation. A verdict i
 
 ## Plan of Work
 
-Create `frontend/package.json`, Next.js configuration, TypeScript configuration, Tailwind configuration, and global styles. Add local JSON files for the seven screens. Add typed data helpers in `frontend/lib/`. Add layout components for the sidebar, top journey progress, and page header. Add requested reusable content components. Add one route per screen. Add `../../frontend/README.md` documenting architecture, data usage, Stitch usage boundary, and run commands.
+Create `frontend/package.json`, Next.js configuration, TypeScript configuration, Tailwind configuration, and global styles. Add local JSON files for the initial screens. Add typed data helpers in `frontend/lib/`. Add layout components for the sidebar, top journey progress, and page header. Add requested reusable content components. Add one route per screen. Add `../../frontend/README.md` documenting architecture, data usage, and run commands.
 
 ## Concrete Steps
 
@@ -58,13 +58,13 @@ From the repository root, create files under `frontend/` only plus this plan fil
     npm install
     npm run dev
 
-Then open `http://localhost:3000`. The root route redirects to `/portfolio-input`, and sidebar navigation exposes all seven screens.
+Then open `http://localhost:3000`. This historical prototype route behavior is superseded by the current landing and onboarding journey.
 
 ## Validation and Acceptance
 
-Acceptance is manual and user-visible for this prototype. After running the app, a user should see a premium dark Portfolio MRI interface with sidebar navigation, journey progress, and seven screens. The Portfolio Input screen must show investor currency once at portfolio level, not repeated per row. The table must show Ticker / Instrument and Weight %. The verdict screen must include decision-support wording and say it is not a trading instruction. The comparison and hypothesis screens must state that candidates are hypothesis tests, not recommendations.
+Acceptance was manual and user-visible for this prototype. After running the app, a user should see a premium dark Portfolio MRI interface with sidebar navigation and journey progress. The Portfolio Input screen must show investor currency once at portfolio level, not repeated per row. The table must show Ticker / Instrument and Weight %. The verdict screen must include decision-support wording and say it is not a trading instruction. The comparison and hypothesis screens must state that candidates are hypothesis tests, not recommendations.
 
-The implementation can also be inspected without running the server by confirming that `frontend/data/demo/*.json` files are imported into route pages and components, no `api/` route exists, no Python files changed, and no imported Stitch `index.html` is referenced from frontend source.
+The implementation can also be inspected without running the server by confirming that `frontend/data/demo/*.json` files are imported into route pages and components, no `api/` route exists, no Python files changed, and no imported prototype `index.html` is referenced from frontend source.
 
 ## Idempotence and Recovery
 
@@ -72,7 +72,7 @@ The work is additive. If dependency installation fails, delete `frontend/node_mo
 
 ## Artifacts and Notes
 
-The visual reference came from the imported Stitch screenshots and design tokens, especially the dark sidebar, top journey, large decision cards, compact evidence panels, and gold decision boundary accents. Raw Stitch HTML, inline CSS, inline JavaScript, and Tailwind CDN code were not integrated.
+The visual reference came from imported screenshots and design tokens, especially the dark sidebar, top journey, large decision cards, compact evidence panels, and gold decision boundary accents. Raw prototype HTML, inline CSS, inline JavaScript, and Tailwind CDN code were not integrated.
 
 ## Interfaces and Dependencies
 

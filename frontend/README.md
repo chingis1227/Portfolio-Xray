@@ -22,8 +22,8 @@ product or trading system.
 - The flow is one selected test path at a time; it is not a multi-candidate optimizer arena.
 - A candidate is a diagnostic test, not a recommendation. Decision Verdict is non-binding
   decision support, and no-trade / evidence-insufficient are valid outcomes.
-- Raw Stitch HTML/CSS/JS is not integrated.
-- Imported Stitch screenshots and design tokens are visual references only.
+- Old imported design artifacts are not integrated and are not current design authority.
+- Current design and route structure are documented in `../DESIGN.md` and `../docs/design/current_website_structure.md`.
 
 ## Architecture
 
@@ -118,8 +118,7 @@ product or trading system.
 
 ## Run locally
 
-Supabase persistence is optional. With the default `.env.example` values, the app stays in local
-demo mode, does not ask for login, and stores the active compact review in browser `localStorage`.
+Supabase persistence is optional, but the canonical public product path still starts with email sign-in. With local or incomplete Supabase setup, the sign-in page exposes a localhost-only fallback button so the site can be tested without a working email code. The active compact review is stored in browser `localStorage`.
 To enable Supabase-backed auth for later cloud persistence sessions, set only public browser-safe
 values:
 
@@ -132,7 +131,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-public-publishable-key
 If the flag is not exactly `true`, or either public value is blank, the Supabase gate remains
 disabled and no Supabase browser client is created.
 
-When Supabase is enabled, public entry requires an email OTP or magic-link sign-in before onboarding.
+Canonical public entry requires an email OTP or magic-link sign-in before onboarding when Supabase is available.
 The platform sidebar intentionally does not show auth or cloud-storage controls in the core decision flow. Configure Supabase Auth
 Email OTP in the Supabase dashboard and allow the local callback URL:
 
@@ -187,8 +186,7 @@ DOM fallbacks plus `qa-report.json` under `../output/playwright/`. If live marke
 unavailable, treat the failure as a data-provider blocker and inspect the report/logs before making
 frontend or product conclusions.
 
-Open `http://localhost:3000` to start at the landing page. Click `Enter Platform`, sign in with
-email, complete the short onboarding, and the app will open Portfolio Input with Client Fit context already saved.
+Open `http://localhost:3000` to start at the landing page. Click `Enter Platform`, sign in with email when auth is available, complete the short onboarding, and the app will open Portfolio Input with Client Fit context already saved. For local preview while email sign-in is unavailable, open `http://localhost:3000/onboarding/name?dev_bypass=1`; this is a development shortcut, not the canonical product path.
 Override the FastAPI URL for the Next.js proxy with
 `PMRI_FASTAPI_BASE_URL` when using a non-default host or port.
 
@@ -219,7 +217,7 @@ Use [../docs/demo/frontend_backend_vertical_runbook.md](../docs/demo/frontend_ba
 
 - commands for Python bridge tests and frontend typecheck/build;
 - how to start the Next.js frontend;
-- the public Landing -> required email sign-in -> Onboarding entry path before Portfolio Input;
+- the public Landing -> required email sign-in -> Onboarding entry path before Portfolio Input, plus the local-only `dev_bypass` preview path;
 - the manual Portfolio Input -> Diagnosis -> Stress Test Lab -> Hypothesis / Builder prepare and Candidate Generation -> Comparison -> Verdict -> Report click path;
 - run directory strategy under `runs/frontend_review_*`;
 - stale artifact risks and recovery;

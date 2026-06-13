@@ -1,4 +1,4 @@
-﻿const assert = require("node:assert/strict");
+const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
@@ -67,12 +67,12 @@ function loadTsModule(filePath, { readFileImpl, moduleCache = new Map() } = {}) 
     }
     if (specifier.startsWith("@/")) {
       const aliasedPath = path.join(frontendRoot, specifier.slice(2));
-      const tsPath = fs.existsSync(`${aliasedPath}.ts`) ... `${aliasedPath}.ts` : aliasedPath;
+      const tsPath = fs.existsSync(`${aliasedPath}.ts`) ? `${aliasedPath}.ts` : aliasedPath;
       return loadTsModule(tsPath, { readFileImpl, moduleCache });
     }
     if (specifier.startsWith(".")) {
       const relativePath = path.resolve(path.dirname(resolvedPath), specifier);
-      const tsPath = fs.existsSync(`${relativePath}.ts`) ... `${relativePath}.ts` : relativePath;
+      const tsPath = fs.existsSync(`${relativePath}.ts`) ? `${relativePath}.ts` : relativePath;
       return loadTsModule(tsPath, { readFileImpl, moduleCache });
     }
     return require(specifier);
@@ -414,7 +414,7 @@ test("review recovery route validates review id and path separators", async () =
   await withMockFetch(async () => {
     throw new Error("fetch was not expected");
   }, async () => {
-    const result = await responseJson(await route.GET(new Request("http://localhost/api/portfolio/review/recover...review_id=../bad")));
+    const result = await responseJson(await route.GET(new Request("http://localhost/api/portfolio/review/recover?review_id=../bad")));
 
     assert.equal(result.status, 400);
     assert.equal(result.body.status, "failed");

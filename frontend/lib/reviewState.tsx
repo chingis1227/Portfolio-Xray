@@ -27,19 +27,19 @@ export type ReviewHolding = {
   instrument: string;
   weight: number;
   type: "instrument" | "cash";
-  currency...: string;
+  currency?: string;
 };
 
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
 export type ReviewResult = {
-  review_id...: string;
-  status...: string;
-  portfolio_input...: JsonValue;
-  paths...: JsonValue;
-  outputs...: Record<string, JsonValue>;
-  error...: string;
-  details...: JsonValue;
+  review_id?: string;
+  status?: string;
+  portfolio_input?: JsonValue;
+  paths?: JsonValue;
+  outputs?: Record<string, JsonValue>;
+  error?: string;
+  details?: JsonValue;
   [key: string]: JsonValue | undefined;
 };
 
@@ -48,7 +48,7 @@ export type ReviewRunStatus = "draft" | "completed" | "failed";
 
 export type ReviewErrorState = {
   message: string;
-  details...: string;
+  details?: string;
   occurredAt: string;
 };
 
@@ -57,28 +57,28 @@ export type CandidateGenerationSummary = {
   stage: "candidate_generation";
   selectedCardId: string;
   candidateId: string;
-  methodLabel...: string;
-  hypothesis...: string;
-  successCriteria...: string[];
-  tradeoffToWatch...: string;
-  decisionBoundary...: string;
+  methodLabel?: string;
+  hypothesis?: string;
+  successCriteria?: string[];
+  tradeoffToWatch?: string;
+  decisionBoundary?: string;
   generationStatus: string;
   canCompare: boolean;
-  path...: string;
+  path?: string;
   weights: Array<{ ticker: string; weight: number }>;
   generatedAt: string;
 };
 
 export type EvidenceChainContextSummary = {
-  selectedDiagnosisId...: string;
-  selectedDiagnosisLabel...: string;
-  selectedDiagnosisRole...: string;
-  diagnosisStatement...: string;
-  testedHypothesis...: string;
+  selectedDiagnosisId?: string;
+  selectedDiagnosisLabel?: string;
+  selectedDiagnosisRole?: string;
+  diagnosisStatement?: string;
+  testedHypothesis?: string;
   successCriteria: string[];
-  tradeoffToWatch...: string;
-  candidateBoundary...: string;
-  recommendationBoundary...: string;
+  tradeoffToWatch?: string;
+  candidateBoundary?: string;
+  recommendationBoundary?: string;
   sourceArtifacts: string[];
 };
 
@@ -102,9 +102,9 @@ export type ComparisonResultSummary = {
   estimatedCost: string;
   materiality: string;
   warnings: string[];
-  evidenceChainContext...: EvidenceChainContextSummary;
-  clientFit...: ClientFitDisplaySummary;
-  path...: string;
+  evidenceChainContext?: EvidenceChainContextSummary;
+  clientFit?: ClientFitDisplaySummary;
+  path?: string;
   generatedAt: string;
 };
 
@@ -128,9 +128,9 @@ export type VerdictResultSummary = {
   limitations: string[];
   evidenceUsed: string[];
   whatWouldChangeVerdict: string[];
-  evidenceChainContext...: EvidenceChainContextSummary;
-  clientFit...: ClientFitDisplaySummary;
-  path...: string;
+  evidenceChainContext?: EvidenceChainContextSummary;
+  clientFit?: ClientFitDisplaySummary;
+  path?: string;
   generatedAt: string;
 };
 
@@ -147,7 +147,7 @@ export type ReportResultSummary = {
   nextObservation: string;
   boundaryNote: string;
   warnings: string[];
-  clientFit...: ClientFitDisplaySummary;
+  clientFit?: ClientFitDisplaySummary;
   generatedAt: string;
 };
 
@@ -192,8 +192,8 @@ export type XRayHoldingRow = {
 
 export type XRayFactor = {
   factor: string;
-  beta...: number;
-  contributionPct...: number;
+  beta?: number;
+  contributionPct?: number;
   confidence: string;
   interpretation: string;
 };
@@ -202,31 +202,31 @@ export type XRayHiddenRiskAlert = {
   id: string;
   title: string;
   level: string;
-  score...: number;
+  score?: number;
   diagnosis: string;
   evidence: string[];
   linkedAssets: string[];
   nextTests: string[];
-  confidence...: string;
+  confidence?: string;
 };
 
 export type XRayRiskContribution = {
   name: string;
-  weightPct...: number;
-  riskContributionPct...: number;
-  gapPp...: number;
+  weightPct?: number;
+  riskContributionPct?: number;
+  gapPp?: number;
 };
 
 export type XRayWeaknessTile = {
   id: string;
   title: string;
   severity: string;
-  score...: number;
+  score?: number;
   diagnosis: string;
   evidence: string[];
   linkedAssets: string[];
   nextTests: string[];
-  confidence...: string;
+  confidence?: string;
 };
 
 export type XRaySummary = {
@@ -236,7 +236,7 @@ export type XRaySummary = {
     keyFacts: string[];
     breakdowns: XRayBreakdown[];
     flags: XRayFlag[];
-    holdings...: XRayHoldingRow[];
+    holdings?: XRayHoldingRow[];
   };
   riskProfile: {
     insight: string;
@@ -247,7 +247,7 @@ export type XRaySummary = {
     insight: string;
     topFactors: XRayFactor[];
     factorCards: XRayFactor[];
-    caveat...: string;
+    caveat?: string;
   };
   hiddenRisks: {
     insight: string;
@@ -255,8 +255,8 @@ export type XRaySummary = {
   };
   riskBudget: {
     insight: string;
-    topContributor...: XRayRiskContribution;
-    top3Share...: number;
+    topContributor?: XRayRiskContribution;
+    top3Share?: number;
     contributors: XRayRiskContribution[];
     riskOverweight: XRayRiskContribution[];
     riskUnderweight: XRayRiskContribution[];
@@ -272,20 +272,20 @@ export type XRaySummary = {
 export type LaunchpadCardSummary = {
   card_id: string;
   title: string;
-  goal...: string;
-  hypothesis_to_test...: string;
-  card_type...: string;
-  source_problem_label...: string;
+  goal?: string;
+  hypothesis_to_test?: string;
+  card_type?: string;
+  source_problem_label?: string;
   suggested_methods: Array<{
     candidate_method_id: string;
-    method_role...: string;
-    why_this_method...: string;
+    method_role?: string;
+    why_this_method?: string;
   }>;
-  default_method...: string;
+  default_method?: string;
   success_criteria: string[];
-  tradeoff_to_watch...: string;
-  when_to_skip...: string;
-  decision_boundary...: string;
+  tradeoff_to_watch?: string;
+  when_to_skip?: string;
+  decision_boundary?: string;
   is_rebalance_recommendation: boolean;
   generates_portfolio: boolean;
 };
@@ -294,14 +294,14 @@ export type BuilderSetupSummary = {
   selected_card_id: string;
   can_generate_candidate: boolean;
   builder_prefill: {
-    goal...: string;
-    suggested_method...: string;
-    constraint_preset...: string;
-    max_asset_weight...: number | string;
-    min_asset_weight...: number | string;
+    goal?: string;
+    suggested_method?: string;
+    constraint_preset?: string;
+    max_asset_weight?: number | string;
+    min_asset_weight?: number | string;
   };
   candidate_setup: {
-    validation_status...: string;
+    validation_status?: string;
     can_generate_candidate: boolean;
   };
 };
@@ -310,7 +310,7 @@ export type ReviewSummary = {
   version: 1;
   source: ReviewRunMode;
   status: ReviewRunStatus;
-  reviewId...: string;
+  reviewId?: string;
   generatedAt: string;
   investorCurrency: string;
   holdingsCount: number;
@@ -319,19 +319,19 @@ export type ReviewSummary = {
   rawOutputKeys: string[];
   outputPaths: Record<string, string>;
   diagnosis: DiagnosisState;
-  xraySummary...: XRaySummary;
-  evidence...: EvidenceSummary;
-  clientFit...: ClientFitDisplaySummary;
-  stressLabModel...: StressLabModel;
-  siteExplanation...: SiteExplanationBundle;
-  primaryProblem...: string;
-  problemSeverity...: string;
-  problemConfidence...: string;
+  xraySummary?: XRaySummary;
+  evidence?: EvidenceSummary;
+  clientFit?: ClientFitDisplaySummary;
+  stressLabModel?: StressLabModel;
+  siteExplanation?: SiteExplanationBundle;
+  primaryProblem?: string;
+  problemSeverity?: string;
+  problemConfidence?: string;
   suggestedActionPaths: string[];
   launchpadCardsCount: number;
   launchpadCards: LaunchpadCardSummary[];
-  builderSetup...: BuilderSetupSummary;
-  recommendedFirstTest...: string;
+  builderSetup?: BuilderSetupSummary;
+  recommendedFirstTest?: string;
   candidateLaunchpadAvailable: boolean;
   problemClassificationAvailable: boolean;
   storage: ReviewStorageInfo;
@@ -340,22 +340,22 @@ export type ReviewSummary = {
 export type ActiveReviewState = {
   investorCurrency: string;
   holdings: ReviewHolding[];
-  clientFitProfile...: ClientFitInput;
-  cloudPortfolio...: {
+  clientFitProfile?: ClientFitInput;
+  cloudPortfolio?: {
     id: string;
     name: string;
   };
-  reviewId...: string;
-  reviewResult...: ReviewResult;
-  reviewSummary...: ReviewSummary;
-  builderSetup...: BuilderSetupSummary;
-  candidateGeneration...: CandidateGenerationSummary;
-  comparisonResult...: ComparisonResultSummary;
-  verdictResult...: VerdictResultSummary;
-  reportResult...: ReportResultSummary;
+  reviewId?: string;
+  reviewResult?: ReviewResult;
+  reviewSummary?: ReviewSummary;
+  builderSetup?: BuilderSetupSummary;
+  candidateGeneration?: CandidateGenerationSummary;
+  comparisonResult?: ComparisonResultSummary;
+  verdictResult?: VerdictResultSummary;
+  reportResult?: ReportResultSummary;
   runMode: ReviewRunMode;
   runStatus: ReviewRunStatus;
-  reviewError...: ReviewErrorState;
+  reviewError?: ReviewErrorState;
   submitted: boolean;
   diagnosisReady: boolean;
   evidenceReady: boolean;
@@ -374,7 +374,7 @@ export type DiagnosisState = {
   boundaryNote: string;
   drivers: string[];
   metrics: Metric[];
-  selectedDiagnosisRole...: string;
+  selectedDiagnosisRole?: string;
   sourceArtifacts: string[];
   rejectedAlternatives: string[];
   rationaleRefs: string[];
@@ -386,7 +386,7 @@ type ReviewStateContextValue = {
   saveClientFitProfile: (profile: ClientFitInput) => void;
   savePortfolioInput: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings">) => void;
   submitPortfolioInput: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings" | "reviewResult">) => void;
-  recordReviewError: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings"> & { message: string; details...: string }) => void;
+  recordReviewError: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings"> & { message: string; details?: string }) => void;
   linkCloudPortfolio: (portfolio: ActiveReviewState["cloudPortfolio"]) => void;
   loadCloudPortfolioInput: (input: { portfolioId: string; name: string; investorCurrency: string; holdings: ReviewHolding[] }) => void;
   recordBuilderSetup: (result: unknown) => void;
@@ -427,15 +427,15 @@ function cleanSiteExplanationScreen(value: unknown): SiteExplanationScreen | und
   if (!isRecord(value)) return undefined;
   const normalizeItems = (items: unknown, level: "executive" | "evidence" | "technical"): SiteExplanationTextItem[] => (
     Array.isArray(items)
-      ... items.filter(isRecord).map((item) => ({
+      ? items.filter(isRecord).map((item) => ({
         id: textValue(item.id, `${level}.item`),
         level,
         text: normalizeDisplaySentence(item.text, ""),
-        tone: (["neutral", "caution", "risk", "positive"].includes(String(item.tone)) ... item.tone : "neutral") as SiteExplanationTextItem["tone"],
-        evidence_status: (["available", "limited", "missing", "preliminary"].includes(String(item.evidence_status)) ... item.evidence_status : "limited") as SiteExplanationTextItem["evidence_status"],
-        claim_type: (["material_claim", "boundary_note", "empty_state"].includes(String(item.claim_type)) ... item.claim_type : "boundary_note") as SiteExplanationTextItem["claim_type"],
+        tone: (["neutral", "caution", "risk", "positive"].includes(String(item.tone)) ? item.tone : "neutral") as SiteExplanationTextItem["tone"],
+        evidence_status: (["available", "limited", "missing", "preliminary"].includes(String(item.evidence_status)) ? item.evidence_status : "limited") as SiteExplanationTextItem["evidence_status"],
+        claim_type: (["material_claim", "boundary_note", "empty_state"].includes(String(item.claim_type)) ? item.claim_type : "boundary_note") as SiteExplanationTextItem["claim_type"],
         source_refs: Array.isArray(item.source_refs)
-          ... item.source_refs.filter(isRecord).map((ref) => ({
+          ? item.source_refs.filter(isRecord).map((ref) => ({
             artifact: textValue(ref.artifact, ""),
             field_path: textValue(ref.field_path, "")
           })).filter((ref) => ref.artifact && ref.field_path)
@@ -460,7 +460,7 @@ export function cleanSiteExplanationBundle(value: unknown): SiteExplanationBundl
   );
   return {
     schema_version: "site_explanation_bundle_v1",
-    review_id: typeof value.review_id === "string" ... value.review_id : undefined,
+    review_id: typeof value.review_id === "string" ? value.review_id : undefined,
     screens,
     warnings: stringArray(value.warnings)
   };
@@ -473,11 +473,11 @@ function cleanReviewResult(value: unknown): ReviewResult | undefined {
 
 function isCompletedReviewResult(value: unknown): value is ReviewResult {
   const result = cleanReviewResult(value);
-  return Boolean(result....status === "completed" && isRecord(result.outputs));
+  return Boolean(result?.status === "completed" && isRecord(result.outputs));
 }
 
 function estimateJsonBytes(value: unknown) {
-  const raw = JSON.stringify(value ...... null);
+  const raw = JSON.stringify(value ?? null);
   if (typeof TextEncoder !== "undefined") return new TextEncoder().encode(raw).length;
   return raw.length;
 }
@@ -495,97 +495,97 @@ function cleanCandidateGenerationSummary(value: unknown): CandidateGenerationSum
   if (!isRecord(value)) return undefined;
   if (value.stage !== "candidate_generation") return undefined;
   const weights = Array.isArray(value.weights)
-    ... value.weights
+    ? value.weights
       .filter(isRecord)
       .map((item) => ({
-        ticker: typeof item.ticker === "string" ... item.ticker : "",
-        weight: typeof item.weight === "number" && Number.isFinite(item.weight) ... item.weight : Number.NaN
+        ticker: typeof item.ticker === "string" ? item.ticker : "",
+        weight: typeof item.weight === "number" && Number.isFinite(item.weight) ? item.weight : Number.NaN
       }))
       .filter((item) => item.ticker && Number.isFinite(item.weight))
     : [];
   return {
-    status: typeof value.status === "string" ... value.status : "unknown",
+    status: typeof value.status === "string" ? value.status : "unknown",
     stage: "candidate_generation",
-    selectedCardId: typeof value.selectedCardId === "string" ... value.selectedCardId : "",
-    candidateId: typeof value.candidateId === "string" ... value.candidateId : "",
-    methodLabel: typeof value.methodLabel === "string" ... value.methodLabel : undefined,
-    hypothesis: typeof value.hypothesis === "string" ... value.hypothesis : undefined,
+    selectedCardId: typeof value.selectedCardId === "string" ? value.selectedCardId : "",
+    candidateId: typeof value.candidateId === "string" ? value.candidateId : "",
+    methodLabel: typeof value.methodLabel === "string" ? value.methodLabel : undefined,
+    hypothesis: typeof value.hypothesis === "string" ? value.hypothesis : undefined,
     successCriteria: stringArray(value.successCriteria).map((item) => normalizeDisplaySentence(item)),
-    tradeoffToWatch: typeof value.tradeoffToWatch === "string" ... normalizeDisplaySentence(value.tradeoffToWatch) : undefined,
-    decisionBoundary: typeof value.decisionBoundary === "string" ... normalizeDisplaySentence(value.decisionBoundary) : undefined,
-    generationStatus: typeof value.generationStatus === "string" ... value.generationStatus : "unknown",
+    tradeoffToWatch: typeof value.tradeoffToWatch === "string" ? normalizeDisplaySentence(value.tradeoffToWatch) : undefined,
+    decisionBoundary: typeof value.decisionBoundary === "string" ? normalizeDisplaySentence(value.decisionBoundary) : undefined,
+    generationStatus: typeof value.generationStatus === "string" ? value.generationStatus : "unknown",
     canCompare: Boolean(value.canCompare),
-    path: typeof value.path === "string" ... value.path : undefined,
+    path: typeof value.path === "string" ? value.path : undefined,
     weights,
-    generatedAt: typeof value.generatedAt === "string" ... value.generatedAt : nowIso()
+    generatedAt: typeof value.generatedAt === "string" ? value.generatedAt : nowIso()
   };
 }
 
 function cleanEvidenceChainContextSummary(value: unknown): EvidenceChainContextSummary | undefined {
   if (!isRecord(value)) return undefined;
-  const sourceArtifacts = stringArray(value.sourceArtifacts ...... value.source_artifacts)
+  const sourceArtifacts = stringArray(value.sourceArtifacts ?? value.source_artifacts)
     .map((item) => formatUnknownValue(item))
     .filter(Boolean);
-  const successCriteria = stringArray(value.successCriteria ...... value.success_criteria)
+  const successCriteria = stringArray(value.successCriteria ?? value.success_criteria)
     .map((item) => normalizeDisplaySentence(item))
     .filter(Boolean);
   const summary: EvidenceChainContextSummary = {
     selectedDiagnosisId: firstText(value.selectedDiagnosisId, value.selected_diagnosis_id),
-    selectedDiagnosisLabel: firstText(value.selectedDiagnosisLabel, value.selected_diagnosis_label) ... formatUnknownValue(firstText(value.selectedDiagnosisLabel, value.selected_diagnosis_label)) : undefined,
-    selectedDiagnosisRole: firstText(value.selectedDiagnosisRole, value.selected_diagnosis_role) ... formatUnknownValue(firstText(value.selectedDiagnosisRole, value.selected_diagnosis_role)) : undefined,
-    diagnosisStatement: firstText(value.diagnosisStatement, value.diagnosis_statement) ... normalizeDisplaySentence(firstText(value.diagnosisStatement, value.diagnosis_statement)) : undefined,
-    testedHypothesis: firstText(value.testedHypothesis, value.tested_hypothesis) ... normalizeDisplaySentence(firstText(value.testedHypothesis, value.tested_hypothesis)) : undefined,
+    selectedDiagnosisLabel: firstText(value.selectedDiagnosisLabel, value.selected_diagnosis_label) ? formatUnknownValue(firstText(value.selectedDiagnosisLabel, value.selected_diagnosis_label)) : undefined,
+    selectedDiagnosisRole: firstText(value.selectedDiagnosisRole, value.selected_diagnosis_role) ? formatUnknownValue(firstText(value.selectedDiagnosisRole, value.selected_diagnosis_role)) : undefined,
+    diagnosisStatement: firstText(value.diagnosisStatement, value.diagnosis_statement) ? normalizeDisplaySentence(firstText(value.diagnosisStatement, value.diagnosis_statement)) : undefined,
+    testedHypothesis: firstText(value.testedHypothesis, value.tested_hypothesis) ? normalizeDisplaySentence(firstText(value.testedHypothesis, value.tested_hypothesis)) : undefined,
     successCriteria,
-    tradeoffToWatch: firstText(value.tradeoffToWatch, value.tradeoff_to_watch) ... normalizeDisplaySentence(firstText(value.tradeoffToWatch, value.tradeoff_to_watch)) : undefined,
-    candidateBoundary: firstText(value.candidateBoundary, value.candidate_boundary) ... normalizeDisplaySentence(firstText(value.candidateBoundary, value.candidate_boundary)) : undefined,
-    recommendationBoundary: firstText(value.recommendationBoundary, value.recommendation_boundary) ... normalizeDisplaySentence(firstText(value.recommendationBoundary, value.recommendation_boundary)) : undefined,
+    tradeoffToWatch: firstText(value.tradeoffToWatch, value.tradeoff_to_watch) ? normalizeDisplaySentence(firstText(value.tradeoffToWatch, value.tradeoff_to_watch)) : undefined,
+    candidateBoundary: firstText(value.candidateBoundary, value.candidate_boundary) ? normalizeDisplaySentence(firstText(value.candidateBoundary, value.candidate_boundary)) : undefined,
+    recommendationBoundary: firstText(value.recommendationBoundary, value.recommendation_boundary) ? normalizeDisplaySentence(firstText(value.recommendationBoundary, value.recommendation_boundary)) : undefined,
     sourceArtifacts
   };
-  return Object.values(summary).some((item) => Array.isArray(item) ... item.length : Boolean(item)) ... summary : undefined;
+  return Object.values(summary).some((item) => Array.isArray(item) ? item.length : Boolean(item)) ? summary : undefined;
 }
 
 function cleanClientFitDisplaySummary(value: unknown): ClientFitDisplaySummary | undefined {
   if (!isRecord(value)) return undefined;
   const tone = value.status_tone === "green" || value.status_tone === "amber" || value.status_tone === "red"
-    ... value.status_tone
+    ? value.status_tone
     : "amber";
   const targetRows = Array.isArray(value.target_rows)
-    ... value.target_rows.filter(isRecord).map((row) => {
-      const rowTone: "green" | "amber" | "red" = row.status_tone === "green" || row.status_tone === "amber" || row.status_tone === "red" ... row.status_tone : "amber";
+    ? value.target_rows.filter(isRecord).map((row) => {
+      const rowTone: "green" | "amber" | "red" = row.status_tone === "green" || row.status_tone === "amber" || row.status_tone === "red" ? row.status_tone : "amber";
       return {
         dimension_label: textValue(row.dimension_label, "Client Fit check"),
-        portfolio_value_label: firstText(row.portfolio_value_label) ...... null,
-        target_or_limit_label: firstText(row.target_or_limit_label) ...... null,
+        portfolio_value_label: firstText(row.portfolio_value_label) ?? null,
+        target_or_limit_label: firstText(row.target_or_limit_label) ?? null,
         status_label: textValue(row.status_label, "Client Fit not evaluated"),
         status_tone: rowTone,
-        explanation: firstText(row.explanation) ... normalizeDisplaySentence(firstText(row.explanation)) : null
+        explanation: firstText(row.explanation) ? normalizeDisplaySentence(firstText(row.explanation)) : null
       };
     })
     : [];
   return {
     status_label: textValue(value.status_label, "Client Fit not provided"),
     status_tone: tone,
-    profile_label: firstText(value.profile_label) ...... null,
-    source_quality_label: firstText(value.source_quality_label) ...... null,
+    profile_label: firstText(value.profile_label) ?? null,
+    source_quality_label: firstText(value.source_quality_label) ?? null,
     target_rows: targetRows.slice(0, 6),
-    main_explanation: firstText(value.main_explanation) ... normalizeDisplaySentence(firstText(value.main_explanation)) : null,
+    main_explanation: firstText(value.main_explanation) ? normalizeDisplaySentence(firstText(value.main_explanation)) : null,
     decision_boundary: normalizeDisplaySentence(value.decision_boundary, "Client Fit is non-binding decision support."),
-    next_best_test: firstText(value.next_best_test) ... normalizeDisplaySentence(firstText(value.next_best_test)) : null
+    next_best_test: firstText(value.next_best_test) ? normalizeDisplaySentence(firstText(value.next_best_test)) : null
   };
 }
 
 function cleanClientFitProfileInput(value: unknown): ClientFitInput | undefined {
   if (!isRecord(value)) return undefined;
   const source = ["questionnaire", "preset_override", "manual_override", "imported", "missing"].includes(String(value.source))
-    ... String(value.source) as ClientFitInput["source"]
+    ? String(value.source) as ClientFitInput["source"]
     : undefined;
   const sourceQuality = ["high", "medium", "low", "missing"].includes(String(value.source_quality))
-    ... String(value.source_quality) as ClientFitInput["source_quality"]
+    ? String(value.source_quality) as ClientFitInput["source_quality"]
     : undefined;
   if (!source || !sourceQuality || source === "missing" || sourceQuality === "missing") return undefined;
 
   const presetId = ["ultra_conservative", "conservative", "balanced", "growth", "aggressive"].includes(String(value.preset_id))
-    ... String(value.preset_id) as NonNullable<ClientFitInput["preset_id"]>
+    ? String(value.preset_id) as NonNullable<ClientFitInput["preset_id"]>
     : null;
   const rangeInput = (raw: unknown) => {
     if (!isRecord(raw)) return undefined;
@@ -606,17 +606,17 @@ function cleanClientFitProfileInput(value: unknown): ClientFitInput | undefined 
     preset_id: presetId,
     source,
     source_quality: sourceQuality,
-    source_quality_reason: firstText(value.source_quality_reason) ...... null,
-    horizon_years: horizonYears !== null && horizonYears > 0 ... horizonYears : null,
-    target_return_range: targetReturnRange ...... null,
-    target_vol_range: targetVolRange ...... null,
-    target_max_drawdown_pct: drawdown !== null && drawdown <= 0 && drawdown >= -1 ... drawdown : null
+    source_quality_reason: firstText(value.source_quality_reason) ?? null,
+    horizon_years: horizonYears !== null && horizonYears > 0 ? horizonYears : null,
+    target_return_range: targetReturnRange ?? null,
+    target_vol_range: targetVolRange ?? null,
+    target_max_drawdown_pct: drawdown !== null && drawdown <= 0 && drawdown >= -1 ? drawdown : null
   };
 }
 
 function hasProvidedClientFitSummary(value: ClientFitDisplaySummary | undefined) {
   if (!value) return false;
-  const label = (value.status_label ...... "").trim().toLowerCase();
+  const label = (value.status_label ?? "").trim().toLowerCase();
   return Boolean(label && !label.includes("not provided"));
 }
 
@@ -624,7 +624,7 @@ function cleanComparisonResultSummary(value: unknown): ComparisonResultSummary |
   if (!isRecord(value)) return undefined;
   if (value.stage !== "current_vs_candidate") return undefined;
   const metrics = Array.isArray(value.metrics)
-    ... value.metrics.filter(isRecord).map((item) => ({
+    ? value.metrics.filter(isRecord).map((item) => ({
       metric: textValue(item.metric, "Metric"),
       current: formatUnknownValue(item.current),
       candidate: formatUnknownValue(item.candidate),
@@ -655,7 +655,7 @@ function cleanComparisonResultSummary(value: unknown): ComparisonResultSummary |
     warnings: stringArray(value.warnings).map((item) => normalizeDisplaySentence(item)),
     evidenceChainContext: cleanEvidenceChainContextSummary(value.evidenceChainContext),
     clientFit: cleanClientFitDisplaySummary(value.clientFit),
-    path: typeof value.path === "string" ... value.path : undefined,
+    path: typeof value.path === "string" ? value.path : undefined,
     generatedAt: textValue(value.generatedAt, nowIso())
   };
 }
@@ -664,12 +664,12 @@ function cleanVerdictResultSummary(value: unknown): VerdictResultSummary | undef
   if (!isRecord(value)) return undefined;
   if (value.stage !== "decision_verdict") return undefined;
   const metrics = Array.isArray(value.metrics)
-    ... value.metrics.filter(isRecord).map((item) => ({
+    ? value.metrics.filter(isRecord).map((item) => ({
       label: textValue(item.label, "Metric"),
       value: formatUnknownValue(item.value),
-      detail: typeof item.detail === "string" ... normalizeDisplaySentence(item.detail) : undefined,
+      detail: typeof item.detail === "string" ? normalizeDisplaySentence(item.detail) : undefined,
       tone: statusToneValue(item.tone),
-      delta: typeof item.delta === "string" ... item.delta : undefined
+      delta: typeof item.delta === "string" ? item.delta : undefined
     }))
     : [];
   return {
@@ -694,7 +694,7 @@ function cleanVerdictResultSummary(value: unknown): VerdictResultSummary | undef
     whatWouldChangeVerdict: stringArray(value.whatWouldChangeVerdict).map((item) => normalizeDisplaySentence(item)),
     evidenceChainContext: cleanEvidenceChainContextSummary(value.evidenceChainContext),
     clientFit: cleanClientFitDisplaySummary(value.clientFit),
-    path: typeof value.path === "string" ... value.path : undefined,
+    path: typeof value.path === "string" ? value.path : undefined,
     generatedAt: textValue(value.generatedAt, nowIso())
   };
 }
@@ -703,7 +703,7 @@ function cleanReportResultSummary(value: unknown): ReportResultSummary | undefin
   if (!isRecord(value)) return undefined;
   if (value.stage !== "report") return undefined;
   const sections = Array.isArray(value.sections)
-    ... value.sections.filter(isRecord).map((section) => ({
+    ? value.sections.filter(isRecord).map((section) => ({
       title: textValue(section.title, "Evidence"),
       body: normalizeDisplaySentence(section.body, "")
     })).filter((section) => section.body)
@@ -737,14 +737,14 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
   const reviewResult = cleanReviewResult(value.reviewResult);
   const reviewSummary = cleanReviewSummary(value.reviewSummary);
   const clientFitProfile = cleanClientFitProfileInput(value.clientFitProfile);
-  const runStatus: ReviewRunStatus = value.runStatus === "failed" ... "failed" : isCompletedReviewResult(reviewResult) || reviewSummary....status === "completed" ... "completed" : "draft";
-  const builderSetup = compactBuilderSetup(value.builderSetup) ...... reviewSummary....builderSetup;
+  const runStatus: ReviewRunStatus = value.runStatus === "failed" ? "failed" : isCompletedReviewResult(reviewResult) || reviewSummary?.status === "completed" ? "completed" : "draft";
+  const builderSetup = compactBuilderSetup(value.builderSetup) ?? reviewSummary?.builderSetup;
   const candidateGenerationRaw = cleanCandidateGenerationSummary(value.candidateGeneration);
   const candidateMatchesBuilder = Boolean(
     candidateGenerationRaw
     && (!builderSetup || candidateGenerationRaw.selectedCardId === builderSetup.selected_card_id)
   );
-  const candidateGeneration = candidateMatchesBuilder ... candidateGenerationRaw : undefined;
+  const candidateGeneration = candidateMatchesBuilder ? candidateGenerationRaw : undefined;
   const comparisonResult = cleanComparisonResultSummary(value.comparisonResult);
   const verdictResult = cleanVerdictResultSummary(value.verdictResult);
   const reportResult = cleanReportResultSummary(value.reportResult);
@@ -771,7 +771,7 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
   return {
     investorCurrency: value.investorCurrency || "USD",
     holdings: Array.isArray(value.holdings)
-      ... value.holdings
+      ? value.holdings
         .filter((holding) => holding.id && holding.ticker && Number.isFinite(holding.weight))
         .map((holding) => ({
           id: holding.id,
@@ -779,32 +779,32 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
           ticker: holding.ticker,
           instrument: holding.instrument,
           weight: holding.weight,
-          type: holding.type === "cash" ... "cash" : "instrument",
+          type: holding.type === "cash" ? "cash" : "instrument",
           currency: holding.currency
         }))
       : [],
     clientFitProfile,
-    cloudPortfolio: value.cloudPortfolio....id && value.cloudPortfolio....name
-      ... {
+    cloudPortfolio: value.cloudPortfolio?.id && value.cloudPortfolio?.name
+      ? {
         id: value.cloudPortfolio.id,
         name: value.cloudPortfolio.name
       }
       : undefined,
     submitted: Boolean(value.submitted),
-    reviewId: typeof value.reviewId === "string" ... value.reviewId : reviewSummary....reviewId ...... reviewResult....review_id,
+    reviewId: typeof value.reviewId === "string" ? value.reviewId : reviewSummary?.reviewId ?? reviewResult?.review_id,
     reviewResult,
     reviewSummary,
     builderSetup,
     candidateGeneration,
-    comparisonResult: comparisonMatchesCandidate ... comparisonResult : undefined,
-    verdictResult: verdictMatchesCandidate ... verdictResult : undefined,
-    reportResult: reportMatchesCandidate ... reportResult : undefined,
-    runMode: value.runMode === "real_run" ... "real_run" : "sample_demo",
+    comparisonResult: comparisonMatchesCandidate ? comparisonResult : undefined,
+    verdictResult: verdictMatchesCandidate ? verdictResult : undefined,
+    reportResult: reportMatchesCandidate ? reportResult : undefined,
+    runMode: value.runMode === "real_run" ? "real_run" : "sample_demo",
     runStatus,
-    reviewError: value.reviewError....message ... value.reviewError : undefined,
+    reviewError: value.reviewError?.message ? value.reviewError : undefined,
     diagnosisReady: Boolean(value.diagnosisReady && hasCompletedReviewResult),
-    evidenceReady: Boolean((value.evidenceReady ...... value.diagnosisReady) && hasCompletedReviewResult),
-    improvementPathsReady: Boolean((value.improvementPathsReady ...... value.diagnosisReady) && hasCompletedReviewResult),
+    evidenceReady: Boolean((value.evidenceReady ?? value.diagnosisReady) && hasCompletedReviewResult),
+    improvementPathsReady: Boolean((value.improvementPathsReady ?? value.diagnosisReady) && hasCompletedReviewResult),
     candidateReady: Boolean(value.candidateReady && candidateGeneration),
     comparisonReady: Boolean(value.comparisonReady && comparisonMatchesCandidate && comparisonResultCanGenerateVerdict(comparisonResult)),
     verdictReady: Boolean(value.verdictReady && verdictMatchesCandidate),
@@ -817,7 +817,7 @@ function readStoredReview(): ActiveReviewState | null {
 
   try {
     const raw = window.localStorage.getItem(ACTIVE_REVIEW_STORAGE_KEY)
-      ...... window.localStorage.getItem(LEGACY_ACTIVE_REVIEW_STORAGE_KEY);
+      ?? window.localStorage.getItem(LEGACY_ACTIVE_REVIEW_STORAGE_KEY);
     if (!raw) return null;
 
     const parsed = JSON.parse(raw) as ActiveReviewState;
@@ -832,7 +832,7 @@ function readStoredReview(): ActiveReviewState | null {
   }
 }
 
-function removeStoredRawReviews(exceptKey...: string) {
+function removeStoredRawReviews(exceptKey?: string) {
   if (typeof window === "undefined") return;
 
   Object.keys(window.localStorage)
@@ -882,10 +882,10 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const cleaned = cleanClientFitProfileInput(profile);
     if (!cleaned) return;
     setActiveReview((current) => ({
-      investorCurrency: current....investorCurrency || "USD",
-      holdings: current....holdings ...... [],
+      investorCurrency: current?.investorCurrency || "USD",
+      holdings: current?.holdings ?? [],
       clientFitProfile: cleaned,
-      cloudPortfolio: current....cloudPortfolio,
+      cloudPortfolio: current?.cloudPortfolio,
       reviewId: undefined,
       reviewResult: undefined,
       reviewSummary: undefined,
@@ -912,7 +912,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     setActiveReview((current) => ({
       investorCurrency: input.investorCurrency || "USD",
       holdings: input.holdings,
-      clientFitProfile: current....clientFitProfile,
+      clientFitProfile: current?.clientFitProfile,
       cloudPortfolio: undefined,
       reviewId: undefined,
       reviewResult: undefined,
@@ -925,7 +925,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       runMode: "sample_demo",
       runStatus: "draft",
       reviewError: undefined,
-      submitted: current....submitted ...... false,
+      submitted: current?.submitted ?? false,
       diagnosisReady: false,
       evidenceReady: false,
       improvementPathsReady: false,
@@ -940,10 +940,10 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const reviewResult = cleanReviewResult(input.reviewResult);
     const hasCompletedReviewResult = isCompletedReviewResult(reviewResult);
     const failedReviewResult = reviewResult as ReviewResult | undefined;
-    const reviewId = reviewResult....review_id;
+    const reviewId = reviewResult?.review_id;
 
     const reviewSummary = hasCompletedReviewResult
-      ... buildCompactReviewSummary({
+      ? buildCompactReviewSummary({
         investorCurrency: input.investorCurrency || "USD",
         holdings: input.holdings,
         reviewResult
@@ -953,21 +953,21 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     setActiveReview((current) => ({
       investorCurrency: input.investorCurrency || "USD",
       holdings: input.holdings,
-      clientFitProfile: current....clientFitProfile,
-      cloudPortfolio: current....cloudPortfolio,
+      clientFitProfile: current?.clientFitProfile,
+      cloudPortfolio: current?.cloudPortfolio,
       reviewId,
       reviewResult,
       reviewSummary,
-      builderSetup: reviewSummary....builderSetup,
+      builderSetup: reviewSummary?.builderSetup,
       candidateGeneration: undefined,
       comparisonResult: undefined,
       verdictResult: undefined,
       reportResult: undefined,
       runMode: "real_run",
-      runStatus: hasCompletedReviewResult ... "completed" : "failed",
-      reviewError: hasCompletedReviewResult ... undefined : {
-        message: failedReviewResult....error || "Portfolio diagnosis failed.",
-        details: typeof failedReviewResult....details === "string" ... failedReviewResult.details : undefined,
+      runStatus: hasCompletedReviewResult ? "completed" : "failed",
+      reviewError: hasCompletedReviewResult ? undefined : {
+        message: failedReviewResult?.error || "Portfolio diagnosis failed.",
+        details: typeof failedReviewResult?.details === "string" ? failedReviewResult.details : undefined,
         occurredAt: nowIso()
       },
       submitted: true,
@@ -981,12 +981,12 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const recordReviewError = useCallback((input: Pick<ActiveReviewState, "investorCurrency" | "holdings"> & { message: string; details...: string }) => {
+  const recordReviewError = useCallback((input: Pick<ActiveReviewState, "investorCurrency" | "holdings"> & { message: string; details?: string }) => {
     setActiveReview((current) => ({
       investorCurrency: input.investorCurrency || "USD",
       holdings: input.holdings,
-      clientFitProfile: current....clientFitProfile,
-      cloudPortfolio: current....cloudPortfolio,
+      clientFitProfile: current?.clientFitProfile,
+      cloudPortfolio: current?.cloudPortfolio,
       reviewId: undefined,
       reviewResult: undefined,
       reviewSummary: undefined,
@@ -1014,9 +1014,9 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const linkCloudPortfolio = useCallback((portfolio: ActiveReviewState["cloudPortfolio"]) => {
-    setActiveReview((current) => current ... {
+    setActiveReview((current) => current ? {
       ...current,
-      cloudPortfolio: portfolio ...... undefined,
+      cloudPortfolio: portfolio ?? undefined,
       updatedAt: nowIso()
     } : current);
   }, []);
@@ -1025,7 +1025,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     setActiveReview((current) => ({
       investorCurrency: input.investorCurrency || "USD",
       holdings: input.holdings,
-      clientFitProfile: current....clientFitProfile,
+      clientFitProfile: current?.clientFitProfile,
       cloudPortfolio: {
         id: input.portfolioId,
         name: input.name
@@ -1063,17 +1063,17 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const portfolio = savedReview.portfolioSnapshot;
     const compact = savedReview.compactSummary;
     const diagnosis = getRecord(diagnosisStage.diagnosis);
-    const summaryGeneratedAt = typeof compact.generatedAt === "string" ... compact.generatedAt : savedReview.completedAt ...... savedReview.updatedAt ...... nowIso();
+    const summaryGeneratedAt = typeof compact.generatedAt === "string" ? compact.generatedAt : savedReview.completedAt ?? savedReview.updatedAt ?? nowIso();
     const reviewSummary: ReviewSummary = {
       version: 1,
-      source: savedReview.mode === "real_run" ... "real_run" : "real_run",
-      status: savedReview.status === "failed" ... "failed" : "completed",
+      source: savedReview.mode === "real_run" ? "real_run" : "real_run",
+      status: savedReview.status === "failed" ? "failed" : "completed",
       reviewId: savedReview.reviewId,
       generatedAt: summaryGeneratedAt,
-      investorCurrency: portfolio.investorCurrency ...... (typeof compact.investorCurrency === "string" ... compact.investorCurrency : "USD"),
-      holdingsCount: typeof compact.holdingsCount === "number" ... compact.holdingsCount : portfolio.holdings....length ...... 0,
-      totalWeight: typeof compact.totalWeight === "number" ... compact.totalWeight : (portfolio.holdings ...... []).reduce((sum, holding) => sum + holding.weight, 0),
-      cashWeight: typeof compact.cashWeight === "number" ... compact.cashWeight : (portfolio.holdings ...... []).filter((holding) => holding.type === "cash").reduce((sum, holding) => sum + holding.weight, 0),
+      investorCurrency: portfolio.investorCurrency ?? (typeof compact.investorCurrency === "string" ? compact.investorCurrency : "USD"),
+      holdingsCount: typeof compact.holdingsCount === "number" ? compact.holdingsCount : portfolio.holdings?.length ?? 0,
+      totalWeight: typeof compact.totalWeight === "number" ? compact.totalWeight : (portfolio.holdings ?? []).reduce((sum, holding) => sum + holding.weight, 0),
+      cashWeight: typeof compact.cashWeight === "number" ? compact.cashWeight : (portfolio.holdings ?? []).filter((holding) => holding.type === "cash").reduce((sum, holding) => sum + holding.weight, 0),
       rawOutputKeys: stringArray(diagnosisStage.artifactRefs),
       outputPaths: {},
       diagnosis: {
@@ -1083,27 +1083,27 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
         nextStep: normalizeDisplaySentence(diagnosis.nextStep, "Continue from the saved compact review state."),
         boundaryNote: normalizeDisplaySentence(diagnosis.boundaryNote, "Recovered cloud state is compact app data, not full generated evidence."),
         drivers: stringArray(diagnosis.drivers),
-        metrics: Array.isArray(diagnosis.metrics) ... diagnosis.metrics.filter(isRecord).map((metric) => ({
+        metrics: Array.isArray(diagnosis.metrics) ? diagnosis.metrics.filter(isRecord).map((metric) => ({
           label: textValue(metric.label, "Metric"),
           value: formatUnknownValue(metric.value),
-          detail: typeof metric.detail === "string" ... metric.detail : undefined,
+          detail: typeof metric.detail === "string" ? metric.detail : undefined,
           tone: statusToneValue(metric.tone)
         })) : [],
-        selectedDiagnosisRole: typeof diagnosis.selectedDiagnosisRole === "string" ... diagnosis.selectedDiagnosisRole : undefined,
+        selectedDiagnosisRole: typeof diagnosis.selectedDiagnosisRole === "string" ? diagnosis.selectedDiagnosisRole : undefined,
         sourceArtifacts: stringArray(diagnosis.sourceArtifacts),
         rejectedAlternatives: stringArray(diagnosis.rejectedAlternatives),
         rationaleRefs: stringArray(diagnosis.rationaleRefs)
       },
       evidence: undefined,
-      clientFit: cleanClientFitDisplaySummary(savedReview.clientFit) ...... cleanClientFitDisplaySummary(compact.clientFit),
-      primaryProblem: typeof compact.primaryProblem === "string" ... compact.primaryProblem : undefined,
-      problemSeverity: typeof compact.problemSeverity === "string" ... compact.problemSeverity : undefined,
-      problemConfidence: typeof compact.problemConfidence === "string" ... compact.problemConfidence : undefined,
+      clientFit: cleanClientFitDisplaySummary(savedReview.clientFit) ?? cleanClientFitDisplaySummary(compact.clientFit),
+      primaryProblem: typeof compact.primaryProblem === "string" ? compact.primaryProblem : undefined,
+      problemSeverity: typeof compact.problemSeverity === "string" ? compact.problemSeverity : undefined,
+      problemConfidence: typeof compact.problemConfidence === "string" ? compact.problemConfidence : undefined,
       suggestedActionPaths: stringArray(compact.suggestedActionPaths),
-      launchpadCardsCount: typeof compact.launchpadCardsCount === "number" ... compact.launchpadCardsCount : 0,
+      launchpadCardsCount: typeof compact.launchpadCardsCount === "number" ? compact.launchpadCardsCount : 0,
       launchpadCards: [],
       builderSetup: compactBuilderSetup(getRecord(builderStage.builderSetup)),
-      recommendedFirstTest: typeof compact.recommendedFirstTest === "string" ... compact.recommendedFirstTest : undefined,
+      recommendedFirstTest: typeof compact.recommendedFirstTest === "string" ? compact.recommendedFirstTest : undefined,
       candidateLaunchpadAvailable: Boolean(compact.candidateLaunchpadAvailable),
       problemClassificationAvailable: Boolean(compact.problemClassificationAvailable),
       storage: {
@@ -1119,9 +1119,9 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const reportResult = cleanReportResultSummary(getRecord(reportStage.report));
     setActiveReview(cleanReviewState({
       investorCurrency: reviewSummary.investorCurrency,
-      holdings: portfolio.holdings ...... [],
+      holdings: portfolio.holdings ?? [],
       clientFitProfile: undefined,
-      cloudPortfolio: savedReview.portfolioId && typeof compact.activeCloudPortfolioName === "string" ... {
+      cloudPortfolio: savedReview.portfolioId && typeof compact.activeCloudPortfolioName === "string" ? {
         id: savedReview.portfolioId,
         name: compact.activeCloudPortfolioName
       } : undefined,
@@ -1143,7 +1143,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       candidateReady: Boolean(candidateGeneration),
       comparisonReady: Boolean(comparisonResult),
       verdictReady: Boolean(verdictResult),
-      updatedAt: savedReview.updatedAt ...... nowIso()
+      updatedAt: savedReview.updatedAt ?? nowIso()
     }));
   }, []);
 
@@ -1151,9 +1151,9 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   const recordBuilderSetup = useCallback((result: unknown) => {
     const resultRecord = getRecord(result);
     const setup = compactBuilderSetup(resultRecord.portfolio_alternatives_builder);
-    const selectedCardId = textValue(resultRecord.selected_card_id, setup....selected_card_id ...... "");
+    const selectedCardId = textValue(resultRecord.selected_card_id, setup?.selected_card_id ?? "");
     const summary = setup
-      ... {
+      ? {
         ...setup,
         selected_card_id: selectedCardId || setup.selected_card_id,
         can_generate_candidate: resultRecord.can_generate_candidate === true || setup.can_generate_candidate
@@ -1162,14 +1162,14 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
 
     if (!summary) return;
 
-    setActiveReview((current) => current ... {
+    setActiveReview((current) => current ? {
       ...current,
       builderSetup: summary,
-      reviewSummary: current.reviewSummary ... {
+      reviewSummary: current.reviewSummary ? {
         ...current.reviewSummary,
         builderSetup: summary
       } : current.reviewSummary,
-      reviewResult: current.reviewResult && isRecord(current.reviewResult.outputs) ... {
+      reviewResult: current.reviewResult && isRecord(current.reviewResult.outputs) ? {
         ...current.reviewResult,
         outputs: {
           ...current.reviewResult.outputs,
@@ -1188,7 +1188,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const markCandidateReady = useCallback(() => {
-    setActiveReview((current) => current ... {
+    setActiveReview((current) => current ? {
       ...current,
       candidateReady: true,
       comparisonReady: false,
@@ -1205,7 +1205,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const apiHypothesis = getRecord(apiData.hypothesis);
     const candidateGeneration = getRecord(resultRecord.candidate_generation);
     const candidate = getRecord(candidateGeneration.candidate);
-    const weightsRecord = getRecord(apiCandidate.weight_summary ...... candidate.weights);
+    const weightsRecord = getRecord(apiCandidate.weight_summary ?? candidate.weights);
     const weights = Object.entries(weightsRecord)
       .filter((entry): entry is [string, number] => typeof entry[1] === "number" && Number.isFinite(entry[1]))
       .map(([ticker, weight]) => ({ ticker, weight }));
@@ -1217,19 +1217,19 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       stage: "candidate_generation",
       selectedCardId: textValue(resultRecord.selected_card_id, ""),
       candidateId: textValue(apiCandidate.candidate_id, textValue(resultRecord.candidate_id, textValue(candidate.candidate_id, ""))),
-      methodLabel: firstText(apiCandidate.method_label) ... formatUnknownValue(firstText(apiCandidate.method_label)) : undefined,
-      hypothesis: firstText(apiHypothesis.hypothesis) ... normalizeDisplaySentence(firstText(apiHypothesis.hypothesis)) : undefined,
+      methodLabel: firstText(apiCandidate.method_label) ? formatUnknownValue(firstText(apiCandidate.method_label)) : undefined,
+      hypothesis: firstText(apiHypothesis.hypothesis) ? normalizeDisplaySentence(firstText(apiHypothesis.hypothesis)) : undefined,
       successCriteria: stringArray(apiHypothesis.success_criteria).map((item) => normalizeDisplaySentence(item)),
-      tradeoffToWatch: firstText(apiHypothesis.tradeoff_to_watch) ... normalizeDisplaySentence(firstText(apiHypothesis.tradeoff_to_watch)) : undefined,
-      decisionBoundary: firstText(apiHypothesis.decision_boundary) ... normalizeDisplaySentence(firstText(apiHypothesis.decision_boundary)) : undefined,
+      tradeoffToWatch: firstText(apiHypothesis.tradeoff_to_watch) ? normalizeDisplaySentence(firstText(apiHypothesis.tradeoff_to_watch)) : undefined,
+      decisionBoundary: firstText(apiHypothesis.decision_boundary) ? normalizeDisplaySentence(firstText(apiHypothesis.decision_boundary)) : undefined,
       generationStatus,
       canCompare: nextAllowedActions.includes("run_comparison") || Boolean(resultRecord.can_compare),
-      path: typeof resultRecord.path === "string" ... resultRecord.path : undefined,
+      path: typeof resultRecord.path === "string" ? resultRecord.path : undefined,
       weights,
       generatedAt: nowIso()
     };
 
-    setActiveReview((current) => current ... {
+    setActiveReview((current) => current ? {
       ...current,
       candidateGeneration: summary,
       candidateReady: status === "completed",
@@ -1251,7 +1251,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const apiClientFit = cleanClientFitDisplaySummary(apiData.client_fit);
     const currentVsCandidate = getRecord(resultRecord.current_vs_candidate);
     const comparisons = getArray(currentVsCandidate.comparisons).map(getRecord);
-    const row = comparisons[0] ...... {};
+    const row = comparisons[0] ?? {};
     const dimensions = getArray(row.dimensions).map(getRecord);
     const practicality = getRecord(row.practicality);
     const turnoverRequired = getRecord(practicality.turnover_required);
@@ -1269,35 +1269,35 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       stage: "current_vs_candidate",
       selectedCardId: textValue(resultRecord.selected_card_id, ""),
       candidateId: textValue(resultRecord.candidate_id, textValue(row.candidate_id, textValue(apiComparison.comparison_id, "").replace(/^current_vs_candidate:/, ""))),
-      comparisonStatus: Object.keys(apiComparison).length ... "available" : comparisonStatus,
-      viewMode: formatUnknownValue(resultRecord.view_mode ...... currentVsCandidate.view_mode, "Unknown"),
-      candidateName: formatUnknownValue(apiComparison.candidate_label ...... row.display_name ...... row.candidate_id, "Generated diagnostic candidate"),
-      candidateBoundary: normalizeDisplaySentence(evidenceContext....candidateBoundary, "Diagnostic comparison only. It does not decide whether to change the portfolio or create a rebalance instruction."),
-      evidenceQuality: Object.keys(apiComparison).length ... "FastAPI display comparison evidence" : comparisonStatus === "available" ... "Active comparison evidence" : formatUnknownValue(comparisonStatus, "Evidence status unavailable"),
-      summary: evidenceContext....testedHypothesis
-        ... `Tested hypothesis: ${evidenceContext.testedHypothesis} Success criteria: ${successCriteriaStatus}. Materiality: ${materialityStatus}.`
+      comparisonStatus: Object.keys(apiComparison).length ? "available" : comparisonStatus,
+      viewMode: formatUnknownValue(resultRecord.view_mode ?? currentVsCandidate.view_mode, "Unknown"),
+      candidateName: formatUnknownValue(apiComparison.candidate_label ?? row.display_name ?? row.candidate_id, "Generated diagnostic candidate"),
+      candidateBoundary: normalizeDisplaySentence(evidenceContext?.candidateBoundary, "Diagnostic comparison only. It does not decide whether to change the portfolio or create a rebalance instruction."),
+      evidenceQuality: Object.keys(apiComparison).length ? "FastAPI display comparison evidence" : comparisonStatus === "available" ? "Active comparison evidence" : formatUnknownValue(comparisonStatus, "Evidence status unavailable"),
+      summary: evidenceContext?.testedHypothesis
+        ? `Tested hypothesis: ${evidenceContext.testedHypothesis} Success criteria: ${successCriteriaStatus}. Materiality: ${materialityStatus}.`
         : comparisonSummaryText({ row, materiality, successCriteria }),
       metrics: dimensionsToMetrics(dimensions),
-      improved: compactDimensionList(apiComparison.what_improved ...... row.what_improved, "No available comparison metric showed a clear improvement."),
-      worsened: compactDimensionList(apiComparison.what_worsened ...... row.what_worsened, "No available comparison metric showed a clear worsening."),
-      neutral: compactDimensionList(apiComparison.what_stayed_similar ...... row.what_stayed_similar, "No neutral metrics were reported."),
-      unclear: stringArray(apiComparison.unavailable_metrics).length ... stringArray(apiComparison.unavailable_metrics).map((item) => normalizeDisplaySentence(item)) : unclearList(row, currentVsCandidate),
+      improved: compactDimensionList(apiComparison.what_improved ?? row.what_improved, "No available comparison metric showed a clear improvement."),
+      worsened: compactDimensionList(apiComparison.what_worsened ?? row.what_worsened, "No available comparison metric showed a clear worsening."),
+      neutral: compactDimensionList(apiComparison.what_stayed_similar ?? row.what_stayed_similar, "No neutral metrics were reported."),
+      unclear: stringArray(apiComparison.unavailable_metrics).length ? stringArray(apiComparison.unavailable_metrics).map((item) => normalizeDisplaySentence(item)) : unclearList(row, currentVsCandidate),
       turnover: turnoverText(turnoverRequired),
       estimatedCost: estimatedCostText(practicality, transactionCost),
-      materiality: Object.keys(apiComparison).length ... `Decision review materiality: ${materialityStatus}.` : materialityText(materiality),
+      materiality: Object.keys(apiComparison).length ? `Decision review materiality: ${materialityStatus}.` : materialityText(materiality),
       warnings: [
         ...fastApiWarnings(resultRecord),
         ...stringArray(currentVsCandidate.warnings).map((item) => normalizeDisplaySentence(item))
       ],
       evidenceChainContext: evidenceContext,
       clientFit: apiClientFit,
-      path: typeof paths.current_vs_candidate === "string" ... paths.current_vs_candidate : undefined,
+      path: typeof paths.current_vs_candidate === "string" ? paths.current_vs_candidate : undefined,
       generatedAt: nowIso()
     };
 
-    setActiveReview((current) => current ... {
+    setActiveReview((current) => current ? {
       ...current,
-      reviewResult: current.reviewResult && isRecord(current.reviewResult.outputs) ... {
+      reviewResult: current.reviewResult && isRecord(current.reviewResult.outputs) ? {
         ...current.reviewResult,
         outputs: {
           ...current.reviewResult.outputs,
@@ -1306,7 +1306,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
           site_explanation_bundle: resultRecord.site_explanation_bundle as JsonValue
         }
       } : current.reviewResult,
-      reviewSummary: current.reviewSummary && siteExplanation ... {
+      reviewSummary: current.reviewSummary && siteExplanation ? {
         ...current.reviewSummary,
         siteExplanation
       } : current.reviewSummary,
@@ -1321,7 +1321,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const markComparisonReady = useCallback(() => {
-    setActiveReview((current) => current ... {
+    setActiveReview((current) => current ? {
       ...current,
       candidateReady: true,
       comparisonReady: true,
@@ -1331,7 +1331,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const markVerdictReady = useCallback(() => {
-    setActiveReview((current) => current ... {
+    setActiveReview((current) => current ? {
       ...current,
       candidateReady: true,
       comparisonReady: true,
@@ -1374,10 +1374,10 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       confidence: formatUnknownValue(confidence, "Unknown"),
       state: safeVerdictState(verdictId, decisionStatus),
       headline: safeVerdictHeadline(verdictId),
-      explanation: safeVerdictExplanation(verdictId, apiRationale[0] ...... textValue(verdict.rationale_summary, "")),
+      explanation: safeVerdictExplanation(verdictId, apiRationale[0] ?? textValue(verdict.rationale_summary, "")),
       evidenceQuality: `Verdict evidence - ${formatUnknownValue(confidence, "Unknown")} confidence`,
-      boundaryNote: normalizeDisplaySentence(evidenceContext....recommendationBoundary, "Decision-support only. This is not a trade instruction or rebalance recommendation."),
-      keyEvidence: apiEvidenceUsed.length ... apiEvidenceUsed : verdictEvidenceList({
+      boundaryNote: normalizeDisplaySentence(evidenceContext?.recommendationBoundary, "Decision-support only. This is not a trade instruction or rebalance recommendation."),
+      keyEvidence: apiEvidenceUsed.length ? apiEvidenceUsed : verdictEvidenceList({
         materiality,
         success,
         noTrade,
@@ -1393,30 +1393,30 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
         },
         {
           label: "No-trade",
-          value: noTrade.applies === true ... "Applies" : noTrade.evaluated === true ... "Evaluated" : "Not evaluated",
+          value: noTrade.applies === true ? "Applies" : noTrade.evaluated === true ? "Evaluated" : "Not evaluated",
           detail: "Decision-support evidence",
-          tone: noTrade.applies === true ... "green" : noTrade.evaluated === true ... "blue" : "slate"
+          tone: noTrade.applies === true ? "green" : noTrade.evaluated === true ? "blue" : "slate"
         },
         {
           label: "Confidence",
           value: formatUnknownValue(confidence, "Unknown"),
           detail: `${stringArray(verdict.confidence_limitations).length} limitation(s)`,
-          tone: confidence === "low" ... "amber" : "blue"
+          tone: confidence === "low" ? "amber" : "blue"
         }
       ],
       actionFraming: safeActionFraming(verdictId),
-      limitations: apiLimitations.length ... apiLimitations : stringArray(verdict.confidence_limitations).map((item) => normalizeDisplaySentence(item)),
+      limitations: apiLimitations.length ? apiLimitations : stringArray(verdict.confidence_limitations).map((item) => normalizeDisplaySentence(item)),
       evidenceUsed: apiEvidenceUsed,
       whatWouldChangeVerdict: whatWouldChange,
       evidenceChainContext: evidenceContext,
       clientFit: apiClientFit,
-      path: typeof resultRecord.path === "string" ... resultRecord.path : undefined,
+      path: typeof resultRecord.path === "string" ? resultRecord.path : undefined,
       generatedAt: nowIso()
     };
 
-    setActiveReview((current) => current ... {
+    setActiveReview((current) => current ? {
       ...current,
-      reviewResult: current.reviewResult && isRecord(current.reviewResult.outputs) ... {
+      reviewResult: current.reviewResult && isRecord(current.reviewResult.outputs) ? {
         ...current.reviewResult,
         outputs: {
           ...current.reviewResult.outputs,
@@ -1424,7 +1424,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
           site_explanation_bundle: resultRecord.site_explanation_bundle as JsonValue
         }
       } : current.reviewResult,
-      reviewSummary: current.reviewSummary && siteExplanation ... {
+      reviewSummary: current.reviewSummary && siteExplanation ? {
         ...current.reviewSummary,
         siteExplanation
       } : current.reviewSummary,
@@ -1441,8 +1441,8 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const resultRecord = getRecord(result);
     const display = getRecord(resultRecord.report_display_model);
     const currentReview = activeReview;
-    const selectedCardId = currentReview....candidateGeneration....selectedCardId ...... textValue(resultRecord.selected_card_id, "");
-    const candidateId = currentReview....candidateGeneration....candidateId ...... textValue(resultRecord.candidate_id, "");
+    const selectedCardId = currentReview?.candidateGeneration?.selectedCardId ?? textValue(resultRecord.selected_card_id, "");
+    const candidateId = currentReview?.candidateGeneration?.candidateId ?? textValue(resultRecord.candidate_id, "");
     const summary = cleanReportResultSummary({
       status: textValue(resultRecord.status, "unknown"),
       stage: "report",
@@ -1457,10 +1457,10 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       boundaryNote: display.boundaryNote,
       warnings: display.warnings,
       clientFit: display.clientFit,
-      generatedAt: display.generatedAt ...... nowIso()
+      generatedAt: display.generatedAt ?? nowIso()
     });
     if (!summary) return;
-    setActiveReview((current) => current ... {
+    setActiveReview((current) => current ? {
       ...current,
       reportResult: summary,
       updatedAt: nowIso()
@@ -1470,10 +1470,10 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   const clearActiveReview = useCallback(() => setActiveReview(null), []);
 
   useEffect(() => {
-    if (!hydrated || !cloudEnabled || authStatus !== "signed_in" || !user....id) return;
-    if (!activeReview....reviewId || !activeReview.reviewSummary || !activeReview.diagnosisReady) return;
+    if (!hydrated || !cloudEnabled || authStatus !== "signed_in" || !user?.id) return;
+    if (!activeReview?.reviewId || !activeReview.reviewSummary || !activeReview.diagnosisReady) return;
 
-    const persistenceKey = `${user.id}:${activeReview.reviewId}:${activeReview.reviewSummary.generatedAt}:${activeReview.cloudPortfolio....id ...... "no_portfolio"}`;
+    const persistenceKey = `${user.id}:${activeReview.reviewId}:${activeReview.reviewSummary.generatedAt}:${activeReview.cloudPortfolio?.id ?? "no_portfolio"}`;
     if (lastPersistedDiagnosisKeyRef.current === persistenceKey) return;
     lastPersistedDiagnosisKeyRef.current = persistenceKey;
     let cancelled = false;
@@ -1486,7 +1486,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         if (!cancelled) {
           lastPersistedDiagnosisKeyRef.current = null;
-          const message = error instanceof Error ... error.message : "Unknown cloud persistence error.";
+          const message = error instanceof Error ? error.message : "Unknown cloud persistence error.";
           setCloudNotice("warning", `Diagnosis stayed local, but cloud review sync failed. ${message}`);
         }
       }
@@ -1495,21 +1495,21 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [activeReview, authStatus, cloudEnabled, hydrated, setCloudNotice, user....id]);
+  }, [activeReview, authStatus, cloudEnabled, hydrated, setCloudNotice, user?.id]);
 
   const lastPersistedStagesKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!hydrated || !cloudEnabled || authStatus !== "signed_in" || !user....id) return;
-    if (!activeReview....reviewId || !activeReview.reviewSummary || !activeReview.diagnosisReady) return;
+    if (!hydrated || !cloudEnabled || authStatus !== "signed_in" || !user?.id) return;
+    if (!activeReview?.reviewId || !activeReview.reviewSummary || !activeReview.diagnosisReady) return;
     const stageKey = [
       user.id,
       activeReview.reviewId,
-      activeReview.builderSetup....selected_card_id ...... "no_builder",
-      activeReview.candidateGeneration....generatedAt ...... "no_candidate",
-      activeReview.comparisonResult....generatedAt ...... "no_comparison",
-      activeReview.verdictResult....generatedAt ...... "no_verdict",
-      activeReview.reportResult....generatedAt ...... "no_report"
+      activeReview.builderSetup?.selected_card_id ?? "no_builder",
+      activeReview.candidateGeneration?.generatedAt ?? "no_candidate",
+      activeReview.comparisonResult?.generatedAt ?? "no_comparison",
+      activeReview.verdictResult?.generatedAt ?? "no_verdict",
+      activeReview.reportResult?.generatedAt ?? "no_report"
     ].join(":");
     if (lastPersistedStagesKeyRef.current === stageKey) return;
     if (!activeReview.builderSetup && !activeReview.candidateGeneration && !activeReview.comparisonResult && !activeReview.verdictResult && !activeReview.reportResult) return;
@@ -1527,7 +1527,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         if (!cancelled) {
           lastPersistedStagesKeyRef.current = null;
-          const message = error instanceof Error ... error.message : "Unknown cloud persistence error.";
+          const message = error instanceof Error ? error.message : "Unknown cloud persistence error.";
           setCloudNotice("warning", `Cloud stage sync failed, but the local review stayed usable. ${message}`);
         }
       }
@@ -1535,18 +1535,18 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [activeReview, authStatus, cloudEnabled, hydrated, setCloudNotice, user....id]);
+  }, [activeReview, authStatus, cloudEnabled, hydrated, setCloudNotice, user?.id]);
 
   const journeyFlags = useMemo<JourneyFlags>(() => ({
-    clientProfileCompleted: Boolean(activeReview....clientFitProfile || hasProvidedClientFitSummary(activeReview....reviewSummary....clientFit)),
-    inputCompleted: Boolean(activeReview....submitted),
-    diagnosisGenerated: Boolean(activeReview....diagnosisReady),
-    evidenceGenerated: Boolean(activeReview....evidenceReady),
-    clientFitReady: hasProvidedClientFitSummary(activeReview....reviewSummary....clientFit),
-    improvementPathsAvailable: Boolean(activeReview....improvementPathsReady),
-    candidateReady: Boolean(activeReview....candidateReady),
-    comparisonReady: Boolean(activeReview....comparisonReady),
-    verdictReady: Boolean(activeReview....verdictReady)
+    clientProfileCompleted: Boolean(activeReview?.clientFitProfile || hasProvidedClientFitSummary(activeReview?.reviewSummary?.clientFit)),
+    inputCompleted: Boolean(activeReview?.submitted),
+    diagnosisGenerated: Boolean(activeReview?.diagnosisReady),
+    evidenceGenerated: Boolean(activeReview?.evidenceReady),
+    clientFitReady: hasProvidedClientFitSummary(activeReview?.reviewSummary?.clientFit),
+    improvementPathsAvailable: Boolean(activeReview?.improvementPathsReady),
+    candidateReady: Boolean(activeReview?.candidateReady),
+    comparisonReady: Boolean(activeReview?.comparisonReady),
+    verdictReady: Boolean(activeReview?.verdictReady)
   }), [activeReview]);
 
   const value = useMemo<ReviewStateContextValue>(() => ({
@@ -1583,46 +1583,46 @@ export function useReviewState() {
 }
 
 function formatPercent(value: number) {
-  return `${value.toFixed(2).replace(/\....0+$/, "")}%`;
+  return `${value.toFixed(2).replace(/\?.0+$/, "")}%`;
 }
 
 function formatDecimalPercent(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ... formatPercent(value * 100) : "n/a";
+  return typeof value === "number" && Number.isFinite(value) ? formatPercent(value * 100) : "n/a";
 }
 
 function formatRawPercent(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ... formatPercent(value) : "n/a";
+  return typeof value === "number" && Number.isFinite(value) ? formatPercent(value) : "n/a";
 }
 
 function formatFlexiblePercent(value: unknown) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "n/a";
-  return Math.abs(value) <= 1 ... formatDecimalPercent(value) : formatRawPercent(value);
+  return Math.abs(value) <= 1 ? formatDecimalPercent(value) : formatRawPercent(value);
 }
 
 function compactNumber(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ... value.toFixed(2) : "n/a";
+  return typeof value === "number" && Number.isFinite(value) ? value.toFixed(2) : "n/a";
 }
 
 function getRecord(value: unknown): Record<string, unknown> {
-  return isRecord(value) ... value : {};
+  return isRecord(value) ? value : {};
 }
 
 function getArray(value: unknown): unknown[] {
-  return Array.isArray(value) ... value : [];
+  return Array.isArray(value) ? value : [];
 }
 
 function textValue(value: unknown, fallback = "n/a") {
-  return typeof value === "string" && value.trim() ... value : fallback;
+  return typeof value === "string" && value.trim() ? value : fallback;
 }
 
 function stringArray(value: unknown): string[] {
   return Array.isArray(value)
-    ... value.map((item) => (typeof item === "string" ... item.trim() : "")).filter(Boolean)
+    ? value.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean)
     : [];
 }
 
 function numericValue(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ... value : null;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function firstStringFromArrays(...sources: unknown[]) {
@@ -1635,7 +1635,7 @@ function firstStringFromArrays(...sources: unknown[]) {
 
 function statusToneValue(value: unknown): StatusTone {
   return value === "blue" || value === "gold" || value === "green" || value === "amber" || value === "red" || value === "slate"
-    ... value
+    ? value
     : "slate";
 }
 
@@ -1661,7 +1661,7 @@ function displayLabel(value: unknown, fallback = "Unavailable") {
 }
 
 function statusKey(value: unknown) {
-  return String(value ...... "")
+  return String(value ?? "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
@@ -1702,7 +1702,7 @@ function safeVerdictHeadline(verdictId: string) {
 }
 
 function safeVerdictExplanation(verdictId: string, rationale: string) {
-  const suffix = rationale ... ` Rationale: ${rationale}` : "";
+  const suffix = rationale ? ` Rationale: ${rationale}` : "";
   const verdictKey = statusKey(verdictId);
   if (verdictKey === "keep_current" || verdictKey.includes("no_trade") || verdictKey === "no_material_rebalance_recommended") {
     return `The current evidence supports no material change. Continue monitoring instead of treating the candidate as an instruction.${suffix}`;
@@ -1742,7 +1742,7 @@ function verdictEvidenceList({
   const rows = [
     `Decision materiality: ${formatUnknownValue(materiality.status, "Not evaluated")} (${normalizeDisplaySentence(materiality.reason, "No reason supplied")}).`,
     `Success criteria: ${formatUnknownValue(success.overall_status, "Not evaluated")}.`,
-    `No-trade gate: ${noTrade.applies === true ... "applies" : noTrade.evaluated === true ... "evaluated" : "not evaluated"}.`
+    `No-trade gate: ${noTrade.applies === true ? "applies" : noTrade.evaluated === true ? "evaluated" : "not evaluated"}.`
   ];
   const firstLimit = stringArray(limitations)[0];
   if (firstLimit) rows.push(`Main confidence limitation: ${normalizeDisplaySentence(firstLimit)}.`);
@@ -1751,17 +1751,17 @@ function verdictEvidenceList({
 
 function verdictMonitoringTrigger(verdictId: string, limitations: unknown) {
   const firstLimit = stringArray(limitations)[0];
-  if (verdictId === "evidence_insufficient") return firstLimit ... `Re-run the verdict after resolving: ${normalizeDisplaySentence(firstLimit)}.` : "Re-run after missing evidence is available.";
+  if (verdictId === "evidence_insufficient") return firstLimit ? `Re-run the verdict after resolving: ${normalizeDisplaySentence(firstLimit)}.` : "Re-run after missing evidence is available.";
   if (verdictId === "candidate_failed_or_infeasible") return "Re-run only after selecting a different feasible diagnostic candidate.";
   if (verdictId === "no_material_rebalance_recommended") return "Revisit if comparison materiality, turnover, or stress evidence changes materially.";
   return "Revisit before any implementation decision if trade-offs, costs, or risk evidence changes.";
 }
 
-function formatSignedDelta(value: unknown, field...: string) {
+function formatSignedDelta(value: unknown, field?: string) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "Delta unavailable";
-  const sign = value > 0 ... "+" : "";
+  const sign = value > 0 ? "+" : "";
   if (field && percentLikeField(field)) return `${sign}${formatDecimalPercent(value)}`;
-  return `${sign}${value.toFixed(3).replace(/\....0+$/, "")}`;
+  return `${sign}${value.toFixed(3).replace(/\?.0+$/, "")}`;
 }
 
 function percentLikeField(field: string) {
@@ -1775,10 +1775,10 @@ function percentLikeField(field: string) {
   ].some((prefix) => field === prefix || field.startsWith(prefix));
 }
 
-function formatComparisonValue(value: unknown, field...: string) {
+function formatComparisonValue(value: unknown, field?: string) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "Evidence unavailable";
   if (field && percentLikeField(field)) return formatDecimalPercent(value);
-  return value.toFixed(3).replace(/\....0+$/, "");
+  return value.toFixed(3).replace(/\?.0+$/, "");
 }
 
 function toneFromDirection(direction: string): StatusTone {
@@ -1801,14 +1801,14 @@ function dimensionsToMetrics(dimensions: Record<string, unknown>[]): ComparisonM
     const direction = textValue(dimension.direction, "unknown");
     const status = textValue(dimension.status, "unavailable");
     return {
-      metric: formatUnknownValue(dimension.label ...... field, "Metric"),
+      metric: formatUnknownValue(dimension.label ?? field, "Metric"),
       current: formatComparisonValue(dimension.baseline_value, field),
       candidate: formatComparisonValue(dimension.candidate_value, field),
-      direction: status === "available" ... directionLabel(direction) : "Unclear",
+      direction: status === "available" ? directionLabel(direction) : "Unclear",
       tradeoff: status === "available"
-        ... formatSignedDelta(dimension.delta, field)
+        ? formatSignedDelta(dimension.delta, field)
         : formatUnknownValue(dimension.unavailable_reason, "Metric unavailable"),
-      tone: status === "available" ... toneFromDirection(direction) : "slate"
+      tone: status === "available" ? toneFromDirection(direction) : "slate"
     };
   });
 }
@@ -1817,22 +1817,22 @@ function compactDimensionList(value: unknown, fallback: string) {
   const rows = getArray(value)
     .map(getRecord)
     .map((item) => {
-      const label = formatUnknownValue(item.label ...... item.field, "");
+      const label = formatUnknownValue(item.label ?? item.field, "");
       const direction = textValue(item.direction, "changed");
       const delta = formatSignedDelta(item.delta, textValue(item.field, ""));
-      return label ... `${label}: ${directionLabel(direction).toLowerCase()} (${delta}).` : "";
+      return label ? `${label}: ${directionLabel(direction).toLowerCase()} (${delta}).` : "";
     })
     .filter(Boolean);
-  return rows.length ... rows : [fallback];
+  return rows.length ? rows : [fallback];
 }
 
 function unclearList(row: Record<string, unknown>, currentVsCandidate: Record<string, unknown>) {
   const unavailable = getArray(getRecord(row.tradeoff_summary).unavailable_metrics)
     .map(getRecord)
-    .map((item) => `${formatUnknownValue(item.label ...... item.field, "Metric")}: ${formatUnknownValue(item.unavailable_reason, "Unavailable")}.`);
+    .map((item) => `${formatUnknownValue(item.label ?? item.field, "Metric")}: ${formatUnknownValue(item.unavailable_reason, "Unavailable")}.`);
   const warnings = stringArray(currentVsCandidate.warnings).map((item) => `Warning: ${normalizeDisplaySentence(item)}.`);
   const result = [...unavailable, ...warnings].filter(Boolean).slice(0, 4);
-  return result.length ... result : ["Suitability and mandate fit remain outside this comparison step."];
+  return result.length ? result : ["Suitability and mandate fit remain outside this comparison step."];
 }
 
 function turnoverText(turnoverRequired: Record<string, unknown>) {
@@ -1848,7 +1848,7 @@ function estimatedCostText(practicality: Record<string, unknown>, transactionCos
   const estimated = practicality.estimated_transaction_cost_pct;
   const bps = transactionCost.transaction_cost_bps;
   if (typeof estimated === "number" && Number.isFinite(estimated)) {
-    const assumption = typeof bps === "number" && Number.isFinite(bps) ... ` using ${bps} bps assumption` : "";
+    const assumption = typeof bps === "number" && Number.isFinite(bps) ? ` using ${bps} bps assumption` : "";
     return `${formatDecimalPercent(estimated)} estimated transaction cost${assumption}.`;
   }
   return "Estimated transaction cost evidence unavailable.";
@@ -1922,7 +1922,7 @@ function diagnosisFromFastApiEnvelope(envelope: CreateReviewResponse | Record<st
     .map((item) => {
       const label = firstText(item.label, item.problem_id, "Alternative diagnosis");
       const reason = firstText(item.reason, item.reason_code);
-      return reason ... `${formatUnknownValue(label)}: ${normalizeDisplaySentence(reason)}` : formatUnknownValue(label);
+      return reason ? `${formatUnknownValue(label)}: ${normalizeDisplaySentence(reason)}` : formatUnknownValue(label);
     })
     .filter(Boolean)
     .slice(0, 5);
@@ -1935,31 +1935,31 @@ function diagnosisFromFastApiEnvelope(envelope: CreateReviewResponse | Record<st
   return {
     status: "Diagnosis ready",
     headline: normalizeDisplaySentence(headline, "Portfolio diagnosis completed for the submitted current portfolio."),
-    evidenceQuality: evidenceQualityLabel(diagnosis.confidence ...... "unknown"),
+    evidenceQuality: evidenceQualityLabel(diagnosis.confidence ?? "unknown"),
     nextStep: normalizeDisplaySentence(diagnosis.next_diagnostic_step, "Review supporting evidence before testing one candidate hypothesis."),
     boundaryNote: normalizeDisplaySentence(diagnosis.recommendation_boundary, "Diagnosis is decision-support evidence only. It is not a rebalance recommendation or trade instruction."),
-    drivers: drivers.length ... drivers : ["FastAPI returned a bounded diagnosis display summary for the active review."],
+    drivers: drivers.length ? drivers : ["FastAPI returned a bounded diagnosis display summary for the active review."],
     metrics: [
       {
         label: "Selected diagnosis",
-        value: formatUnknownValue(rootCause.label ...... diagnosis.primary_diagnosis, "Current portfolio diagnosis"),
-        detail: formatUnknownValue(diagnosis.selected_diagnosis_role ...... rootCause.diagnosis_role, "Diagnostic role"),
+        value: formatUnknownValue(rootCause.label ?? diagnosis.primary_diagnosis, "Current portfolio diagnosis"),
+        detail: formatUnknownValue(diagnosis.selected_diagnosis_role ?? rootCause.diagnosis_role, "Diagnostic role"),
         tone: "blue"
       },
       {
         label: "Evidence items",
         value: String(evidenceItems.length || evidenceChain.length),
         detail: "Bounded diagnosis display evidence",
-        tone: evidenceItems.length || evidenceChain.length ... "blue" : "slate"
+        tone: evidenceItems.length || evidenceChain.length ? "blue" : "slate"
       },
       {
         label: "Rejected alternatives",
         value: String(rejected.length),
         detail: "Alternative diagnoses considered",
-        tone: rejected.length ... "amber" : "slate"
+        tone: rejected.length ? "amber" : "slate"
       }
     ],
-    selectedDiagnosisRole: firstText(diagnosis.selected_diagnosis_role, rootCause.diagnosis_role) ... formatUnknownValue(firstText(diagnosis.selected_diagnosis_role, rootCause.diagnosis_role)) : undefined,
+    selectedDiagnosisRole: firstText(diagnosis.selected_diagnosis_role, rootCause.diagnosis_role) ? formatUnknownValue(firstText(diagnosis.selected_diagnosis_role, rootCause.diagnosis_role)) : undefined,
     sourceArtifacts: stringArray(diagnosis.source_artifacts).map((item) => formatUnknownValue(item)),
     rejectedAlternatives,
     rationaleRefs
@@ -1999,26 +1999,26 @@ function buildDiagnosisFromRawArtifacts(review: ActiveReviewState): DiagnosisSta
   const primaryRisk = riskTypes[0];
   const allocationHeadline = textValue(getRecord(allocation.actual_economic_exposure_summary).headline, "");
   const xrayHeadline = primaryRisk
-    ... `Current portfolio is most exposed to ${dominantExposureNameForHeadline(dominantRiskFactor, dominantAssetClass)}; the main pre-stress weakness to review is ${displayLabel(primaryRisk.risk_title ...... primaryRisk.risk_type)}.`
+    ? `Current portfolio is most exposed to ${dominantExposureNameForHeadline(dominantRiskFactor, dominantAssetClass)}; the main pre-stress weakness to review is ${displayLabel(primaryRisk.risk_title ?? primaryRisk.risk_type)}.`
     : textValue(allocationHeadline, textValue(behavior.headline, "Portfolio X-Ray completed for the submitted current portfolio."));
-  const primaryRiskScore = numericValue(primaryRisk....score_0_100);
+  const primaryRiskScore = numericValue(primaryRisk?.score_0_100);
 
   const drivers = [
     topHolding.ticker
-      ... `${String(topHolding.ticker)} is the largest holding at ${formatRawPercent(topHolding.weight_pct)}.`
+      ? `${String(topHolding.ticker)} is the largest holding at ${formatRawPercent(topHolding.weight_pct)}.`
       : "Portfolio X-Ray returned the current allocation snapshot.",
     dominantAssetClass.name
-      ... `Dominant asset class: ${displayLabel(dominantAssetClass.name)} at ${formatRawPercent(dominantAssetClass.weight_pct)}.`
+      ? `Dominant asset class: ${displayLabel(dominantAssetClass.name)} at ${formatRawPercent(dominantAssetClass.weight_pct)}.`
       : allocationHeadline || "Asset allocation diagnostics are available from Portfolio X-Ray.",
     primaryRisk
-      ... textValue(primaryRisk.short_diagnosis, `${String(primaryRisk.risk_title)} is the top pre-stress weakness.`)
+      ? textValue(primaryRisk.short_diagnosis, `${String(primaryRisk.risk_title)} is the top pre-stress weakness.`)
       : textValue(behavior.headline, "Portfolio behavior metrics are available for review.")
   ];
 
   return {
     status: "Diagnosis ready",
     headline: xrayHeadline,
-    evidenceQuality: evidenceQualityLabel(stressConclusions.overall_confidence ...... "Partial"),
+    evidenceQuality: evidenceQualityLabel(stressConclusions.overall_confidence ?? "Partial"),
     nextStep: "Review supporting evidence before testing one candidate hypothesis.",
     boundaryNote: "Diagnosis is based on Portfolio X-Ray evidence for the submitted current portfolio. It frames potential weaknesses before any candidate test.",
     drivers,
@@ -2026,7 +2026,7 @@ function buildDiagnosisFromRawArtifacts(review: ActiveReviewState): DiagnosisSta
       {
         label: "CAGR / Volatility",
         value: `${formatDecimalPercent(returnRisk.portfolio_cagr)} / ${formatDecimalPercent(returnRisk.vol_annual)}`,
-        detail: `Sharpe ${typeof returnRisk.sharpe === "number" ... returnRisk.sharpe.toFixed(2) : "n/a"}`,
+        detail: `Sharpe ${typeof returnRisk.sharpe === "number" ? returnRisk.sharpe.toFixed(2) : "n/a"}`,
         tone: "blue"
       },
       {
@@ -2037,9 +2037,9 @@ function buildDiagnosisFromRawArtifacts(review: ActiveReviewState): DiagnosisSta
       },
       {
         label: "Primary weakness",
-        value: primaryRisk ... displayLabel(primaryRisk.risk_title ...... primaryRisk.risk_type) : "n/a",
-        detail: primaryRiskScore !== null ... `Score ${primaryRiskScore}/100` : "Pre-stress signal unavailable",
-        tone: toneForSeverity(primaryRisk....severity)
+        value: primaryRisk ? displayLabel(primaryRisk.risk_title ?? primaryRisk.risk_type) : "n/a",
+        detail: primaryRiskScore !== null ? `Score ${primaryRiskScore}/100` : "Pre-stress signal unavailable",
+        tone: toneForSeverity(primaryRisk?.severity)
       }
     ],
     sourceArtifacts: ["portfolio_xray.json", "stress_report.json"],
@@ -2070,7 +2070,7 @@ function compactProblemFields(problemClassification: unknown) {
   const suggestedActions = getArray(problem.suggested_actions)
     .map(getRecord)
     .map((action) => firstText(action.label_en, action.action_path_id))
-    .map((item) => item ... formatUnknownValue(item) : item)
+    .map((item) => item ? formatUnknownValue(item) : item)
     .filter((item): item is string => Boolean(item))
     .slice(0, 3);
 
@@ -2085,7 +2085,7 @@ function compactProblemFields(problemClassification: unknown) {
     problemSeverity: formatUnknownValue(firstText(primaryProblem.severity, problem.materiality), ""),
     problemConfidence: formatUnknownValue(firstText(primaryProblem.confidence, primaryDiagnosis.confidence, problem.confidence), ""),
     suggestedActionPaths: suggestedActions.length
-      ... suggestedActions
+      ? suggestedActions
       : [
         firstText(primaryProblem.suggested_action_path_id),
         ...getArray(primaryProblem.secondary_action_path_ids).filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
@@ -2136,20 +2136,20 @@ function compactLaunchpadCard(card: Record<string, unknown>): LaunchpadCardSumma
   return {
     card_id: textValue(card.card_id, textValue(card.title, "launchpad_card")),
     title: formatUnknownValue(card.title, "Hypothesis test"),
-    goal: firstText(card.goal) ... normalizeDisplaySentence(firstText(card.goal)) : undefined,
-    hypothesis_to_test: firstText(card.hypothesis_to_test, card.what_this_tests_en) ... normalizeDisplaySentence(firstText(card.hypothesis_to_test, card.what_this_tests_en)) : undefined,
-    card_type: firstText(card.card_type) ... formatUnknownValue(firstText(card.card_type)) : undefined,
-    source_problem_label: firstText(card.source_problem_label) ... formatUnknownValue(firstText(card.source_problem_label)) : undefined,
+    goal: firstText(card.goal) ? normalizeDisplaySentence(firstText(card.goal)) : undefined,
+    hypothesis_to_test: firstText(card.hypothesis_to_test, card.what_this_tests_en) ? normalizeDisplaySentence(firstText(card.hypothesis_to_test, card.what_this_tests_en)) : undefined,
+    card_type: firstText(card.card_type) ? formatUnknownValue(firstText(card.card_type)) : undefined,
+    source_problem_label: firstText(card.source_problem_label) ? formatUnknownValue(firstText(card.source_problem_label)) : undefined,
     suggested_methods: getArray(card.suggested_methods).map(getRecord).slice(0, 4).map((method, index) => ({
       candidate_method_id: formatUnknownValue(method.candidate_method_id, `Method ${index + 1}`),
-      method_role: firstText(method.method_role) ... formatUnknownValue(firstText(method.method_role)) : undefined,
-      why_this_method: firstText(method.why_this_method) ... normalizeDisplaySentence(firstText(method.why_this_method)) : undefined
+      method_role: firstText(method.method_role) ? formatUnknownValue(firstText(method.method_role)) : undefined,
+      why_this_method: firstText(method.why_this_method) ? normalizeDisplaySentence(firstText(method.why_this_method)) : undefined
     })),
-    default_method: firstText(card.default_method) ... formatUnknownValue(firstText(card.default_method)) : undefined,
+    default_method: firstText(card.default_method) ? formatUnknownValue(firstText(card.default_method)) : undefined,
     success_criteria: stringArray(card.success_criteria).slice(0, 6).map((item) => normalizeDisplaySentence(item)),
-    tradeoff_to_watch: firstText(card.tradeoff_to_watch, card.expected_tradeoff_to_check_en) ... normalizeDisplaySentence(firstText(card.tradeoff_to_watch, card.expected_tradeoff_to_check_en)) : undefined,
-    when_to_skip: firstText(card.when_to_skip) ... normalizeDisplaySentence(firstText(card.when_to_skip)) : undefined,
-    decision_boundary: firstText(card.decision_boundary) ... normalizeDisplaySentence(firstText(card.decision_boundary)) : undefined,
+    tradeoff_to_watch: firstText(card.tradeoff_to_watch, card.expected_tradeoff_to_check_en) ? normalizeDisplaySentence(firstText(card.tradeoff_to_watch, card.expected_tradeoff_to_check_en)) : undefined,
+    when_to_skip: firstText(card.when_to_skip) ? normalizeDisplaySentence(firstText(card.when_to_skip)) : undefined,
+    decision_boundary: firstText(card.decision_boundary) ? normalizeDisplaySentence(firstText(card.decision_boundary)) : undefined,
     is_rebalance_recommendation: card.is_rebalance_recommendation === true,
     generates_portfolio: card.generates_portfolio === true
   };
@@ -2166,13 +2166,13 @@ function compactBuilderSetup(value: unknown): BuilderSetupSummary | undefined {
     can_generate_candidate: builder.can_generate_candidate === true || candidateSetup.can_generate_candidate === true,
     builder_prefill: {
       goal: firstText(builderPrefill.goal),
-      suggested_method: firstText(builderPrefill.suggested_method) ... formatUnknownValue(firstText(builderPrefill.suggested_method)) : undefined,
-      constraint_preset: firstText(builderPrefill.constraint_preset) ... formatUnknownValue(firstText(builderPrefill.constraint_preset)) : undefined,
-      max_asset_weight: typeof builderPrefill.max_asset_weight === "number" || typeof builderPrefill.max_asset_weight === "string" ... builderPrefill.max_asset_weight : undefined,
-      min_asset_weight: typeof builderPrefill.min_asset_weight === "number" || typeof builderPrefill.min_asset_weight === "string" ... builderPrefill.min_asset_weight : undefined
+      suggested_method: firstText(builderPrefill.suggested_method) ? formatUnknownValue(firstText(builderPrefill.suggested_method)) : undefined,
+      constraint_preset: firstText(builderPrefill.constraint_preset) ? formatUnknownValue(firstText(builderPrefill.constraint_preset)) : undefined,
+      max_asset_weight: typeof builderPrefill.max_asset_weight === "number" || typeof builderPrefill.max_asset_weight === "string" ? builderPrefill.max_asset_weight : undefined,
+      min_asset_weight: typeof builderPrefill.min_asset_weight === "number" || typeof builderPrefill.min_asset_weight === "string" ? builderPrefill.min_asset_weight : undefined
     },
     candidate_setup: {
-      validation_status: firstText(candidateSetup.validation_status) ... formatUnknownValue(firstText(candidateSetup.validation_status)) : undefined,
+      validation_status: firstText(candidateSetup.validation_status) ? formatUnknownValue(firstText(candidateSetup.validation_status)) : undefined,
       can_generate_candidate: candidateSetup.can_generate_candidate === true
     }
   };
@@ -2245,17 +2245,17 @@ function compactBreakdown(title: string, value: unknown): XRayBreakdown | null {
     .map(getRecord)
     .map((item) => ({
       name: textValue(item.name, ""),
-      weightPct: numericValue(item.weight_pct) ...... Number.NaN
+      weightPct: numericValue(item.weight_pct) ?? Number.NaN
     }))
     .filter((item) => item.name && Number.isFinite(item.weightPct))
     .slice(0, 6);
-  return items.length ... { title, items } : null;
+  return items.length ? { title, items } : null;
 }
 
 function formatObservedPercent(value: unknown) {
   const numeric = numericValue(value);
   if (numeric === null) return "Unavailable";
-  return Math.abs(numeric) <= 1 ... formatDecimalPercent(numeric) : formatRawPercent(numeric);
+  return Math.abs(numeric) <= 1 ? formatDecimalPercent(numeric) : formatRawPercent(numeric);
 }
 
 function flagLabel(flag: Record<string, unknown>) {
@@ -2270,11 +2270,11 @@ function flagLabel(flag: Record<string, unknown>) {
   if (flagId === "single_currency_dominance") return `${label || "Currency"} currency concentration`;
   if (flag.duplicate_group_id) return "Duplicate exposure concentration";
 
-  return displayLabel(flag.label ...... flag.flag_id ...... flag.metric, "Concentration signal");
+  return displayLabel(flag.label ?? flag.flag_id ?? flag.metric, "Concentration signal");
 }
 
 function flagMessage(flag: Record<string, unknown>) {
-  const observed = flag.observed ...... flag.combined_weight_pct ...... flag.combined_weight;
+  const observed = flag.observed ?? flag.combined_weight_pct ?? flag.combined_weight;
   const threshold = flag.threshold;
   const observedText = formatObservedPercent(observed);
   const thresholdText = formatObservedPercent(threshold);
@@ -2327,11 +2327,11 @@ function evidenceLines(value: unknown, limit = 3) {
       const interpretation = firstText(item.interpretation, item.why_status, item.reason);
       const metric = displayLabel(item.metric, "");
       const itemValue = item.value === null || item.value === undefined
-        ... ""
+        ? ""
         : typeof item.value === "number"
-          ... ` (${Math.abs(item.value) <= 1 ... formatDecimalPercent(item.value) : compactNumber(item.value)})`
+          ? ` (${Math.abs(item.value) <= 1 ? formatDecimalPercent(item.value) : compactNumber(item.value)})`
           : ` (${String(item.value)})`;
-      return interpretation ...... (metric ... `${metric}${itemValue}.` : "");
+      return interpretation ?? (metric ? `${metric}${itemValue}.` : "");
     })
     .filter(Boolean)
     .slice(0, limit);
@@ -2343,7 +2343,7 @@ function linkedAssetLabels(value: unknown) {
     .map((asset) => {
       const ticker = textValue(asset.ticker, "");
       const weight = asset.weight_pct;
-      return ticker ... `${ticker}${weight === undefined ... "" : ` ${formatFlexiblePercent(weight)}`}` : "";
+      return ticker ? `${ticker}${weight === undefined ? "" : ` ${formatFlexiblePercent(weight)}`}` : "";
     })
     .filter(Boolean)
     .slice(0, 3);
@@ -2352,8 +2352,8 @@ function linkedAssetLabels(value: unknown) {
 function holdingClassifications(holding: ReviewHolding): Omit<XRayHoldingRow, "holding" | "weightPct"> {
   const ticker = holding.ticker.toUpperCase();
   const instrument = instrumentByTicker.get(ticker);
-  const terms = new Set((instrument....searchTerms ...... []).map((term) => term.toLowerCase()));
-  const sleeve = instrument....sleeve ...... (holding.type === "cash" ... "cash" : "other");
+  const terms = new Set((instrument?.searchTerms ?? []).map((term) => term.toLowerCase()));
+  const sleeve = instrument?.sleeve ?? (holding.type === "cash" ? "cash" : "other");
 
   if (holding.type === "cash" || sleeve === "cash") {
     return {
@@ -2366,8 +2366,8 @@ function holdingClassifications(holding: ReviewHolding): Omit<XRayHoldingRow, "h
   if (sleeve === "fixed_income") {
     return {
       assetClass: "Fixed income",
-      riskRole: terms.has("risk_on") || terms.has("credit") ... "Income / credit" : "Defensive",
-      mainRiskFactor: terms.has("credit") ... "Credit" : "Interest-rate sensitivity"
+      riskRole: terms.has("risk_on") || terms.has("credit") ? "Income / credit" : "Defensive",
+      mainRiskFactor: terms.has("credit") ? "Credit" : "Interest-rate sensitivity"
     };
   }
 
@@ -2390,8 +2390,8 @@ function holdingClassifications(holding: ReviewHolding): Omit<XRayHoldingRow, "h
   if (sleeve === "multi_asset") {
     return {
       assetClass: "Multi-asset",
-      riskRole: terms.has("risk_on") ... "Growth / risk assets" : "Diversifier",
-      mainRiskFactor: terms.has("us_growth") ... "Growth / risk assets" : "Multi-factor"
+      riskRole: terms.has("risk_on") ? "Growth / risk assets" : "Diversifier",
+      mainRiskFactor: terms.has("us_growth") ? "Growth / risk assets" : "Multi-factor"
     };
   }
 
@@ -2405,7 +2405,7 @@ function holdingClassifications(holding: ReviewHolding): Omit<XRayHoldingRow, "h
 function compactHoldingRows(holdings: ReviewHolding[]): XRayHoldingRow[] {
   return holdings
     .map((holding) => ({
-      holding: holding.type === "cash" ... `Cash ${holding.currency || "USD"}` : holding.ticker.toUpperCase(),
+      holding: holding.type === "cash" ? `Cash ${holding.currency || "USD"}` : holding.ticker.toUpperCase(),
       weightPct: holding.weight,
       ...holdingClassifications(holding)
     }))
@@ -2425,9 +2425,9 @@ function riskContributionRow(value: unknown): XRayRiskContribution | null {
   if (!name) return null;
   return {
     name,
-    weightPct: numericValue(row.weight_pct) ...... undefined,
-    riskContributionPct: numericValue(row.rc_pct ...... row.risk_contribution_pct) ...... undefined,
-    gapPp: numericValue(row.weight_vs_risk_gap_pp ...... row.gap_pp) ...... undefined
+    weightPct: numericValue(row.weight_pct) ?? undefined,
+    riskContributionPct: numericValue(row.rc_pct ?? row.risk_contribution_pct) ?? undefined,
+    gapPp: numericValue(row.weight_vs_risk_gap_pp ?? row.gap_pp) ?? undefined
   };
 }
 
@@ -2438,7 +2438,7 @@ function compactRiskRows(value: unknown, limit = 5) {
     .slice(0, limit);
 }
 
-function compactMetric(label: string, value: string, detail...: string, tone: StatusTone = "slate"): Metric {
+function compactMetric(label: string, value: string, detail?: string, tone: StatusTone = "slate"): Metric {
   return { label, value, detail, tone };
 }
 
@@ -2482,34 +2482,34 @@ function compactXRaySummary({
   const riskTypes = getArray(weaknessBlock.risk_types).map(getRecord);
   const primaryWeakness = [...riskTypes]
     .filter((risk) => textValue(risk.risk_type, ""))
-    .sort((a, b) => (numericValue(b.score_0_100) ...... -1) - (numericValue(a.score_0_100) ...... -1))[0];
+    .sort((a, b) => (numericValue(b.score_0_100) ?? -1) - (numericValue(a.score_0_100) ?? -1))[0];
 
-  const holdingsCount = numericValue(composition.total_holdings) ...... activeReview.reviewSummary....holdingsCount ...... activeReview.holdings.length;
+  const holdingsCount = numericValue(composition.total_holdings) ?? activeReview.reviewSummary?.holdingsCount ?? activeReview.holdings.length;
   const top3Weight = numericValue(composition.top3_weight_pct);
   const dominantExposure = textValue(dominantRiskFactor.name, textValue(dominantAssetClass.name, "Unavailable"));
-  const dominantExposureWeight = dominantRiskFactor.weight_pct ...... dominantAssetClass.weight_pct;
+  const dominantExposureWeight = dominantRiskFactor.weight_pct ?? dominantAssetClass.weight_pct;
   const dominantRiskFactorMetric = numericValue(dominantExposureWeight);
-  const primaryWeaknessScore = numericValue(primaryWeakness....score_0_100);
+  const primaryWeaknessScore = numericValue(primaryWeakness?.score_0_100);
 
   const snapshotCards = [
     compactMetric("Total holdings", String(holdingsCount), "Current portfolio review", "blue"),
     compactMetric(
       "Top holding",
-      topHolding.ticker ... `${textValue(topHolding.ticker)} ${formatRawPercent(topHolding.weight_pct)}` : "n/a",
+      topHolding.ticker ? `${textValue(topHolding.ticker)} ${formatRawPercent(topHolding.weight_pct)}` : "n/a",
       "Largest capital position",
-      numericValue(topHolding.weight_pct) !== null && (numericValue(topHolding.weight_pct) ...... 0) >= 30 ... "red" : numericValue(topHolding.weight_pct) !== null && (numericValue(topHolding.weight_pct) ...... 0) >= 20 ... "amber" : "blue"
+      numericValue(topHolding.weight_pct) !== null && (numericValue(topHolding.weight_pct) ?? 0) >= 30 ? "red" : numericValue(topHolding.weight_pct) !== null && (numericValue(topHolding.weight_pct) ?? 0) >= 20 ? "amber" : "blue"
     ),
     compactMetric(
       "Top 3 concentration",
-      top3Weight !== null ... formatRawPercent(top3Weight) : "n/a",
+      top3Weight !== null ? formatRawPercent(top3Weight) : "n/a",
       "Capital in largest three holdings",
-      top3Weight !== null && top3Weight >= 65 ... "red" : top3Weight !== null && top3Weight >= 50 ... "amber" : "blue"
+      top3Weight !== null && top3Weight >= 65 ? "red" : top3Weight !== null && top3Weight >= 50 ? "amber" : "blue"
     ),
     compactMetric(
       "Dominant exposure",
       displayLabel(dominantExposure),
       formatFlexiblePercent(dominantExposureWeight),
-      dominantRiskFactorMetric !== null && dominantRiskFactorMetric >= 50 ... "amber" : "blue"
+      dominantRiskFactorMetric !== null && dominantRiskFactorMetric >= 50 ? "amber" : "blue"
     ),
     compactMetric(
       "Max drawdown",
@@ -2519,9 +2519,9 @@ function compactXRaySummary({
     ),
     compactMetric(
       "Worst pre-stress weakness",
-      primaryWeakness ... displayLabel(primaryWeakness.risk_title ...... primaryWeakness.risk_type) : "n/a",
-      primaryWeaknessScore !== null ... `Score ${primaryWeaknessScore}/100` : "Insufficient evidence",
-      toneForSeverity(primaryWeakness....severity)
+      primaryWeakness ? displayLabel(primaryWeakness.risk_title ?? primaryWeakness.risk_type) : "n/a",
+      primaryWeaknessScore !== null ? `Score ${primaryWeaknessScore}/100` : "Insufficient evidence",
+      toneForSeverity(primaryWeakness?.severity)
     )
   ];
 
@@ -2534,29 +2534,29 @@ function compactXRaySummary({
   ].filter((item): item is XRayBreakdown => Boolean(item));
 
   const compositionKeyFacts = [
-    `Top holding: ${topHolding.ticker ... `${textValue(topHolding.ticker)} at ${formatRawPercent(topHolding.weight_pct)}` : "unavailable"}.`,
-    `Top 3 concentration: ${top3Weight !== null ... formatRawPercent(top3Weight) : "unavailable"}.`,
-    `Dominant asset class: ${dominantAssetClass.name ... `${displayLabel(dominantAssetClass.name)} at ${formatFlexiblePercent(dominantAssetClass.weight_pct)}` : "unavailable"}.`,
-    `Dominant risk role: ${dominantRiskRole.name ... `${displayLabel(dominantRiskRole.name)} at ${formatFlexiblePercent(dominantRiskRole.weight_pct)}` : "unavailable"}.`,
-    `Dominant region / currency: ${dominantRegion.name ... `${displayLabel(dominantRegion.name)} ${formatFlexiblePercent(dominantRegion.weight_pct)}` : "region unavailable"}; ${dominantCurrency.name ... `${displayLabel(dominantCurrency.name)} ${formatFlexiblePercent(dominantCurrency.weight_pct)}` : "currency unavailable"}.`
+    `Top holding: ${topHolding.ticker ? `${textValue(topHolding.ticker)} at ${formatRawPercent(topHolding.weight_pct)}` : "unavailable"}.`,
+    `Top 3 concentration: ${top3Weight !== null ? formatRawPercent(top3Weight) : "unavailable"}.`,
+    `Dominant asset class: ${dominantAssetClass.name ? `${displayLabel(dominantAssetClass.name)} at ${formatFlexiblePercent(dominantAssetClass.weight_pct)}` : "unavailable"}.`,
+    `Dominant risk role: ${dominantRiskRole.name ? `${displayLabel(dominantRiskRole.name)} at ${formatFlexiblePercent(dominantRiskRole.weight_pct)}` : "unavailable"}.`,
+    `Dominant region / currency: ${dominantRegion.name ? `${displayLabel(dominantRegion.name)} ${formatFlexiblePercent(dominantRegion.weight_pct)}` : "region unavailable"}; ${dominantCurrency.name ? `${displayLabel(dominantCurrency.name)} ${formatFlexiblePercent(dominantCurrency.weight_pct)}` : "currency unavailable"}.`
   ];
 
   const rollingFacts = [
     getRecord(rolling.rolling_volatility_12m).latest !== undefined
-      ... `Latest rolling volatility: ${formatDecimalPercent(getRecord(rolling.rolling_volatility_12m).latest)}.`
+      ? `Latest rolling volatility: ${formatDecimalPercent(getRecord(rolling.rolling_volatility_12m).latest)}.`
       : "",
     getRecord(rolling.rolling_sharpe_36m).latest !== undefined
-      ... `Latest rolling Sharpe: ${compactNumber(getRecord(rolling.rolling_sharpe_36m).latest)}.`
+      ? `Latest rolling Sharpe: ${compactNumber(getRecord(rolling.rolling_sharpe_36m).latest)}.`
       : "",
     getRecord(rolling.rolling_beta_or_correlation).latest_beta !== undefined
-      ... `Latest rolling beta: ${compactNumber(getRecord(rolling.rolling_beta_or_correlation).latest_beta)}.`
+      ? `Latest rolling beta: ${compactNumber(getRecord(rolling.rolling_beta_or_correlation).latest_beta)}.`
       : ""
   ].filter(Boolean);
 
   const riskProfileFacts = [
     `Realized CAGR ${formatDecimalPercent(returnRisk.portfolio_cagr)} with annualized volatility ${formatDecimalPercent(returnRisk.vol_annual)} over the primary window.`,
     `Sharpe ratio ${compactNumber(returnRisk.sharpe)}; Sortino ${compactNumber(returnRisk.sortino)}.`,
-    `Maximum drawdown ${formatDecimalPercent(drawdown.max_drawdown)}${drawdown.recovered === true ... "; deepest episode recovered within sample" : ""}.`,
+    `Maximum drawdown ${formatDecimalPercent(drawdown.max_drawdown)}${drawdown.recovered === true ? "; deepest episode recovered within sample" : ""}.`,
     ...rollingFacts
   ].filter((fact) => !fact.includes("n/a")).slice(0, 5);
 
@@ -2564,50 +2564,50 @@ function compactXRaySummary({
     compactMetric("CAGR", formatDecimalPercent(returnRisk.portfolio_cagr), "Primary diagnostic window", "blue"),
     compactMetric("Annual volatility", formatDecimalPercent(returnRisk.vol_annual), "Realized portfolio volatility", "blue"),
     ...(numericValue(metricsMetadata.vol_of_vol) !== null
-      ... [compactMetric("Vol of vol", formatDecimalPercent(metricsMetadata.vol_of_vol), "Rolling volatility stability", "slate")]
+      ? [compactMetric("Vol of vol", formatDecimalPercent(metricsMetadata.vol_of_vol), "Rolling volatility stability", "slate")]
       : []),
-    compactMetric("Max drawdown", formatDecimalPercent(drawdown.max_drawdown), drawdown.recovered === true ... "Deepest episode recovered within sample" : "Recovery evidence unavailable", toneForLoss(drawdown.max_drawdown)),
+    compactMetric("Max drawdown", formatDecimalPercent(drawdown.max_drawdown), drawdown.recovered === true ? "Deepest episode recovered within sample" : "Recovery evidence unavailable", toneForLoss(drawdown.max_drawdown)),
     ...(numericValue(drawdown.ttr_months) !== null
-      ... [compactMetric("Time to recovery", `${compactNumber(drawdown.ttr_months)} months`, drawdown.recovered === true ... "Recovered within sample" : "Recovery not observed", "slate")]
+      ? [compactMetric("Time to recovery", `${compactNumber(drawdown.ttr_months)} months`, drawdown.recovered === true ? "Recovered within sample" : "Recovery not observed", "slate")]
       : []),
     ...(numericValue(drawdown.pct_time_underwater) !== null
-      ... [compactMetric("Time underwater", formatDecimalPercent(drawdown.pct_time_underwater), "Share of diagnostic window below prior high", "slate")]
+      ? [compactMetric("Time underwater", formatDecimalPercent(drawdown.pct_time_underwater), "Share of diagnostic window below prior high", "slate")]
       : []),
     ...(numericValue(drawdown.count_drawdowns_gt_10) !== null
-      ... [compactMetric("Drawdowns >10%", String(drawdown.count_drawdowns_gt_10), "Count in diagnostic window", "slate")]
+      ? [compactMetric("Drawdowns >10%", String(drawdown.count_drawdowns_gt_10), "Count in diagnostic window", "slate")]
       : []),
     compactMetric("VaR 95", formatDecimalPercent(tailRisk.var_95), "Daily historical tail metric", toneForLoss(tailRisk.var_95)),
     compactMetric("ES 95", formatDecimalPercent(tailRisk.es_95), "Daily historical expected shortfall", toneForLoss(tailRisk.es_95)),
     ...(numericValue(returnRisk.skewness) !== null
-      ... [compactMetric("Skewness", compactNumber(returnRisk.skewness), "Return asymmetry", "slate")]
+      ? [compactMetric("Skewness", compactNumber(returnRisk.skewness), "Return asymmetry", "slate")]
       : []),
     ...(numericValue(returnRisk.kurtosis) !== null
-      ... [compactMetric("Kurtosis", compactNumber(returnRisk.kurtosis), "Tail thickness", "slate")]
+      ? [compactMetric("Kurtosis", compactNumber(returnRisk.kurtosis), "Tail thickness", "slate")]
       : []),
-    compactMetric("Beta", compactNumber(benchmark.beta_portfolio), textValue(benchmark.benchmark_ticker, "Benchmark dependence"), numericValue(benchmark.beta_portfolio) !== null && (numericValue(benchmark.beta_portfolio) ...... 0) >= 0.9 ... "amber" : "blue"),
-    compactMetric("Downside beta", compactNumber(benchmark.downside_beta), "Sensitivity in down markets", numericValue(benchmark.downside_beta) !== null && (numericValue(benchmark.downside_beta) ...... 0) >= 0.9 ... "amber" : "blue"),
+    compactMetric("Beta", compactNumber(benchmark.beta_portfolio), textValue(benchmark.benchmark_ticker, "Benchmark dependence"), numericValue(benchmark.beta_portfolio) !== null && (numericValue(benchmark.beta_portfolio) ?? 0) >= 0.9 ? "amber" : "blue"),
+    compactMetric("Downside beta", compactNumber(benchmark.downside_beta), "Sensitivity in down markets", numericValue(benchmark.downside_beta) !== null && (numericValue(benchmark.downside_beta) ?? 0) >= 0.9 ? "amber" : "blue"),
     ...(numericValue(benchmark.upside_beta) !== null
-      ... [compactMetric("Upside beta", compactNumber(benchmark.upside_beta), "Sensitivity in up markets", "slate")]
+      ? [compactMetric("Upside beta", compactNumber(benchmark.upside_beta), "Sensitivity in up markets", "slate")]
       : []),
     ...(numericValue(benchmark.corr_base) !== null
-      ... [compactMetric("Benchmark correlation", compactNumber(benchmark.corr_base), textValue(benchmark.benchmark_ticker, "Benchmark"), "slate")]
+      ? [compactMetric("Benchmark correlation", compactNumber(benchmark.corr_base), textValue(benchmark.benchmark_ticker, "Benchmark"), "slate")]
       : []),
     compactMetric("Sharpe", compactNumber(returnRisk.sharpe), "Total-volatility efficiency", "blue"),
     compactMetric("Sortino", compactNumber(returnRisk.sortino), "Downside-adjusted efficiency", "blue"),
     ...(numericValue(returnRisk.treynor) !== null
-      ... [compactMetric("Treynor", compactNumber(returnRisk.treynor), "Beta-adjusted efficiency", "slate")]
+      ? [compactMetric("Treynor", compactNumber(returnRisk.treynor), "Beta-adjusted efficiency", "slate")]
       : [])
   ].filter((metric) => metric.value !== "n/a");
 
   const factorCards = Object.entries(FACTOR_LABELS).map(([betaName, factor]) => {
     const confidenceRecord = getRecord(factorSignal[betaName]);
-    const factorKey = Object.entries(FACTOR_TO_BETA).find(([, beta]) => beta === betaName)....[0];
+    const factorKey = Object.entries(FACTOR_TO_BETA).find(([, beta]) => beta === betaName)?.[0];
     return {
       factor,
-      beta: numericValue(factorBetas[betaName]) ...... undefined,
-      contributionPct: factorKey ... numericValue(factorVariance[factorKey]) ...... undefined : undefined,
-      confidence: displayLabel(confidenceRecord.signal_confidence ...... confidenceRecord.status, numericValue(factorBetas[betaName]) === null ... "Unavailable" : "Visible"),
-      interpretation: textValue(confidenceRecord.confidence_reason, `${factor} factor sensitivity ${numericValue(factorBetas[betaName]) === null ... "is unavailable" : "is visible"} in the current evidence.`)
+      beta: numericValue(factorBetas[betaName]) ?? undefined,
+      contributionPct: factorKey ? numericValue(factorVariance[factorKey]) ?? undefined : undefined,
+      confidence: displayLabel(confidenceRecord.signal_confidence ?? confidenceRecord.status, numericValue(factorBetas[betaName]) === null ? "Unavailable" : "Visible"),
+      interpretation: textValue(confidenceRecord.confidence_reason, `${factor} factor sensitivity ${numericValue(factorBetas[betaName]) === null ? "is unavailable" : "is visible"} in the current evidence.`)
     };
   });
 
@@ -2615,8 +2615,8 @@ function compactXRaySummary({
     .map(getRecord)
     .map((item) => ({
       factor: displayLabel(item.factor, "Factor"),
-      beta: numericValue(item.beta) ...... undefined,
-      contributionPct: numericValue(item.contribution) ...... undefined,
+      beta: numericValue(item.beta) ?? undefined,
+      contributionPct: numericValue(item.contribution) ?? undefined,
       confidence: displayLabel(item.confidence, "Evidence"),
       interpretation: textValue(item.interpretation, "Factor sensitivity is visible in the current evidence.")
     }))
@@ -2632,10 +2632,10 @@ function compactXRaySummary({
       id,
       title: HIDDEN_ALERT_TITLES[id],
       level: displayLabel(alert.status, "Unavailable"),
-      score: numericValue(alert.score) ...... undefined,
+      score: numericValue(alert.score) ?? undefined,
       diagnosis: textValue(alert.explanation, textValue(alert.why_it_matters, "Hidden risk signal is present.")),
       evidence: evidenceLines(alert.evidence, 3),
-      linkedAssets: linkedAssetLabels(alert.contributing_assets ...... alert.linked_assets),
+      linkedAssets: linkedAssetLabels(alert.contributing_assets ?? alert.linked_assets),
       nextTests: nextTests(alert.next_tests),
       confidence: displayLabel(alert.confidence, "Evidence")
     };
@@ -2651,10 +2651,10 @@ function compactXRaySummary({
       id,
       title: WEAKNESS_TITLES[id],
       severity: displayLabel(risk.severity, "Unavailable"),
-      score: numericValue(risk.score_0_100) ...... undefined,
+      score: numericValue(risk.score_0_100) ?? undefined,
       diagnosis: textValue(risk.short_diagnosis, textValue(risk.why_status, "Potential weakness signal is present.")),
       evidence: stringArray(risk.key_evidence).slice(0, 3).length
-        ... stringArray(risk.key_evidence).slice(0, 3)
+        ? stringArray(risk.key_evidence).slice(0, 3)
         : evidenceLines(risk.evidence, 3),
       linkedAssets: linkedAssetLabels(risk.linked_assets),
       nextTests: nextTests(risk.next_tests),
@@ -2682,14 +2682,14 @@ function compactXRaySummary({
     },
     riskProfile: {
       insight: numericValue(returnRisk.portfolio_cagr) !== null || numericValue(drawdown.max_drawdown) !== null
-        ... `The portfolio delivered ${formatDecimalPercent(returnRisk.portfolio_cagr)} CAGR with a ${formatDecimalPercent(drawdown.max_drawdown)} maximum drawdown over the primary diagnostic window.`
+        ? `The portfolio delivered ${formatDecimalPercent(returnRisk.portfolio_cagr)} CAGR with a ${formatDecimalPercent(drawdown.max_drawdown)} maximum drawdown over the primary diagnostic window.`
         : textValue(behavior.headline, "Risk profile evidence is available for the submitted current portfolio."),
       metrics: riskMetrics,
-      keyFacts: riskProfileFacts.length ... riskProfileFacts : stringArray(behavior.key_points).slice(0, 5)
+      keyFacts: riskProfileFacts.length ? riskProfileFacts : stringArray(behavior.key_points).slice(0, 5)
     },
     factors: {
       insight: textValue(factorSummary.diagnostic_interpretation, textValue(factorSummary.client_summary, "Factor sensitivity evidence is available when factor data is sufficient.")),
-      topFactors: rankedFactors.length ... rankedFactors : factorCards.filter((factor) => factor.beta !== undefined).slice(0, 3),
+      topFactors: rankedFactors.length ? rankedFactors : factorCards.filter((factor) => factor.beta !== undefined).slice(0, 3),
       factorCards,
       caveat: firstText(factorSummary.main_caveat)
     },
@@ -2699,8 +2699,8 @@ function compactXRaySummary({
     },
     riskBudget: {
       insight: textValue(riskBudgetBlock.summary, "Risk budget evidence shows which assets contribute more or less risk than their capital weight."),
-      topContributor: topRiskContributor ...... undefined,
-      top3Share: numericValue(riskBudgetBlock.top3_rc_share) ...... undefined,
+      topContributor: topRiskContributor ?? undefined,
+      top3Share: numericValue(riskBudgetBlock.top3_rc_share) ?? undefined,
       contributors: compactRiskRows(riskBudgetBlock.top3_rc_assets, 3),
       riskOverweight: compactRiskRows(riskBudgetBlock.top_risk_overweight_assets, 3),
       riskUnderweight: compactRiskRows(riskBudgetBlock.top_risk_underweight_assets, 3),
@@ -2743,7 +2743,7 @@ function compactEvidenceFields({
   const riskTypes = getArray(weaknessMap.risk_types)
     .map(getRecord)
     .filter((item) => Boolean(textValue(item.risk_title, "") || textValue(item.risk_type, "")))
-    .sort((a, b) => (numericValue(b.score_0_100) ...... 0) - (numericValue(a.score_0_100) ...... 0));
+    .sort((a, b) => (numericValue(b.score_0_100) ?? 0) - (numericValue(a.score_0_100) ?? 0));
   const dataWarning = firstStringFromArrays(
     allocation.data_quality_warnings,
     metricsBlock.data_quality_warnings,
@@ -2752,15 +2752,15 @@ function compactEvidenceFields({
     hedgeSummary.data_quality_warnings
   );
 
-  const holdingsCount = numericValue(composition.total_holdings) ...... activeReview.reviewSummary....holdingsCount ...... activeReview.holdings.length;
+  const holdingsCount = numericValue(composition.total_holdings) ?? activeReview.reviewSummary?.holdingsCount ?? activeReview.holdings.length;
   const dominantExposureName = textValue(dominantRiskFactor.name, textValue(dominantAssetClass.name, "Dominant exposure"));
-  const dominantExposureWeight = formatRawPercent(dominantRiskFactor.weight_pct ...... dominantAssetClass.weight_pct);
-  const worstScenarioId = textValue(worstScenario.scenario_id ...... stress.failed_scenario, "Worst stress scenario");
-  const worstStressLoss = worstScenario.portfolio_pnl_pct ...... stress.worst_scenario_loss_pct;
-  const hedgeCoverage = mainHedgeGap.offset_coverage_ratio ...... hedgeSummary.main_hedge_gap_offset_coverage_ratio;
-  const hedgeArea = textValue(mainHedgeGap.protection_type ...... hedgeSummary.weakest_protection_area, "hedge gap");
+  const dominantExposureWeight = formatRawPercent(dominantRiskFactor.weight_pct ?? dominantAssetClass.weight_pct);
+  const worstScenarioId = textValue(worstScenario.scenario_id ?? stress.failed_scenario, "Worst stress scenario");
+  const worstStressLoss = worstScenario.portfolio_pnl_pct ?? stress.worst_scenario_loss_pct;
+  const hedgeCoverage = mainHedgeGap.offset_coverage_ratio ?? hedgeSummary.main_hedge_gap_offset_coverage_ratio;
+  const hedgeArea = textValue(mainHedgeGap.protection_type ?? hedgeSummary.weakest_protection_area, "hedge gap");
   const riskContributorText = topRiskContributors.length
-    ... topRiskContributors.map((item) => `${textValue(item.ticker, "Asset")} ${formatRawPercent(item.rc_pct ...... item.risk_contribution_pct)}`).join(" · ")
+    ? topRiskContributors.map((item) => `${textValue(item.ticker, "Asset")} ${formatRawPercent(item.rc_pct ?? item.risk_contribution_pct)}`).join(" · ")
     : "Top risk contributors were not returned.";
 
   const items: EvidenceItem[] = [
@@ -2769,7 +2769,7 @@ function compactEvidenceFields({
       title: "Portfolio composition",
       status: `${holdingsCount} holdings`,
       summary: topHolding.ticker
-        ... `Largest holding is ${textValue(topHolding.ticker)} at ${formatRawPercent(topHolding.weight_pct)}.`
+        ? `Largest holding is ${textValue(topHolding.ticker)} at ${formatRawPercent(topHolding.weight_pct)}.`
         : "Portfolio composition was returned for the current portfolio.",
       source: "Portfolio X-Ray",
       tone: "blue"
@@ -2780,15 +2780,15 @@ function compactEvidenceFields({
       status: `${dominantExposureName} · ${dominantExposureWeight}`,
       summary: `The current portfolio is most exposed to ${dominantExposureName}.`,
       source: "Portfolio X-Ray",
-      tone: numericValue(dominantRiskFactor.weight_pct ...... dominantAssetClass.weight_pct) !== null && (numericValue(dominantRiskFactor.weight_pct ...... dominantAssetClass.weight_pct) ...... 0) >= 50 ... "amber" : "blue"
+      tone: numericValue(dominantRiskFactor.weight_pct ?? dominantAssetClass.weight_pct) !== null && (numericValue(dominantRiskFactor.weight_pct ?? dominantAssetClass.weight_pct) ?? 0) >= 50 ? "amber" : "blue"
     },
     {
       type: "X-Ray",
       title: "Top risk contributors",
-      status: topRiskContributor.ticker ... `${textValue(topRiskContributor.ticker)} leads risk` : "Not available",
+      status: topRiskContributor.ticker ? `${textValue(topRiskContributor.ticker)} leads risk` : "Not available",
       summary: riskContributorText,
       source: "Portfolio X-Ray",
-      tone: topRiskContributors.length ... "amber" : "slate"
+      tone: topRiskContributors.length ? "amber" : "slate"
     },
     {
       type: "Stress",
@@ -2801,12 +2801,12 @@ function compactEvidenceFields({
     {
       type: "Stress",
       title: "Hedge / offset coverage",
-      status: hedgeCoverage !== undefined ... `${formatDecimalPercent(hedgeCoverage)} offset coverage` : "Not available",
+      status: hedgeCoverage !== undefined ? `${formatDecimalPercent(hedgeCoverage)} offset coverage` : "Not available",
       summary: hedgeCoverage !== undefined
-        ... `Weakest protection area: ${hedgeArea}.`
+        ? `Weakest protection area: ${hedgeArea}.`
         : "Stress result did not return hedge or offset coverage.",
       source: "Stress Test Lab",
-      tone: hedgeCoverage !== undefined ... ((numericValue(hedgeCoverage) ...... 0) < 0.25 ... "amber" : "blue") : "slate"
+      tone: hedgeCoverage !== undefined ? ((numericValue(hedgeCoverage) ?? 0) < 0.25 ? "amber" : "blue") : "slate"
     }
   ];
 
@@ -2814,10 +2814,10 @@ function compactEvidenceFields({
     items.splice(3, 0, {
       type: "X-Ray",
       title: "Primary weakness",
-      status: `${textValue(riskTypes[0].severity, "Risk")} · score ${textValue(String(riskTypes[0].score_0_100 ...... "n/a"))}`,
+      status: `${textValue(riskTypes[0].severity, "Risk")} · score ${textValue(String(riskTypes[0].score_0_100 ?? "n/a"))}`,
       summary: textValue(riskTypes[0].short_diagnosis, textValue(riskTypes[0].risk_title, "Primary weakness returned by X-Ray.")),
       source: "Portfolio X-Ray",
-      tone: (numericValue(riskTypes[0].score_0_100) ...... 0) >= 70 ... "red" : "amber"
+      tone: (numericValue(riskTypes[0].score_0_100) ?? 0) >= 70 ? "red" : "amber"
     });
   }
 
@@ -2834,13 +2834,13 @@ function compactEvidenceFields({
 
   return {
     headline: "Evidence is based on the latest completed real review.",
-    quality: evidenceQualityLabel(stressConclusions.overall_confidence ...... "partial"),
+    quality: evidenceQualityLabel(stressConclusions.overall_confidence ?? "partial"),
     boundaryNote: "Evidence is diagnostic and comes from Portfolio X-Ray plus Stress Test Lab for the submitted current portfolio.",
     metrics: [
       {
         label: "Holdings",
         value: String(holdingsCount),
-        detail: topHolding.ticker ... `Largest: ${textValue(topHolding.ticker)} ${formatRawPercent(topHolding.weight_pct)}` : "Current portfolio",
+        detail: topHolding.ticker ? `Largest: ${textValue(topHolding.ticker)} ${formatRawPercent(topHolding.weight_pct)}` : "Current portfolio",
         tone: "blue"
       },
       {
@@ -2863,9 +2863,9 @@ function compactEvidenceFields({
       },
       {
         label: "Offset coverage",
-        value: hedgeCoverage !== undefined ... formatDecimalPercent(hedgeCoverage) : "n/a",
+        value: hedgeCoverage !== undefined ? formatDecimalPercent(hedgeCoverage) : "n/a",
         detail: hedgeArea,
-        tone: hedgeCoverage !== undefined ... "amber" : "slate"
+        tone: hedgeCoverage !== undefined ? "amber" : "slate"
       }
     ],
     items
@@ -2897,7 +2897,7 @@ export function buildCompactReviewSummary({
     comparisonReady: false,
     verdictReady: false,
     updatedAt: nowIso()
-  }) ...... {
+  }) ?? {
     status: "Diagnosis ready",
     headline: "Portfolio diagnosis completed.",
     evidenceQuality: "Moderate evidence",
@@ -2916,7 +2916,7 @@ export function buildCompactReviewSummary({
   const candidateLaunchpad = outputs.candidate_launchpad;
   const portfolioAlternativesBuilder = outputs.portfolio_alternatives_builder;
   const siteExplanation = cleanSiteExplanationBundle(outputs.site_explanation_bundle);
-  const compactProblem = compactProblemFieldsFromFastApi(fastApiData.diagnosis) ...... compactProblemFields(problemClassification);
+  const compactProblem = compactProblemFieldsFromFastApi(fastApiData.diagnosis) ?? compactProblemFields(problemClassification);
   const compactLaunchpad = compactLaunchpadFields(candidateLaunchpad);
   const clientFit = cleanClientFitDisplaySummary(fastApiData.client_fit);
   const rawBytes = estimateJsonBytes(reviewResult);
@@ -2962,7 +2962,7 @@ export function buildCompactReviewSummary({
     xraySummary,
     evidence,
     clientFit,
-    stressLabModel: stressLabModel ...... undefined,
+    stressLabModel: stressLabModel ?? undefined,
     siteExplanation,
     primaryProblem: compactProblem.primaryProblem,
     problemSeverity: compactProblem.problemSeverity,
@@ -2992,22 +2992,22 @@ export function buildCompactReviewSummary({
 function sumBySleeve(holdings: ReviewHolding[], sleeve: string) {
   return holdings.reduce((sum, holding) => {
     const instrument = instrumentByTicker.get(holding.ticker);
-    return instrument....sleeve === sleeve ... sum + holding.weight : sum;
+    return instrument?.sleeve === sleeve ? sum + holding.weight : sum;
   }, 0);
 }
 
 function labelsBySleeve(holdings: ReviewHolding[], sleeve: string) {
   return holdings
-    .filter((holding) => instrumentByTicker.get(holding.ticker)....sleeve === sleeve)
-    .map((holding) => holding.type === "cash" ... "Cash" : holding.label);
+    .filter((holding) => instrumentByTicker.get(holding.ticker)?.sleeve === sleeve)
+    .map((holding) => holding.type === "cash" ? "Cash" : holding.label);
 }
 
 function metricTone(value: number, warningLevel: number): StatusTone {
-  return value >= warningLevel ... "amber" : "blue";
+  return value >= warningLevel ? "amber" : "blue";
 }
 
 export function buildDiagnosisFromReview(review: ActiveReviewState): DiagnosisState {
-  if (review.reviewSummary....diagnosis) return review.reviewSummary.diagnosis;
+  if (review.reviewSummary?.diagnosis) return review.reviewSummary.diagnosis;
 
   const realDiagnosis = buildDiagnosisFromRealResult(review);
   if (realDiagnosis) return realDiagnosis;
@@ -3020,27 +3020,27 @@ export function buildDiagnosisFromReview(review: ActiveReviewState): DiagnosisSt
   const topHolding = [...holdings].sort((a, b) => b.weight - a.weight)[0];
   const equityLabels = labelsBySleeve(holdings, "equity");
   const fixedIncomeLabels = labelsBySleeve(holdings, "fixed_income");
-  const cashDetail = cashWeight > 0 ... `${review.investorCurrency || "USD"} cash included` : "No cash position";
+  const cashDetail = cashWeight > 0 ? `${review.investorCurrency || "USD"} cash included` : "No cash position";
 
   const headline = equityWeight >= 50
-    ... "Equity exposure is the main driver of the current portfolio risk story."
+    ? "Equity exposure is the main driver of the current portfolio risk story."
     : fixedIncomeWeight >= 35
-      ... "Rate-sensitive fixed income is a major part of the current portfolio risk story."
+      ? "Rate-sensitive fixed income is a major part of the current portfolio risk story."
       : "The current portfolio has a more balanced risk mix, with no single sleeve fully dominant.";
 
   const drivers = [
     topHolding
-      ... `${topHolding.label} is the largest position at ${formatPercent(topHolding.weight)}.`
+      ? `${topHolding.label} is the largest position at ${formatPercent(topHolding.weight)}.`
       : "No portfolio positions are available for diagnosis.",
     equityWeight > 0
-      ... `Equity sleeve is ${formatPercent(equityWeight)}${equityLabels.length ... ` through ${equityLabels.join(" + ")}` : ""}.`
+      ? `Equity sleeve is ${formatPercent(equityWeight)}${equityLabels.length ? ` through ${equityLabels.join(" + ")}` : ""}.`
       : "There is no dedicated equity sleeve in the current input.",
     fixedIncomeWeight > 0
-      ... `Fixed-income sleeve is ${formatPercent(fixedIncomeWeight)}${fixedIncomeLabels.length ... ` through ${fixedIncomeLabels.join(" + ")}` : ""}.`
+      ? `Fixed-income sleeve is ${formatPercent(fixedIncomeWeight)}${fixedIncomeLabels.length ? ` through ${fixedIncomeLabels.join(" + ")}` : ""}.`
       : goldWeight > 0
-        ... `Gold sleeve is ${formatPercent(goldWeight)} and may behave differently from equity and bonds.`
+        ? `Gold sleeve is ${formatPercent(goldWeight)} and may behave differently from equity and bonds.`
         : cashWeight > 0
-          ... `Liquidity sleeve is ${formatPercent(cashWeight)}.`
+          ? `Liquidity sleeve is ${formatPercent(cashWeight)}.`
           : "No cash position is currently entered."
   ];
 
@@ -3052,9 +3052,9 @@ export function buildDiagnosisFromReview(review: ActiveReviewState): DiagnosisSt
     boundaryNote: "Diagnosis reflects the portfolio currently entered on the input screen.",
     drivers,
     metrics: [
-      { label: "Equity sleeve", value: formatPercent(equityWeight), detail: equityLabels.length ... equityLabels.join(" + ") : "No equity sleeve", tone: metricTone(equityWeight, 50) },
-      { label: "Fixed income", value: formatPercent(fixedIncomeWeight), detail: fixedIncomeLabels.length ... fixedIncomeLabels.join(" + ") : "No bond sleeve", tone: metricTone(fixedIncomeWeight, 35) },
-      { label: "Liquidity sleeve", value: formatPercent(cashWeight), detail: cashDetail, tone: cashWeight > 0 ... "blue" : "slate" }
+      { label: "Equity sleeve", value: formatPercent(equityWeight), detail: equityLabels.length ? equityLabels.join(" + ") : "No equity sleeve", tone: metricTone(equityWeight, 50) },
+      { label: "Fixed income", value: formatPercent(fixedIncomeWeight), detail: fixedIncomeLabels.length ? fixedIncomeLabels.join(" + ") : "No bond sleeve", tone: metricTone(fixedIncomeWeight, 35) },
+      { label: "Liquidity sleeve", value: formatPercent(cashWeight), detail: cashDetail, tone: cashWeight > 0 ? "blue" : "slate" }
     ],
     sourceArtifacts: [],
     rejectedAlternatives: [],

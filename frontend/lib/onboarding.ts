@@ -17,7 +17,7 @@ export type OnboardingState = {
   decisionStyle: OnboardingDecisionStyle;
   primaryConcern: OnboardingPrimaryConcern;
   liquidityNeed: OnboardingLiquidityNeed;
-  updatedAt...: string;
+  updatedAt?: string;
 };
 
 type PresetId = NonNullable<ClientFitInput["preset_id"]>;
@@ -138,7 +138,7 @@ export function readOnboardingState(): OnboardingState {
     return {
       ...defaultOnboardingState,
       ...parsed,
-      name: typeof parsed.name === "string" ... parsed.name : ""
+      name: typeof parsed.name === "string" ? parsed.name : ""
     };
   } catch (_error) {
     return defaultOnboardingState;
@@ -157,10 +157,10 @@ export function writeOnboardingState(next: Partial<OnboardingState>) {
 
 function presetForState(state: OnboardingState): PresetDefinition {
   if (state.decisionStyle === "preserve_unless_clear" || state.objective === "preserve" || state.riskComfort === "low" || state.liquidityNeed === "high") {
-    return state.horizon === "short" ... presets.ultra_conservative : presets.conservative;
+    return state.horizon === "short" ? presets.ultra_conservative : presets.conservative;
   }
   if (state.decisionStyle === "test_growth" || state.objective === "growth" || state.riskComfort === "high") {
-    return state.horizon === "short" ... presets.balanced : presets.growth;
+    return state.horizon === "short" ? presets.balanced : presets.growth;
   }
   if (state.horizon === "long") return presets.growth;
   return presets.balanced;
@@ -168,8 +168,8 @@ function presetForState(state: OnboardingState): PresetDefinition {
 
 export function buildClientFitProfileFromOnboarding(state: OnboardingState): ClientFitInput {
   const preset = presetForState(state);
-  const horizonYears = state.horizon === "short" ... Math.min(preset.horizon, 3) : state.horizon === "long" ... Math.max(preset.horizon, 10) : preset.horizon;
-  const namePrefix = state.name.trim() ... `${state.name.trim()}'s ` : "";
+  const horizonYears = state.horizon === "short" ? Math.min(preset.horizon, 3) : state.horizon === "long" ? Math.max(preset.horizon, 10) : preset.horizon;
+  const namePrefix = state.name.trim() ? `${state.name.trim()}'s ` : "";
 
   return {
     preset_id: preset.id,

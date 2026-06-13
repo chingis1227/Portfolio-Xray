@@ -60,6 +60,20 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-06-13-001
+Title: Current frontend is the design documentation source of truth
+
+- Status: accepted
+- Date: 2026-06-13
+- Decision: The implemented `frontend/` website is the current source for Portfolio MRI design documentation, route structure, visible blocks, and token palette. The canonical public path requires email sign-in before onboarding, while `/onboarding/name?dev_bypass=1` remains a local testing shortcut only.
+- Context: Active docs described older design tokens, outdated external/prototype design files, and a `/client-profile`-first journey that no longer matched the latest website.
+- Rationale: Agents and future implementation work need one synchronized design truth that matches the live frontend instead of conflicting concept and prototype documents.
+- Alternatives considered: Keep old external/prototype documents as active visual references (rejected because they conflict with current graphite UI and 8-step platform journey); make dev bypass the canonical path (rejected because product intent requires sign-in).
+- Assumptions: Email sign-in may still be unstable locally, so the local bypass remains documented for testing but must not be presented as the product path.
+- Consequences: `DESIGN.md`, `docs/design/portfolio_mri_design_system.md`, `docs/design/current_website_structure.md`, and related contracts must be updated whenever visible route structure, tokens, CTA flow, or screen copy changes.
+- Related documents: `DESIGN.md`, `docs/design/current_website_structure.md`, `docs/contracts/DESIGN_SYSTEM_CONTRACT.md`, `docs/contracts/SCREEN_CONTRACTS.md`, `docs/specs/frontend_screen_contracts.md`, `frontend/README.md`.
+- Review trigger: Revisit if sign-in is removed from the product path, if `/client-profile` becomes primary entry again, or if the frontend visual system intentionally changes.
+
 Decision ID: DEC-2026-06-12-003
 Title: Keep Client Fit API and Supabase surfaces display-ready and compact
 

@@ -69,7 +69,7 @@ export default function OnboardingLoadingPage() {
         </div>
         <div className="mx-auto mt-8 grid max-w-md gap-3 text-left">
           {setupSteps.map((step, index) => (
-            <div key={step} className={`rounded-2xl border px-4 py-3 text-sm transition ${index <= activeIndex ... "border-pmri-blue/35 bg-pmri-blue/[0.08] text-pmri-text" : "border-pmri-border/45 bg-white/[0.02] text-pmri-muted"}`}>
+            <div key={step} className={`rounded-2xl border px-4 py-3 text-sm transition ${index <= activeIndex ? "border-pmri-blue/35 bg-pmri-blue/[0.08] text-pmri-text" : "border-pmri-border/45 bg-white/[0.02] text-pmri-muted"}`}>
               {step}
             </div>
           ))}

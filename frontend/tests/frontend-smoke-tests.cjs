@@ -33,7 +33,7 @@ async function fetchWithTimeout(url, timeoutMs = 2000, context = url) {
 }
 
 function outputTail(outputLines, maxLines = 80) {
-  return outputLines.join("").split(/\r...\n/).slice(-maxLines).join("\n");
+  return outputLines.join("").split(/\r?\n/).slice(-maxLines).join("\n");
 }
 
 function findAvailablePort(preferredPort) {

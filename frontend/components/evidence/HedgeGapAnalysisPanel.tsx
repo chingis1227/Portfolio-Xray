@@ -6,7 +6,7 @@ import { HelpHint, StressSectionHeader } from "./stressLabUi";
 
 export function HedgeGapAnalysisPanel({ hedgeGap }: { hedgeGap: HedgeGapSummary }) {
   const grossLossDisplay = hedgeGap.grossLossFromHurt === null
-    ... "Unavailable"
+    ? "Unavailable"
     : formatStressPercent(-Math.abs(hedgeGap.grossLossFromHurt));
   const positiveDisplay = formatStressPercent(hedgeGap.positiveContributionFromHelped, { signed: true });
   const coverageDisplay = formatStressPercent(hedgeGap.offsetCoverageRatio);

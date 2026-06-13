@@ -21,11 +21,11 @@ function ScenarioTile({
 }) {
   const unavailable = scenario.availability !== "available";
   const metric = scenario.kind === "historical"
-    ... scenario.drawdownPct !== null
-      ... `Drawdown: ${formatStressPercent(scenario.drawdownPct)}`
+    ? scenario.drawdownPct !== null
+      ? `Drawdown: ${formatStressPercent(scenario.drawdownPct)}`
       : "Replay limited"
     : scenario.portfolioLossPct !== null
-      ... `Loss: ${formatStressPercent(scenario.portfolioLossPct)}`
+      ? `Loss: ${formatStressPercent(scenario.portfolioLossPct)}`
       : "Unavailable";
 
   return (
@@ -35,7 +35,7 @@ function ScenarioTile({
       aria-pressed={selected}
       className={`pmri-focus pmri-hover-panel min-h-[10rem] rounded-2xl border p-4 text-left transition ${
         selected
-          ... "border-pmri-blue/48 bg-pmri-blue/[0.075]"
+          ? "border-pmri-blue/48 bg-pmri-blue/[0.075]"
           : "border-pmri-border/60 bg-white/[0.024]"
       }`}
     >
@@ -48,14 +48,14 @@ function ScenarioTile({
       </div>
       <p className="data-figure mt-5 text-lg font-medium text-pmri-text2">{metric}</p>
       <div className="mt-4 min-h-5">
-        {selected ... <span className="text-xs font-medium text-pmri-blueSoft">Selected</span> : null}
-        {!selected && unavailable ... <StatusBadge tone={scenario.evidenceTone}>{scenario.evidenceQualityLabel}</StatusBadge> : null}
+        {selected ? <span className="text-xs font-medium text-pmri-blueSoft">Selected</span> : null}
+        {!selected && unavailable ? <StatusBadge tone={scenario.evidenceTone}>{scenario.evidenceQualityLabel}</StatusBadge> : null}
       </div>
-      {unavailable ... (
+      {unavailable ? (
         <p className="mt-3 text-xs leading-5 text-pmri-muted">
           Replay limited. No positions have usable direct history for this stress period.
         </p>
-      ) : scenario.dataNote ... (
+      ) : scenario.dataNote ? (
         <p className="mt-3 text-xs leading-5 text-pmri-muted">{scenario.dataNote}</p>
       ) : null}
     </button>
@@ -63,7 +63,7 @@ function ScenarioTile({
 }
 
 function impactValue(scenario: StressScenarioDetail) {
-  return scenario.kind === "historical" ... scenario.drawdownPct ...... scenario.portfolioLossPct : scenario.portfolioLossPct;
+  return scenario.kind === "historical" ? scenario.drawdownPct ?? scenario.portfolioLossPct : scenario.portfolioLossPct;
 }
 
 function rankByDamage(a: StressScenarioDetail, b: StressScenarioDetail) {
@@ -118,19 +118,19 @@ export function ScenarioLibraryPanel({
 }: ScenarioLibraryPanelProps) {
   const allScenarios = [...syntheticScenarios, ...historicalScenarios];
   const worstSynthetic = syntheticScenarios.find((scenario) => scenario.isWorst)
-    ...... [...syntheticScenarios].sort(rankByDamage)[0];
+    ?? [...syntheticScenarios].sort(rankByDamage)[0];
   const worstHistorical = historicalScenarios.find((scenario) => scenario.isWorst && scenario.availability === "available")
-    ...... historicalScenarios.filter((scenario) => scenario.availability === "available").sort(rankByDamage)[0];
-  const mostDamagingIds = new Set([worstSynthetic....id, worstHistorical....id].filter(Boolean));
+    ?? historicalScenarios.filter((scenario) => scenario.availability === "available").sort(rankByDamage)[0];
+  const mostDamagingIds = new Set([worstSynthetic?.id, worstHistorical?.id].filter(Boolean));
   const mostDamaging = allScenarios.filter((scenario) => mostDamagingIds.has(scenario.id)).sort(rankByDamage);
   const material = allScenarios
     .filter((scenario) => !mostDamagingIds.has(scenario.id) && scenario.availability === "available")
-    .filter((scenario) => Math.abs(impactValue(scenario) ...... 0) >= 0.03)
+    .filter((scenario) => Math.abs(impactValue(scenario) ?? 0) >= 0.03)
     .sort(rankByDamage);
   const lessOrUnavailable = allScenarios
     .filter((scenario) => !mostDamagingIds.has(scenario.id) && !material.some((item) => item.id === scenario.id))
     .sort((a, b) => {
-      if (a.availability !== b.availability) return a.availability === "available" ... -1 : 1;
+      if (a.availability !== b.availability) return a.availability === "available" ? -1 : 1;
       return rankByDamage(a, b);
     });
 

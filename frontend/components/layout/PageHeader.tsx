@@ -1,11 +1,11 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 type PageHeaderProps = {
   kicker: string;
   title: string;
   description: string;
-  boundaryNote...: string;
-  children...: ReactNode;
+  boundaryNote?: string;
+  children?: ReactNode;
 };
 
 export function PageHeader({ kicker, title, description, boundaryNote, children }: PageHeaderProps) {
@@ -18,13 +18,13 @@ export function PageHeader({ kicker, title, description, boundaryNote, children 
           <p className="pmri-label mt-3 text-pmri-blueSoft">{kicker}</p>
           <h1 className="pmri-heading-hero mt-3 max-w-5xl text-pmri-text">{title}</h1>
           <p className="pmri-body-copy mt-4 max-w-3xl md:text-base">{description}</p>
-          {boundaryNote ... (
+          {boundaryNote ? (
             <p className="pmri-microcopy mt-4">
               {boundaryNote}
             </p>
           ) : null}
         </div>
-        {children ... <div className="shrink-0">{children}</div> : null}
+        {children ? <div className="shrink-0">{children}</div> : null}
       </div>
     </header>
   );

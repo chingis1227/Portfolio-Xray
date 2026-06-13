@@ -1,5 +1,10 @@
 # CHANGELOG.md
 
+## 2026-06-13
+
+- Synchronized current Portfolio MRI frontend design documentation with the implemented landing, onboarding, 8-step platform route structure, graphite token palette, required sign-in path, and local dev bypass boundary. Removed active outdated external/prototype design authority and corrected frontend step labels.
+
+
 This file is the concise living history of meaningful project changes.
 
 It records what was added, changed, removed, fixed, or deprecated at a project level. It is not a full git log, not a roadmap, and not a replacement for specs, tests, or ExecPlans.

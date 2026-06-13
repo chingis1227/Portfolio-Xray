@@ -1,7 +1,7 @@
 ﻿import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-function redirectWithStatus(request: NextRequest, status: "success" | "disabled" | "error", message...: string) {
+function redirectWithStatus(request: NextRequest, status: "success" | "disabled" | "error", message?: string) {
   const url = request.nextUrl.clone();
   url.pathname = "/client-profile";
   url.searchParams.set("auth", status);

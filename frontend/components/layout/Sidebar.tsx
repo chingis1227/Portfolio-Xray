@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -54,7 +54,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      {lockMessage ... (
+      {lockMessage ? (
         <div className="mt-6 rounded-2xl border border-pmri-amber/30 bg-pmri-amber/10 px-3 py-3 text-xs leading-5 text-pmri-text2" role="status">
           {lockMessage}
         </div>
@@ -76,7 +76,7 @@ export function Sidebar() {
 
           const className = `pmri-focus pmri-nav-text group flex w-full items-center justify-between rounded-2xl border px-3.5 py-3 text-left transition ${statusClasses(step.status)}`;
 
-          return step.status === "locked" ... (
+          return step.status === "locked" ? (
             <button
               key={step.id}
               type="button"

@@ -1,249 +1,158 @@
-# Design System Inspired by Revolut
+# Portfolio MRI Current Design System
 
 ## Status
 
-This file governs visual/UI/report-surface styling for web interfaces, dashboards, generated HTML, and other visual outputs. It does not override [SPEC.md](SPEC.md), [RULES.md](RULES.md), implementation code, metric formulas, policy logic, or output contracts.
+This file is the top-level source of truth for Portfolio MRI / Portfolio X-Ray product UI, dashboard, generated HTML, and visual-interface work.
 
-Use [WORKFLOW.md](WORKFLOW.md) for the task process, [OUTPUTS.md](OUTPUTS.md) for generated report/output ownership, and [TESTING.md](TESTING.md) for verification expectations after UI, dashboard, HTML, or visual report changes.
+It replaces all former external-reference and prototype design guidance. Use the implemented frontend and the documents linked here as current design authority. For current website structure and route-by-route content, use [docs/design/current_website_structure.md](docs/design/current_website_structure.md). For enforceable UI review rules, use [docs/contracts/DESIGN_SYSTEM_CONTRACT.md](docs/contracts/DESIGN_SYSTEM_CONTRACT.md).
 
-**Portfolio MRI UI routing:** for new Portfolio MRI / Portfolio X-Ray / Diagnosis 2 product UI work, use the canonical design direction in [docs/design/portfolio_mri_design_system.md](docs/design/portfolio_mri_design_system.md). The rest of this legacy Revolut-inspired file is retained as historical visual reference only and should not override the Portfolio MRI design canon.
+This document does not override `SPEC.md`, `RULES.md`, data rules, metric formulas, backend schemas, output contracts, or product-flow contracts.
 
-## 1. Visual Theme & Atmosphere
+## Design Thesis
 
-Revolut's website is fintech confidence distilled into pixels — a design system that communicates "your money is in capable hands" through massive typography, generous whitespace, and a disciplined neutral palette. The visual language is built on Aeonik Pro, a geometric grotesque that creates billboard-scale headlines at 136px with weight 500 and aggressive negative tracking (-2.72px). This isn't subtle branding; it's fintech at stadium scale.
+Portfolio MRI is an Investment Decision Room, not a dashboard wall, trading terminal, optimizer cockpit, or portfolio recommendation engine.
 
-The color system is built on a comprehensive `--rui-*` (Revolut UI) token architecture with semantic naming for every state: danger (`#e23b4a`), warning (`#ec7e00`), teal (`#00a87e`), blue (`#494fdf`), deep-pink (`#e61e49`), and more. But the marketing surface itself is remarkably restrained — near-black (`#191c1f`) and pure white (`#ffffff`) dominate, with the colorful semantic tokens reserved for the product interface, not the marketing page.
+The UI must help the user move through a calm, evidence-first sequence:
 
-What distinguishes Revolut is its pill-everything button system. Every button uses 9999px radius — primary dark (`#191c1f`), secondary light (`#f4f4f4`), outlined (`transparent + 2px solid`), and ghost on dark (`rgba(244,244,244,0.1) + 2px solid`). The padding is generous (14px 32px–34px), creating large, confident touch targets. Combined with Inter for body text at various weights and positive letter-spacing (0.16px–0.24px), the result is a design that feels both premium and accessible — banking for the modern era.
-
-**Key Characteristics:**
-- Aeonik Pro display at 136px weight 500 — billboard-scale fintech headlines
-- Near-black (`#191c1f`) + white binary with comprehensive `--rui-*` semantic tokens
-- Universal pill buttons (9999px radius) with generous padding (14px 32px)
-- Inter for body text with positive letter-spacing (0.16px–0.24px)
-- Rich semantic color system: blue, teal, pink, yellow, green, brown, danger, warning
-- Zero shadows detected — depth through color contrast only
-- Tight display line-heights (1.00) with relaxed body (1.50–1.56)
-
----
-
-## 2. Color Palette & Roles
-
-### Primary
-| Token | Hex | Usage |
-|-------|-----|-------|
-| Revolut Dark | `#191c1f` | Primary dark surface, button background, near-black text |
-| Pure White | `#ffffff` | `--rui-color-action-label`, primary light surface |
-| Light Surface | `#f4f4f4` | Secondary button background, subtle surface |
-
-### Brand / Interactive
-| Token | Hex | Usage |
-|-------|-----|-------|
-| Revolut Blue | `#494fdf` | `--rui-color-blue`, primary brand blue |
-| Action Blue | `#4f55f1` | `--rui-color-action-photo-header-text`, header accent |
-| Blue Text | `#376cd5` | `--website-color-blue-text`, link blue |
-
-### Semantic
-| Token | Hex | Usage |
-|-------|-----|-------|
-| Danger Red | `#e23b4a` | `--rui-color-danger`, error/destructive |
-| Deep Pink | `#e61e49` | `--rui-color-deep-pink`, critical accent |
-| Warning Orange | `#ec7e00` | `--rui-color-warning`, warning states |
-| Yellow | `#b09000` | `--rui-color-yellow`, attention |
-| Teal | `#00a87e` | `--rui-color-teal`, success/positive |
-| Light Green | `#428619` | `--rui-color-light-green`, secondary success |
-| Green Text | `#006400` | `--website-color-green-text`, green text |
-| Light Blue | `#007bc2` | `--rui-color-light-blue`, informational |
-| Brown | `#936d62` | `--rui-color-brown`, warm neutral accent |
-| Red Text | `#8b0000` | `--website-color-red-text`, dark red text |
-
-### Neutral Scale
-| Token | Hex | Usage |
-|-------|-----|-------|
-| Mid Slate | `#505a63` | Secondary text |
-| Cool Gray | `#8d969e` | Muted text, tertiary |
-| Gray Tone | `#c9c9cd` | `--rui-color-grey-tone-20`, borders/dividers |
-
----
-
-## 3. Typography Rules
-
-### Font Families
-- **Display**: `Aeonik Pro` — geometric grotesque, no detected fallbacks
-- **Body / UI**: `Inter` — standard system sans
-- **Fallback**: `Arial` for specific button contexts
-
-### Hierarchy
-
-| Role | Font | Size | Weight | Line Height | Letter Spacing | Notes |
-|------|------|------|--------|-------------|----------------|-------|
-| Display Mega | Aeonik Pro | 136px (8.50rem) | 500 | 1.00 | -2.72px | Stadium-scale hero |
-| Display Hero | Aeonik Pro | 80px (5.00rem) | 500 | 1.00 | -0.8px | Primary hero |
-| Section Heading | Aeonik Pro | 48px (3.00rem) | 500 | 1.21 | -0.48px | Feature sections |
-| Sub-heading | Aeonik Pro | 40px (2.50rem) | 500 | 1.20 | -0.4px | Sub-sections |
-| Card Title | Aeonik Pro | 32px (2.00rem) | 500 | 1.19 | -0.32px | Card headings |
-| Feature Title | Aeonik Pro | 24px (1.50rem) | 400 | 1.33 | normal | Light headings |
-| Nav / UI | Aeonik Pro | 20px (1.25rem) | 500 | 1.40 | normal | Navigation, buttons |
-| Body Large | Inter | 18px (1.13rem) | 400 | 1.56 | -0.09px | Introductions |
-| Body | Inter | 16px (1.00rem) | 400 | 1.50 | 0.24px | Standard reading |
-| Body Semibold | Inter | 16px (1.00rem) | 600 | 1.50 | 0.16px | Emphasized body |
-| Body Bold Link | Inter | 16px (1.00rem) | 700 | 1.50 | 0.24px | Bold links |
-
-### Principles
-- **Weight 500 as display default**: Aeonik Pro uses medium (500) for ALL headings — no bold. Authority comes through size and tracking, not weight.
-- **Billboard tracking**: -2.72px at 136px is extremely compressed — text designed to be read at a glance, like airport signage.
-- **Positive tracking on body**: Inter uses +0.16px to +0.24px, creating airy, well-spaced reading text that contrasts with the compressed headings.
-
----
-
-## 4. Component Stylings
-
-### Buttons
-
-**Primary Dark Pill**
-```
-Background:  #191c1f
-Text:        #ffffff
-Padding:     14px 32px
-Radius:      9999px
-Hover:       opacity 0.85
-Focus:       0 0 0 0.125rem ring
+```text
+Landing
+-> Required email sign-in
+-> Onboarding
+-> Portfolio Input
+-> Portfolio X-Ray
+-> Stress Test Lab
+-> Client Fit
+-> Hypothesis
+-> Current vs Candidate Comparison
+-> Decision Verdict
+-> Report Preview
 ```
 
-**Secondary Light Pill**
-```
-Background:  #f4f4f4
-Text:        #000000
-Padding:     14px 34px
-Radius:      9999px
-Hover:       opacity 0.85
-```
+The product must present candidates as diagnostic tests and verdicts as non-binding decision support. It must never imply suitability approval, trade execution, or guaranteed improvement.
 
-**Outlined Pill**
-```
-Background:  transparent
-Text:        #191c1f
-Border:      2px solid #191c1f
-Padding:     14px 32px
-Radius:      9999px
-```
+## Current Visual Language
 
-**Ghost on Dark**
-```
-Background:  rgba(244, 244, 244, 0.1)
-Text:        #f4f4f4
-Border:      2px solid #f4f4f4
-Padding:     14px 32px
-Radius:      9999px
-```
+The implemented frontend uses a near-black graphite decision-room style with cool slate surfaces, restrained blue action accents, muted semantic statuses, large rounded cards, subtle glass rails, and controlled depth.
 
-### Cards & Containers
-- Radius: 12px (small), 20px (cards)
-- No shadows — flat surfaces with color contrast
-- Dark and light section alternation
+The atmosphere should feel:
 
-### Navigation
-- Aeonik Pro 20px weight 500
-- Clean header, hamburger toggle at 12px radius
-- Pill CTAs right-aligned
+- institutional;
+- precise;
+- calm;
+- premium dark;
+- client-ready;
+- analytical without looking like a terminal.
 
----
+Avoid:
 
-## 5. Layout Principles
+- crypto/neon palettes;
+- retail trading app energy;
+- optimizer-first language;
+- dense Excel-like tables as the primary surface;
+- colorful dashboard walls;
+- old flat-only external-reference rules.
 
-### Spacing System
-- Base unit: **8px**
-- Scale: `4px` `6px` `8px` `14px` `16px` `20px` `24px` `32px` `40px` `48px` `80px` `88px` `120px`
-- Large section spacing: **80px–120px**
+## Current Color Tokens
 
-### Border Radius Scale
-| Size | Value | Usage |
-|------|-------|-------|
-| Standard | 12px | Navigation, small buttons |
-| Card | 20px | Feature cards |
-| Pill | 9999px | All buttons |
+The current frontend tokens live in `frontend/styles/globals.css` and `frontend/tailwind.config.ts`. Documentation should mirror these values unless the code is intentionally changed in the same commit.
 
----
+| Role | Token / Tailwind role | Hex | Current use |
+| --- | --- | --- | --- |
+| App background | `pmri.bg`, `--pmri-bg-primary` | `#090A0C` | Main shell and landing background. |
+| Secondary surface | `pmri.secondary`, `--pmri-bg-secondary` | `#101114` | Sidebar, onboarding panels, secondary sections. |
+| Card surface | `pmri.surface`, `--pmri-surface-card` | `#17181B` | Evidence cards and standard decision cards. |
+| Raised surface | `pmri.surface2`, `--pmri-surface-raised` | `#1D1F23` | Lifted cards and nested panels. |
+| Panel surface | `pmri.panel` | `#202329` | Dense form/table panels. |
+| Border | `pmri.border`, `--pmri-border` | `#2A2D33` / `#25282E` | Dividers, cards, table rules. |
+| Soft border | `pmri.borderSoft` | `#3A3E46` | Secondary outlines and separators. |
+| Primary text | `pmri.text`, `--pmri-text-primary` | `#ECEFF3` | Headings, values, key labels. |
+| Secondary text | `pmri.text2`, `--pmri-text-secondary` | `#C4C9D1` | Body copy and interpretation. |
+| Muted text | `pmri.muted`, `--pmri-text-muted` | `#949BA6` | Captions, inactive steps, metadata. |
+| Action blue | `pmri.blue`, `--pmri-action-blue` | `#3B82F6` | Primary CTA, active journey, focus. |
+| Soft blue | `pmri.blueSoft` | `#60A5FA` | Links, hover, section accents. |
+| Positive | `pmri.positive`, `--pmri-positive` | `#6FBF9B` | Ready, completed, improved, generated. |
+| Amber | `pmri.amber`, `--pmri-warning` | `#C9A66B` | Caution, locked, partial, evidence required. |
+| Risk | `pmri.risk`, `--pmri-risk` | `#D77A7A` | Error, worsening, material risk. |
+| Premium accent | `pmri.gold`, `--pmri-premium-accent` | `#AAB7C6` | Formal slate accent, not decorative gold. |
 
-## 6. Depth & Elevation
+## Color Semantics
 
-| Level | Treatment | Use |
-|-------|-----------|-----|
-| Flat (Level 0) | No shadow | Everything — Revolut uses zero shadows |
-| Focus | `0 0 0 0.125rem` ring | Accessibility focus |
+- Blue means action, active journey state, selected navigation, focus, or safe informational emphasis.
+- Green means ready, completed, generated, improved, or risk reduced. It must not imply suitability approval or a trade recommendation.
+- Amber means caution, evidence required, partial evidence, locked state, or degraded confidence.
+- Red means actual error, material worsening, failed run, destructive action, or high-risk evidence.
+- Slate/gray means neutral, inactive, unavailable, metadata, or structural boundary.
 
-> **Shadow Philosophy**: Revolut uses **ZERO** shadows. Depth comes entirely from dark/light section contrast and generous whitespace between elements.
+Use color sparsely. Most pixels should remain graphite, slate, and readable white/gray text.
 
----
+## Typography
 
-## 7. Do's and Don'ts
+Current implementation uses a modern sans stack through `--font-pmri-sans`, with Inter/Manrope/Helvetica Neue fallbacks. Numeric values use tabular-number styling through `.data-figure`.
 
-### ✅ Do
-- Use Aeonik Pro weight **500** for all display headings
-- Apply **9999px radius** to all buttons — pill shape is universal
-- Use generous button padding **(14px 32px)**
-- Keep the palette to **near-black + white** for marketing surfaces
-- Apply **positive letter-spacing** on Inter body text
+Rules:
 
-### ❌ Don't
-- Don't use **shadows** — Revolut is flat by design
-- Don't use bold (700) for Aeonik Pro headings — **500 is the weight**
-- Don't use small buttons — the generous padding is intentional
-- Don't apply semantic colors to marketing surfaces — they're for the product
+- Large page titles use restrained negative tracking and medium weight.
+- Section titles are compact and clear.
+- Body copy is short, concrete, and explanatory.
+- Status labels are small and sparse.
+- Numeric values should be decision-relevant, not decorative precision.
+- Avoid playful display fonts and heavy all-caps as the dominant voice.
 
----
+## Layout and Components
 
-## 8. Responsive Behavior
+### Public landing
 
-### Breakpoints
-| Name | Width | Key Changes |
-|------|-------|-------------|
-| Mobile Small | < 400px | Compact, single column |
-| Mobile | 400–720px | Standard mobile |
-| Tablet | 720–1024px | 2-column layouts |
-| Desktop | 1024–1280px | Standard desktop |
-| Large | 1280–1920px | Full layout |
+The landing page is public and does not show the platform sidebar or top journey rail. It uses a large centered hero, moving-grid atmosphere, dark sections, reveal animation, rounded CTA buttons, and structured blocks for problem, workflow, architecture, precision, and final CTA.
 
----
+### Onboarding
 
-## 9. Agent Prompt Guide
+Onboarding routes are public-frame screens without the platform sidebar. Canonical entry is `/onboarding/sign-in`; local testing may use `/onboarding/name?dev_bypass=1`. Onboarding collects a friendly profile and creates non-binding Client Fit context before Portfolio Input.
 
-### Quick Color Reference
-| Role | Color | Hex |
-|------|-------|-----|
-| Dark | Revolut Dark | `#191c1f` |
-| Light | White | `#ffffff` |
-| Surface | Light Gray | `#f4f4f4` |
-| Blue | Revolut Blue | `#494fdf` |
-| Danger | Red | `#e23b4a` |
-| Success | Teal | `#00a87e` |
+### Platform shell
 
-### Example Component Prompts
+Platform routes use:
 
-**Hero Section:**
-> "Create a hero: white background. Headline at 136px Aeonik Pro weight 500, line-height 1.00, letter-spacing -2.72px, #191c1f text. Dark pill CTA (#191c1f, 9999px, 14px 32px). Outlined pill secondary (transparent, 2px solid #191c1f)."
+- a left sidebar with 8 gated journey steps;
+- a sticky top journey rail;
+- a large page header card;
+- dark cards and panels;
+- sparse badges;
+- explicit boundary notes;
+- clear locked/empty states.
 
-**Pill Button:**
-> "Build a pill button: #191c1f background, white text, 9999px radius, 14px 32px padding, 20px Aeonik Pro weight 500. Hover: opacity 0.85."
+Current platform steps:
 
-### Iteration Guide
-1. Aeonik Pro **500** for headings — never bold
-2. All buttons are pills **(9999px)** with generous padding
-3. **Zero shadows** — flat is the Revolut identity
-4. Near-black + white for marketing, semantic colors for product
+1. Portfolio
+2. X-Ray
+3. Stress Lab
+4. Client Fit
+5. Hypothesis
+6. Comparison
+7. Verdict
+8. Report
 
----
+### Cards and metrics
 
-## 10. Project enforcement (web UI)
+Cards use rounded corners, thin borders, subtle gradients, and `shadow-decision`. Depth is allowed when it supports hierarchy. Metric cards show a label, optional status badge, a tabular value, and one short explanation. Avoid all-at-once metric walls.
 
-All **web interfaces, dashboards, and UI** in this repository must follow this document:
+### Badges
 
-| Surface | Location | Notes |
-|--------|----------|--------|
-| Config web UI | `config_ui/` (Flask) | `static/design.css` is the source of truth for component styles. |
-| **Results dashboard** | `results_dashboard/app.py` (Flask) | `static/dashboard.css` + shared `design.css` (via `/design-assets/`); read-only key metrics from `output_dir_final`. |
-| **Diagnostic journey (Blocks 1–3 UX draft)** | `diagnostic_journey/app.py` (Flask, port 5006) | `static/journey.css` + shared `design.css`; guided flow from `analysis_subject/` JSON ([spec](docs/specs/diagnostic_journey_ux_draft.md)). |
-| Generated HTML report | `write_report_html` in `src/snapshot.py` | Uses the same design tokens in embedded CSS (no separate network dependency). |
-| Rolling factor betas (Plotly HTML) | `write_rolling_betas_plot_html` in `src/stress_factors.py` | Page chrome + chart fonts/colors aligned with tokens. |
+Badges must communicate evidence-backed state. Do not use badges as decoration. One primary badge per card header is preferred.
 
-**Rules:** use CSS variables from this spec (`#191c1f`, `#f4f4f4`, `#494fdf`, semantic colors); **no decorative box-shadows**; pill buttons; **Inter** (and display substitute where Aeonik Pro is not licensed) via Google Fonts for consistency.
+### CTAs
+
+Primary CTAs use the blue gradient `.pmri-primary-action`. Secondary CTAs use thin borders and dark transparent backgrounds. CTA copy must describe the next safe product step and must not imply trading or optimizer execution.
+
+## Current Website Structure
+
+The current route-by-route website structure, block order, visible headings, CTA behavior, and locked states are documented in [docs/design/current_website_structure.md](docs/design/current_website_structure.md). Keep that document synchronized whenever landing, onboarding, route order, page copy, CTA placement, visible metrics, or locked states change.
+
+## Documentation Sync Rule
+
+Any meaningful UI change must update:
+
+- this file when visual style, tokens, layout, or components change;
+- `docs/design/current_website_structure.md` when route structure, block order, visible copy, CTAs, or screen states change;
+- `docs/contracts/DESIGN_SYSTEM_CONTRACT.md` when enforceable design rules change;
+- `docs/contracts/SCREEN_CONTRACTS.md` and `docs/specs/frontend_screen_contracts.md` when route responsibilities change;
+- `frontend/README.md` and demo runbooks when operator flow changes.

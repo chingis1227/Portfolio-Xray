@@ -1,6 +1,6 @@
 # Diagnostic Journey UX Draft (Blocks 1–3)
 
-Status: **UX draft / prototype** — information architecture and guided flow for Core MVP Blocks 1–3. Visual styling follows [DESIGN.md](../../DESIGN.md) (Revolut-inspired tokens). Interactive prototype: `diagnostic_journey/` (Flask, port 5006).
+Status: **UX draft / prototype** — information architecture and guided flow for Core MVP Blocks 1–3. Visual styling follows [DESIGN.md](../../DESIGN.md) and the current Portfolio MRI dark institutional tokens. Interactive prototype: `diagnostic_journey/` (Flask, port 5006).
 
 ## Product intent
 

@@ -70,13 +70,13 @@ export default function RequiredSignInPage() {
         </div>
 
         <div className="pmri-card rounded-[2rem] p-6 shadow-decision">
-          {status === "signed_in" ... (
+          {status === "signed_in" ? (
             <div>
               <p className="pmri-label text-pmri-positive">Signed in</p>
               <h2 className="mt-3 text-2xl font-semibold tracking-[-0.035em] text-pmri-text">Opening onboarding…</h2>
-              <p className="mt-3 truncate text-sm text-pmri-muted" title={user....email ...... undefined}>{user....email}</p>
+              <p className="mt-3 truncate text-sm text-pmri-muted" title={user?.email ?? undefined}>{user?.email}</p>
             </div>
-          ) : !enabled ... (
+          ) : !enabled ? (
             <div>
               <p className="pmri-label text-pmri-amber">Sign-in required</p>
               <h2 className="mt-3 text-2xl font-semibold tracking-[-0.035em] text-pmri-text">Email login is not configured.</h2>
@@ -84,7 +84,7 @@ export default function RequiredSignInPage() {
                 Enable Supabase public configuration to enter the platform with the required email flow.
               </p>
             </div>
-          ) : stage === "email" ... (
+          ) : stage === "email" ? (
             <form onSubmit={submitEmail}>
               <p className="pmri-label text-pmri-blueSoft">Step 01 / Email</p>
               <h2 className="mt-3 text-2xl font-semibold tracking-[-0.035em] text-pmri-text">Enter your email</h2>
@@ -104,9 +104,9 @@ export default function RequiredSignInPage() {
                 />
               </label>
               <button type="submit" disabled={submitting || !email.trim()} className="pmri-focus pmri-primary-action mt-5 w-full rounded-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60">
-                {submitting ... "Sending code…" : "Continue"}
+                {submitting ? "Sending code…" : "Continue"}
               </button>
-              {isLocalhost ... (
+              {isLocalhost ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -140,7 +140,7 @@ export default function RequiredSignInPage() {
                 />
               </label>
               <button type="submit" disabled={submitting || !code.trim()} className="pmri-focus pmri-primary-action mt-5 w-full rounded-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60">
-                {submitting ... "Verifying…" : "Verify and continue"}
+                {submitting ? "Verifying…" : "Verify and continue"}
               </button>
               <button type="button" onClick={() => { clearAuthNotice(); setStage("email"); }} className="pmri-focus mt-3 w-full rounded-full border border-pmri-border/60 px-5 py-3 text-sm font-semibold text-pmri-text2 transition hover:border-pmri-border hover:bg-white/[0.04]">
                 Change email
@@ -148,8 +148,8 @@ export default function RequiredSignInPage() {
             </form>
           )}
 
-          {message ... <p className="mt-4 rounded-2xl border border-pmri-positive/25 bg-pmri-positive/10 px-4 py-3 text-sm leading-6 text-pmri-positive">{message}</p> : null}
-          {error ... <p className="mt-4 rounded-2xl border border-pmri-amber/30 bg-pmri-amber/10 px-4 py-3 text-sm leading-6 text-pmri-amber">{error}</p> : null}
+          {message ? <p className="mt-4 rounded-2xl border border-pmri-positive/25 bg-pmri-positive/10 px-4 py-3 text-sm leading-6 text-pmri-positive">{message}</p> : null}
+          {error ? <p className="mt-4 rounded-2xl border border-pmri-amber/30 bg-pmri-amber/10 px-4 py-3 text-sm leading-6 text-pmri-amber">{error}</p> : null}
         </div>
       </section>
     </main>

@@ -12,7 +12,12 @@
     "frontend/README.md"
   ],
   "allowed_screen_routes": [
+    "/",
     "/client-profile",
+    "/onboarding/sign-in",
+    "/onboarding/name",
+    "/onboarding/investor-type",
+    "/onboarding/loading",
     "/portfolio-input",
     "/diagnosis",
     "/evidence",
@@ -60,7 +65,6 @@
         "review_summary"
       ],
       "screen_routes": [
-        "/client-profile",
         "/portfolio-input",
         "/diagnosis",
         "/evidence",
@@ -68,8 +72,8 @@
         "/hypothesis"
       ],
       "screen_mapping_status": "current",
-      "screen_contract_section": "Client Profile -> Portfolio Input -> Portfolio X-Ray / Diagnosis -> Stress Test Lab -> Client Fit -> Hypothesis Builder",
-      "mapping_note": "Creates diagnosis-first review state from portfolio input plus optional Client Fit request context. The standard web journey requires Client Profile before diagnosis; backend/CLI compatibility still supports missing Client Fit. Public client_fit is a bounded display summary, not raw client_fit_check.json."
+      "screen_contract_section": "Onboarding context -> Portfolio Input -> Portfolio X-Ray / Diagnosis -> Stress Test Lab -> Client Fit -> Hypothesis Builder",
+      "mapping_note": "Creates diagnosis-first review state from portfolio input plus Client Fit context prepared by onboarding or the advanced manual editor. Backend/CLI compatibility still supports missing Client Fit. Public client_fit is a bounded display summary, not raw client_fit_check.json."
     },
     {
       "operation_id": "recoverReview",

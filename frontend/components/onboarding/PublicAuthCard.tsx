@@ -41,17 +41,17 @@ export function PublicAuthCard() {
         <div>
           <p className="pmri-label text-pmri-blueSoft">Save your workspace</p>
           <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-pmri-text">
-            {status === "signed_in" ... "Workspace connected" : "Optional secure sign-in"}
+            {status === "signed_in" ? "Workspace connected" : "Optional secure sign-in"}
           </h2>
         </div>
-        <span className={`mt-2 h-2.5 w-2.5 rounded-full ${status === "signed_in" ... "bg-pmri-positive" : "bg-pmri-amber"}`} aria-hidden="true" />
+        <span className={`mt-2 h-2.5 w-2.5 rounded-full ${status === "signed_in" ? "bg-pmri-positive" : "bg-pmri-amber"}`} aria-hidden="true" />
       </div>
 
-      {status === "loading" ... (
+      {status === "loading" ? (
         <p className="mt-4 text-sm text-pmri-muted">Checking saved workspace…</p>
-      ) : status === "signed_in" ... (
+      ) : status === "signed_in" ? (
         <div className="mt-4 space-y-4">
-          <p className="truncate text-sm text-pmri-text2" title={user....email ...... undefined}>{user....email ...... "Signed-in user"}</p>
+          <p className="truncate text-sm text-pmri-text2" title={user?.email ?? undefined}>{user?.email ?? "Signed-in user"}</p>
           <p className="text-sm leading-6 text-pmri-muted">You can continue onboarding now. Saved portfolios and review history unlock inside the platform.</p>
           <button type="button" onClick={() => void signOut()} className="pmri-focus rounded-full border border-pmri-border/60 px-4 py-2 text-sm font-medium text-pmri-text2 transition hover:border-pmri-border hover:bg-white/[0.04]">
             Sign out
@@ -74,7 +74,7 @@ export function PublicAuthCard() {
             />
           </label>
           <button type="submit" disabled={isSending} className="pmri-focus w-full rounded-full border border-pmri-blue/40 bg-pmri-blue px-4 py-2.5 text-sm font-semibold text-pmri-text transition hover:bg-pmri-blueSoft disabled:cursor-not-allowed disabled:opacity-60">
-            {isSending ... "Sending code…" : "Send secure email code"}
+            {isSending ? "Sending code…" : "Send secure email code"}
           </button>
           <div className="border-t border-pmri-border/35 pt-3">
             <label className="block">
@@ -92,14 +92,14 @@ export function PublicAuthCard() {
               />
             </label>
             <button type="button" disabled={isVerifying} onClick={() => void handleVerifyOtp()} className="pmri-focus mt-3 w-full rounded-full border border-pmri-border/60 px-4 py-2.5 text-sm font-semibold text-pmri-text2 transition hover:border-pmri-border hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-60">
-              {isVerifying ... "Verifying…" : "Verify code"}
+              {isVerifying ? "Verifying…" : "Verify code"}
             </button>
           </div>
         </form>
       )}
 
-      {message ... <p className="mt-3 text-sm leading-6 text-pmri-positive">{message}</p> : null}
-      {error ... <p className="mt-3 text-sm leading-6 text-pmri-amber">{error}</p> : null}
+      {message ? <p className="mt-3 text-sm leading-6 text-pmri-positive">{message}</p> : null}
+      {error ? <p className="mt-3 text-sm leading-6 text-pmri-amber">{error}</p> : null}
     </div>
   );
 }

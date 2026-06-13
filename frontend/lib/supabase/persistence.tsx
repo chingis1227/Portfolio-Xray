@@ -8,30 +8,30 @@ import type { ReviewHolding, ActiveReviewState, ReviewSummary, DiagnosisState, E
 export type SavedPortfolioRecord = {
   id: string;
   name: string;
-  description...: string;
+  description?: string;
   baseCurrency: string;
-  riskProfile...: string;
+  riskProfile?: string;
   holdings: ReviewHolding[];
-  createdAt...: string;
-  updatedAt...: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 export type ReviewStageName = "diagnosis" | "builder" | "candidate" | "comparison" | "verdict" | "report";
 
 export type SavedReviewRecord = {
   id: string;
   reviewId: string;
-  title...: string;
-  mode...: string;
+  title?: string;
+  mode?: string;
   status: string;
-  portfolioId...: string;
-  portfolioSnapshot: { investorCurrency...: string; holdings...: ReviewHolding[] };
+  portfolioId?: string;
+  portfolioSnapshot: { investorCurrency?: string; holdings?: ReviewHolding[] };
   compactSummary: Record<string, unknown>;
-  clientFit...: NonNullable<ReviewSummary["clientFit"]>;
+  clientFit?: NonNullable<ReviewSummary["clientFit"]>;
   stages: Partial<Record<ReviewStageName, Record<string, unknown>>>;
   stageStatuses: Partial<Record<ReviewStageName, string>>;
-  startedAt...: string;
-  completedAt...: string;
-  updatedAt...: string;
+  startedAt?: string;
+  completedAt?: string;
+  updatedAt?: string;
 };
 
 export type StagePersistenceResult = {
@@ -47,9 +47,9 @@ export type CloudNotice = {
 };
 
 type SavePortfolioInput = {
-  portfolioId...: string;
+  portfolioId?: string;
   name: string;
-  description...: string;
+  description?: string;
   investorCurrency: string;
   holdings: ReviewHolding[];
 };
@@ -126,7 +126,7 @@ function nowIso() {
 }
 
 function estimateJsonBytes(value: unknown) {
-  const raw = JSON.stringify(value ...... null);
+  const raw = JSON.stringify(value ?? null);
   if (typeof TextEncoder !== "undefined") return new TextEncoder().encode(raw).length;
   return raw.length;
 }
@@ -140,20 +140,20 @@ function reviewHoldingsFromSnapshot(value: unknown): ReviewHolding[] {
   return value.holdings
     .filter(isRecord)
     .map((holding, index) => ({
-      id: typeof holding.id === "string" ... holding.id : safeHoldingId(typeof holding.ticker === "string" ... holding.ticker : "holding", index),
-      label: typeof holding.label === "string" ... holding.label : typeof holding.ticker === "string" ... holding.ticker : "Holding",
-      ticker: typeof holding.ticker === "string" ... holding.ticker : "",
-      instrument: typeof holding.instrument === "string" ... holding.instrument : typeof holding.ticker === "string" ... holding.ticker : "Holding",
-      weight: typeof holding.weight === "number" && Number.isFinite(holding.weight) ... holding.weight : 0,
-      type: holding.type === "cash" ... "cash" : "instrument",
-      currency: typeof holding.currency === "string" ... holding.currency : undefined
+      id: typeof holding.id === "string" ? holding.id : safeHoldingId(typeof holding.ticker === "string" ? holding.ticker : "holding", index),
+      label: typeof holding.label === "string" ? holding.label : typeof holding.ticker === "string" ? holding.ticker : "Holding",
+      ticker: typeof holding.ticker === "string" ? holding.ticker : "",
+      instrument: typeof holding.instrument === "string" ? holding.instrument : typeof holding.ticker === "string" ? holding.ticker : "Holding",
+      weight: typeof holding.weight === "number" && Number.isFinite(holding.weight) ? holding.weight : 0,
+      type: holding.type === "cash" ? "cash" : "instrument",
+      currency: typeof holding.currency === "string" ? holding.currency : undefined
     } satisfies ReviewHolding))
     .filter((holding) => holding.ticker);
 }
 
 
 function humanizePersistenceError(error: unknown) {
-  const message = error instanceof Error ... error.message : String(error || "Unknown cloud persistence error.");
+  const message = error instanceof Error ? error.message : String(error || "Unknown cloud persistence error.");
   if (message.toLowerCase().includes("fetch")) {
     return "Could not reach Supabase. Check the public URL/key and network connection.";
   }
@@ -181,19 +181,19 @@ function sortHoldings(a: ReviewHolding, b: ReviewHolding) {
 
 function buildSavedPortfolioRecord(row: PortfolioRow, holdings: PortfolioHoldingRow[]): SavedPortfolioRecord {
   const normalizedHoldings = holdings
-    .sort((a, b) => (a.sort_order ...... 0) - (b.sort_order ...... 0))
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
     .map((holding, index) => {
-      const metadata = holding.metadata ...... {};
-      const storedType = typeof metadata.holding_type === "string" ... metadata.holding_type : null;
-      const type: ReviewHolding["type"] = storedType === "cash" || holding.asset_class === "cash" ... "cash" : "instrument";
+      const metadata = holding.metadata ?? {};
+      const storedType = typeof metadata.holding_type === "string" ? metadata.holding_type : null;
+      const type: ReviewHolding["type"] = storedType === "cash" || holding.asset_class === "cash" ? "cash" : "instrument";
       return {
         id: safeHoldingId(holding.ticker, index),
-        label: typeof metadata.label === "string" && metadata.label.trim() ... metadata.label : type === "cash" ... "Cash" : holding.ticker,
+        label: typeof metadata.label === "string" && metadata.label.trim() ? metadata.label : type === "cash" ? "Cash" : holding.ticker,
         ticker: holding.ticker,
-        instrument: typeof metadata.instrument === "string" && metadata.instrument.trim() ... metadata.instrument : holding.name || holding.ticker,
+        instrument: typeof metadata.instrument === "string" && metadata.instrument.trim() ? metadata.instrument : holding.name || holding.ticker,
         weight: roundWeightPercent(holding.weight),
         type,
-        currency: type === "cash" ... (holding.currency || "USD") : undefined
+        currency: type === "cash" ? (holding.currency || "USD") : undefined
       } satisfies ReviewHolding;
     })
     .sort(sortHoldings);
@@ -201,12 +201,12 @@ function buildSavedPortfolioRecord(row: PortfolioRow, holdings: PortfolioHolding
   return {
     id: row.id,
     name: row.name,
-    description: row.description ...... undefined,
+    description: row.description ?? undefined,
     baseCurrency: row.base_currency || "USD",
-    riskProfile: row.risk_profile ...... undefined,
+    riskProfile: row.risk_profile ?? undefined,
     holdings: normalizedHoldings,
-    createdAt: row.created_at ...... undefined,
-    updatedAt: row.updated_at ...... undefined
+    createdAt: row.created_at ?? undefined,
+    updatedAt: row.updated_at ?? undefined
   };
 }
 
@@ -222,7 +222,7 @@ async function fetchSavedPortfoliosForUser(userId: string): Promise<SavedPortfol
 
   if (portfolioError) throw portfolioError;
 
-  const rows = (portfolioRows ...... []) as PortfolioRow[];
+  const rows = (portfolioRows ?? []) as PortfolioRow[];
   if (!rows.length) return [];
 
   const portfolioIds = rows.map((row) => row.id);
@@ -236,13 +236,13 @@ async function fetchSavedPortfoliosForUser(userId: string): Promise<SavedPortfol
   if (holdingError) throw holdingError;
 
   const holdingsByPortfolioId = new Map<string, PortfolioHoldingRow[]>();
-  ((holdingRows ...... []) as PortfolioHoldingRow[]).forEach((row) => {
-    const existing = holdingsByPortfolioId.get(row.portfolio_id) ...... [];
+  ((holdingRows ?? []) as PortfolioHoldingRow[]).forEach((row) => {
+    const existing = holdingsByPortfolioId.get(row.portfolio_id) ?? [];
     existing.push(row);
     holdingsByPortfolioId.set(row.portfolio_id, existing);
   });
 
-  return rows.map((row) => buildSavedPortfolioRecord(row, holdingsByPortfolioId.get(row.id) ...... []));
+  return rows.map((row) => buildSavedPortfolioRecord(row, holdingsByPortfolioId.get(row.id) ?? []));
 }
 
 
@@ -260,7 +260,7 @@ async function fetchSavedReviewsForUser(userId: string): Promise<SavedReviewReco
 
   if (reviewError) throw reviewError;
 
-  const rows = (reviewRows ...... []) as ReviewRow[];
+  const rows = (reviewRows ?? []) as ReviewRow[];
   if (!rows.length) return [];
 
   const reviewRowIds = rows.map((row) => row.id);
@@ -274,8 +274,8 @@ async function fetchSavedReviewsForUser(userId: string): Promise<SavedReviewReco
   if (stageError) throw stageError;
 
   const stagesByReviewRowId = new Map<string, ReviewStageSummaryRow[]>();
-  ((stageRows ...... []) as ReviewStageSummaryRow[]).forEach((row) => {
-    const existing = stagesByReviewRowId.get(row.review_row_id) ...... [];
+  ((stageRows ?? []) as ReviewStageSummaryRow[]).forEach((row) => {
+    const existing = stagesByReviewRowId.get(row.review_row_id) ?? [];
     existing.push(row);
     stagesByReviewRowId.set(row.review_row_id, existing);
   });
@@ -283,31 +283,31 @@ async function fetchSavedReviewsForUser(userId: string): Promise<SavedReviewReco
   return rows.map((row) => {
     const stages: Partial<Record<ReviewStageName, Record<string, unknown>>> = {};
     const stageStatuses: Partial<Record<ReviewStageName, string>> = {};
-    (stagesByReviewRowId.get(row.id) ...... []).forEach((stageRow) => {
-      stages[stageRow.stage] = stageRow.summary ...... {};
-      stageStatuses[stageRow.stage] = stageRow.status ...... "saved";
+    (stagesByReviewRowId.get(row.id) ?? []).forEach((stageRow) => {
+      stages[stageRow.stage] = stageRow.summary ?? {};
+      stageStatuses[stageRow.stage] = stageRow.status ?? "saved";
     });
-    const snapshot = row.portfolio_snapshot ...... {};
-    const compactSummary = row.compact_summary ...... {};
-    const diagnosisStage = stages.diagnosis ...... {};
+    const snapshot = row.portfolio_snapshot ?? {};
+    const compactSummary = row.compact_summary ?? {};
+    const diagnosisStage = stages.diagnosis ?? {};
     return {
       id: row.id,
       reviewId: row.review_id,
-      title: row.title ...... undefined,
-      mode: row.mode ...... undefined,
-      status: row.status ...... "saved",
-      portfolioId: row.portfolio_id ...... undefined,
+      title: row.title ?? undefined,
+      mode: row.mode ?? undefined,
+      status: row.status ?? "saved",
+      portfolioId: row.portfolio_id ?? undefined,
       portfolioSnapshot: {
-        investorCurrency: typeof snapshot.investorCurrency === "string" ... snapshot.investorCurrency : undefined,
+        investorCurrency: typeof snapshot.investorCurrency === "string" ? snapshot.investorCurrency : undefined,
         holdings: reviewHoldingsFromSnapshot(snapshot)
       },
       compactSummary,
-      clientFit: clientFitFromCloud(compactSummary.clientFit ...... diagnosisStage.clientFit),
+      clientFit: clientFitFromCloud(compactSummary.clientFit ?? diagnosisStage.clientFit),
       stages,
       stageStatuses,
-      startedAt: row.started_at ...... undefined,
-      completedAt: row.completed_at ...... undefined,
-      updatedAt: row.updated_at ...... undefined
+      startedAt: row.started_at ?? undefined,
+      completedAt: row.completed_at ?? undefined,
+      updatedAt: row.updated_at ?? undefined
     };
   });
 }
@@ -322,10 +322,10 @@ async function savePortfolioRecordForUser(userId: string, input: SavePortfolioIn
   }
 
   const portfolioPayload = {
-    ...(input.portfolioId ... { id: input.portfolioId } : {}),
+    ...(input.portfolioId ? { id: input.portfolioId } : {}),
     user_id: userId,
     name: trimmedName,
-    description: input.description....trim() || null,
+    description: input.description?.trim() || null,
     base_currency: input.investorCurrency || "USD",
     metadata: {
       source: "pmri_frontend_v1",
@@ -359,7 +359,7 @@ async function savePortfolioRecordForUser(userId: string, input: SavePortfolioIn
       name: holding.instrument || holding.label || holding.ticker,
       asset_class: holding.type,
       weight: clampWeightToFraction(holding.weight),
-      currency: holding.currency ...... null,
+      currency: holding.currency ?? null,
       sort_order: index,
       metadata: {
         instrument: holding.instrument,
@@ -381,7 +381,7 @@ async function savePortfolioRecordForUser(userId: string, input: SavePortfolioIn
     name: holding.instrument || holding.label || holding.ticker,
     asset_class: holding.type,
     weight: clampWeightToFraction(holding.weight),
-    currency: holding.currency ...... null,
+    currency: holding.currency ?? null,
     sort_order: index,
     metadata: {
       instrument: holding.instrument,
@@ -440,38 +440,38 @@ function compactReviewSummaryForCloud(reviewSummary: ReviewSummary, activeReview
     suggestedActionPaths: reviewSummary.suggestedActionPaths,
     candidateLaunchpadAvailable: reviewSummary.candidateLaunchpadAvailable,
     problemClassificationAvailable: reviewSummary.problemClassificationAvailable,
-    activeCloudPortfolioId: activeReview.cloudPortfolio....id,
-    activeCloudPortfolioName: activeReview.cloudPortfolio....name
+    activeCloudPortfolioId: activeReview.cloudPortfolio?.id,
+    activeCloudPortfolioName: activeReview.cloudPortfolio?.name
   };
 }
 
 function clientFitFromCloud(value: unknown): NonNullable<ReviewSummary["clientFit"]> | undefined {
   if (!isRecord(value)) return undefined;
-  const rawRows = Array.isArray(value.targetRows) ... value.targetRows : Array.isArray(value.target_rows) ... value.target_rows : [];
+  const rawRows = Array.isArray(value.targetRows) ? value.targetRows : Array.isArray(value.target_rows) ? value.target_rows : [];
   const statusTone = value.statusTone === "green" || value.statusTone === "amber" || value.statusTone === "red"
-    ... value.statusTone
+    ? value.statusTone
     : value.status_tone === "green" || value.status_tone === "amber" || value.status_tone === "red"
-      ... value.status_tone
+      ? value.status_tone
       : "amber";
   return {
-    status_label: typeof value.statusLabel === "string" ... value.statusLabel : typeof value.status_label === "string" ... value.status_label : "Client Fit not provided",
+    status_label: typeof value.statusLabel === "string" ? value.statusLabel : typeof value.status_label === "string" ? value.status_label : "Client Fit not provided",
     status_tone: statusTone,
-    profile_label: typeof value.profileLabel === "string" ... value.profileLabel : typeof value.profile_label === "string" ... value.profile_label : null,
-    source_quality_label: typeof value.sourceQualityLabel === "string" ... value.sourceQualityLabel : typeof value.source_quality_label === "string" ... value.source_quality_label : null,
-    main_explanation: typeof value.mainExplanation === "string" ... value.mainExplanation : typeof value.main_explanation === "string" ... value.main_explanation : null,
-    decision_boundary: typeof value.decisionBoundary === "string" ... value.decisionBoundary : typeof value.decision_boundary === "string" ... value.decision_boundary : "Client Fit is non-binding decision support.",
-    next_best_test: typeof value.nextBestTest === "string" ... value.nextBestTest : typeof value.next_best_test === "string" ... value.next_best_test : null,
+    profile_label: typeof value.profileLabel === "string" ? value.profileLabel : typeof value.profile_label === "string" ? value.profile_label : null,
+    source_quality_label: typeof value.sourceQualityLabel === "string" ? value.sourceQualityLabel : typeof value.source_quality_label === "string" ? value.source_quality_label : null,
+    main_explanation: typeof value.mainExplanation === "string" ? value.mainExplanation : typeof value.main_explanation === "string" ? value.main_explanation : null,
+    decision_boundary: typeof value.decisionBoundary === "string" ? value.decisionBoundary : typeof value.decision_boundary === "string" ? value.decision_boundary : "Client Fit is non-binding decision support.",
+    next_best_test: typeof value.nextBestTest === "string" ? value.nextBestTest : typeof value.next_best_test === "string" ? value.next_best_test : null,
     target_rows: rawRows.filter(isRecord).slice(0, 6).map((row) => ({
-      dimension_label: typeof row.dimensionLabel === "string" ... row.dimensionLabel : typeof row.dimension_label === "string" ... row.dimension_label : "Client Fit check",
-      portfolio_value_label: typeof row.portfolioValueLabel === "string" ... row.portfolioValueLabel : typeof row.portfolio_value_label === "string" ... row.portfolio_value_label : null,
-      target_or_limit_label: typeof row.targetOrLimitLabel === "string" ... row.targetOrLimitLabel : typeof row.target_or_limit_label === "string" ... row.target_or_limit_label : null,
-      status_label: typeof row.statusLabel === "string" ... row.statusLabel : typeof row.status_label === "string" ... row.status_label : "Not evaluated",
+      dimension_label: typeof row.dimensionLabel === "string" ? row.dimensionLabel : typeof row.dimension_label === "string" ? row.dimension_label : "Client Fit check",
+      portfolio_value_label: typeof row.portfolioValueLabel === "string" ? row.portfolioValueLabel : typeof row.portfolio_value_label === "string" ? row.portfolio_value_label : null,
+      target_or_limit_label: typeof row.targetOrLimitLabel === "string" ? row.targetOrLimitLabel : typeof row.target_or_limit_label === "string" ? row.target_or_limit_label : null,
+      status_label: typeof row.statusLabel === "string" ? row.statusLabel : typeof row.status_label === "string" ? row.status_label : "Not evaluated",
       status_tone: row.statusTone === "green" || row.statusTone === "amber" || row.statusTone === "red"
-        ... row.statusTone
+        ? row.statusTone
         : row.status_tone === "green" || row.status_tone === "amber" || row.status_tone === "red"
-          ... row.status_tone
+          ? row.status_tone
           : "amber",
-      explanation: typeof row.explanation === "string" ... row.explanation : null
+      explanation: typeof row.explanation === "string" ? row.explanation : null
     }))
   };
 }
@@ -481,18 +481,18 @@ function compactClientFitForCloud(clientFit: ReviewSummary["clientFit"] | Compar
   return {
     statusLabel: clientFit.status_label,
     statusTone: clientFit.status_tone,
-    profileLabel: clientFit.profile_label ...... undefined,
-    sourceQualityLabel: clientFit.source_quality_label ...... undefined,
-    mainExplanation: clientFit.main_explanation ...... undefined,
+    profileLabel: clientFit.profile_label ?? undefined,
+    sourceQualityLabel: clientFit.source_quality_label ?? undefined,
+    mainExplanation: clientFit.main_explanation ?? undefined,
     decisionBoundary: clientFit.decision_boundary,
-    nextBestTest: clientFit.next_best_test ...... undefined,
-    targetRows: (clientFit.target_rows ...... []).slice(0, 6).map((row) => ({
+    nextBestTest: clientFit.next_best_test ?? undefined,
+    targetRows: (clientFit.target_rows ?? []).slice(0, 6).map((row) => ({
       dimensionLabel: row.dimension_label,
-      portfolioValueLabel: row.portfolio_value_label ...... undefined,
-      targetOrLimitLabel: row.target_or_limit_label ...... undefined,
+      portfolioValueLabel: row.portfolio_value_label ?? undefined,
+      targetOrLimitLabel: row.target_or_limit_label ?? undefined,
       statusLabel: row.status_label,
       statusTone: row.status_tone,
-      explanation: row.explanation ...... undefined
+      explanation: row.explanation ?? undefined
     }))
   };
 }
@@ -593,10 +593,10 @@ async function upsertReviewRowForUser(userId: string, activeReview: ActiveReview
   const portfolioSnapshot = compactPortfolioSnapshot(activeReview.investorCurrency, activeReview.holdings);
   const reviewPayload = {
     user_id: userId,
-    portfolio_id: activeReview.cloudPortfolio....id ...... null,
+    portfolio_id: activeReview.cloudPortfolio?.id ?? null,
     review_id: activeReview.reviewId,
-    title: activeReview.cloudPortfolio....name
-      ... `${activeReview.cloudPortfolio.name} diagnosis`
+    title: activeReview.cloudPortfolio?.name
+      ? `${activeReview.cloudPortfolio.name} diagnosis`
       : `Portfolio MRI diagnosis ${activeReview.reviewId}`,
     mode: activeReview.runMode,
     status: activeReview.runStatus,
@@ -691,7 +691,7 @@ function buildComparisonStageSummary(activeReview: ActiveReviewState) {
     status: activeReview.comparisonResult.status,
     reviewId: activeReview.reviewId,
     comparison: activeReview.comparisonResult,
-    clientFit: compactClientFitForCloud(activeReview.comparisonResult.clientFit ...... activeReview.reviewSummary....clientFit),
+    clientFit: compactClientFitForCloud(activeReview.comparisonResult.clientFit ?? activeReview.reviewSummary?.clientFit),
     selectedCardId: activeReview.comparisonResult.selectedCardId,
     candidateId: activeReview.comparisonResult.candidateId
   };
@@ -704,7 +704,7 @@ function buildVerdictStageSummary(activeReview: ActiveReviewState) {
     status: activeReview.verdictResult.status,
     reviewId: activeReview.reviewId,
     verdict: activeReview.verdictResult,
-    clientFit: compactClientFitForCloud(activeReview.verdictResult.clientFit ...... activeReview.reviewSummary....clientFit),
+    clientFit: compactClientFitForCloud(activeReview.verdictResult.clientFit ?? activeReview.reviewSummary?.clientFit),
     selectedCardId: activeReview.verdictResult.selectedCardId,
     candidateId: activeReview.verdictResult.candidateId
   };
@@ -717,7 +717,7 @@ function buildReportStageSummary(activeReview: ActiveReviewState) {
     status: activeReview.reportResult.status,
     reviewId: activeReview.reviewId,
     report: activeReview.reportResult,
-    clientFit: compactClientFitForCloud(activeReview.reportResult.clientFit ...... activeReview.reviewSummary....clientFit),
+    clientFit: compactClientFitForCloud(activeReview.reportResult.clientFit ?? activeReview.reviewSummary?.clientFit),
     selectedCardId: activeReview.reportResult.selectedCardId,
     candidateId: activeReview.reportResult.candidateId
   };
@@ -748,11 +748,11 @@ export async function persistCompactStageSummariesForReview(userId: string, acti
 
   const reviewRowId = await upsertReviewRowForUser(userId, activeReview);
   const candidates: Array<{ stage: ReviewStageName; status: string; summary: Record<string, unknown> | null }> = [
-    { stage: "builder", status: activeReview.builderSetup ... "completed" : "missing", summary: buildBuilderStageSummary(activeReview) },
-    { stage: "candidate", status: activeReview.candidateGeneration....status ...... "missing", summary: buildCandidateStageSummary(activeReview) },
-    { stage: "comparison", status: activeReview.comparisonResult....status ...... "missing", summary: buildComparisonStageSummary(activeReview) },
-    { stage: "verdict", status: activeReview.verdictResult....status ...... "missing", summary: buildVerdictStageSummary(activeReview) },
-    { stage: "report", status: activeReview.reportResult....status ...... "missing", summary: buildReportStageSummary(activeReview) }
+    { stage: "builder", status: activeReview.builderSetup ? "completed" : "missing", summary: buildBuilderStageSummary(activeReview) },
+    { stage: "candidate", status: activeReview.candidateGeneration?.status ?? "missing", summary: buildCandidateStageSummary(activeReview) },
+    { stage: "comparison", status: activeReview.comparisonResult?.status ?? "missing", summary: buildComparisonStageSummary(activeReview) },
+    { stage: "verdict", status: activeReview.verdictResult?.status ?? "missing", summary: buildVerdictStageSummary(activeReview) },
+    { stage: "report", status: activeReview.reportResult?.status ?? "missing", summary: buildReportStageSummary(activeReview) }
   ];
 
   const persisted: ReviewStageName[] = [];
@@ -783,7 +783,7 @@ export async function persistCompactStageSummariesForReview(userId: string, acti
         user_id: userId,
         review_id: activeReview.reviewId,
         verdict: activeReview.verdictResult.decisionStatus,
-        confidence: Number.isFinite(confidenceNumber) ... confidenceNumber : null,
+        confidence: Number.isFinite(confidenceNumber) ? confidenceNumber : null,
         rationale: activeReview.verdictResult.explanation,
         summary: activeReview.verdictResult,
         limitations: activeReview.verdictResult.limitations
@@ -801,7 +801,7 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
   const [portfoliosLoading, setPortfoliosLoading] = useState(false);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [notice, setNoticeState] = useState<CloudNotice | null>(null);
-  const signedIn = enabled && status === "signed_in" && Boolean(user....id);
+  const signedIn = enabled && status === "signed_in" && Boolean(user?.id);
 
   const setNotice = useCallback((tone: CloudNotice["tone"], message: string) => {
     setNoticeState({
@@ -816,7 +816,7 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
   }, []);
 
   const refreshSavedPortfolios = useCallback(async () => {
-    if (!signedIn || !user....id) {
+    if (!signedIn || !user?.id) {
       setSavedPortfolios([]);
       return;
     }
@@ -830,10 +830,10 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
     } finally {
       setPortfoliosLoading(false);
     }
-  }, [setNotice, signedIn, user....id]);
+  }, [setNotice, signedIn, user?.id]);
 
   const refreshSavedReviews = useCallback(async () => {
-    if (!signedIn || !user....id) {
+    if (!signedIn || !user?.id) {
       setSavedReviews([]);
       return;
     }
@@ -847,10 +847,10 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
     } finally {
       setReviewsLoading(false);
     }
-  }, [setNotice, signedIn, user....id]);
+  }, [setNotice, signedIn, user?.id]);
 
   const savePortfolio = useCallback(async (input: SavePortfolioInput) => {
-    if (!signedIn || !user....id) {
+    if (!signedIn || !user?.id) {
       setNotice("warning", "Sign in first to save portfolios to cloud.");
       return null;
     }
@@ -865,29 +865,29 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
       setNotice("warning", `Cloud portfolio save failed. ${humanizePersistenceError(error)}`);
       return null;
     }
-  }, [setNotice, signedIn, user....id]);
+  }, [setNotice, signedIn, user?.id]);
 
   const deletePortfolio = useCallback(async (portfolioId: string) => {
-    if (!signedIn || !user....id) {
+    if (!signedIn || !user?.id) {
       setNotice("warning", "Sign in first to delete saved cloud portfolios.");
       return false;
     }
 
     try {
-      const portfolioName = savedPortfolios.find((item) => item.id === portfolioId)....name;
+      const portfolioName = savedPortfolios.find((item) => item.id === portfolioId)?.name;
       await deletePortfolioForUser(user.id, portfolioId);
       const portfolios = await fetchSavedPortfoliosForUser(user.id);
       setSavedPortfolios(portfolios);
-      setNotice("success", portfolioName ... `Deleted "${portfolioName}" from cloud storage.` : "Deleted saved cloud portfolio.");
+      setNotice("success", portfolioName ? `Deleted "${portfolioName}" from cloud storage.` : "Deleted saved cloud portfolio.");
       return true;
     } catch (error) {
       setNotice("warning", `Cloud portfolio delete failed. ${humanizePersistenceError(error)}`);
       return false;
     }
-  }, [savedPortfolios, setNotice, signedIn, user....id]);
+  }, [savedPortfolios, setNotice, signedIn, user?.id]);
 
   useEffect(() => {
-    if (!signedIn || !user....id) {
+    if (!signedIn || !user?.id) {
       setSavedPortfolios([]);
       setSavedReviews([]);
       setPortfoliosLoading(false);
@@ -896,12 +896,12 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
     }
     void refreshSavedPortfolios();
     void refreshSavedReviews();
-  }, [refreshSavedPortfolios, refreshSavedReviews, signedIn, user....id]);
+  }, [refreshSavedPortfolios, refreshSavedReviews, signedIn, user?.id]);
 
   const value = useMemo<SupabasePersistenceContextValue>(() => ({
     enabled,
     signedIn,
-    userId: user....id ...... null,
+    userId: user?.id ?? null,
     savedPortfolios,
     savedReviews,
     portfoliosLoading,
@@ -913,7 +913,7 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
     refreshSavedReviews,
     savePortfolio,
     deletePortfolio
-  }), [clearNotice, deletePortfolio, enabled, notice, portfoliosLoading, refreshSavedPortfolios, refreshSavedReviews, reviewsLoading, savePortfolio, savedPortfolios, savedReviews, setNotice, signedIn, user....id]);
+  }), [clearNotice, deletePortfolio, enabled, notice, portfoliosLoading, refreshSavedPortfolios, refreshSavedReviews, reviewsLoading, savePortfolio, savedPortfolios, savedReviews, setNotice, signedIn, user?.id]);
 
   return <SupabasePersistenceContext.Provider value={value}>{children}</SupabasePersistenceContext.Provider>;
 }

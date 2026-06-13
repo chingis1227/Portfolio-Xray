@@ -13,9 +13,9 @@ export type JourneyStep = {
 export type Metric = {
   label: string;
   value: string;
-  detail...: string;
-  tone...: StatusTone;
-  delta...: string;
+  detail?: string;
+  tone?: StatusTone;
+  delta?: string;
 };
 
 export type EvidenceItem = {
@@ -47,9 +47,9 @@ export type SiteExplanationScreen = {
 
 export type SiteExplanationBundle = {
   schema_version: "site_explanation_bundle_v1";
-  review_id...: string;
+  review_id?: string;
   screens: Record<string, SiteExplanationScreen>;
-  warnings...: string[];
+  warnings?: string[];
 };
 
 export type Holding = {
@@ -66,10 +66,10 @@ export type Hypothesis = {
   methodId: string;
   evidenceSource: string;
   status: string;
-  testType...: string;
-  suggestedMethods...: string[];
-  successCriteria...: string[];
-  decisionBoundary...: string;
+  testType?: string;
+  suggestedMethods?: string[];
+  successCriteria?: string[];
+  decisionBoundary?: string;
 };
 
 export type ComparisonMetric = {

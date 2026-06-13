@@ -1,4 +1,4 @@
-﻿# Artifact-to-Screen Map
+# Artifact-to-Screen Map
 
 Status: **canonical artifact-to-screen contract** for Portfolio MRI / Portfolio X-Ray Core MVP screens, frontend adapters, run-local review state, and documentation alignment.
 
@@ -59,7 +59,11 @@ A backend artifact is not automatically a Core MVP screen. Core MVP UI should sh
 The current MVP frontend route chain is:
 
 ```text
-/client-profile
+/
+-> /onboarding/sign-in
+-> /onboarding/name
+-> /onboarding/investor-type
+-> /onboarding/loading
 -> /portfolio-input
 -> /diagnosis
 -> /evidence
@@ -70,13 +74,11 @@ The current MVP frontend route chain is:
 -> /report
 ```
 
+Local preview may start at `/onboarding/name?dev_bypass=1` while email sign-in is being stabilized. `/client-profile` remains an advanced/manual Client Fit editor, not the primary route start.
+
 There is no current `/candidate`, `/monitoring`, `/what-changed`, optimizer-arena, action-plan, decision-journal, macro-dashboard, or PDF-product route. `/hypothesis` intentionally owns Launchpad, Builder setup, and candidate-generation status for the MVP. Monitoring / What Changed is a backend product projection and deferred UI layer.
 
-Client Fit V1 is now active in the web journey as a mandatory onboarding route plus a dedicated
-display route. `client_fit_check.json` can be generated under `analysis_subject/` and feeds bounded
-display/test criteria in adapters. Primary UI consumes compact Client Fit request/display models,
-not raw generated artifacts. Backend/CLI paths remain compatible with missing Client Fit and may
-produce `not_provided`; the standard web journey requires Client Profile before diagnosis.
+Client Fit V1 is active in the web journey through onboarding plus a dedicated display route. `client_fit_check.json` can be generated under `analysis_subject/` and feeds bounded display/test criteria in adapters. Primary UI consumes compact Client Fit request/display models, not raw generated artifacts. Backend/CLI paths remain compatible with missing Client Fit and may produce `not_provided`; the standard web journey requires Client Fit context from onboarding before diagnosis.
 
 ## Runtime locations and trust boundaries
 
@@ -138,7 +140,8 @@ produce `not_provided`; the standard web journey requires Client Profile before 
 
 | Screen | Primary artifacts | Supporting artifacts | Must not use as primary truth |
 | --- | --- | --- | --- |
-| `/client-profile` | Bounded Client Fit profile request object. | Preset metadata and questionnaire copy. | Portfolio diagnostics, generated artifacts, optimizer constraints, suitability approval. |
+| `/onboarding/*` | Bounded Client Fit profile request object created from intake. | Sign-in state, name, five-question intake, setup progress. | Portfolio diagnostics, generated artifacts, optimizer constraints, suitability approval. |
+| `/client-profile` | Advanced/manual Client Fit profile request object. | Preset metadata and editable target rows. | Treating this as the primary journey start, suitability approval, optimizer constraints. |
 | `/portfolio-input` | User input; bounded Client Fit profile request; run-local `review_result.json`; `analysis_setup` / `input_assumptions` after diagnosis. | Instrument universe; recovery metadata. | `portfolio_weights.yml`, root legacy `run_result.json`, optimizer targets, full constraints UI. |
 | `/diagnosis` | `analysis_subject/portfolio_xray.json`; compact `analysis_subject/problem_classification.json` bridge. | `run_metadata.json`; data limitations; stress cross-references only where already cited. | Root legacy X-Ray; health score as main answer; candidate/comparison/verdict artifacts. |
 | `/evidence` | `analysis_subject/stress_report.json`. | `portfolio_xray.json` and `problem_classification.json` for bridge context; scenario library sidecars. | Root legacy stress files; mandate pass/fail as Core MVP outcome; candidate comparison. |

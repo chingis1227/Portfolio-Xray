@@ -1,4 +1,4 @@
-﻿import { readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import type { ReportResponse } from "@/lib/generated/api-types";
@@ -7,10 +7,10 @@ const FASTAPI_TIMEOUT_MS = 15 * 60 * 1000;
 const WEIGHT_TOLERANCE = 0.01;
 
 export type PortfolioPayload = {
-  investor_currency...: unknown;
-  holdings...: unknown;
-  client_fit...: unknown;
-  mode...: unknown;
+  investor_currency?: unknown;
+  holdings?: unknown;
+  client_fit?: unknown;
+  mode?: unknown;
 };
 
 type ValidatedHolding =
@@ -20,12 +20,12 @@ type ValidatedHolding =
 type ValidatedPayload = {
   investor_currency: string;
   holdings: ValidatedHolding[];
-  client_fit...: Record<string, unknown>;
+  client_fit?: Record<string, unknown>;
 };
 
 export type StageRequest = {
-  review_id...: unknown;
-  selected_card_id...: unknown;
+  review_id?: unknown;
+  selected_card_id?: unknown;
 };
 
 type FastApiCallResult = {
@@ -35,11 +35,11 @@ type FastApiCallResult = {
 };
 
 type ExpectedFastApiLineage = {
-  reviewId...: string;
-  selectedCardId...: string;
-  candidateId...: string;
-  comparisonId...: string;
-  verdictId...: string;
+  reviewId?: string;
+  selectedCardId?: string;
+  candidateId?: string;
+  comparisonId?: string;
+  verdictId?: string;
 };
 
 function projectRoot() {
@@ -66,12 +66,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function textValue(value: unknown, fallback = "") {
-  return typeof value === "string" && value.trim() ... value.trim() : fallback;
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
 function stringArray(value: unknown): string[] {
   return Array.isArray(value)
-    ... value.map((item) => (typeof item === "string" ... item.trim() : "")).filter(Boolean)
+    ? value.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean)
     : [];
 }
 
@@ -92,23 +92,23 @@ function scrubForClient(value: string, root = projectRoot()) {
     .replaceAll(root.replaceAll("\\", "/"), "[project]")
     .replace(/\[project\][\\/][^\s'")<>]+/g, "[path]")
     .replace(/Traceback \(most recent call last\):[\s\S]*/g, "Backend failure details were captured safely.")
-    .replace(/File "[^"]+", line \d+(...:, in [^\r\n]+).../g, "Backend file reference hidden.")
+    .replace(/File "[^"]+", line \d+(?:, in [^\r\n]+)?/g, "Backend file reference hidden.")
     .replace(/[A-Za-z]:[\\/][^\s'")<>]+/g, "[path]")
-    .replace(/\/(...:Users|home|var|tmp|mnt)\/[^\s'")<>]+/g, "[path]")
+    .replace(/\/(?:Users|home|var|tmp|mnt)\/[^\s'")<>]+/g, "[path]")
     .trim();
 }
 
 function safeDetails(value: unknown): string[] {
   if (Array.isArray(value)) {
-    return value.map((item) => (typeof item === "string" ... scrubForClient(item) : "")).filter(Boolean);
+    return value.map((item) => (typeof item === "string" ? scrubForClient(item) : "")).filter(Boolean);
   }
   if (typeof value === "string" && value.trim()) return [scrubForClient(value)];
   return [];
 }
 
 function legacyErrorFromFastApi(body: unknown, fallback: string) {
-  const envelope = isRecord(body) ... body : {};
-  const safeError = isRecord(envelope.safe_error) ... envelope.safe_error : {};
+  const envelope = isRecord(body) ? body : {};
+  const safeError = isRecord(envelope.safe_error) ? envelope.safe_error : {};
   const message = textValue(safeError.message, textValue(envelope.detail, fallback));
   const details = safeDetails(safeError.details);
   return {
@@ -119,7 +119,7 @@ function legacyErrorFromFastApi(body: unknown, fallback: string) {
 }
 
 function numberValue(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ... value : null;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function validateClientFitRange(value: unknown, fieldName: string, errors: string[]) {
@@ -136,7 +136,7 @@ function validateClientFitRange(value: unknown, fieldName: string, errors: strin
   return { min, max };
 }
 
-function validateClientFitPayload(value: unknown): { clientFit...: Record<string, unknown>; clientFitErrors: string[] } {
+function validateClientFitPayload(value: unknown): { clientFit?: Record<string, unknown>; clientFitErrors: string[] } {
   if (value === undefined || value === null) return { clientFitErrors: [] };
   const clientFitErrors: string[] = [];
   if (!isRecord(value)) return { clientFitErrors: ["client_fit must be an object."] };
@@ -162,10 +162,10 @@ function validateClientFitPayload(value: unknown): { clientFit...: Record<string
     clientFitErrors.push("client_fit.horizon_years must be a positive number.");
   }
   const targetReturnRange = value.target_return_range === undefined || value.target_return_range === null
-    ... undefined
+    ? undefined
     : validateClientFitRange(value.target_return_range, "target_return_range", clientFitErrors);
   const targetVolRange = value.target_vol_range === undefined || value.target_vol_range === null
-    ... undefined
+    ? undefined
     : validateClientFitRange(value.target_vol_range, "target_vol_range", clientFitErrors);
   const drawdown = numberValue(value.target_max_drawdown_pct);
   if (value.target_max_drawdown_pct !== undefined && value.target_max_drawdown_pct !== null && (drawdown === null || drawdown < -1 || drawdown > 0)) {
@@ -183,35 +183,35 @@ function validateClientFitPayload(value: unknown): { clientFit...: Record<string
       source_quality: sourceQuality,
       source_quality_reason: textValue(value.source_quality_reason) || null,
       horizon_years: horizonYears,
-      target_return_range: targetReturnRange ...... null,
-      target_vol_range: targetVolRange ...... null,
+      target_return_range: targetReturnRange ?? null,
+      target_vol_range: targetVolRange ?? null,
       target_max_drawdown_pct: drawdown
     },
     clientFitErrors
   };
 }
 
-async function callFastApi(method: "GET" | "POST", apiPath: string, body...: unknown): Promise<FastApiCallResult> {
+async function callFastApi(method: "GET" | "POST", apiPath: string, body?: unknown): Promise<FastApiCallResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FASTAPI_TIMEOUT_MS);
   const url = `${fastApiBaseUrl()}${apiPath}`;
   try {
     const response = await fetch(url, {
       method,
-      headers: body === undefined ... undefined : { "Content-Type": "application/json" },
-      body: body === undefined ... undefined : JSON.stringify(body),
+      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
       signal: controller.signal
     });
     const responseText = await response.text();
-    const parsed = responseText ... parseJsonWithNonFinite(responseText) : null;
+    const parsed = responseText ? parseJsonWithNonFinite(responseText) : null;
     return { ok: response.ok, status: response.status, body: parsed };
   } catch (error) {
     const unavailable = error instanceof Error && error.name === "AbortError"
-      ... "FastAPI backend request timed out."
+      ? "FastAPI backend request timed out."
       : "FastAPI backend is unavailable. Start it with uvicorn src.api.app:app --host 127.0.0.1 --port 8000.";
     return {
       ok: false,
-      status: error instanceof Error && error.name === "AbortError" ... 504 : 503,
+      status: error instanceof Error && error.name === "AbortError" ? 504 : 503,
       body: {
         safe_error: {
           message: unavailable,
@@ -224,10 +224,10 @@ async function callFastApi(method: "GET" | "POST", apiPath: string, body...: unk
   }
 }
 
-function validatePortfolioPayload(body: PortfolioPayload): { payload...: ValidatedPayload; errors: string[] } {
+function validatePortfolioPayload(body: PortfolioPayload): { payload?: ValidatedPayload; errors: string[] } {
   const errors: string[] = [];
   const investorCurrency = typeof body.investor_currency === "string"
-    ... body.investor_currency.trim().toUpperCase()
+    ? body.investor_currency.trim().toUpperCase()
     : "";
 
   if (!investorCurrency) errors.push("investor_currency is required.");
@@ -250,7 +250,7 @@ function validatePortfolioPayload(body: PortfolioPayload): { payload...: Validat
       return;
     }
     const row = rawHolding as Record<string, unknown>;
-    const weight = typeof row.weight === "number" && Number.isFinite(row.weight) ... row.weight : Number.NaN;
+    const weight = typeof row.weight === "number" && Number.isFinite(row.weight) ? row.weight : Number.NaN;
     if (!(weight > 0)) {
       errors.push(`holding[${index}].weight must be greater than 0.`);
       return;
@@ -258,7 +258,7 @@ function validatePortfolioPayload(body: PortfolioPayload): { payload...: Validat
     totalWeight += weight;
 
     if (row.type === "instrument") {
-      const ticker = typeof row.ticker === "string" ... row.ticker.trim().toUpperCase() : "";
+      const ticker = typeof row.ticker === "string" ? row.ticker.trim().toUpperCase() : "";
       if (!ticker) {
         errors.push(`holding[${index}] instrument row requires ticker.`);
         return;
@@ -268,7 +268,7 @@ function validatePortfolioPayload(body: PortfolioPayload): { payload...: Validat
     }
 
     if (row.type === "cash") {
-      const currency = typeof row.currency === "string" ... row.currency.trim().toUpperCase() : "";
+      const currency = typeof row.currency === "string" ? row.currency.trim().toUpperCase() : "";
       if (!currency) {
         errors.push(`holding[${index}] cash row requires currency.`);
         return;
@@ -300,7 +300,7 @@ function fastApiCreateReviewBody(payload: ValidatedPayload) {
     portfolio: {
       investor_currency: payload.investor_currency,
       holdings: payload.holdings.map((holding) => holding.type === "cash"
-        ... { type: "cash", currency: holding.currency, weight_pct: holding.weight }
+        ? { type: "cash", currency: holding.currency, weight_pct: holding.weight }
         : { type: "instrument", ticker: holding.ticker, weight_pct: holding.weight })
     },
     options: {
@@ -314,8 +314,8 @@ function fastApiCreateReviewBody(payload: ValidatedPayload) {
 }
 
 export function validateStageRequest(body: StageRequest) {
-  const reviewId = typeof body.review_id === "string" ... body.review_id.trim() : "";
-  const selectedCardId = typeof body.selected_card_id === "string" ... body.selected_card_id.trim() : "";
+  const reviewId = typeof body.review_id === "string" ? body.review_id.trim() : "";
+  const selectedCardId = typeof body.selected_card_id === "string" ? body.selected_card_id.trim() : "";
   const errors: string[] = [];
 
   if (!reviewId) errors.push("review_id is required.");
@@ -327,7 +327,7 @@ export function validateStageRequest(body: StageRequest) {
 }
 
 function validateReviewId(value: unknown) {
-  const reviewId = typeof value === "string" ... value.trim() : "";
+  const reviewId = typeof value === "string" ? value.trim() : "";
   const errors: string[] = [];
   if (!reviewId) errors.push("review_id is required.");
   if (reviewId && !reviewId.startsWith("frontend_review_")) errors.push("review_id must be a frontend_review_* id.");
@@ -367,15 +367,15 @@ function artifactPath(reviewId: string, relativePath: string) {
 }
 
 function selectedBuilderSetupId(builderDocument: unknown) {
-  const builder = isRecord(builderDocument) ... builderDocument : {};
-  const candidateSetup = isRecord(builder.candidate_setup) ... builder.candidate_setup : {};
+  const builder = isRecord(builderDocument) ? builderDocument : {};
+  const candidateSetup = isRecord(builder.candidate_setup) ? builder.candidate_setup : {};
   return textValue(candidateSetup.candidate_setup_id, textValue(candidateSetup.setup_id, ""));
 }
 
 function selectedCardFromBuilder(builderDocument: unknown) {
-  const builder = isRecord(builderDocument) ... builderDocument : {};
-  const builderPrefill = isRecord(builder.builder_prefill) ... builder.builder_prefill : {};
-  const candidateSetup = isRecord(builder.candidate_setup) ... builder.candidate_setup : {};
+  const builder = isRecord(builderDocument) ? builderDocument : {};
+  const builderPrefill = isRecord(builder.builder_prefill) ? builder.builder_prefill : {};
+  const candidateSetup = isRecord(builder.candidate_setup) ? builder.candidate_setup : {};
   return textValue(builder.selected_card_id, textValue(builderPrefill.source_card_id, textValue(candidateSetup.source_card_id, "")));
 }
 
@@ -391,25 +391,25 @@ function lineageMismatchError(stage: string, reviewId: string, selectedCardId: s
 }
 
 function candidateFromGeneration(candidateGeneration: unknown) {
-  const generation = isRecord(candidateGeneration) ... candidateGeneration : {};
-  const candidate = isRecord(generation.candidate) ... generation.candidate : {};
-  const handoff = isRecord(generation.handoff_to_comparison) ... generation.handoff_to_comparison : {};
+  const generation = isRecord(candidateGeneration) ? candidateGeneration : {};
+  const candidate = isRecord(generation.candidate) ? generation.candidate : {};
+  const handoff = isRecord(generation.handoff_to_comparison) ? generation.handoff_to_comparison : {};
   return {
-    selectedCardId: textValue(generation.selected_card_id, textValue(candidate.source_card_id, textValue(isRecord(generation.source_builder_setup) ... generation.source_builder_setup.source_card_id : undefined, ""))),
-    candidateId: textValue(handoff.candidate_id, textValue(candidate.candidate_id, textValue(isRecord(generation.method_availability) ... generation.method_availability.backend_candidate_id : undefined, ""))),
+    selectedCardId: textValue(generation.selected_card_id, textValue(candidate.source_card_id, textValue(isRecord(generation.source_builder_setup) ? generation.source_builder_setup.source_card_id : undefined, ""))),
+    candidateId: textValue(handoff.candidate_id, textValue(candidate.candidate_id, textValue(isRecord(generation.method_availability) ? generation.method_availability.backend_candidate_id : undefined, ""))),
     generationStatus: textValue(generation.generation_status, textValue(candidate.status, "unknown")),
     canCompare: handoff.can_compare === true
   };
 }
 
 function verdictIdFromDocument(decisionVerdict: unknown) {
-  const verdict = isRecord(decisionVerdict) ... decisionVerdict : {};
+  const verdict = isRecord(decisionVerdict) ? decisionVerdict : {};
   return textValue(verdict.verdict_id, textValue(verdict.decision_verdict_id, "unknown"));
 }
 
 function fastApiLineageValue(body: unknown, key: string) {
-  const envelope = isRecord(body) ... body : {};
-  const lineage = isRecord(envelope.lineage) ... envelope.lineage : {};
+  const envelope = isRecord(body) ? body : {};
+  const lineage = isRecord(envelope.lineage) ? envelope.lineage : {};
   return textValue(lineage[key], textValue(envelope[key], ""));
 }
 
@@ -462,11 +462,11 @@ function sourceEvidenceLabel(key: string) {
 }
 
 function reportDisplayModelFromFastApi(envelope: ReportResponse | Record<string, unknown>) {
-  const data = isRecord(envelope.data) ... envelope.data : {};
-  const preview = isRecord(data.report_preview) ... data.report_preview : {};
-  const grounding = isRecord(data.grounding) ... data.grounding : {};
-  const evidenceChainContext = isRecord(data.evidence_chain_context) ... data.evidence_chain_context : {};
-  const sourceRefs = Array.isArray(grounding.source_refs) ... grounding.source_refs.filter(isRecord) : [];
+  const data = isRecord(envelope.data) ? envelope.data : {};
+  const preview = isRecord(data.report_preview) ? data.report_preview : {};
+  const grounding = isRecord(data.grounding) ? data.grounding : {};
+  const evidenceChainContext = isRecord(data.evidence_chain_context) ? data.evidence_chain_context : {};
+  const sourceRefs = Array.isArray(grounding.source_refs) ? grounding.source_refs.filter(isRecord) : [];
   const sections = [
     { title: "Executive summary", body: textValue(preview.executive_summary, "") },
     { title: "Current portfolio diagnosis", body: textValue(preview.current_portfolio_diagnosis, textValue(evidenceChainContext.diagnosis_statement, "")) },
@@ -481,7 +481,7 @@ function reportDisplayModelFromFastApi(envelope: ReportResponse | Record<string,
   return {
     title: "Grounded client-ready report summary",
     subtitle: "Active review report preview grounded in the current diagnosis, candidate test, comparison, and verdict evidence.",
-    sections: sections.length ... sections : [
+    sections: sections.length ? sections : [
       {
         title: "Partial explanation",
         body: "Grounded report inputs were available, but no client-readable summary sections were returned."
@@ -492,11 +492,11 @@ function reportDisplayModelFromFastApi(envelope: ReportResponse | Record<string,
       .filter(Boolean)
       .concat(contextSources)
       .filter((item, index, items) => item && items.indexOf(item) === index),
-    unavailableEvidence: unavailable.length ... unavailable : ["No unsupported sections were added beyond the available review evidence."],
+    unavailableEvidence: unavailable.length ? unavailable : ["No unsupported sections were added beyond the available review evidence."],
     nextObservation: textValue(preview.monitoring_note, "Retest if diagnosis, comparison, or verdict evidence changes."),
     boundaryNote: textValue(evidenceChainContext.recommendation_boundary, "Decision-support only. This preview explains available evidence and does not provide suitability, tax, or trade advice."),
     warnings: stringArray(envelope.warnings).concat(stringArray(preview.evidence_limitations)),
-    clientFit: isRecord(data.client_fit) ... data.client_fit : undefined,
+    clientFit: isRecord(data.client_fit) ? data.client_fit : undefined,
     generatedAt: new Date().toISOString()
   };
 }
@@ -517,8 +517,8 @@ export async function diagnoseViaFastApi(request: Request) {
     return NextResponse.json(legacyErrorFromFastApi(api.body, "Portfolio diagnosis failed."), { status: api.status });
   }
 
-  const envelope = isRecord(api.body) ... api.body : {};
-  const reviewId = textValue(envelope.review_id, textValue(isRecord(envelope.lineage) ... envelope.lineage.review_id : undefined, ""));
+  const envelope = isRecord(api.body) ? api.body : {};
+  const reviewId = textValue(envelope.review_id, textValue(isRecord(envelope.lineage) ? envelope.lineage.review_id : undefined, ""));
   if (!reviewId) return jsonError("FastAPI diagnosis did not return a review id.", 500);
   const reviewValidation = validateReviewId(reviewId);
   if (reviewValidation.errors.length) {
@@ -528,11 +528,11 @@ export async function diagnoseViaFastApi(request: Request) {
   try {
     const reviewResult = await readRunJson(reviewId, "review_result.json");
     return NextResponse.json(isRecord(reviewResult)
-      ... { ...reviewResult, fastapi_envelope: api.body }
+      ? { ...reviewResult, fastapi_envelope: api.body }
       : reviewResult);
   } catch (error) {
     return jsonError("FastAPI diagnosis completed but the run-local review_result.json could not be read.", 500, [
-      scrubForClient(error instanceof Error ... error.message : String(error))
+      scrubForClient(error instanceof Error ? error.message : String(error))
     ]);
   }
 }
@@ -541,7 +541,7 @@ function sanitizeRecoveredReviewResult(value: unknown, reviewId: string) {
   if (!isRecord(value)) return null;
   if (value.review_id !== reviewId || value.status !== "completed") return null;
 
-  const outputs = isRecord(value.outputs) ... value.outputs : {};
+  const outputs = isRecord(value.outputs) ? value.outputs : {};
   const allowedOutputs = Object.fromEntries(
     Object.entries(outputs).filter(([key]) => [
       "portfolio_xray",
@@ -556,7 +556,7 @@ function sanitizeRecoveredReviewResult(value: unknown, reviewId: string) {
     ].includes(key))
   );
 
-  const paths = isRecord(value.paths) ... value.paths : {};
+  const paths = isRecord(value.paths) ? value.paths : {};
   const allowedPaths = Object.fromEntries(
     Object.entries(paths).filter(([key, item]) => (
       typeof item === "string"
@@ -614,7 +614,7 @@ export async function recoverViaFastApi(reviewIdInput: unknown) {
     });
   } catch (error) {
     return jsonError("No recoverable run-local review_result.json was found for this review_id.", 404, [
-      scrubForClient(error instanceof Error ... error.message : String(error))
+      scrubForClient(error instanceof Error ? error.message : String(error))
     ]);
   }
 }
@@ -648,8 +648,8 @@ export async function builderViaFastApi(request: Request) {
 
   try {
     const builderDocument = await readRunJson(reviewId, "analysis_subject/portfolio_alternatives_builder.json");
-    const envelope = isRecord(api.body) ... api.body : {};
-    const data = isRecord(envelope.data) ... envelope.data : {};
+    const envelope = isRecord(api.body) ? api.body : {};
+    const data = isRecord(envelope.data) ? envelope.data : {};
     return NextResponse.json({
       review_id: reviewId,
       status: "completed",
@@ -662,7 +662,7 @@ export async function builderViaFastApi(request: Request) {
     });
   } catch (error) {
     return jsonError("Builder setup prepare finished but the result could not be read.", 500, [
-      scrubForClient(error instanceof Error ... error.message : String(error))
+      scrubForClient(error instanceof Error ? error.message : String(error))
     ]);
   }
 }
@@ -682,7 +682,7 @@ export async function candidateViaFastApi(request: Request) {
     builderDocument = await readRunJson(reviewId, "analysis_subject/portfolio_alternatives_builder.json");
   } catch (error) {
     return jsonError("Candidate generation requires a prepared Builder setup for this review.", 409, [
-      scrubForClient(error instanceof Error ... error.message : String(error))
+      scrubForClient(error instanceof Error ? error.message : String(error))
     ]);
   }
   const builderCardId = selectedCardFromBuilder(builderDocument);
@@ -726,7 +726,7 @@ export async function candidateViaFastApi(request: Request) {
     });
   } catch (error) {
     return jsonError("Candidate generation finished but the result could not be read.", 500, [
-      scrubForClient(error instanceof Error ... error.message : String(error))
+      scrubForClient(error instanceof Error ? error.message : String(error))
     ]);
   }
 }
@@ -746,7 +746,7 @@ export async function comparisonViaFastApi(request: Request) {
     candidateGeneration = await readRunJson(reviewId, "candidate_generation.json");
   } catch (error) {
     return jsonError("Comparison requires an active generated candidate for this review.", 409, [
-      scrubForClient(error instanceof Error ... error.message : String(error))
+      scrubForClient(error instanceof Error ? error.message : String(error))
     ]);
   }
   const candidate = candidateFromGeneration(candidateGeneration);
@@ -800,7 +800,7 @@ export async function comparisonViaFastApi(request: Request) {
     });
   } catch (error) {
     return jsonError("Comparison finished but the result could not be read.", 500, [
-      scrubForClient(error instanceof Error ... error.message : String(error))
+      scrubForClient(error instanceof Error ? error.message : String(error))
     ]);
   }
 }
@@ -820,7 +820,7 @@ export async function verdictViaFastApi(request: Request) {
     candidateGeneration = await readRunJson(reviewId, "candidate_generation.json");
   } catch (error) {
     return jsonError("Decision verdict requires an active generated candidate for this review.", 409, [
-      scrubForClient(error instanceof Error ... error.message : String(error))
+      scrubForClient(error instanceof Error ? error.message : String(error))
     ]);
   }
   const candidate = candidateFromGeneration(candidateGeneration);
@@ -858,7 +858,7 @@ export async function verdictViaFastApi(request: Request) {
 
   try {
     const decisionVerdict = await readRunJson(reviewId, "decision_verdict.json");
-    const verdict = isRecord(decisionVerdict) ... decisionVerdict : {};
+    const verdict = isRecord(decisionVerdict) ? decisionVerdict : {};
     return NextResponse.json({
       review_id: reviewId,
       status: "completed",
@@ -875,7 +875,7 @@ export async function verdictViaFastApi(request: Request) {
     });
   } catch (error) {
     return jsonError("Decision verdict finished but the result could not be read.", 500, [
-      scrubForClient(error instanceof Error ... error.message : String(error))
+      scrubForClient(error instanceof Error ? error.message : String(error))
     ]);
   }
 }
@@ -897,7 +897,7 @@ export async function reportViaFastApi(request: Request) {
     decisionVerdict = await readRunJson(reviewId, "decision_verdict.json");
   } catch (error) {
     return jsonError("Report commentary requires active candidate and verdict evidence for this review.", 409, [
-      scrubForClient(error instanceof Error ... error.message : String(error))
+      scrubForClient(error instanceof Error ? error.message : String(error))
     ]);
   }
   const candidate = candidateFromGeneration(candidateGeneration);
@@ -941,14 +941,14 @@ export async function reportViaFastApi(request: Request) {
       selected_card_id: selectedCardId || candidate.selectedCardId,
       candidate_id: candidate.candidateId,
       fastapi_envelope: api.body,
-      report_display_model: reportDisplayModelFromFastApi(isRecord(api.body) ... api.body : {}),
+      report_display_model: reportDisplayModelFromFastApi(isRecord(api.body) ? api.body : {}),
       path: artifactPath(reviewId, "ai_commentary_context.json"),
       ai_commentary_context: aiCommentaryContext,
       site_explanation_bundle: await readOptionalRunJson(reviewId, "site_explanation_bundle.json")
     });
   } catch (error) {
     return jsonError("Report commentary finished but the result could not be read.", 500, [
-      scrubForClient(error instanceof Error ... error.message : String(error))
+      scrubForClient(error instanceof Error ? error.message : String(error))
     ]);
   }
 }

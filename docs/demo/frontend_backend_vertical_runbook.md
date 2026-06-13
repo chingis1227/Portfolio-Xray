@@ -124,9 +124,7 @@ the repository root.
 ## Manual click-through guide
 
 Start at `http://localhost:3000`. Confirm the public page shows `X-Ray your portfolio before you
-change it` and does not show the platform sidebar or platform step rail. Click **Enter Platform**, enter
-an email, then enter the email code when the verification step appears. After sign-in, complete the
-short onboarding screens and let the setup screen redirect to Portfolio Input.
+change it` and does not show the platform sidebar or platform step rail. Click **Enter Platform** and confirm it opens `/onboarding/sign-in`. Enter an email, then enter the email code when the verification step appears. If local email auth is unavailable, use the localhost fallback on the sign-in page or open `http://localhost:3000/onboarding/name?dev_bypass=1` for preview only. After sign-in or local fallback, complete the short onboarding screens and let the setup screen redirect to Portfolio Input.
 
 After onboarding, use a simple portfolio that sums to 100%. A stable smoke portfolio is:
 
@@ -138,7 +136,7 @@ After onboarding, use a simple portfolio that sums to 100%. A stable smoke portf
 
 Then demo the flow:
 
-1. On Portfolio Input, confirm the platform sidebar and top journey rail are now visible, Portfolio is Step 1, and the
+1. On Portfolio Input, confirm the platform sidebar and top journey rail are now visible, Portfolio is Step 1 of 8, and the
    Client Fit profile is ready from onboarding. Enter investor currency `USD` and the holdings above.
 2. Run diagnosis. The frontend calls `POST /api/portfolio/diagnose`.
 3. On Diagnosis / Evidence, explain the current portfolio first. Do not discuss candidates yet.

@@ -11,8 +11,8 @@ const toneClasses = {
 
 type StatusBadgeProps = {
   children: ReactNode;
-  tone...: keyof typeof toneClasses;
-  className...: string;
+  tone?: keyof typeof toneClasses;
+  className?: string;
 };
 
 export function StatusBadge({ children, tone = "slate", className = "" }: StatusBadgeProps) {

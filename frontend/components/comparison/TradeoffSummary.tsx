@@ -1,4 +1,4 @@
-﻿import { StatusBadge } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatUnknownValue, normalizeDisplaySentence } from "@/lib/displayLabels";
 
 export function TradeoffSummary({
@@ -11,24 +11,24 @@ export function TradeoffSummary({
 }: {
   improved: string[];
   worsened: string[];
-  unclear...: string[];
-  costs...: string[];
+  unclear?: string[];
+  costs?: string[];
   evidenceQuality: string;
   boundary: string;
 }) {
   const safeImproved = improved.length
-    ... improved.map((item) => normalizeDisplaySentence(item))
+    ? improved.map((item) => normalizeDisplaySentence(item))
     : ["No available comparison metric showed a material improvement."];
   const safeWorsened = worsened.length
-    ... worsened.map((item) => normalizeDisplaySentence(item))
+    ? worsened.map((item) => normalizeDisplaySentence(item))
     : ["No available comparison metric showed a material worsening."];
-  const safeCosts = costs....length
-    ... costs.map((item) => normalizeDisplaySentence(item))
+  const safeCosts = costs?.length
+    ? costs.map((item) => normalizeDisplaySentence(item))
     : ["Turnover and cost evidence is not available for this comparison."];
-  const unclearItems = unclear....length ... unclear.map((item) => normalizeDisplaySentence(item)) : [
+  const unclearItems = unclear?.length ? unclear.map((item) => normalizeDisplaySentence(item)) : [
     "Whether the trade-off fits the client mandate.",
     "Whether evidence is strong enough for a material change.",
-    safeWorsened[2] ...... normalizeDisplaySentence(boundary)
+    safeWorsened[2] ?? normalizeDisplaySentence(boundary)
   ];
 
   return (

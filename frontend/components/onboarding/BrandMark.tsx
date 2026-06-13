@@ -1,4 +1,4 @@
-export function BrandMark({ className = "h-12 w-12" }: { className...: string }) {
+export function BrandMark({ className = "h-12 w-12" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 64 64" role="img" aria-label="Portfolio MRI mark">
       <defs>

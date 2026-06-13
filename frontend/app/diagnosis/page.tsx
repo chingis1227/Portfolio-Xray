@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -7,7 +7,7 @@ import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanati
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { buildDiagnosisFromReview, useReviewState } from "@/lib/reviewState";
 
-function FailedDiagnosisState({ message, details }: { message: string; details...: string }) {
+function FailedDiagnosisState({ message, details }: { message: string; details?: string }) {
   return (
     <section className="pmri-card rounded-2xl border-pmri-risk/35 p-6 md:p-8">
       <StatusBadge tone="red">Diagnosis failed</StatusBadge>
@@ -15,7 +15,7 @@ function FailedDiagnosisState({ message, details }: { message: string; details..
         Portfolio diagnosis could not be completed.
       </h2>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-pmri-text2">{message}</p>
-      {details ... (
+      {details ? (
         <pre className="mt-4 max-h-56 overflow-auto rounded-xl border border-pmri-border bg-pmri-secondary p-4 text-xs leading-5 text-pmri-muted">{details}</pre>
       ) : null}
       <Link
@@ -51,20 +51,20 @@ function LockedDiagnosisState() {
 export default function DiagnosisPage() {
   const { activeReview, hydrated } = useReviewState();
   const diagnosisReady = Boolean(
-    activeReview....submitted
+    activeReview?.submitted
     && activeReview.diagnosisReady
     && activeReview.runStatus === "completed"
     && activeReview.reviewSummary
   );
-  const failedRealRun = Boolean(activeReview....runMode === "real_run" && activeReview.runStatus === "failed");
-  const diagnosis = diagnosisReady && activeReview ... buildDiagnosisFromReview(activeReview) : null;
-  const xraySummary = diagnosisReady ... activeReview....reviewSummary....xraySummary : undefined;
-  const siteExplanation = activeReview....reviewSummary....siteExplanation;
+  const failedRealRun = Boolean(activeReview?.runMode === "real_run" && activeReview.runStatus === "failed");
+  const diagnosis = diagnosisReady && activeReview ? buildDiagnosisFromReview(activeReview) : null;
+  const xraySummary = diagnosisReady ? activeReview?.reviewSummary?.xraySummary : undefined;
+  const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
 
   return (
     <div>
       <PageHeader
-        kicker="Investment Decision Room"
+        kicker="Step 02 / Portfolio X-Ray"
         title="Portfolio X-Ray Diagnosis"
         description="Current-portfolio review before any candidate test."
       />
@@ -73,9 +73,9 @@ export default function DiagnosisPage() {
         screen="diagnosis"
         fallbackTitle="Diagnosis explanation"
       />
-      {!hydrated ... null : failedRealRun && activeReview....reviewError ... (
+      {!hydrated ? null : failedRealRun && activeReview?.reviewError ? (
         <FailedDiagnosisState message={activeReview.reviewError.message} details={activeReview.reviewError.details} />
-      ) : diagnosis ... <DiagnosisSummaryPanel {...diagnosis} xraySummary={xraySummary} /> : <LockedDiagnosisState />}
+      ) : diagnosis ? <DiagnosisSummaryPanel {...diagnosis} xraySummary={xraySummary} /> : <LockedDiagnosisState />}
     </div>
   );
 }

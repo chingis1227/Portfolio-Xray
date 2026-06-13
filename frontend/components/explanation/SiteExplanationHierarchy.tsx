@@ -1,10 +1,10 @@
-﻿import type { SiteExplanationBundle, SiteExplanationScreen, SiteExplanationTextItem } from "@/lib/types";
+import type { SiteExplanationBundle, SiteExplanationScreen, SiteExplanationTextItem } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
 type Props = {
-  bundle...: SiteExplanationBundle;
+  bundle?: SiteExplanationBundle;
   screen: string;
-  fallbackTitle...: string;
+  fallbackTitle?: string;
 };
 
 const toneClass: Record<SiteExplanationTextItem["tone"], string> = {
@@ -18,19 +18,19 @@ function labelForEvidenceStatus(status: string) {
   return status.replace(/_/g, " ");
 }
 
-function ExplanationItems({ items, compact = false }: { items: SiteExplanationTextItem[]; compact...: boolean }) {
+function ExplanationItems({ items, compact = false }: { items: SiteExplanationTextItem[]; compact?: boolean }) {
   if (!items.length) return null;
   return (
-    <div className={compact ... "space-y-2" : "grid gap-3 md:grid-cols-2"}>
+    <div className={compact ? "space-y-2" : "grid gap-3 md:grid-cols-2"}>
       {items.map((item) => (
-        <article key={item.id} className={`rounded-2xl border p-4 ${toneClass[item.tone] ...... toneClass.neutral}`}>
+        <article key={item.id} className={`rounded-2xl border p-4 ${toneClass[item.tone] ?? toneClass.neutral}`}>
           <div className="flex items-start justify-between gap-3">
             <p className="text-sm leading-6 text-pmri-text2">{item.text}</p>
-            <StatusBadge tone={item.evidence_status === "available" ... "green" : item.evidence_status === "missing" ... "amber" : "slate"}>
+            <StatusBadge tone={item.evidence_status === "available" ? "green" : item.evidence_status === "missing" ? "amber" : "slate"}>
               {labelForEvidenceStatus(item.evidence_status)}
             </StatusBadge>
           </div>
-          {item.source_refs.length ... (
+          {item.source_refs.length ? (
             <p className="mt-3 text-xs leading-5 text-pmri-muted">
               Source: {item.source_refs.map((ref) => `${ref.artifact}:${ref.field_path}`).join(" · ")}
             </p>
@@ -42,7 +42,7 @@ function ExplanationItems({ items, compact = false }: { items: SiteExplanationTe
 }
 
 export function SiteExplanationHierarchy({ bundle, screen, fallbackTitle = "Screen explanation" }: Props) {
-  const screenCopy: SiteExplanationScreen | undefined = bundle....screens....[screen];
+  const screenCopy: SiteExplanationScreen | undefined = bundle?.screens?.[screen];
   if (!screenCopy) return null;
   const hasAnyCopy = screenCopy.executive.length || screenCopy.evidence.length || screenCopy.technical.length;
   if (!hasAnyCopy) return null;
@@ -62,13 +62,13 @@ export function SiteExplanationHierarchy({ bundle, screen, fallbackTitle = "Scre
 
       <div className="mt-5 space-y-5">
         <ExplanationItems items={screenCopy.executive} compact />
-        {screenCopy.evidence.length ... (
+        {screenCopy.evidence.length ? (
           <div>
             <p className="pmri-label mb-3">Supporting evidence</p>
             <ExplanationItems items={screenCopy.evidence} />
           </div>
         ) : null}
-        {screenCopy.technical.length ... (
+        {screenCopy.technical.length ? (
           <details className="rounded-2xl border border-pmri-border bg-white/[0.02] p-4">
             <summary className="cursor-pointer text-sm font-medium text-pmri-text">Technical details and limitations</summary>
             <div className="mt-4">

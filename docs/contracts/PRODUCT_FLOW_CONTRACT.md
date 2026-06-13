@@ -54,10 +54,14 @@ Input Portfolio
 -> Monitoring / What Changed
 ```
 
-Current MVP frontend route reality may merge or defer some steps. As of this contract, the visible frontend path is:
+Current MVP frontend route reality may merge or defer some backend product steps. As of this contract, the visible frontend path is:
 
 ```text
-/client-profile
+/
+-> /onboarding/sign-in
+-> /onboarding/name
+-> /onboarding/investor-type
+-> /onboarding/loading
 -> /portfolio-input
 -> /diagnosis
 -> /evidence
@@ -68,19 +72,11 @@ Current MVP frontend route reality may merge or defer some steps. As of this con
 -> /report
 ```
 
-The `/client-profile` route captures the mandatory web Client Fit profile before diagnosis. The
-`/client-fit` route displays the bounded fit interpretation after Stress Lab and before Hypothesis.
-The `/hypothesis` route may contain both Candidate Launchpad and Builder setup for the current MVP.
-There is no separate current Monitoring route; Monitoring / What Changed is a light product artifact
-and may be surfaced later or in report/summary context. Route merges do not change the product step
-order or boundaries.
+The public landing opens the required email sign-in step. Local development may use `/onboarding/name?dev_bypass=1` as a preview shortcut while sign-in is being stabilized; that shortcut is not the product path. Onboarding captures the planning profile and writes bounded Client Fit context before Portfolio Input. `/client-profile` remains an advanced/manual Client Fit editor, not the primary journey start.
 
-Client Fit V1 status after Sessions 15-16: active web onboarding and display route, plus backend
-compatibility for missing profiles. Backend/CLI runs may write `analysis_subject/client_fit_check.json`
-after Stress Lab and before Problem Classification, including `not_provided` when no profile exists.
-The normal frontend journey requires `/client-profile` before diagnosis and shows `/client-fit`
-before Hypothesis. Block 4, Launchpad, Builder, Current vs Candidate, Verdict, and Report may use
-bounded Client Fit context as display or hypothesis-test evidence only.
+`/client-fit` displays the bounded fit interpretation after Stress Lab and before Hypothesis. `/hypothesis` may contain Problem Classification handoff, Candidate Launchpad, Builder setup, and the explicit candidate-generation attempt for the current MVP. There is no separate current Monitoring route; Monitoring / What Changed is a light product artifact and may be surfaced later or in report/summary context. Route merges do not change the product step order or boundaries.
+
+Client Fit V1 status: active web onboarding and display route, plus backend compatibility for missing profiles. Backend/CLI runs may write `analysis_subject/client_fit_check.json` after Stress Lab and before Problem Classification, including `not_provided` when no profile exists. The normal frontend journey requires Client Fit context from onboarding before diagnosis and shows `/client-fit` before Hypothesis. Block 4, Launchpad, Builder, Current vs Candidate, Verdict, and Report may use bounded Client Fit context as display or hypothesis-test evidence only.
 
 ## Global product boundaries
 

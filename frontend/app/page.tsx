@@ -53,7 +53,7 @@ const precisionStats = [
   ["Non-binding", "Verdict frames support, not orders."]
 ];
 
-const platformEntryHref = "/onboarding/name...dev_bypass=1";
+const platformEntryHref = "/onboarding/sign-in";
 
 export default function Home() {
   return (

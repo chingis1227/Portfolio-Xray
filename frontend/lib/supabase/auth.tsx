@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import type { Session, User } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -38,7 +38,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const runtimeStatus = getSupabaseRuntimeStatus();
   const enabled = runtimeStatus.enabled;
   const [session, setSession] = useState<Session | null>(null);
-  const [status, setStatus] = useState<AuthStatus>(enabled ... "loading" : "disabled");
+  const [status, setStatus] = useState<AuthStatus>(enabled ? "loading" : "disabled");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,13 +67,13 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       setSession(data.session);
-      setStatus(data.session ... "signed_in" : "signed_out");
+      setStatus(data.session ? "signed_in" : "signed_out");
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!isMounted) return;
       setSession(nextSession);
-      setStatus(nextSession ... "signed_in" : "signed_out");
+      setStatus(nextSession ? "signed_in" : "signed_out");
       setError(null);
     });
 
@@ -173,7 +173,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     enabled,
     status,
     session,
-    user: session....user ...... null,
+    user: session?.user ?? null,
     message,
     error,
     sendEmailOtp,

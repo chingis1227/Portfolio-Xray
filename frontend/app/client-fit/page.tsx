@@ -8,17 +8,17 @@ import { useReviewState } from "@/lib/reviewState";
 import type { ClientFitDisplaySummary } from "@/lib/generated/api-types";
 
 function isProvided(summary: ClientFitDisplaySummary | undefined) {
-  const label = (summary....status_label ...... "").toLowerCase();
+  const label = (summary?.status_label ?? "").toLowerCase();
   return Boolean(summary && label && !label.includes("not provided"));
 }
 
 function fallbackText(value: string | null | undefined, fallback: string) {
-  return typeof value === "string" && value.trim() ... value : fallback;
+  return typeof value === "string" && value.trim() ? value : fallback;
 }
 
 function profileTargetRows(summary: ClientFitDisplaySummary | undefined) {
-  const rows = summary....target_rows ...... [];
-  return rows.length ... rows : [
+  const rows = summary?.target_rows ?? [];
+  return rows.length ? rows : [
     { dimension_label: "Target return", portfolio_value_label: "Not evaluated", target_or_limit_label: "Provided profile required", status_label: "Not provided", status_tone: "amber" as const, explanation: "Complete Client Profile and rerun diagnosis to evaluate this row." },
     { dimension_label: "Volatility", portfolio_value_label: "Not evaluated", target_or_limit_label: "Provided profile required", status_label: "Not provided", status_tone: "amber" as const, explanation: "Complete Client Profile and rerun diagnosis to evaluate this row." },
     { dimension_label: "Temporary loss", portfolio_value_label: "Not evaluated", target_or_limit_label: "Provided profile required", status_label: "Not provided", status_tone: "amber" as const, explanation: "Complete Client Profile and rerun diagnosis to evaluate this row." }
@@ -43,13 +43,13 @@ function LockedClientFitState() {
 
 export default function ClientFitPage() {
   const { activeReview, hydrated } = useReviewState();
-  const summary = activeReview....reviewSummary....clientFit;
+  const summary = activeReview?.reviewSummary?.clientFit;
   const provided = isProvided(summary);
-  const ready = Boolean(activeReview....runStatus === "completed" && activeReview.evidenceReady && summary);
+  const ready = Boolean(activeReview?.runStatus === "completed" && activeReview.evidenceReady && summary);
   const rows = profileTargetRows(summary);
-  const statusTone = summary....status_tone ...... "amber";
-  const siteExplanation = activeReview....reviewSummary....siteExplanation;
-  const clientFitSummary = ready && provided ... summary : undefined;
+  const statusTone = summary?.status_tone ?? "amber";
+  const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
+  const clientFitSummary = ready && provided ? summary : undefined;
 
   return (
     <div>
@@ -59,12 +59,12 @@ export default function ClientFitPage() {
         description="A separate non-binding check of portfolio evidence against stated return, volatility, temporary-loss, and horizon limits."
         boundaryNote="Client Fit status is not Diagnostic Quality status and is not a decision action."
       >
-        <StatusBadge tone={ready && provided ... statusTone : "amber"}>{ready ... (summary....status_label ...... "Client Fit evidence") : "Evidence required"}</StatusBadge>
+        <StatusBadge tone={ready && provided ? statusTone : "amber"}>{ready ? (summary?.status_label ?? "Client Fit evidence") : "Evidence required"}</StatusBadge>
       </PageHeader>
 
       <SiteExplanationHierarchy bundle={siteExplanation} screen="client_fit" fallbackTitle="Client Fit explanation" />
 
-      {!hydrated ... null : !clientFitSummary ... (
+      {!hydrated ? null : !clientFitSummary ? (
         <LockedClientFitState />
       ) : (
         <div className="space-y-6">
@@ -77,7 +77,7 @@ export default function ClientFitPage() {
                   Profile confidence/source quality: {fallbackText(clientFitSummary.source_quality_label, "Source quality not returned")}. This describes the profile input, not whether the portfolio is good or bad.
                 </p>
               </div>
-              <StatusBadge tone={statusTone}>{clientFitSummary.status_label ...... "Client Fit"}</StatusBadge>
+              <StatusBadge tone={statusTone}>{clientFitSummary.status_label ?? "Client Fit"}</StatusBadge>
             </div>
           </section>
 
@@ -104,7 +104,7 @@ export default function ClientFitPage() {
                       <td className="px-5 py-4 text-pmri-text2">{fallbackText(row.target_or_limit_label, "No target returned")}</td>
                       <td className="px-5 py-4">
                         <StatusBadge tone={row.status_tone}>{row.status_label}</StatusBadge>
-                        {row.explanation ... <p className="mt-2 text-xs leading-5 text-pmri-muted">{row.explanation}</p> : null}
+                        {row.explanation ? <p className="mt-2 text-xs leading-5 text-pmri-muted">{row.explanation}</p> : null}
                       </td>
                     </tr>
                   ))}

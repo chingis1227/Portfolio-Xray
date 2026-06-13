@@ -6,7 +6,7 @@ const DISPLAY_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\blaunchpad\s+card\b/gi, "hypothesis test"],
   [/\bcard\s+type\b/gi, "test type"],
   [/\bdefault\s+method\b/gi, "suggested method"],
-  [/\bsource\s+(...:problem|card)\b/gi, "diagnosis source"],
+  [/\bsource\s+(?:problem|card)\b/gi, "diagnosis source"],
   [/\bbuilder\s+setup\b/gi, "Test setup"],
   [/\bsetup[_\s-]*only\b/gi, "Setup only"],
   [/\bmonitor[_\s-]*or[_\s-]*resolve[_\s-]*data\b/gi, "Monitor or improve data quality"],
@@ -15,23 +15,23 @@ const DISPLAY_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\bimplementation\s+order\b/gi, "rebalance instruction"],
   [/\btrade\s+execution\b/gi, "rebalance instruction"],
   [/\bdecision[_\s-]*verdict\.json\b/gi, "decision-support verdict"],
-  [/\bcurrent[_\s-]*vs[_\s-]*candidate(...:\.json)...\b/gi, "Current vs Candidate Comparison"],
+  [/\bcurrent[_\s-]*vs[_\s-]*candidate(?:\.json)?\b/gi, "Current vs Candidate Comparison"],
   [/\bmostly[_\s-]*weak[_\s-]*protection\b/gi, "Limited stress offset"],
   [/\bweak[_\s-]*protection\b/gi, "Weak hedge protection"],
   [/\bno[_\s-]*protection\b/gi, "Limited stress offset"],
   [/\bbaseline[_\s-]*or[_\s-]*candidate[_\s-]*metric[_\s-]*missing\b/gi, "Candidate metric unavailable"],
   [/\bno[_\s-]*available[_\s-]*comparison[_\s-]*metrics\b/gi, "Comparison metrics unavailable"],
   [/\bstale[_\s-]*downstream[_\s-]*artifact[_\s-]*ignored\b/gi, "Previous result ignored because it is outdated"],
-  [/\bartifacts...\b/gi, "supporting evidence"],
-  [/\bdiagnostic sections...\s*2(...:\.\d+)...(...:\s*[–-]\s*2(...:\.\d+)...)...\b/gi, "portfolio behavior and factor evidence"],
-  [/\bblocks...\s*2(...:\.\d+)...(...:\s*[–-]\s*2(...:\.\d+)...)...\b/gi, "portfolio behavior and factor evidence"],
+  [/\bartifacts?\b/gi, "supporting evidence"],
+  [/\bdiagnostic sections?\s*2(?:\.\d+)?(?:\s*[–-]\s*2(?:\.\d+)?)?\b/gi, "portfolio behavior and factor evidence"],
+  [/\bblocks?\s*2(?:\.\d+)?(?:\s*[–-]\s*2(?:\.\d+)?)?\b/gi, "portfolio behavior and factor evidence"],
   [/\bRC_vol\b/g, "risk contribution"],
   [/\brc[_\s-]*pct\b/gi, "risk contribution"],
   [/\bbeta[_\s-]*rr\b/gi, "interest-rate sensitivity"],
   [/\brisk[_\s-]*on[_\s-]*weight\b/gi, "risk-on holdings"],
   [/\bequity[_\s-]*weight\b/gi, "equity-linked holdings"],
   [/\brisk[_\s-]*on\b/gi, "growth / risk assets"],
-  [/\bfactor[_\s-]*variance[_\s-]*(...:decomposition|contribution)\b/gi, "factor contribution view"],
+  [/\bfactor[_\s-]*variance[_\s-]*(?:decomposition|contribution)\b/gi, "factor contribution view"],
   [/\bportfolio[_\s-]*xray\b/gi, "Portfolio X-Ray"],
   [/\bstress[_\s-]*report\b/gi, "stress evidence"],
   [/\bequity[_\s-]*shock\b/gi, "Equity sell-off"],
@@ -41,7 +41,7 @@ const DISPLAY_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\bliquidity[_\s-]*shock\b/gi, "Liquidity shock"],
   [/\busd[_\s-]*shock\b/gi, "USD shock"],
   [/\bcommodity[_\s-]*shock\b/gi, "Commodity shock"],
-  [/\brecession[_\s-]*severe(...:[_\s-]*protection)...\b/gi, "Severe recession"],
+  [/\brecession[_\s-]*severe(?:[_\s-]*protection)?\b/gi, "Severe recession"],
   [/\breal[_\s-]*rates\b/gi, "interest-rate sensitivity"],
   [/\bVIX[_\s-]*volatility\b/g, "VIX volatility"],
   [/\bCASH\s+USD\b/g, "Cash USD"],
@@ -56,7 +56,7 @@ const DISPLAY_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\btechnical confidence\b/gi, "evidence quality"],
   [/\bdetector checks whether\b/gi, "The review checks whether"],
   [/\bdetector checks\b/gi, "The review checks"],
-  [/\b(...:backend|api|json|raw outputs...|source artifact|real backend review)\b/gi, "supporting data"]
+  [/\b(?:backend|api|json|raw outputs?|source artifact|real backend review)\b/gi, "supporting data"]
 ];
 
 const EXACT_LABELS: Record<string, string> = {
@@ -146,13 +146,13 @@ function preserveAcronyms(value: string) {
     .replace(/\bVix\b/g, "VIX");
 }
 
-export function normalizeDisplayLabel(value...: unknown, fallback = "Unavailable") {
-  const raw = value === null || value === undefined ... fallback : String(value);
+export function normalizeDisplayLabel(value?: unknown, fallback = "Unavailable") {
+  const raw = value === null || value === undefined ? fallback : String(value);
   const trimmed = raw.trim();
   if (!trimmed) return fallback;
 
   const exactKey = trimmed.replace(/\s+/g, "_");
-  const exact = EXACT_LABELS[exactKey] ...... EXACT_LABELS[exactKey.toLowerCase()];
+  const exact = EXACT_LABELS[exactKey] ?? EXACT_LABELS[exactKey.toLowerCase()];
   if (exact) return exact;
 
   let output = trimmed;
@@ -160,9 +160,9 @@ export function normalizeDisplayLabel(value...: unknown, fallback = "Unavailable
     output = output.replace(pattern, replacement);
   });
   output = output
-    .replace(/\bportfolio behavior and factor evidence,...\s*(...:\d(...:\.\d+)...(...:\s*,\s*|\s+and\s+|,\s*and\s*)...)+/gi, "portfolio behavior and factor evidence")
-    .replace(/\b(...:sections...\s*)...2\.\d+(...:\s*,\s*(...:and\s*)...2\.\d+)+\b/gi, "portfolio behavior and factor evidence")
-    .replace(/\b(Current vs Candidate Comparison)(...:\s+Comparison)+\b/gi, "$1")
+    .replace(/\bportfolio behavior and factor evidence,?\s*(?:\d(?:\.\d+)?(?:\s*,\s*|\s+and\s+|,\s*and\s*)?)+/gi, "portfolio behavior and factor evidence")
+    .replace(/\b(?:sections?\s*)?2\.\d+(?:\s*,\s*(?:and\s*)?2\.\d+)+\b/gi, "portfolio behavior and factor evidence")
+    .replace(/\b(Current vs Candidate Comparison)(?:\s+Comparison)+\b/gi, "$1")
     .replace(/_/g, " ")
     .replace(/\s+/g, " ")
     .replace(/\s+([.,;:])/g, "$1")
@@ -172,22 +172,22 @@ export function normalizeDisplayLabel(value...: unknown, fallback = "Unavailable
 }
 
 function looksLikeArtifactFilename(value: string) {
-  return /(...:^|[\\/])[\w.-]+\.json$/i.test(value) || /(...:^|[\\/])(...:output|cache|runs|results_csv)[\\/]/i.test(value);
+  return /(?:^|[\\/])[\w.-]+\.json$/i.test(value) || /(?:^|[\\/])(?:output|cache|runs|results_csv)[\\/]/i.test(value);
 }
 
-export function formatUnknownValue(value...: unknown, fallback = "Not available yet") {
+export function formatUnknownValue(value?: unknown, fallback = "Not available yet") {
   if (value === null || value === undefined) return fallback;
-  if (typeof value === "boolean") return value ... "Available" : "Not available";
-  if (typeof value === "number") return Number.isFinite(value) ... String(value) : fallback;
+  if (typeof value === "boolean") return value ? "Available" : "Not available";
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : fallback;
   const raw = String(value).trim();
   if (!raw) return fallback;
-  if (/^(...:n\/a|na|null|undefined)$/i.test(raw)) return fallback;
+  if (/^(?:n\/a|na|null|undefined)$/i.test(raw)) return fallback;
   if (looksLikeArtifactFilename(raw)) return fallback;
   return normalizeDisplayLabel(raw, fallback);
 }
 
-export function normalizeDisplaySentence(value...: unknown, fallback = "Supporting evidence is unavailable.") {
-  const raw = value === null || value === undefined ... fallback : String(value);
+export function normalizeDisplaySentence(value?: unknown, fallback = "Supporting evidence is unavailable.") {
+  const raw = value === null || value === undefined ? fallback : String(value);
   if (/HAC\s*p-value|p-value|regression/i.test(raw)) {
     return "Factor evidence is available in the supporting data.";
   }
@@ -198,7 +198,7 @@ export function normalizeDisplaySentence(value...: unknown, fallback = "Supporti
     .replace(/\bRisk On\b/g, "Risk-on");
 }
 
-export function evidenceQualityLabel(value...: unknown) {
+export function evidenceQualityLabel(value?: unknown) {
   const normalized = normalizeDisplayLabel(value, "").toLowerCase();
   if (!normalized || normalized.includes("insufficient") || normalized.includes("unavailable") || normalized === "n/a") {
     return "Insufficient data";
@@ -215,7 +215,7 @@ export function evidenceQualityLabel(value...: unknown) {
   return "Moderate evidence";
 }
 
-export function evidenceTone(value...: unknown): StatusTone {
+export function evidenceTone(value?: unknown): StatusTone {
   const label = evidenceQualityLabel(value);
   if (label === "Strong evidence") return "green";
   if (label === "Moderate evidence") return "slate";
@@ -223,7 +223,7 @@ export function evidenceTone(value...: unknown): StatusTone {
   return "slate";
 }
 
-export function riskSeverityLabel(value...: unknown) {
+export function riskSeverityLabel(value?: unknown) {
   const normalized = normalizeDisplayLabel(value, "").toLowerCase();
   if (normalized.includes("high") || normalized.includes("severe")) return "High risk";
   if (normalized.includes("medium") || normalized.includes("moderate")) return "Medium risk";
@@ -231,7 +231,7 @@ export function riskSeverityLabel(value...: unknown) {
   return "Unavailable";
 }
 
-export function riskSeverityTone(value...: unknown): StatusTone {
+export function riskSeverityTone(value?: unknown): StatusTone {
   const label = riskSeverityLabel(value);
   if (label === "High risk") return "red";
   if (label === "Medium risk") return "amber";
@@ -239,6 +239,6 @@ export function riskSeverityTone(value...: unknown): StatusTone {
   return "slate";
 }
 
-export function displayTitleLabel(value...: unknown, fallback = "Unavailable") {
+export function displayTitleLabel(value?: unknown, fallback = "Unavailable") {
   return preserveAcronyms(titleCaseLoose(normalizeDisplayLabel(value, fallback)));
 }

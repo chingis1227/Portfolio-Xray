@@ -35,14 +35,14 @@ export function LossContributionPanel({ scenario }: { scenario: StressScenarioDe
             <div>
               <dt className="pmri-label">Portfolio stress impact</dt>
               <dd className="data-figure mt-1 text-2xl text-pmri-text">
-                {formatStressPercent(scenario.kind === "historical" ... scenario.drawdownPct ...... scenario.portfolioLossPct : scenario.portfolioLossPct)}
+                {formatStressPercent(scenario.kind === "historical" ? scenario.drawdownPct ?? scenario.portfolioLossPct : scenario.portfolioLossPct)}
               </dd>
             </div>
             <div>
               <dt className="pmri-label">Assets that hurt in selected scenario</dt>
               <dd className="mt-1 text-sm leading-6 text-pmri-text2">
                 {scenario.assetsHurt.length
-                  ... scenario.assetsHurt.slice(0, 3).map((item) => `${item.ticker} ${formatStressPercent(item.value)}`).join(", ")
+                  ? scenario.assetsHurt.slice(0, 3).map((item) => `${item.ticker} ${formatStressPercent(item.value)}`).join(", ")
                   : "Unavailable"}
               </dd>
             </div>
@@ -50,7 +50,7 @@ export function LossContributionPanel({ scenario }: { scenario: StressScenarioDe
               <dt className="pmri-label">Assets that helped in selected scenario</dt>
               <dd className="mt-1 text-sm leading-6 text-pmri-text2">
                 {scenario.assetsHelped.length
-                  ... scenario.assetsHelped.slice(0, 3).map((item) => `${item.ticker} ${formatStressPercent(item.value, { signed: true })}`).join(", ")
+                  ? scenario.assetsHelped.slice(0, 3).map((item) => `${item.ticker} ${formatStressPercent(item.value, { signed: true })}`).join(", ")
                   : "No meaningful helped assets detected in this scenario."}
               </dd>
             </div>

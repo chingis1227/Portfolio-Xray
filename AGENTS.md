@@ -32,8 +32,8 @@ Input portfolio
 The current implementation is still CLI/file-driven and partly carries older optimizer/report/scorecard-heavy infrastructure. Treat that older infrastructure as support code unless a task explicitly targets it.
 
 Client Fit V1 is implemented as a non-binding profile-fit layer with active frontend onboarding.
-The web journey starts at `/client-profile`, requires a valid Client Fit profile before diagnosis,
-and shows `/client-fit` after Stress Lab and before Hypothesis. Backend/CLI compatibility remains:
+The web journey starts at the public landing page, enters required email sign-in, runs onboarding to create Client Fit context before diagnosis,
+and shows `/client-fit` after Stress Lab and before Hypothesis. `/client-profile` is an advanced/manual editor, not the primary entry step. Backend/CLI compatibility remains:
 missing Client Fit writes a `not_provided` compatibility state rather than failing the run. It writes
 `analysis_subject/client_fit_check.json` and can inform Block 4, Launchpad, Builder setup, Current
 vs Candidate display/test criteria, and Verdict context. Treat it as diagnostic context, not

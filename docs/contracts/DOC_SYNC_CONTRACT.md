@@ -160,7 +160,7 @@ Examples:
 
 ### DESIGN.md and docs/design/*
 
-Update `docs/design/portfolio_mri_design_system.md` and `docs/contracts/DESIGN_SYSTEM_CONTRACT.md` for Portfolio MRI product UI design changes. Update `DESIGN.md` only when legacy/historical visual routing, project-wide visual governance, or generated HTML/dashboard design guidance changes.
+Update `DESIGN.md`, `docs/design/portfolio_mri_design_system.md`, `docs/design/current_website_structure.md`, and `docs/contracts/DESIGN_SYSTEM_CONTRACT.md` for Portfolio MRI product UI design changes. Update `docs/design/current_website_structure.md` whenever route order, visible page blocks, headings, CTAs, locked states, or metric presentation changes.
 
 Examples:
 
