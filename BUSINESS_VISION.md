@@ -4,7 +4,7 @@ This document describes the current business direction and operating context, bu
 
 ## 1. Business Positioning
 
-Portfolio MRI / Portfolio X-Ray is a diagnosis-first, current-portfolio-first investment decision-support system.
+Portfolio MRI is a diagnosis-first, current-portfolio-first investment decision-support system.
 
 It helps advisors and sophisticated investors understand what is really inside a portfolio, where risk is concentrated, how the portfolio may behave under stress, how that evidence compares with non-binding Client Fit context, which alternative allocation hypothesis is worth testing, and whether a rebalance review is justified.
 
@@ -12,7 +12,7 @@ The product is not positioned as a black-box optimizer. Optimizers and candidate
 
 ```text
 Input Portfolio
--> Portfolio X-Ray
+-> Portfolio Diagnosis
 -> Stress Test Lab
 -> Client Fit Check
 -> Problem Classification
@@ -25,7 +25,7 @@ Input Portfolio
 -> Monitoring / What Changed
 ```
 
-Advanced/later capabilities are not the current Core MVP business promise unless explicitly promoted by canonical specs. This includes Health Score, Robustness Scorecard, macro dashboards, full multi-candidate arenas, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client Fit suitability approval, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objectives, tactical tilt, full custom constraints UI, multi-client workspace, and polished PDF report product.
+Advanced/later capabilities are not the current Core MVP business promise unless explicitly promoted by canonical specs. This includes Health Score, Robustness Scorecard, macro dashboards, full multi-candidate arenas, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client Fit suitability approval, Asset Diagnostics, Max Sharpe, tax-aware optimization, turnover-aware optimizer objectives, tactical tilt, full custom constraints UI, multi-client workspace, and polished PDF report product.
 
 ## 2. One-Sentence Positioning
 
@@ -88,7 +88,7 @@ They want institutional-style diagnostics without building their own analytics p
 
 ### Self-Directed Investor Value Proposition
 
-> Get an institutional-style Portfolio X-Ray, stress test, and rebalance/no-trade decision support
+> Get an institutional-style Portfolio Diagnosis, stress test, and rebalance/no-trade decision support
 > for a serious self-managed portfolio.
 
 ## 6. Secondary / Later Segments To Preserve
@@ -191,7 +191,7 @@ candidate freshness, optimizer readiness, or investment verdict evidence.
 The target MVP should feel like a guided portfolio review:
 
 1. User uploads or enters the current portfolio.
-2. System runs Portfolio X-Ray.
+2. System runs Portfolio Diagnosis.
 3. System runs Stress Test Lab.
 4. System classifies the most important portfolio problems.
 5. System identifies 2-3 reasonable paths to test.
@@ -304,7 +304,7 @@ them as implemented unless verified in `SPEC.md`, `docs/specs/*.md`, or code.
 - White-label / API integration.
 - Full PDF report design.
 - Advanced Parameter Builder settings.
-- Asset X-Ray / Asset Diagnostics.
+- Asset Diagnostics / Asset Diagnostics.
 - Portfolio Archetype Classification is an optional later diagnostic layer that can classify the
   portfolio by behavior, such as Equity Growth Portfolio, Balanced 60/40-like, Credit Carry
   Portfolio, Duration-heavy Defensive, Inflation-sensitive, or Pseudo-diversified Portfolio. It

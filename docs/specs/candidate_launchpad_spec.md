@@ -145,7 +145,7 @@ V1 maps goals to guided Builder method ids only as suggestions. The full backend
 `run_report.py` writes `candidate_launchpad.json` after `problem_classification.json` is built. This keeps the diagnosis-first handoff explicit:
 
 ```text
-Portfolio X-Ray / Stress
+Portfolio Diagnosis / Stress
 -> Problem Classification
 -> Candidate Launchpad
 ```

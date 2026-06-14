@@ -1,14 +1,14 @@
 ﻿{
-  "headline": "X-Ray and Stress evidence point to concentrated growth-equity sensitivity with partial defensive ballast.",
+  "headline": "Portfolio diagnosis and Stress evidence point to concentrated growth-equity sensitivity with partial defensive ballast.",
   "quality": "Evidence usable, not conclusive",
   "boundaryNote": "Stress scenarios are diagnostic tests, not forecasts.",
   "items": [
     {
-      "type": "X-Ray",
+      "type": "Diagnosis",
       "title": "Largest risk driver",
       "status": "Concentration detected",
       "summary": "SPY and QQQ create overlapping US equity and growth-factor exposure.",
-      "source": "Portfolio X-Ray review",
+      "source": "Portfolio Diagnosis review",
       "tone": "amber"
     },
     {

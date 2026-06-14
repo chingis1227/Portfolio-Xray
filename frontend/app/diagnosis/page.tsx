@@ -64,8 +64,8 @@ export default function DiagnosisPage() {
   return (
     <div>
       <PageHeader
-        kicker="Step 02 / Portfolio X-Ray"
-        title="Portfolio X-Ray Diagnosis"
+        kicker="Step 02 / Portfolio Diagnosis"
+        title="Current Portfolio Diagnosis"
         description="Current-portfolio review before any candidate test."
       />
       <SiteExplanationHierarchy

@@ -39,7 +39,7 @@ primary executive summary.
 Runtime integration:
 
 - `run_report.py` writes diagnosis-sidecar `site_explanation_bundle.json` for analysis-subject
-  materialization, including core-diagnostics-only runs when only X-Ray and stress evidence exist.
+  materialization, including core-diagnostics-only runs when only Diagnosis and stress evidence exist.
   When `client_fit_check.json` exists, the bundle adds Client Fit and report-hierarchy rows that
   keep provided-profile fit separate from portfolio diagnostic quality.
 - `src/candidate_comparison.py` writes or refreshes root `site_explanation_bundle.json` after

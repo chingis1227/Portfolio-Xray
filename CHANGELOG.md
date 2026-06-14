@@ -2,6 +2,10 @@
 
 ## 2026-06-14
 
+- Rebranded public product language around Portfolio MRI and Portfolio Diagnosis. The landing page,
+  visible frontend labels, active source-of-truth docs, demo docs, and frontend tests now use the
+  new public naming while internal technical identifiers and generated artifact contracts remain
+  unchanged.
 - Completed staged review pipeline Session 7 and closed the ExecPlan. Downstream FastAPI
   candidate/comparison/verdict/report actions now synchronize `review_state_v1`, Demo / QA mode has
   deterministic downstream fixtures, Portfolio Input auto-resumes in-flight staged reviews after

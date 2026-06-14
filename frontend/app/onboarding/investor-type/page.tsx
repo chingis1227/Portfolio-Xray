@@ -51,7 +51,7 @@ const concernOptions: Array<Option<OnboardingPrimaryConcern>> = [
   { id: "drawdown", label: "Loss in a stress event", detail: "What happens when markets break against me..." },
   { id: "rates", label: "Rates and bond sensitivity", detail: "How exposed is the portfolio to rate shocks..." },
   { id: "inflation", label: "Inflation / real asset protection", detail: "Does the portfolio have any offset..." },
-  { id: "unknown", label: "I am not sure yet", detail: "Start with broad X-Ray and Stress Lab evidence." }
+  { id: "unknown", label: "I am not sure yet", detail: "Start with broad portfolio diagnosis and Stress Lab evidence." }
 ];
 
 function Question<T extends string>({

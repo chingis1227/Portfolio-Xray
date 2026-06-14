@@ -9,14 +9,14 @@ and compact persistence surfaces may consume bounded Client Fit summaries.
 ## Purpose
 
 Client Fit answers: **Does the diagnosed portfolio fit the client's provided investment profile...**
-It compares deterministic Portfolio X-Ray and Stress Lab evidence against the client's stated
+It compares deterministic Portfolio Diagnosis and Stress Lab evidence against the client's stated
 return, volatility, maximum drawdown, and horizon inputs. It does not approve suitability, execute
 trades, or replace portfolio diagnosis.
 
 Client Fit is inserted after Stress Lab and before Problem Classification:
 
 ```text
-Portfolio X-Ray
+Portfolio Diagnosis
 -> Stress Test Lab
 -> Client Fit Check
 -> Problem Classification
@@ -182,7 +182,7 @@ instruction.
 
 ## Downstream Use
 
-Problem Classification uses Client Fit as evidence and context, not as a replacement for X-Ray or
+Problem Classification uses Client Fit as evidence and context, not as a replacement for Diagnosis or
 Stress evidence. Block 4 may use dimension-level signals such as
 `client_fit_volatility_vs_target`, `client_fit_historical_max_drawdown_vs_limit`, and
 `client_fit_worst_stress_loss_vs_limit` as supporting or contrary evidence for existing objective

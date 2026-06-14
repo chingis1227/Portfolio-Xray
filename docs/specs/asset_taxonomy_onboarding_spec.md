@@ -2,7 +2,7 @@
 
 ## Purpose
 
-One-time onboarding of new tickers into Portfolio MRI taxonomy so Portfolio X-Ray, synthetic Stress Lab PnL, and synthetic stress **risk contribution (RC)** stay consistent as the universe scales.
+One-time onboarding of new tickers into Portfolio MRI taxonomy so Portfolio Diagnosis, synthetic Stress Lab PnL, and synthetic stress **risk contribution (RC)** stay consistent as the universe scales.
 
 This is **not** run on every portfolio analysis. Operators or the taxonomy agent run it when adding instruments to `config/etf_universe.yml` or `config/stock_universe.yml`.
 
@@ -37,11 +37,11 @@ Volatility multipliers and stressed correlations **do not** change synthetic PnL
 
 Stocks in `stock_universe.yml` always map to stress block **EQ** for RC.
 
-## Fields that drive stress RC vs X-Ray only
+## Fields that drive stress RC vs Portfolio Diagnosis only
 
 Implementation: `resolve_stress_asset_block()` in `src/stress_covariance_taxonomy.py`.
 
-| Field | Drives stress block (RC) | Used heavily in X-Ray |
+| Field | Drives stress block (RC) | Used heavily in Diagnosis |
 | --- | --- | --- |
 | `asset_class` | **Yes** | Yes |
 | `subtype` | **Yes** (FI, cash, alternatives) | Yes |

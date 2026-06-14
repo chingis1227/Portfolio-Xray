@@ -26,7 +26,7 @@ It writes:
 It does not:
 
 - calculate new metrics;
-- change Portfolio X-Ray or stress formulas;
+- change Portfolio Diagnosis or stress formulas;
 - optimize weights;
 - build candidate portfolios;
 - change candidate factory behavior;
@@ -97,10 +97,10 @@ The artifact returns at most three problem rows. If no high-priority problem is 
 
 Problem Classification may use existing evidence from:
 
-- Portfolio X-Ray product block `block_2_6_portfolio_weakness_map` (canonical pre-stress weakness hypotheses; canonical `risk_type` → `problem_id` map in `src/problem_classification.py`);
-- Portfolio X-Ray `risk_diagnostics`;
-- Portfolio X-Ray `asset_allocation`;
-- Portfolio X-Ray `factor_exposure`;
+- Portfolio Diagnosis product block `block_2_6_portfolio_weakness_map` (canonical pre-stress weakness hypotheses; canonical `risk_type` → `problem_id` map in `src/problem_classification.py`);
+- Portfolio Diagnosis `risk_diagnostics`;
+- Portfolio Diagnosis `asset_allocation`;
+- Portfolio Diagnosis `factor_exposure`;
 - Block 3.4 `current_portfolio_stress_scorecard_v1` on `stress_report.json` (primary stress scorecard path), including `problem_classification_signals` and worst-scenario selectors;
 - stress conclusions and legacy `stress_scorecard_v1` (fallback only when Block 3.4 is missing or `block_status = unavailable`);
 - Block 3.3 `hedge_gap_analysis_v1` on `stress_report.json` (primary hedge-gap path).

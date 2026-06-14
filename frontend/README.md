@@ -104,7 +104,7 @@ product or trading system.
 - The staged migration adds compact `review_state_v1` progress fields to the active review state:
   overall run status, current stage, per-stage statuses, provider status, mode (`demo_qa` or `live`),
   and safe stage errors. Portfolio Input saves `reviewId` immediately, shows progress while polling,
-  and only hydrates screen summaries through run-local recovery after the X-Ray, Stress, Client Fit,
+  and only hydrates screen summaries through run-local recovery after the Diagnosis, Stress, Client Fit,
   Problem Classification, and Launchpad/Builder evidence chain is available. The canonical contract
   is `../docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`.
 - When Supabase is enabled and the user is signed in, the active review may also keep a compact
@@ -148,7 +148,7 @@ If the flag is not exactly `true`, or either public value is blank, the Supabase
 disabled and no Supabase browser client is created.
 
 Canonical public entry requires an email OTP or magic-link sign-in before onboarding when Supabase is available.
-The platform sidebar intentionally does not show auth or cloud-storage controls in the core decision flow. Configure Supabase Auth
+The platform sidebar shows compact cloud persistence status and, after sign-in, a recent saved-review recovery panel. Configure Supabase Auth
 Email OTP in the Supabase dashboard and allow the local callback URL:
 
 ```text

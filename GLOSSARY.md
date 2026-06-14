@@ -1,6 +1,6 @@
 # GLOSSARY.md
 
-This file is the living glossary for Portfolio X-Ray & Optimization Terminal / Portfolio MRI.
+This file is the living glossary for Portfolio MRI / Optimization Terminal.
 
 It keeps project terminology consistent across documentation, specs, code comments, reports, outputs, and future UI/API surfaces. It does not replace formulas, policy rules, data rules, or detailed specs.
 
@@ -456,7 +456,7 @@ Term heading
 
 ### Problem Classification
 
-- Definition: Target product layer that converts Portfolio X-Ray and Stress Test Lab evidence into a small number of user-understandable portfolio problems and improvement paths.
+- Definition: Target product layer that converts Portfolio Diagnosis and Stress Test Lab evidence into a small number of user-understandable portfolio problems and improvement paths.
 - Area: product
 - Canonical source: [SPEC.md](SPEC.md), [PRODUCT.md](PRODUCT.md), [docs/DIAGNOSTIC_PRODUCT_CONCEPT.md](docs/DIAGNOSTIC_PRODUCT_CONCEPT.md)
 - Notes: Target/TBD unless an owning spec and implementation verify it.
@@ -555,11 +555,11 @@ Term heading
 - Definition: Rule-based behavior label for a portfolio (e.g. Equity Growth, Balanced 60/40-like, Pseudo-diversified) with evidence scorecard and conflict caveats.
 - Area: diagnostics
 - Canonical source: [portfolio_xray_diagnostics_spec.md](docs/specs/portfolio_xray_diagnostics_spec.md) §2.7
-- Notes: Legacy `sections.portfolio_archetype` may appear on full `portfolio_xray.json` builds. **Not** current Core MVP — product-facing X-Ray is Blocks 2.1–2.6; no product `block_*` for archetype (forbidden: `block_2_5_portfolio_archetype`, `block_2_6_portfolio_archetype`, `block_2_7_portfolio_archetype`).
+- Notes: Legacy `sections.portfolio_archetype` may appear on full `portfolio_xray.json` builds. **Not** current Core MVP — product-facing Diagnosis is Blocks 2.1–2.6; no product `block_*` for archetype (forbidden: `block_2_5_portfolio_archetype`, `block_2_6_portfolio_archetype`, `block_2_7_portfolio_archetype`).
 
 ### Blocks 1–5 deliverable
 
-- Definition: The diagnostic and candidate-prep scope covered by Blocks 1–5 audits and walkthroughs: input and assumptions, Portfolio X-Ray (**Core MVP: Blocks 2.1–2.6** on `portfolio_xray.json`), Stress Test Lab, Candidate Portfolio Factory, and optimization-engine / candidate-generation readiness. It ends before Selection Engine, Action Plan, Monitoring, and Decision Journal are interpreted as the audit subject.
+- Definition: The diagnostic and candidate-prep scope covered by Blocks 1–5 audits and walkthroughs: input and assumptions, Portfolio Diagnosis (**Core MVP: Blocks 2.1–2.6** on `portfolio_xray.json`), Stress Test Lab, Candidate Portfolio Factory, and optimization-engine / candidate-generation readiness. It ends before Selection Engine, Action Plan, Monitoring, and Decision Journal are interpreted as the audit subject.
 - Area: workflow
 - Canonical source: [docs/audits/2026-05-23_blocks_1_5_actual_algorithm_walkthrough.md](docs/audits/2026-05-23_blocks_1_5_actual_algorithm_walkthrough.md)
 - Notes: `python run_portfolio_review.py` still writes downstream decision JSON in the same CLI leg; those files are **not** part of Blocks 1–5 audit scope even when present on disk. See **Decision package**.

@@ -18,6 +18,6 @@ Client Fit persistence is compact display-state only. The frontend may save/reco
 status label/tone, profile label, source-quality label, compact target rows, decision boundary, and
 next-test text inside `reviews.compact_summary` and `review_stage_summaries.summary`. It must not
 store raw `client_fit_check.json`, generated artifact paths, schema versions, source-artifact maps,
-field paths, raw X-Ray/Stress evidence, or raw Client Fit artifact JSON in Supabase.
+field paths, raw Diagnosis/Stress evidence, or raw Client Fit artifact JSON in Supabase.
 
 Setup starts with `docs/supabase/supabase_free_schema.sql` in the Supabase SQL Editor. The frontend uses public browser-safe Supabase clients plus Row Level Security; it must not use service-role keys, secret keys, database passwords, Supabase Storage, Realtime, Edge Functions, or privileged frontend credentials for this optional persistence layer.

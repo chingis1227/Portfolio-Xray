@@ -15,7 +15,7 @@ Related:
 
 ### 1.1 What this spec owns
 
-- **Weakness Cards** — default user-facing representation of Block 2.6 on Portfolio X-Ray / diagnosis screens.
+- **Weakness Cards** — default user-facing representation of Block 2.6 on Portfolio Diagnosis screens.
 - **Pareto view** — per risk type, show only what an advisor needs to understand *which* vulnerability is flagged, *why* the severity band was chosen, *which holdings* matter, and *which Stress Lab scenarios* to run next.
 - **Mapping rules** from `portfolio_xray.json` → `block_2_6_portfolio_weakness_map` → UI view models.
 - **Prioritization** for top-N vs full-eight layouts, confidence caveats, and `Unavailable` handling.

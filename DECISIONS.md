@@ -1,6 +1,6 @@
 # DECISIONS.md
 
-This file is the concise living decision log for Portfolio X-Ray & Optimization Terminal / Portfolio MRI.
+This file is the concise living decision log for Portfolio MRI / Optimization Terminal.
 
 It records important decisions, why they were made, what alternatives were rejected, and which assumptions existed at the time. It is not a changelog, roadmap, issue tracker, implementation spec, or ExecPlan.
 
@@ -59,6 +59,20 @@ Title: Short title
 ```
 
 ## Decisions
+
+Decision ID: DEC-2026-06-14-002
+Title: Use Portfolio MRI and Portfolio Diagnosis as public product language
+
+- Status: accepted
+- Date: 2026-06-14
+- Decision: The public product brand is `Portfolio MRI`, and the user-facing name for the current-portfolio diagnostic layer is `Portfolio Diagnosis`.
+- Context: Public copy and active docs used mixed diagnostic naming, which made the product look less distinct and harder to position.
+- Rationale: `Portfolio MRI` keeps the diagnosis metaphor while `Portfolio Diagnosis` explains the product step plainly without relying on the older public wording.
+- Alternatives considered: Rename internal artifacts and stage IDs now (rejected as unnecessary risk); limit the change to the landing page only (rejected because active UI/docs would remain inconsistent).
+- Assumptions: Internal technical identifiers such as `portfolio_xray.json`, `xray` stage IDs, module names, and existing schemas remain stable until a separate migration is approved.
+- Consequences: Public UI, active docs, frontend labels, and tests should use Portfolio MRI / Portfolio Diagnosis language; technical contracts may still reference stable internal identifiers.
+- Related documents: [PRODUCT.md](PRODUCT.md), [SPEC.md](SPEC.md), [docs/contracts/PRODUCT_FLOW_CONTRACT.md](docs/contracts/PRODUCT_FLOW_CONTRACT.md), [docs/contracts/PRESENTATION_LANGUAGE_RULES.md](docs/contracts/PRESENTATION_LANGUAGE_RULES.md).
+- Review trigger: Revisit only if a future technical schema/artifact migration is explicitly planned.
 
 Decision ID: DEC-2026-06-14-001
 Title: Use staged web review state with compact-only Supabase persistence

@@ -18,7 +18,7 @@ Rulebook schema:
 
 Portfolio MRI must explain an existing portfolio as a professional diagnosis, not as a loose list of
 metrics and not as an optimizer-first recommendation. This spec defines the interpretation method
-that turns deterministic Portfolio X-Ray and Stress Lab outputs into a controlled diagnosis,
+that turns deterministic Portfolio Diagnosis and Stress Lab outputs into a controlled diagnosis,
 supporting symptoms, rejected alternatives, and a next diagnostic test.
 
 Session 04 begins implementing this methodology by adding deterministic interpretation-chain fields
@@ -50,7 +50,7 @@ This document governs interpretation boundaries for:
   ExecPlan and specified in [diagnosis_rulebook_schema_spec.md](diagnosis_rulebook_schema_spec.md).
 
 It is a methodology source, not a formula source. Numeric activation thresholds remain in the
-owning specs and runtime registries such as `config/block_4_thresholds.yml`, Portfolio X-Ray
+owning specs and runtime registries such as `config/block_4_thresholds.yml`, Portfolio Diagnosis
 threshold registries, and Stress Lab specs. If a later session adds rulebook fields, those fields
 must preserve the numeric source of truth instead of duplicating threshold values here.
 
@@ -74,7 +74,7 @@ The framework is aligned to broad, stable portfolio-management principles from p
 analytics and portfolio-construction sources. These references are not copied as implementation
 contracts. They justify the product method and vocabulary only.
 
-Morningstar's Portfolio X-Ray materials frame portfolio review as a look-through exercise across
+Public portfolio look-through materials often frame portfolio review as an exposure exercise across
 holdings, asset allocation, style, region, sector, and overlap. Portfolio MRI uses that principle
 for Blocks 2.1-2.6: first answer what the user actually owns and where exposures are hidden before
 asking whether anything should change.
@@ -236,10 +236,10 @@ short, taxonomy coverage is incomplete, factor evidence is weak, stress coverage
 conflict, or important source artifacts are absent.
 
 Current implementation note: Core MVP product blocks with `partial` or `unavailable` status now
-emit the same `partial_sections` evidence signal as legacy partial sections. Partial X-Ray evidence
-caps actionable diagnosis confidence. If partial X-Ray evidence is paired with unavailable Stress
+emit the same `partial_sections` evidence signal as legacy partial sections. Partial diagnosis evidence
+caps actionable diagnosis confidence. If partial diagnosis evidence is paired with unavailable Stress
 Lab evidence, `evidence_insufficient_data_quality` is activated as the primary blocker; partial
-X-Ray evidence alone lowers confidence but does not automatically block diagnosis or suppress
+diagnosis evidence alone lowers confidence but does not automatically block diagnosis or suppress
 Launchpad when Stress Lab still confirms a material primary diagnosis.
 
 Confidence text must explain the reason plainly. It should avoid marketing language and must not
@@ -271,7 +271,7 @@ When data quality blocks reliable interpretation, the product must prefer data i
 candidate generation. It must not emit Equal Weight / Risk Parity reference tests as if comparison
 evidence were reliable.
 
-The blocker is reserved for hard trust failure or the combination of partial X-Ray evidence with
+The blocker is reserved for hard trust failure or the combination of partial diagnosis evidence with
 missing Stress Lab evidence. A single partial diagnostic block can still produce an actionable
 diagnosis and Launchpad handoff when stress confirmation is available, but the confidence must be
 cautious and source limitations must remain visible.

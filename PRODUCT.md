@@ -4,7 +4,7 @@ This document describes the current product direction and operating context, but
 
 ## 1. Product Summary
 
-Portfolio MRI / Portfolio X-Ray is a diagnosis-first, current-portfolio-first investment decision-support product.
+Portfolio MRI is a diagnosis-first, current-portfolio-first investment decision-support product.
 
 The user does not start by choosing an optimizer. The user starts by submitting a current portfolio. The product diagnoses what is inside that portfolio, where risk is hidden, how it behaves under stress, how that evidence compares with non-binding Client Fit context, what problem should be tested, which candidate hypothesis is reasonable, and whether the trade-off justifies action.
 
@@ -12,7 +12,7 @@ Current Core MVP product flow:
 
 ```text
 Input Portfolio
--> Portfolio X-Ray
+-> Portfolio Diagnosis
 -> Stress Test Lab
 -> Client Fit Check
 -> Problem Classification
@@ -28,12 +28,12 @@ Input Portfolio
 This flow is the product truth agents should use when explaining the project. The current frontend MVP route surface covers Portfolio Input through Report / grounding, with Candidate Generation merged into Hypothesis and Monitoring / What Changed still deferred as a separate UI layer. Full hosted workspace behavior, polished export packaging, and advanced product modules remain future scope. Current implementation status is owned by `SPEC.md`, `OUTPUTS.md`, `docs/specs/*.md`, and code.
 
 Current web execution is staged: after `Run diagnosis`, the user receives a `review_id`
-immediately, sees progress, and receives partial results as X-Ray, Stress, Client Fit, Hypothesis,
+immediately, sees progress, and receives partial results as Diagnosis, Stress, Client Fit, Hypothesis,
 Candidate, Comparison, Verdict, and Report stages complete. The staged state contract is
 `docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`; runtime behavior remains governed by `SPEC.md`,
 `OUTPUTS.md`, and code.
 
-Advanced/later capabilities must not be described as the current Core MVP product flow even if code or generated artifacts exist: Portfolio Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client Fit suitability approval, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, full custom constraints UI, multi-client workspace, and polished PDF report product. Existing implementations of these belong to advanced/backend/legacy/generated support unless explicitly promoted by a canonical spec.
+Advanced/later capabilities must not be described as the current Core MVP product flow even if code or generated artifacts exist: Portfolio Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client Fit suitability approval, Asset Diagnostics, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, full custom constraints UI, multi-client workspace, and polished PDF report product. Existing implementations of these belong to advanced/backend/legacy/generated support unless explicitly promoted by a canonical spec.
 
 ## 2. Product Principles
 
@@ -84,7 +84,7 @@ the cost and uncertainty.
 
 Expected product output:
 
-- Institutional-style Portfolio X-Ray.
+- Institutional-style Portfolio Diagnosis.
 - Stress testing.
 - Plain-language explanation of what matters.
 - Candidate hypothesis only when useful.
@@ -138,7 +138,7 @@ Current implementation notes:
   and reporting currency, with validation before diagnosis.
 - Existing CLI/config fields and `analysis_subject` behavior are governed by current specs and code.
 
-### 4.2 Portfolio X-Ray
+### 4.2 Portfolio Diagnosis
 
 User goal:
 
@@ -167,7 +167,7 @@ Questions answered:
 
 Product rule:
 
-X-Ray diagnoses. It does not recommend a rebalance by itself.
+Portfolio Diagnosis is diagnostic. It does not recommend a rebalance by itself.
 
 ### 4.3 Stress Test Lab
 
@@ -308,7 +308,7 @@ Target output:
 Implementation status:
 
 Problem Classification is implemented as an additive diagnostic artifact
-(`problem_classification.json`) that translates existing X-Ray and stress evidence into problems and
+(`problem_classification.json`) that translates existing portfolio diagnosis and stress evidence into problems and
 reasonable paths to test. It does not calculate new metrics, build candidates, or issue a decision.
 
 ### 4.5 Candidate Launchpad
@@ -545,7 +545,7 @@ Quick benchmark tests available.
 
 Outputs:
 
-- Portfolio X-Ray.
+- Portfolio Diagnosis.
 - Stress & Risk Diagnosis.
 - Top problems.
 - Weakness map.
@@ -563,7 +563,7 @@ and saved workspace flow remain target product work.
 ### Core MVP
 
 - Current portfolio input.
-- Portfolio X-Ray.
+- Portfolio Diagnosis.
 - Stress Test Lab.
 - Problem Classification.
 - Reasonable paths to test.
@@ -607,12 +607,12 @@ These items are not Core MVP requirements. Do not describe them as implemented u
 - White-label / API integration.
 - Full PDF report design.
 - Advanced Parameter Builder settings.
-- Asset X-Ray / Asset Diagnostics.
+- Asset Diagnostics / Asset Diagnostics.
 - Portfolio Archetype Classification is an optional later / advanced diagnostic layer (not Core MVP).
   Examples: Equity Growth Portfolio, Balanced 60/40-like, Credit Carry Portfolio, Duration-heavy
   Defensive, Inflation-sensitive, Pseudo-diversified Portfolio. Legacy
-  `sections.portfolio_archetype` may still be emitted on full X-Ray report builds for compatibility;
-  product-facing diagnosis uses Portfolio X-Ray Blocks 2.1–2.6 (including Weakness Map as Block 2.6).
+  `sections.portfolio_archetype` may still be emitted on full diagnosis report builds for compatibility;
+  product-facing diagnosis uses Portfolio Diagnosis Blocks 2.1–2.6 (including Weakness Map as Block 2.6).
   Do not add `block_2_5_portfolio_archetype` or promote archetype in the product-bundle chain without
   explicit product migration.
 
@@ -685,7 +685,7 @@ Preferred client-facing language:
 
 | Internal / technical | Client-facing framing |
 | --- | --- |
-| Portfolio X-Ray | What you really own |
+| Portfolio Diagnosis | What you really own |
 | Stress Test Lab | Where it can break |
 | Candidate Launchpad / Alternatives Builder | Better allocation alternatives |
 | Candidate Factory | Backend tool that builds alternative evidence |

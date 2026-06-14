@@ -31,7 +31,7 @@ export function XRayStressConfirmationPanel({ confirmation }: { confirmation: St
       </div>
       <div className="mt-6 overflow-hidden rounded-2xl border border-pmri-border/55">
         <div className="grid grid-cols-[0.9fr_1.4fr_0.55fr] gap-3 border-b border-pmri-border/55 bg-white/[0.035] px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-pmri-muted">
-          <span>X-Ray weakness</span>
+          <span>Diagnosis weakness</span>
           <span>Stress evidence</span>
           <span>Confirmation status</span>
         </div>

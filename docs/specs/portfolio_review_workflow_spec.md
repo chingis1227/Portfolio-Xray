@@ -1,6 +1,6 @@
 # Portfolio Review Workflow Specification
 
-This document owns the portfolio-first review workflow for Portfolio X-Ray / Portfolio MRI.
+This document owns the portfolio-first review workflow for Portfolio MRI.
 It defines the binding product workflow that starts from `analysis_subject`, diagnoses that
 portfolio first, and only then builds and compares alternatives.
 
@@ -73,7 +73,7 @@ The current product order is:
 ```text
 analysis_subject / Input Portfolio
 -> validation and resolved assumptions
--> Portfolio X-Ray
+-> Portfolio Diagnosis
 -> Stress Test Lab
 -> Client Fit Check
 -> Problem Classification
@@ -268,7 +268,7 @@ The materialized subject diagnostics must expose the same minimum evidence used 
 - `run_metadata.json` or equivalent metadata with `analysis_setup.analysis_subject`;
 - primary-window snapshot metrics and weights;
 - stress diagnostics where data permits;
-- `portfolio_xray.json` or the equivalent X-Ray summary for the subject;
+- `portfolio_xray.json` or the equivalent diagnosis summary for the subject;
 - clear warnings when any diagnostic degrades.
 
 Session 04 implements this sidecar by running the existing report pipeline with resolved subject
@@ -347,7 +347,7 @@ Later implementation sessions must align generated outputs with these roles:
 
 | Role | Planned artifact direction |
 | --- | --- |
-| `analysis_subject` diagnostics | `{output_dir_final}/analysis_subject/` subject snapshots, metadata, X-Ray, and diagnostics |
+| `analysis_subject` diagnostics | `{output_dir_final}/analysis_subject/` subject snapshots, metadata, Diagnosis, and diagnostics |
 | Candidate diagnostics | Existing candidate output folders, built only after subject diagnostics |
 | Subject-centered comparison | `candidate_comparison.json` or successor fields identifying the subject baseline |
 | Formal decision | `selection_decision.json` centered on subject versus candidates |

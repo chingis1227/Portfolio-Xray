@@ -179,8 +179,8 @@ If none are losing, use all ratio rows.
 | `by_risk_type` | Eight rows per mapping table (or explicit unavailable rows) |
 | `summary` | See above |
 | `n_risk_types` | Length of `by_risk_type` (expect 8 when map complete) |
-| `hidden_exposure_confirmation` | Array of Block 2.4 alert ↔ stress offset confirmation rows (Session 05); empty until Portfolio X-Ray bridge runs |
-| `weakness_map_confirmation` | Array of Block 2.6 canonical `risk_type` (scenario id) ↔ hedge-gap row confirmations (Session 06); empty until Portfolio X-Ray bridge runs |
+| `hidden_exposure_confirmation` | Array of Block 2.4 alert ↔ stress offset confirmation rows (Session 05); empty until Portfolio Diagnosis bridge runs |
+| `weakness_map_confirmation` | Array of Block 2.6 canonical `risk_type` (scenario id) ↔ hedge-gap row confirmations (Session 06); empty until Portfolio Diagnosis bridge runs |
 | `bridge_meta` | `{block_2_4_hidden_exposure, block_2_6_portfolio_weakness_map, ruleset, n_alerts_linked, n_weakness_rows_linked}` when bridges applied |
 
 #### `hidden_exposure_confirmation[]` row (Session 05)

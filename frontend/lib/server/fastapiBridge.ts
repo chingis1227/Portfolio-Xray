@@ -462,7 +462,7 @@ function fastApiLineageMismatchResponse(stage: string, expected: ExpectedFastApi
 function sourceEvidenceLabel(key: string) {
   const normalizedKey = key.replace(/\.json$/i, "");
   const labels: Record<string, string> = {
-    portfolio_xray: "Portfolio X-Ray diagnosis",
+    portfolio_xray: "Portfolio Diagnosis",
     stress_report: "Stress Test Lab evidence",
     problem_classification: "main diagnosis",
     candidate_launchpad: "selected test path",

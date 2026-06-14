@@ -32,7 +32,7 @@ const DISPLAY_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\bequity[_\s-]*weight\b/gi, "equity-linked holdings"],
   [/\brisk[_\s-]*on\b/gi, "growth / risk assets"],
   [/\bfactor[_\s-]*variance[_\s-]*(?:decomposition|contribution)\b/gi, "factor contribution view"],
-  [/\bportfolio[_\s-]*xray\b/gi, "Portfolio X-Ray"],
+  [/\bportfolio[_\s-]*xray\b/gi, "Portfolio Diagnosis"],
   [/\bstress[_\s-]*report\b/gi, "stress evidence"],
   [/\bequity[_\s-]*shock\b/gi, "Equity sell-off"],
   [/\brates[_\s-]*shock\b/gi, "Interest-rate shock"],

@@ -449,7 +449,7 @@ No Monte Carlo and no normality assumptions.
 
 Daily simple returns.
 
-- Report / X-Ray implementation (`run_report.py` STEP 9b):
+- Report / Diagnosis implementation (`run_report.py` STEP 9b):
 
 Portfolio tail risk is computed on **daily** NaN-safe portfolio simple returns in investor currency,
 sliced to each analysis window (3Y / 5Y / 10Y calendar months ending at `analysis_end`).

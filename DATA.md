@@ -1,6 +1,6 @@
 # DATA.md
 
-This file is the living data-layer map for Portfolio X-Ray & Optimization Terminal / Portfolio MRI.
+This file is the living data-layer map for Portfolio MRI / Optimization Terminal.
 
 It explains what data the project uses, where it comes from, what shapes and quality rules are expected, and which files own the detailed behavior. It does not replace detailed specs such as [docs/specs/data_policy_spec.md](docs/specs/data_policy_spec.md), [docs/specs/metrics_specification.md](docs/specs/metrics_specification.md), or [docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md).
 

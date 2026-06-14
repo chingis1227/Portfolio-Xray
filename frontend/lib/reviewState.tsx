@@ -2321,16 +2321,16 @@ function buildDiagnosisFromRawArtifacts(review: ActiveReviewState): DiagnosisSta
   const allocationHeadline = textValue(getRecord(allocation.actual_economic_exposure_summary).headline, "");
   const xrayHeadline = primaryRisk
     ? `Current portfolio is most exposed to ${dominantExposureNameForHeadline(dominantRiskFactor, dominantAssetClass)}; the main pre-stress weakness to review is ${displayLabel(primaryRisk.risk_title ?? primaryRisk.risk_type)}.`
-    : textValue(allocationHeadline, textValue(behavior.headline, "Portfolio X-Ray completed for the submitted current portfolio."));
+    : textValue(allocationHeadline, textValue(behavior.headline, "Portfolio Diagnosis completed for the submitted current portfolio."));
   const primaryRiskScore = numericValue(primaryRisk?.score_0_100);
 
   const drivers = [
     topHolding.ticker
       ? `${String(topHolding.ticker)} is the largest holding at ${formatRawPercent(topHolding.weight_pct)}.`
-      : "Portfolio X-Ray returned the current allocation snapshot.",
+      : "Portfolio Diagnosis returned the current allocation snapshot.",
     dominantAssetClass.name
       ? `Dominant asset class: ${displayLabel(dominantAssetClass.name)} at ${formatRawPercent(dominantAssetClass.weight_pct)}.`
-      : allocationHeadline || "Asset allocation diagnostics are available from Portfolio X-Ray.",
+      : allocationHeadline || "Asset allocation diagnostics are available from Portfolio Diagnosis.",
     primaryRisk
       ? textValue(primaryRisk.short_diagnosis, `${String(primaryRisk.risk_title)} is the top pre-stress weakness.`)
       : textValue(behavior.headline, "Portfolio behavior metrics are available for review.")
@@ -2341,7 +2341,7 @@ function buildDiagnosisFromRawArtifacts(review: ActiveReviewState): DiagnosisSta
     headline: xrayHeadline,
     evidenceQuality: evidenceQualityLabel(stressConclusions.overall_confidence ?? "Partial"),
     nextStep: "Review supporting evidence before testing one candidate hypothesis.",
-    boundaryNote: "Diagnosis is based on Portfolio X-Ray evidence for the submitted current portfolio. It frames potential weaknesses before any candidate test.",
+    boundaryNote: "Diagnosis is based on Portfolio Diagnosis evidence for the submitted current portfolio. It frames potential weaknesses before any candidate test.",
     drivers,
     metrics: [
       {
@@ -3086,29 +3086,29 @@ function compactEvidenceFields({
 
   const items: EvidenceItem[] = [
     {
-      type: "X-Ray",
+      type: "Diagnosis",
       title: "Portfolio composition",
       status: `${holdingsCount} holdings`,
       summary: topHolding.ticker
         ? `Largest holding is ${textValue(topHolding.ticker)} at ${formatRawPercent(topHolding.weight_pct)}.`
         : "Portfolio composition was returned for the current portfolio.",
-      source: "Portfolio X-Ray",
+      source: "Portfolio Diagnosis",
       tone: "blue"
     },
     {
-      type: "X-Ray",
+      type: "Diagnosis",
       title: "Dominant exposure",
       status: `${dominantExposureName} · ${dominantExposureWeight}`,
       summary: `The current portfolio is most exposed to ${dominantExposureName}.`,
-      source: "Portfolio X-Ray",
+      source: "Portfolio Diagnosis",
       tone: numericValue(dominantRiskFactor.weight_pct ?? dominantAssetClass.weight_pct) !== null && (numericValue(dominantRiskFactor.weight_pct ?? dominantAssetClass.weight_pct) ?? 0) >= 50 ? "amber" : "blue"
     },
     {
-      type: "X-Ray",
+      type: "Diagnosis",
       title: "Top risk contributors",
       status: topRiskContributor.ticker ? `${textValue(topRiskContributor.ticker)} leads risk` : "Not available",
       summary: riskContributorText,
-      source: "Portfolio X-Ray",
+      source: "Portfolio Diagnosis",
       tone: topRiskContributors.length ? "amber" : "slate"
     },
     {
@@ -3133,11 +3133,11 @@ function compactEvidenceFields({
 
   if (riskTypes[0]) {
     items.splice(3, 0, {
-      type: "X-Ray",
+      type: "Diagnosis",
       title: "Primary weakness",
       status: `${textValue(riskTypes[0].severity, "Risk")} · score ${textValue(String(riskTypes[0].score_0_100 ?? "n/a"))}`,
-      summary: textValue(riskTypes[0].short_diagnosis, textValue(riskTypes[0].risk_title, "Primary weakness returned by X-Ray.")),
-      source: "Portfolio X-Ray",
+      summary: textValue(riskTypes[0].short_diagnosis, textValue(riskTypes[0].risk_title, "Primary weakness returned by Portfolio Diagnosis.")),
+      source: "Portfolio Diagnosis",
       tone: (numericValue(riskTypes[0].score_0_100) ?? 0) >= 70 ? "red" : "amber"
     });
   }
@@ -3156,7 +3156,7 @@ function compactEvidenceFields({
   return {
     headline: "Evidence is based on the latest completed real review.",
     quality: evidenceQualityLabel(stressConclusions.overall_confidence ?? "partial"),
-    boundaryNote: "Evidence is diagnostic and comes from Portfolio X-Ray plus Stress Test Lab for the submitted current portfolio.",
+    boundaryNote: "Evidence is diagnostic and comes from Portfolio Diagnosis plus Stress Test Lab for the submitted current portfolio.",
     metrics: [
       {
         label: "Holdings",
@@ -3179,7 +3179,7 @@ function compactEvidenceFields({
       {
         label: "Max drawdown",
         value: formatDecimalPercent(drawdown.max_drawdown),
-        detail: "Portfolio X-Ray drawdown",
+        detail: "Portfolio Diagnosis drawdown",
         tone: toneForLoss(drawdown.max_drawdown)
       },
       {

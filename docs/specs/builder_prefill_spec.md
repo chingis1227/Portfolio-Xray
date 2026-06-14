@@ -1,6 +1,6 @@
 # BuilderPrefill Specification
 
-This document owns the Block 6 `BuilderPrefill` contract for Portfolio MRI / Portfolio X-Ray.
+This document owns the Block 6 `BuilderPrefill` contract for Portfolio MRI.
 
 Implementation: `src/portfolio_alternatives_builder.py`.
 

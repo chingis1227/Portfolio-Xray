@@ -106,7 +106,7 @@ test("frontend static journey pages respond on a local Next server", { timeout: 
     await waitForServer(`${baseUrl}/`, child, outputLines);
 
     const pages = [
-      ["/", /X-Ray your portfolio before you change it|Enter Platform/i],
+      ["/", /Diagnose portfolio risk before you rebalance|Enter Platform/i],
       ["/onboarding/sign-in", /Sign in before opening the diagnostic room|Enter your email/i],
       ["/onboarding/name", /What should we call you|Continue/i],
       ["/onboarding/investor-type", /Five questions before we open the portfolio screen|What your answers do/i],
@@ -114,7 +114,7 @@ test("frontend static journey pages respond on a local Next server", { timeout: 
       ["/client-profile", /Manual diagnostic context|Client Fit profile editor/i],
       ["/portfolio-input", /Portfolio Input|Run diagnosis/i],
       ["/diagnosis", /Diagnosis|Portfolio/i],
-      ["/evidence", /Stress Test Lab|X-Ray/i],
+      ["/evidence", /Stress Test Lab|Diagnosis/i],
       ["/client-fit", /Client Fit|provided profile/i],
       ["/hypothesis", /Hypothesis|Builder/i],
       ["/comparison", /Comparison|Current/i],

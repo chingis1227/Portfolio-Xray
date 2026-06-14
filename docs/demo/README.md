@@ -1,6 +1,6 @@
 # Demo Documentation
 
-Use these documents to run and explain the current Portfolio MRI / Portfolio X-Ray Core MVP demo.
+Use these documents to run and explain the current Portfolio MRI Core MVP demo.
 
 | Document | Purpose |
 | --- | --- |

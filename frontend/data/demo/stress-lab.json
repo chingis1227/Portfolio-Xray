@@ -486,7 +486,7 @@
         "tone": "amber"
       }
     ],
-    "note": "Stress confirmation is based on available scenario results. Some X-Ray weaknesses still require more evidence before a candidate test."
+    "note": "Stress confirmation is based on available scenario results. Some Diagnosis weaknesses still require more evidence before a candidate test."
   },
   "limitations": {
     "headline": "Historical replay is limited because some holdings do not have enough usable history for older episodes.",
@@ -500,7 +500,7 @@
     ],
     "stillUsable": [
       "8/8 synthetic stress scenarios remain available.",
-      "Current Portfolio X-Ray diagnostics remain available as pre-stress context.",
+      "Current portfolio diagnosis evidence remain available as pre-stress context.",
       "Use these results as supporting evidence before testing any candidate hypothesis."
     ]
   }

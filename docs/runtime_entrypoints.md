@@ -1,6 +1,6 @@
 # Runtime entrypoints (Core MVP vs legacy)
 
-Portfolio MRI / Portfolio X-Ray is **diagnosis-first**. Use the active commands below for the Core MVP. The canonical Blocks 5-9 demo is the vertical-flow script in section D; section C is an explicit factory-id compatibility path when the candidate id is already known. Everything else is legacy, research, advanced, or an internal engine invoked by those commands.
+Portfolio MRI is **diagnosis-first**. Use the active commands below for the Core MVP. The canonical Blocks 5-9 demo is the vertical-flow script in section D; section C is an explicit factory-id compatibility path when the candidate id is already known. Everything else is legacy, research, advanced, or an internal engine invoked by those commands.
 
 
 ## Command taxonomy
@@ -26,7 +26,7 @@ CLI help text must stay readable in a default Windows PowerShell / CP1251 consol
 python run_core_diagnostics.py
 ```
 
-**Purpose:** Input Layer -> Portfolio X-Ray -> Stress Test Lab.
+**Purpose:** Input Layer -> Portfolio Diagnosis -> Stress Test Lab.
 
 **Writes (under `{output_dir_final}/analysis_subject/`):** input/setup JSON, `portfolio_xray.json`,
 `stress_report.json`, snapshots, `output_manifest.json`, and related Block 1-3 contracts.
@@ -42,7 +42,7 @@ Decision Verdict, AI Commentary, monitoring, optimizers, PDF/CSV/HTML exports (d
 python run_portfolio_review.py
 ```
 
-**Purpose:** Input -> X-Ray -> Stress -> Client Fit -> Problem Classification -> Candidate
+**Purpose:** Input -> Diagnosis -> Stress -> Client Fit -> Problem Classification -> Candidate
 Launchpad -> Portfolio Alternatives Builder -> diagnosis grounding. **Candidates disabled by
 default** (no optimizer zoo).
 

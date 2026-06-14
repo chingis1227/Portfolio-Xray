@@ -25,7 +25,7 @@ The trade-off and model-risk layers:
 | **Model Risk Diagnostics** (this spec) | Unified self-criticism layer: data, estimator, factor, stress-coverage, concentration, mandate warnings. |
 | **Selection Engine** | Formal favored profile and No-Trade; may emit short `tradeoff_bullets` until this layer exists. |
 | **Portfolio Health Score** | Holistic quality score; `mandate_and_model_risk` component is a score input, not this artifact. |
-| **Portfolio commentary / X-Ray** | Narrative diagnostics per portfolio folder; not the canonical cross-candidate trade-off table. |
+| **Portfolio commentary / Diagnosis** | Narrative diagnostics per portfolio folder; not the canonical cross-candidate trade-off table. |
 | **Assumption Sensitivity** | Selection stability under weight/window perturbations ([assumption_sensitivity_spec.md](assumption_sensitivity_spec.md)); complementary, not duplicate. |
 | **Pareto / Dominance** | Multi-criteria dominance among candidates ([pareto_dominance_spec.md](pareto_dominance_spec.md)); complementary; may reuse turnover vs current definition. |
 

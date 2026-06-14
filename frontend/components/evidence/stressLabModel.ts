@@ -605,7 +605,7 @@ function buildXRayConfirmation(stress: Record<string, unknown>, historical: Stre
     lessMaterial,
     insufficientData,
     note: rows.length
-      ? "Stress confirmation is based on available scenario results. Some X-Ray weaknesses still require more evidence before a candidate test."
+      ? "Stress confirmation is based on available scenario results. Some portfolio diagnosis weaknesses still require more evidence before a candidate test."
       : "Stress confirmation mapping was not returned for this run. Inspect scenario results before treating pre-stress weaknesses as confirmed."
   };
 }
@@ -632,7 +632,7 @@ function buildLimitations(stress: Record<string, unknown>, historical: StressSce
       : ["Available stress results can be reviewed without relying on unavailable historical replays."],
     stillUsable: [
       `${syntheticAvailable}/${synthetic.length} synthetic stress scenarios remain available.`,
-      "Current Portfolio X-Ray diagnostics remain available as pre-stress context.",
+      "Current portfolio diagnosis evidence remain available as pre-stress context.",
       "Use these results as supporting evidence before testing any candidate hypothesis."
     ]
   };

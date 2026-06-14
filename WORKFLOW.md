@@ -1,6 +1,6 @@
 # WORKFLOW.md
 
-This file defines the practical task workflow for Portfolio X-Ray & Optimization Terminal / Portfolio MRI.
+This file defines the practical task workflow for Portfolio MRI / Optimization Terminal.
 
 It explains how work moves from request to implementation, verification, documentation sync, project-memory updates, and commit. It does not replace `RULES.md`, `SPEC.md`, `TESTING.md`, `PLANS.md`, or detailed specs; it connects them into one operating process.
 
@@ -77,7 +77,7 @@ Factory recovery and reason codes: [operational runbook §8](docs/operational_ru
 | Step | Check | Why |
 | --- | --- | --- |
 | 1 | Command / mode used | Default is **diagnosis-only**. Canonical product demo uses the vertical script. `--candidates <id>` is a compatibility one-candidate path. `--with-candidates` and `--mode full` are advanced/research paths. |
-| 2 | Open `{output_dir_final}/analysis_subject/` first | Subject X-Ray, stress, `run_metadata.json`, Problem Classification, Launchpad, and Block 6 Builder setup for the **reviewed** portfolio. |
+| 2 | Open `{output_dir_final}/analysis_subject/` first | Subject Diagnosis, stress, `run_metadata.json`, Problem Classification, Launchpad, and Block 6 Builder setup for the **reviewed** portfolio. |
 | 3 | Do **not** use root `run_result.json`, `portfolio_weights.yml`, or root `stress_report.json` / `portfolio_xray.json` as the subject | Those are **legacy policy** artifacts when present — often different weights than `analysis_subject/`. |
 | 4 | `candidate_factory_run.json` → `factory_profile_id` | Must match the mode you intended (`core_v1` vs `default_v1`). |
 | 5 | Same file → `steps[]` statuses | Many `skipped_existing` rows mean **reused snapshots**, not a fresh rebuild of that candidate. |

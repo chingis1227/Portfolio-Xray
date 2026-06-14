@@ -1,6 +1,6 @@
 ﻿# QA Contract
 
-Status: **canonical QA and verification contract** for Portfolio MRI / Portfolio X-Ray Core MVP product, frontend, backend, visual, language, documentation, and git gates.
+Status: **canonical QA and verification contract** for Portfolio MRI Core MVP product, frontend, backend, visual, language, documentation, and git gates.
 
 Scope: required checks for future docs, frontend, backend, design, language, artifact, and product-flow sessions. This contract defines what to run, in what order, what evidence to report, and which checks may be waived only with an explicit reason. It does not change runtime behavior, backend formulas, frontend implementation, generated artifacts, tests, package scripts, or documentation sync policy by itself.
 

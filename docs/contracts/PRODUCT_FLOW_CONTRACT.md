@@ -1,6 +1,6 @@
 # Product Flow Contract
 
-Status: **canonical cross-cutting product-flow contract** for Portfolio MRI / Portfolio X-Ray Core MVP screens, adapters, generated-output interpretation, and documentation alignment.
+Status: **canonical cross-cutting product-flow contract** for Portfolio MRI Core MVP screens, adapters, generated-output interpretation, and documentation alignment.
 
 Scope: product step order, user question per step, allowed behavior, forbidden behavior, artifact ownership, next-step logic, and product boundaries. This document does not define formulas, stress scenarios, optimizer methods, JSON schemas, visual design, or test implementation details. When a field-level, formula-level, or schema-level question appears, defer to the owning spec listed below.
 
@@ -20,7 +20,7 @@ Use this document for the cross-step product flow. Use the following documents f
   `review_state_v1`, canonical stage names, status semantics, and compact Supabase boundary.
 - `docs/specs/portfolio_review_workflow_spec.md` for `analysis_subject`, diagnosis-before-candidates order, and legacy policy boundary.
 - `docs/specs/input_assumptions_spec.md` for Core MVP input assumptions.
-- `docs/specs/portfolio_xray_diagnostics_spec.md` and `docs/specs/portfolio_xray_layer_spec.md` for Portfolio X-Ray.
+- `docs/specs/portfolio_xray_diagnostics_spec.md` and `docs/specs/portfolio_xray_layer_spec.md` for Portfolio Diagnosis.
 - `docs/specs/stress_lab_layer_spec.md`, `docs/specs/stress_testing_spec.md`, `docs/specs/hedge_gap_analysis_spec.md`, and `docs/specs/current_portfolio_stress_scorecard_spec.md` for Stress Test Lab.
 - `docs/specs/client_fit_check_spec.md` and `docs/specs/client_fit_questionnaire_spec.md` for Client Fit V1.
 - `docs/specs/block_4_diagnosis_v3_spec.md`, `docs/specs/problem_classification_spec.md`, and `docs/specs/candidate_launchpad_spec.md` for Problem Classification and Candidate Launchpad.
@@ -43,7 +43,7 @@ The canonical current product flow is:
 
 ```text
 Input Portfolio
--> Portfolio X-Ray
+-> Portfolio Diagnosis
 -> Stress Test Lab
 -> Client Fit Check
 -> Problem Classification
@@ -106,7 +106,7 @@ migrated.
 
 Supabase remains compact-only in this target model. It may store review status, current stage, stage
 statuses, compact summaries, timestamps, and saved portfolio links. It must not store raw generated
-artifacts, raw X-Ray or Stress JSON, price history, PDFs, full run folders, or local artifact paths.
+artifacts, raw diagnosis or stress JSON, price history, PDFs, full run folders, or local artifact paths.
 
 The target first-run/demo path must support deterministic Demo / QA mode. Demo / QA mode uses frozen
 fixture evidence and fixed data-freshness disclosure so the first product experience does not depend
@@ -117,7 +117,7 @@ freshness disclosure.
 
 The following rules apply to every screen, adapter, report surface, and operator interpretation:
 
-1. Diagnosis happens before action. X-Ray and Stress evidence must exist before candidate testing is presented as current product flow.
+1. Diagnosis happens before action. Portfolio Diagnosis and Stress evidence must exist before candidate testing is presented as current product flow.
 2. The current portfolio, represented by `analysis_subject`, is the baseline for interpretation and comparison.
 3. Problem Classification translates existing evidence into problems and test paths. It does not calculate new metrics, build candidates, or decide action.
 4. Client Fit compares current-portfolio evidence against the provided profile as a non-binding overlay. It must remain separate from diagnostic quality, must not approve suitability, and must not become an optimizer mandate.
@@ -135,11 +135,11 @@ The following rules apply to every screen, adapter, report surface, and operator
 
 | Step | Product role | Primary user question | Primary artifacts / evidence | Allowed behavior | Forbidden behavior | Next-step logic |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1. Input Portfolio | Capture the factual current portfolio to diagnose. | What portfolio am I asking Portfolio MRI to diagnose... | User input; resolved `analysis_setup`; `analysis_subject/run_metadata.json` after diagnosis. | Ask for instruments, current weights, and investor currency; disclose system defaults and assumptions. | Do not require optimizer targets, client suitability, mandate caps, tax settings, or advanced constraints for Blocks 1-3. Do not treat generated policy weights as manual input. | Valid input can run diagnosis and proceed to X-Ray. Invalid input stays on input with clear user-facing validation. |
-| 2. Portfolio X-Ray | Explain what the current portfolio owns and where risk lives. | What do I actually own, and what looks risky or weak... | `analysis_subject/portfolio_xray.json`; X-Ray product blocks and trusted legacy sections where required by the owning spec. | Show allocation, risk/return behavior, factor exposure, hidden exposure, concentration, weakness map, and data-trust signals. | Do not recommend a rebalance by itself. Do not create Portfolio Health Score as the main product answer. Do not parse root policy artifacts as subject truth. | If X-Ray evidence exists, proceed to Stress Test Lab. If partial, show limitations and proceed only with disclosed evidence quality. |
+| 1. Input Portfolio | Capture the factual current portfolio to diagnose. | What portfolio am I asking Portfolio MRI to diagnose... | User input; resolved `analysis_setup`; `analysis_subject/run_metadata.json` after diagnosis. | Ask for instruments, current weights, and investor currency; disclose system defaults and assumptions. | Do not require optimizer targets, client suitability, mandate caps, tax settings, or advanced constraints for Blocks 1-3. Do not treat generated policy weights as manual input. | Valid input can run diagnosis and proceed to Diagnosis. Invalid input stays on input with clear user-facing validation. |
+| 2. Portfolio Diagnosis | Explain what the current portfolio owns and where risk lives. | What do I actually own, and what looks risky or weak... | `analysis_subject/portfolio_xray.json`; Portfolio Diagnosis product blocks and trusted legacy sections where required by the owning spec. | Show allocation, risk/return behavior, factor exposure, hidden exposure, concentration, weakness map, and data-trust signals. | Do not recommend a rebalance by itself. Do not create Portfolio Health Score as the main product answer. Do not parse root policy artifacts as subject truth. | If diagnosis evidence exists, proceed to Stress Test Lab. If partial, show limitations and proceed only with disclosed evidence quality. |
 | 3. Stress Test Lab | Test how the current portfolio behaves in adverse markets. | Where can this portfolio break, and what evidence supports that view... | `analysis_subject/stress_report.json`; `stress_results_v1`; `hedge_gap_analysis_v1`; `current_portfolio_stress_scorecard_v1`; scenario library evidence. | Show synthetic and supported historical stress facts, worst scenarios, loss contributors, helped/hurt assets, hedge gaps, and data quality. | Do not fabricate historical evidence. Do not show Core MVP mandate pass/fail, `DIAG_*`, `pass`, or `loss_ok` semantics from legacy mandate mode. Do not add or rename scenarios without owning spec and decision record. | If stress evidence exists or is explicitly limited, proceed to Problem Classification. If unavailable, classify the evidence gap as a blocker or limitation. |
 | 3.5 Client Fit Check | Compare current-portfolio evidence with the provided return, volatility, drawdown, and horizon profile. | Does this risk fit the provided profile... | `analysis_subject/client_fit_check.json` when available; profile source quality; target/limit rows. | Show fit/watch/breach/conflict/not-provided/evidence-insufficient context as non-binding interpretation. Preserve the separation between Client Fit status and diagnostic quality. | Do not call it suitability approval, hide material portfolio issues after a fit result, create buy/sell/rebalance instructions, or convert target return/vol/drawdown/horizon into optimizer mandates. | Proceed to Problem Classification with Client Fit as bounded context. If no profile exists, backend/CLI remains compatible and no Client Fit conclusion may be claimed. |
-| 4. Problem Classification | Turn X-Ray and Stress evidence into a small set of understandable problems. | What is the main problem in the current portfolio... | `analysis_subject/problem_classification.json`; Block 4 v3 diagnosis evidence. | Summarize top problems, supporting evidence, and reasonable paths to test; allow current portfolio acceptable / monitor outcome. | Do not build candidates, choose an optimizer, issue a verdict, or state that a rebalance is required. | If there are testable paths, proceed to Candidate Launchpad. If only monitor/data-quality paths exist, route to monitor/report language or explain why candidate generation is blocked. |
+| 4. Problem Classification | Turn Portfolio Diagnosis and Stress evidence into a small set of understandable problems. | What is the main problem in the current portfolio... | `analysis_subject/problem_classification.json`; Block 4 v3 diagnosis evidence. | Summarize top problems, supporting evidence, and reasonable paths to test; allow current portfolio acceptable / monitor outcome. | Do not build candidates, choose an optimizer, issue a verdict, or state that a rebalance is required. | If there are testable paths, proceed to Candidate Launchpad. If only monitor/data-quality paths exist, route to monitor/report language or explain why candidate generation is blocked. |
 | 5. Candidate Launchpad | Offer diagnosis-linked hypotheses to test. | Which improvement hypothesis should I test next... | `analysis_subject/candidate_launchpad.json`; launchpad cards linked to Problem Classification. | Show cards with goal, evidence, trade-off to watch, suggested method, and decision boundary. | Do not show cards as portfolios, weights, recommendations, or executed factory runs. Do not expose the full optimizer zoo as the Core MVP default. | Selecting a card opens Builder setup. Monitor-only or data-quality cards must not auto-generate candidates. |
 | 6. Portfolio Alternatives Builder | Validate the selected hypothesis as a candidate test setup. | What exactly will be tested if I generate a candidate... | `analysis_subject/portfolio_alternatives_builder.json`; Builder prefill; CandidateSetup handoff when valid. | Show goal, method, simple constraints, success criteria, trade-off, skip rule, setup validation, and Client Fit target criteria when available. | Do not create weights, compare portfolios, write a verdict, expose advanced settings such as tax-aware optimization, turnover-aware objective, robust lambda, custom risk budgets, leverage, shorting, or full constraints UI in Core MVP, or silently convert Client Fit targets into optimizer mandates. | If setup is valid and generation is allowed, show explicit Generate Candidate action. If blocked, explain the blocker and keep comparison/verdict unavailable. |
 | 7. Candidate Generation | Create one explicit diagnostic candidate attempt from the validated setup. | Was one usable test candidate created, or why did the attempt fail... | Root-level `candidate_generation.json` for the active vertical loop; optional candidate weights and freshness metadata. | Record generation status, method availability, candidate identity, weights when produced, warnings, and source links. | Do not auto-generate after Launchpad. Do not compare or decide. Do not treat stale, tombstoned, inactive, failed, or infeasible candidate artifacts as current evidence. | A live usable candidate can proceed to Current vs Candidate Comparison. Failed/infeasible/missing candidate routes to safe blocked state and then verdict/report as evidence insufficient when applicable. |
@@ -173,7 +173,7 @@ These capabilities must not be presented as the current Core MVP product flow me
 - Full Decision Journal.
 - Advanced monitoring, full portfolio-health monitoring, macro-regime monitoring, and multi-client monitoring workspace.
 - Crisis Replay UI and What Happens If simulator UI.
-- Client Fit suitability approval, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, Max Sharpe, full custom constraints UI, and Asset X-Ray.
+- Client Fit suitability approval, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, Max Sharpe, full custom constraints UI, and Asset Diagnostics.
 - Polished PDF report product as the default output path.
 
 When these appear in code or generated outputs, classify them as `Advanced`, `Backend evidence`, `Technical artifact`, `Legacy`, `Generated support artifact`, or `Future/backlog` unless an owning spec and implementation explicitly promote them.

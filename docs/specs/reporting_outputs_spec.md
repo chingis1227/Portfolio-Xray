@@ -161,22 +161,22 @@ rebuild PDFs. Pass `--with-pdf` for the narrow portfolio-first PDF subset (decis
 `analysis_subject/` sidecar). Pass `--legacy-full-pdf` or run bare `rebuild_pdf_reports.py` for the
 full legacy variant PDF suite. See [portfolio_review_workflow_spec.md](portfolio_review_workflow_spec.md).
 
-## Portfolio X-Ray Summary
+## Portfolio Diagnosis Summary
 
 `report.txt`, `report.html`, and `commentary.txt` must make the analyzed portfolio understandable without requiring the user to inspect raw JSON first.
 
-The Portfolio X-Ray summary is explanatory only. It must not create a black-box score, ranking, recommendation, selection decision, no-trade decision, or trade instruction.
+The Portfolio Diagnosis summary is explanatory only. It must not create a black-box score, ranking, recommendation, selection decision, no-trade decision, or trade instruction.
 
-`portfolio_xray.json` is the structured Portfolio X-Ray v2 artifact. Its top-level contract is:
+`portfolio_xray.json` is the structured Portfolio Diagnosis v2 artifact. Its top-level contract is:
 
 - `version: "portfolio_xray_v2"`
 - `diagnostic_only: true`
 - `diagnostic_only_disclaimer`
 - `sections`
 
-The X-Ray v2 sections are `asset_allocation`, `risk_diagnostics`, `factor_exposure`, `hidden_risk_detector`, `portfolio_archetype`, `risk_budget_view`, and `weakness_map`. Each section must expose `status`, `data_sources_used`, `warnings`, `items`, and `limitations`.
+The Diagnosis v2 sections are `asset_allocation`, `risk_diagnostics`, `factor_exposure`, `hidden_risk_detector`, `portfolio_archetype`, `risk_budget_view`, and `weakness_map`. Each section must expose `status`, `data_sources_used`, `warnings`, `items`, and `limitations`.
 
-Portfolio X-Ray v2 consumes existing report pipeline outputs and in-memory diagnostics. It must not recompute canonical metrics with alternative formulas. It must not optimize, change weights, change mandate gates, change stress pass/fail status, create a Portfolio Health Score, create a Selection Engine, or make scoring-driven portfolio decisions.
+Portfolio Diagnosis v2 consumes existing report pipeline outputs and in-memory diagnostics. It must not recompute canonical metrics with alternative formulas. It must not optimize, change weights, change mandate gates, change stress pass/fail status, create a Portfolio Health Score, create a Selection Engine, or make scoring-driven portfolio decisions.
 
 It must show:
 

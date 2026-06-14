@@ -18,7 +18,7 @@ The Selection Engine:
 - emits exactly one **decision status** per run with structured rationale, rejected alternatives, no-trade materiality, and warnings;
 - uses **neutral decision-support wording** in all exported text (no imperative buy/sell, no guaranteed outcomes);
 - does **not** change optimizer weights, stress pass/fail, mandate MaxDD release gates, or `portfolio_weights.yml`;
-- does **not** replace Portfolio X-Ray, commentary, or diagnostic scorecards (those remain evidence inputs only).
+- does **not** replace Portfolio Diagnosis, commentary, or diagnostic scorecards (those remain evidence inputs only).
 
 The No-Trade Recommendation is a **first-class outcome** of the same module when a target profile is identified but the benefit of moving from the portfolio-first **baseline** does not clear reviewable materiality thresholds. The preferred baseline is `analysis_subject`; legacy runs fall back to `current`.
 

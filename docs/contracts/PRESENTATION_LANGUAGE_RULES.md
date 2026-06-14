@@ -1,6 +1,6 @@
 ﻿# Presentation Language Rules
 
-Status: **canonical presentation-language contract** for Portfolio MRI / Portfolio X-Ray Core MVP primary UI, frontend presentation adapters, report preview copy, and future QA scans.
+Status: **canonical presentation-language contract** for Portfolio MRI Core MVP primary UI, frontend presentation adapters, report preview copy, and future QA scans.
 
 Scope: forbidden backend/internal terms, approved user-facing replacements, display-label responsibilities, safe state wording, and `rg` scan commands. This document is documentation-only for Session 4. It does not change runtime behavior, backend schemas, `frontend/lib/displayLabels.ts`, frontend components, generated artifacts, formulas, or visual design tokens.
 
@@ -47,7 +47,7 @@ Use this table for primary UI copy, user-visible labels, report preview text, ba
 | `analysis_subject` | current portfolio; diagnosed portfolio | Keep `analysis_subject/` for docs/operators only. |
 | `frontend_review_*`, `Review ID`, `reviewId`, run folder path | current review; saved review; review reference | If an operator ID must be shown, put it in diagnostics, not hero copy. |
 | `output_manifest.json`, `outputs.*`, `outputPaths` | output index; available review files; supporting output list | Do not make manifests user-visible proof. |
-| `portfolio_xray.json` | Portfolio X-Ray evidence | Screen label remains Portfolio X-Ray. |
+| `portfolio_xray.json` | Portfolio Diagnosis evidence | Screen label remains Portfolio Diagnosis. |
 | `stress_report.json` | Stress Test Lab evidence; stress-test evidence | Prefer product label `Stress Test Lab`. |
 | `problem_classification.json` | main portfolio diagnosis; diagnosis bridge | Do not expose diagnosis ids as labels. |
 | `candidate_launchpad.json` | hypothesis cards; test paths | Launchpad is implementer/product-step language, not necessarily primary copy. |
@@ -92,7 +92,7 @@ Use this table for primary UI copy, user-visible labels, report preview text, ba
 Use empty states to tell the user what is missing and what to do next.
 
 - No portfolio input: "Add holdings and weights to start the diagnosis."
-- No diagnosis yet: "Run diagnosis to create Portfolio X-Ray and Stress Test Lab evidence."
+- No diagnosis yet: "Run diagnosis to create Portfolio Diagnosis and Stress Test Lab evidence."
 - No stress evidence: "Stress evidence is unavailable for this review. Continue only with disclosed limitations."
 - No hypothesis cards: "No testable hypothesis is available from the current evidence."
 - No candidate: "Generate one test candidate before comparing."
@@ -145,7 +145,7 @@ Sample mode must be transparent and must not be confused with a real user review
 1. Convert raw artifact filenames, JSON keys, enum ids, method ids, scenario ids, and booleans into approved product labels.
 2. Hide path-like values, generated-output folder names, and raw run ids from normal copy.
 3. Normalize unknown values to state-specific labels such as Not available, Not evaluated, Evidence unavailable, or Not enough evidence yet.
-4. Preserve approved product names and acronyms: Portfolio MRI, Portfolio X-Ray, Stress Test Lab, Current vs Candidate Comparison, Decision Verdict, AI Commentary, USD, US, CAGR, VaR, ES, VIX.
+4. Preserve approved product names and acronyms: Portfolio MRI, Portfolio Diagnosis, Stress Test Lab, Current vs Candidate Comparison, Decision Verdict, AI Commentary, USD, US, CAGR, VaR, ES, VIX.
 5. Keep candidate language as diagnostic-test language. Do not map a generated candidate to recommendation, winner, or trade instruction.
 6. Keep verdict language non-binding. `selected_candidate`-style backend ids should become review language, not execution language.
 7. Keep AI/report language grounded. `ai_commentary_context`-style terms should become grounded explanation inputs or report preview.
@@ -156,7 +156,7 @@ Future code changes that alter `displayLabels.ts` must update this contract or s
 ## Screen-specific language routing
 
 - `/portfolio-input`: current portfolio, holdings, weights, reporting currency, assumptions. Do not show config/runtime ids as primary copy.
-- `/diagnosis`: Portfolio X-Ray, current portfolio diagnosis, concentration, factor exposure, hidden exposure, weakness map, data limitations. Do not recommend action.
+- `/diagnosis`: Portfolio Diagnosis, current portfolio diagnosis, concentration, factor exposure, hidden exposure, weakness map, data limitations. Do not recommend action.
 - `/evidence`: Stress Test Lab, stress evidence, helped/hurt contributors, hedge gap, limitations. Do not expose raw scenario ids or legacy mandate pass/fail fields.
 - `/hypothesis`: diagnosis recap, hypothesis cards, selected test path, test setup, ready/blocked, generated test candidate. Candidate is not recommendation.
 - `/comparison`: current vs candidate trade-off, improved/worsened/similar/unavailable, materiality for review. Comparison is not verdict.

@@ -43,7 +43,7 @@ python -m pytest tests/test_mvp_portfolio_fixtures.py tests/test_mvp_portfolio_r
 - **Inputs:** `tests/optimizer_fair_comparison_fixtures.py`
 - **Tests:** `tests/test_optimizer_fair_comparison_full_menu.py`
 
-## Portfolio X-Ray golden contract (`RM-949`)
+## Portfolio Diagnosis golden contract (`RM-949`)
 
 - **File:** `portfolio_xray_golden_v2.json` — committed reference output for `build_portfolio_xray_v2`.
 - **Regenerate** after intentional contract changes:

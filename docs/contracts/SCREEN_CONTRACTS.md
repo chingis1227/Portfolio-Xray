@@ -64,7 +64,7 @@ There is no current `/candidate`, `/monitoring`, `/what-changed`, optimizer-aren
 | `/onboarding/investor-type` | Five-question Client Fit intake. | One question at a time, progress, Back/Next/final save. | `/onboarding/loading`. | Investment advice or optimizer mandates. |
 | `/onboarding/loading` | Setup transition. | Setup progress and Client Fit context save messaging. | Auto-redirect to `/portfolio-input`. | Platform sidebar. |
 | `/portfolio-input` | Step 01: define current portfolio. | Client Fit summary, currency, holdings/weights, validation, recovery. | Run diagnosis -> `/diagnosis`. | Optimizer targets, tax settings, suitability approval. |
-| `/diagnosis` | Step 02: current portfolio X-Ray. | Diagnosis summary or locked state. | Continue to Stress Lab or return to Portfolio Input. | Rebalance recommendation from diagnosis alone. |
+| `/diagnosis` | Step 02: current portfolio diagnosis. | Diagnosis summary or locked state. | Continue to Stress Lab or return to Portfolio Input. | Rebalance recommendation from diagnosis alone. |
 | `/evidence` | Step 03: Stress Test Lab. | Stress evidence, helped/hurt, hedge gaps, limitations, or locked state. | Continue to Client Fit. | Candidate/comparison/verdict language. |
 | `/client-fit` | Step 04: profile-fit interpretation. | Fit status, source quality, target rows, explanations, or locked state. | Continue to Hypothesis. | Suitability approval or hiding diagnostic issues. |
 | `/hypothesis` | Step 05: one diagnostic test path. | Diagnosis recap, Launchpad, Builder setup, candidate generation state. | Generate one test candidate / continue to Comparison. | Candidate as recommendation or auto-generated action. |

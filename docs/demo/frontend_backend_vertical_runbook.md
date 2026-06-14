@@ -127,7 +127,7 @@ intentionally does not call FastAPI routes.
 
 ## Manual click-through guide
 
-Start at `http://localhost:3000`. Confirm the public page shows `X-Ray your portfolio before you
+Start at `http://localhost:3000`. Confirm the public page shows `Diagnose portfolio risk before you
 change it` and does not show the platform sidebar or platform step rail. Click **Enter Platform** and confirm it opens `/onboarding/sign-in`. Enter an email, then enter the email code when the verification step appears. If local email auth is unavailable, use the localhost fallback on the sign-in page or open `http://localhost:3000/onboarding/name?dev_bypass=1` for preview only. After sign-in or local fallback, complete the short onboarding screens and let the setup screen redirect to Portfolio Input.
 
 After onboarding, use a simple portfolio that sums to 100%. A stable smoke portfolio is:

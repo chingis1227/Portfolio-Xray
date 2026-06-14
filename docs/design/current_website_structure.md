@@ -27,7 +27,7 @@ Public routes (`/` and `/onboarding/*`) do not show the platform sidebar or top 
 Platform routes show:
 
 - left sidebar brand block: `Portfolio MRI` / `Investment Decision Room`;
-- gated journey rail with 8 steps: Portfolio, X-Ray, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report;
+- gated journey rail with 8 steps: Portfolio, Diagnosis, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report;
 - sticky top progress rail with the current route step;
 - large page header card;
 - content cards, tables, badges, and locked states.
@@ -46,8 +46,8 @@ Block order:
 2. Hero
    - Eyebrow: `PORTFOLIO MRI`.
    - Label: `PORTFOLIO DIAGNOSTICS & INVESTMENT DECISION-SUPPORT SYSTEM`.
-   - H1: `X-Ray your portfolio before you change it.`
-   - Body: explains current allocation, stress behavior, and candidate-test evidence.
+   - H1: `Diagnose portfolio risk before you rebalance.`
+   - Body: `Portfolio MRI turns current holdings into stress-tested decision evidence before any alternative is considered.`
    - CTAs: `Enter Platform`, `See how it works ?`.
    - Trust chips: `Current portfolio first`, `Stress-tested evidence`, `Candidate tests, not orders`.
 
@@ -58,12 +58,12 @@ Block order:
 
 4. Workflow section
    - H2: `FROM RAW HOLDINGS TO A DEFENSIBLE DECISION PATH.`
-   - Shows five high-level cards: Input, X-Ray, Stress Lab, Client Fit, Verdict.
+   - Shows five high-level cards: Input, Diagnosis, Stress Lab, Client Fit, Verdict.
    - This is a public explanation, not the full platform sidebar.
 
 5. Architecture section
    - H2: `DIAGNOSIS ARCHITECTURE, NOT AN OPTIMIZER COCKPIT.`
-   - Cards: Portfolio X-Ray, Stress Test Lab, Problem Classification, Candidate Launchpad, Current vs Candidate, Grounded Report.
+   - Cards: Portfolio Diagnosis, Stress Test Lab, Problem Classification, Candidate Launchpad, Current vs Candidate, Grounded Report.
 
 6. Precision section
    - H2: `BUILT FOR PRECISION.`
@@ -149,7 +149,7 @@ The shell begins after onboarding. The journey labels and step numbers are:
 | Step | Route | Sidebar label | Role |
 | --- | --- | --- | --- |
 | 01 | `/portfolio-input` | Portfolio | Define the current portfolio. |
-| 02 | `/diagnosis` | X-Ray | Diagnose current portfolio exposures and weaknesses. |
+| 02 | `/diagnosis` | Diagnosis | Diagnose current portfolio exposures and weaknesses. |
 | 03 | `/evidence` | Stress Lab | Show stress behavior and evidence limits. |
 | 04 | `/client-fit` | Client Fit | Compare evidence with the provided profile. |
 | 05 | `/hypothesis` | Hypothesis | Select and prepare one diagnostic test path. |
@@ -195,12 +195,12 @@ Main blocks:
 
 ## `/diagnosis`
 
-Role: Step 02, current portfolio X-Ray before candidate tests.
+Role: Step 02, current portfolio diagnosis before candidate tests.
 
 Header:
 
-- Kicker: `Step 02 / Portfolio X-Ray`.
-- H1: `Portfolio X-Ray Diagnosis`.
+- Kicker: `Step 02 / Portfolio Diagnosis`.
+- H1: `Current Portfolio Diagnosis`.
 - Description: `Current-portfolio review before any candidate test.`
 
 Locked state:
@@ -211,7 +211,7 @@ Locked state:
 
 Ready state:
 
-- Shows diagnosis summary panels, X-Ray blocks, evidence chain context, and site explanation when available.
+- Shows diagnosis summary panels, Portfolio Diagnosis blocks, evidence chain context, and site explanation when available.
 - Metrics are shown through decision cards and metric cards, not as raw backend JSON.
 
 ## `/evidence`

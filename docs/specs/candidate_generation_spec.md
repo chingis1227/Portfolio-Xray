@@ -1,6 +1,6 @@
 # Candidate Generation Specification
 
-This document owns the Block 7 `candidate_generation.json` contract for Portfolio MRI / Portfolio X-Ray.
+This document owns the Block 7 `candidate_generation.json` contract for Portfolio MRI.
 
 Implementation: `src/candidate_generation.py`.
 

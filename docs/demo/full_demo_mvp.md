@@ -1,6 +1,6 @@
 ﻿# Full Demo MVP Guide
 
-This guide is the operator package for the current Portfolio MRI / Portfolio X-Ray Core MVP demo.
+This guide is the operator package for the current Portfolio MRI Core MVP demo.
 It is practical, not promotional: it explains what to run, where to look, and how to interpret honest
 `no-trade`, `evidence_insufficient`, or Builder-blocked outcomes.
 
@@ -10,7 +10,7 @@ The current demo is a diagnosis-first, current-portfolio-first product loop:
 
 ```text
 Input portfolio
--> Portfolio X-Ray
+-> Portfolio Diagnosis
 -> Stress Test Lab
 -> Problem Classification
 -> Candidate Launchpad
@@ -92,7 +92,7 @@ Read the files in this order inside each portfolio's `output_dir_final`.
 | Step | File | Meaning |
 | --- | --- | --- |
 | 1 | `analysis_subject/run_metadata.json` | Confirms the reviewed portfolio, input mode, weights source, and analysis window. |
-| 2 | `analysis_subject/portfolio_xray.json` | Current portfolio X-Ray diagnostics. |
+| 2 | `analysis_subject/portfolio_xray.json` | Current portfolio diagnosis diagnostics. |
 | 3 | `analysis_subject/stress_report.json` | Stress Test Lab and factor/stress evidence. |
 | 4 | `analysis_subject/problem_classification.json` | The primary diagnosis and key evidence. |
 | 5 | `analysis_subject/candidate_launchpad.json` | Hypotheses / tests to consider next. |

@@ -15,7 +15,7 @@ The **Input Layer MVP** contract in this spec (Core MVP three-field surface, rea
   `tests/test_real_cash.py`, or live Block 1 disclosure).
 - **Allowed without reopening:** bug fixes, clarifications that match implemented behavior, EUR or
   non-USD parity work explicitly scoped in a new ExecPlan.
-- **Next product work** belongs to downstream layers (Portfolio X-Ray, Stress Lab, Problem
+- **Next product work** belongs to downstream layers (Portfolio Diagnosis, Stress Lab, Problem
   Classification, Candidate Launchpad, compare/verdict adapters) — see
   [product_flow_operator_guide.md](../product_flow_operator_guide.md).
 
@@ -119,7 +119,7 @@ Implementation status: enforced in `src/real_cash.py` (Session 03,
 
 ### 1.2 System Defaults / Market and Calculation Base
 
-**Purpose:** Provide a consistent market and calculation base for X-Ray, metrics, stress, and
+**Purpose:** Provide a consistent market and calculation base for Diagnosis, metrics, stress, and
 reports after the user chooses `investor_currency`.
 
 **System-resolved (user not asked on first screen for USD/EUR Core MVP):**
@@ -169,11 +169,11 @@ Backend/CLI paths remain compatible when this object is omitted. When present in
 config, `client_fit` preserves the full V1 profile for `client_fit_check_v1` generation and may
 mirror compatible values into legacy disclosure fields (`client_profile`,
 `target_nominal_return_annual`, `target_vol_annual`, `target_max_drawdown_pct`, `horizon_years`).
-This input object by itself must not change Portfolio X-Ray, Stress Lab, optimizer behavior,
+This input object by itself must not change Portfolio Diagnosis, Stress Lab, optimizer behavior,
 candidate generation, or suitability copy. It may feed the post-Stress `client_fit_check_v1`
 artifact and bounded downstream display/context.
 
-**Current placement:** Client Fit Check runs after X-Ray/Stress and before Problem Classification in
+**Current placement:** Client Fit Check runs after Diagnosis/Stress and before Problem Classification in
 the portfolio-first product chain. Client Fit target rows may prefill Builder success criteria as
 display/test context only, not optimizer constraints.
 
@@ -185,8 +185,8 @@ display/test context only, not optimizer constraints.
 `min_single_security_weight_pct`, asset-class bounds, turnover/CVaR limits (where configured).
 
 **Core MVP defaults (no user prompt):** `allow_leverage = false`, `allow_short_selling = false`.
-Current portfolio is diagnosed **as-is**; concentration is an X-Ray finding, not a first-input block.
-Mandate targets and constraint comparison must not appear in Core MVP X-Ray or Stress Lab outputs.
+Current portfolio is diagnosed **as-is**; concentration is an Diagnosis finding, not a first-input block.
+Mandate targets and constraint comparison must not appear in Core MVP Diagnosis or Stress Lab outputs.
 
 **Future placement:** Portfolio Alternatives Builder parameters; Advanced Mandate. Client Fit V1 may display target rows as success criteria, but does not turn mandate fields into optimizer constraints.
 

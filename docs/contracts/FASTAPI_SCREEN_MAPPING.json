@@ -73,7 +73,7 @@
         "/hypothesis"
       ],
       "screen_mapping_status": "current",
-      "screen_contract_section": "Onboarding context -> Portfolio Input -> Portfolio X-Ray / Diagnosis -> Stress Test Lab -> Client Fit -> Hypothesis Builder",
+      "screen_contract_section": "Onboarding context -> Portfolio Input -> Portfolio Diagnosis / Diagnosis -> Stress Test Lab -> Client Fit -> Hypothesis Builder",
       "mapping_note": "Creates diagnosis-first review state from portfolio input plus Client Fit context prepared by onboarding or the advanced manual editor. Backend/CLI compatibility still supports missing Client Fit. Public client_fit is a bounded display summary, not raw client_fit_check.json."
     },
     {

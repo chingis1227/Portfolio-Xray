@@ -815,7 +815,7 @@ export function DiagnosisSectionNav() {
   }
 
   return (
-    <nav className="sticky top-4 z-20 -mx-1 overflow-x-auto rounded-2xl border border-pmri-border/70 bg-pmri-bg/88 p-1 shadow-decision backdrop-blur-xl" aria-label="Portfolio X-Ray sections">
+    <nav className="sticky top-4 z-20 -mx-1 overflow-x-auto rounded-2xl border border-pmri-border/70 bg-pmri-bg/88 p-1 shadow-decision backdrop-blur-xl" aria-label="Portfolio Diagnosis sections">
       <div className="flex min-w-max gap-1">{diagnosisSections.map((section) => <a key={section.id} href={`#${section.id}`} aria-current={activeSection === section.id ? "true" : undefined} onClick={(event) => handleSectionClick(event, section.id)} className="pmri-focus pmri-section-nav-link rounded-xl border border-transparent px-3.5 py-2 text-sm font-medium text-pmri-text2 hover:bg-white/[0.055] hover:text-pmri-text">{section.label}</a>)}</div>
     </nav>
   );

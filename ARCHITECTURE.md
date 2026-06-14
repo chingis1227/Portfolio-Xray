@@ -19,7 +19,7 @@ This document uses four labels:
 - **Advanced / research:** useful capabilities that should not be the core MVP user journey.
 - **Legacy / compatibility:** older or compatibility flows that remain operationally useful but are not the target product front door.
 
-Architecture truth reset: older optimizer/report/scorecard-heavy capabilities may remain in code, but they are not the current Core MVP architecture. Portfolio Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity, Pareto/Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client Fit suitability approval, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, full custom constraints UI, multi-client workspace, and polished PDF report product are advanced/backend/legacy/future unless explicitly promoted.
+Architecture truth reset: older optimizer/report/scorecard-heavy capabilities may remain in code, but they are not the current Core MVP architecture. Portfolio Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity, Pareto/Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client Fit suitability approval, Asset Diagnostics, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, full custom constraints UI, multi-client workspace, and polished PDF report product are advanced/backend/legacy/future unless explicitly promoted.
 
 ## 2. Current Runtime Architecture
 
@@ -71,7 +71,7 @@ Canonical current product architecture:
 
 ```text
 Input Portfolio
--> Portfolio X-Ray
+-> Portfolio Diagnosis
 -> Stress Test Lab
 -> Client Fit Check
 -> Problem Classification
@@ -132,7 +132,7 @@ Architecture boundary:
 - It does not generate candidate weights.
 - It does not decide whether to rebalance.
 
-### 4.2 Portfolio X-Ray Layer
+### 4.2 Portfolio Diagnosis layer
 
 Target responsibility:
 
@@ -142,7 +142,7 @@ Target responsibility:
 
 Current implementation mapping:
 
-- Maps to existing Portfolio X-Ray / diagnostics specs and generated artifacts where implemented.
+- Maps to existing Portfolio Diagnosis technical artifacts specs and generated artifacts where implemented.
 - Exact sections, fields, thresholds, and statuses require verification against current specs/code.
 
 Architecture boundary:
@@ -173,14 +173,14 @@ Architecture boundary:
 
 Target responsibility:
 
-- Convert X-Ray and Stress Test Lab outputs into 2-3 user-understandable portfolio problems.
+- Convert Diagnosis and Stress Test Lab outputs into 2-3 user-understandable portfolio problems.
 - Examples: high volatility, high drawdown, concentration, weak hedge behavior, poor
   diversification, current portfolio acceptable.
 
 Current implementation mapping:
 
 - Implemented as an additive diagnostic artifact (`problem_classification.json`) via
-  `src/problem_classification.py`. It translates existing Portfolio X-Ray and stress evidence into
+  `src/problem_classification.py`. It translates existing Portfolio Diagnosis and stress evidence into
   problems and reasonable paths to test without changing formulas or making decisions.
 
 Architecture boundary:
@@ -335,7 +335,7 @@ Current implementation mapping:
 | Current / existing area | Target architecture role | Classification |
 | --- | --- | --- |
 | Config validation, `analysis_subject`, input assumptions | Input Portfolio Layer and system defaults | Preserve / Current |
-| Portfolio X-Ray diagnostics | Portfolio X-Ray Layer | Preserve / Current where implemented |
+| Portfolio Diagnosis evidence | Portfolio Diagnosis layer | Preserve / Current where implemented |
 | Stress, factor, scenario diagnostics | Stress Test Lab Layer | Preserve / Current where implemented |
 | Candidate factory | Backend candidate capability; target UX should route through Launchpad/Builder | Preserve; Core backend or Advanced UX depending mode |
 | Optimization engine / optimizer-backed candidates | Internal construction methods | Preserve / Advanced / Requires Review |
@@ -382,7 +382,7 @@ implemented unless verified in `SPEC.md`, `docs/specs/*.md`, or code.
 - White-label / API integration.
 - Full PDF report design.
 - Advanced Parameter Builder settings.
-- Asset X-Ray / Asset Diagnostics.
+- Asset Diagnostics / Asset Diagnostics.
 - Portfolio Archetype Classification is an optional later diagnostic layer that can classify the
   portfolio by behavior, such as Equity Growth Portfolio, Balanced 60/40-like, Credit Carry
   Portfolio, Duration-heavy Defensive, Inflation-sensitive, or Pseudo-diversified Portfolio. It

@@ -10,8 +10,8 @@ export const journeySteps: JourneyStep[] = [
   },
   {
     id: "diagnosis",
-    label: "Portfolio X-Ray",
-    shortLabel: "X-ray",
+    label: "Portfolio Diagnosis",
+    shortLabel: "Diagnosis",
     href: "/diagnosis",
     lockReason: "Complete Portfolio Input first to unlock Diagnosis."
   },

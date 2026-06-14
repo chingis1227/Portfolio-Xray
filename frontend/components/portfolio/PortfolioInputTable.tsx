@@ -34,7 +34,7 @@ const STAGED_POLL_TIMEOUT_MS = 10 * 60 * 1000;
 const STAGED_PROGRESS_STAGES = [
   { id: "input", label: "Portfolio input" },
   { id: "data_load", label: "Data check" },
-  { id: "xray", label: "X-Ray" },
+  { id: "xray", label: "Diagnosis" },
   { id: "stress", label: "Stress Lab" },
   { id: "client_fit", label: "Client Fit" },
   { id: "problem_classification", label: "Problem diagnosis" },
@@ -1295,7 +1295,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
               </p>
             ) : null}
             <p className="mt-3 text-sm leading-6 text-pmri-muted">
-              Next: Portfolio X-Ray will review allocation, concentration, and stress vulnerabilities.
+              Next: Portfolio Diagnosis will review allocation, concentration, and stress vulnerabilities.
             </p>
           </div>
         </div>

@@ -166,9 +166,9 @@ when `partial_sections` is present, even if they still activate.
 `evidence_insufficient_data_quality` becomes the primary blocker when either:
 
 - the hard `data_trust_failure` signal is present; or
-- partial X-Ray evidence and missing Stress Lab evidence appear together.
+- partial diagnosis evidence and missing Stress Lab evidence appear together.
 
-Partial X-Ray evidence alone does not automatically block diagnosis or suppress
+Partial diagnosis evidence alone does not automatically block diagnosis or suppress
 Launchpad when Stress Lab still confirms a material primary diagnosis; it lowers
 confidence and marks the artifact `partial` unless paired with missing stress
 evidence or a hard trust failure.

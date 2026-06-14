@@ -7,7 +7,7 @@ import { useSupabasePersistence, type SavedReviewRecord } from "@/lib/supabase/p
 const STAGE_LABELS = {
   input: "Input",
   data_load: "Data",
-  xray: "X-Ray",
+  xray: "Diagnosis",
   stress: "Stress",
   client_fit: "Fit",
   problem_classification: "Problem",

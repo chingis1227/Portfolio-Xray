@@ -43,11 +43,11 @@ Top-level documents stay compact:
 | Candidate Launchpad data artifact and problem-to-hypothesis card mapping | [candidate_launchpad_spec.md](candidate_launchpad_spec.md) (V1); [block_4_diagnosis_v3_spec.md](block_4_diagnosis_v3_spec.md) Section5 (V3 current) |
 | Portfolio Alternatives Builder setup, validation, and explicit Block 6 / Block 7 boundary | [portfolio_alternatives_builder_spec.md](portfolio_alternatives_builder_spec.md), [builder_prefill_spec.md](builder_prefill_spec.md), [candidate_setup_spec.md](candidate_setup_spec.md) |
 | Candidate Generation one-attempt artifact from validated Builder setup | [candidate_generation_spec.md](candidate_generation_spec.md) |
-| Portfolio X-Ray diagnostics, seven-section current-portfolio diagnostic layer, and `portfolio_xray.json` contract | [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) |
+| Portfolio Diagnosis evidence, seven-section current-portfolio diagnostic layer, and `portfolio_xray.json` contract | [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) |
 | Block 2.4 Hidden Exposure UI Pareto cards (presentation layer over `block_2_4_hidden_exposure`) | [block_2_4_hidden_exposure_ui_pareto_spec.md](block_2_4_hidden_exposure_ui_pareto_spec.md) |
 | Block 2.6 Portfolio Weakness Map UI Pareto cards (presentation layer over `block_2_6_portfolio_weakness_map`) | [block_2_6_weakness_map_ui_pareto_spec.md](block_2_6_weakness_map_ui_pareto_spec.md) |
-| Portfolio X-Ray layer (Block 2.1-2.7) | [portfolio_xray_layer_spec.md](portfolio_xray_layer_spec.md) |
-| Portfolio X-Ray methodology map (Block 2 audit baseline) | [../audits/2026-05-20_portfolio_xray_methodology_map.md](../audits/2026-05-20_portfolio_xray_methodology_map.md) |
+| Portfolio Diagnosis layer (Block 2.1-2.7) | [portfolio_xray_layer_spec.md](portfolio_xray_layer_spec.md) |
+| Portfolio Diagnosis methodology map (Block 2 audit baseline) | [../audits/2026-05-20_portfolio_xray_methodology_map.md](../audits/2026-05-20_portfolio_xray_methodology_map.md) |
 | Evidence-to-diagnosis interpretation methodology, root-cause-over-symptom boundary, confidence/data-quality rules, and rulebook foundation | [diagnosis_interpretation_methodology_spec.md](diagnosis_interpretation_methodology_spec.md) |
 | Diagnosis rulebook YAML contract, read-only parity validator, schema, and governance boundaries | [diagnosis_rulebook_schema_spec.md](diagnosis_rulebook_schema_spec.md) |
 | Metrics, estimators, windows, returns, FX, beta, drawdown, RC_vol, rounding | [metrics_specification.md](metrics_specification.md) |

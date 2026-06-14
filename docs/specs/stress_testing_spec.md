@@ -12,7 +12,7 @@
 > **2026-04-30 update:** Split factor contract. Production regression/beta/stability/OOS/adjusted-overlay/base variance decomposition use base factors only: `equity`, `real_rates`, `inflation`, `credit`, `usd`, `commodity`, `vix`, `us_growth`. `commodity` is the production commodity factor. Extended diagnostics/stress analytics use base factors plus `oil`; `beta_oil` is deprecated in production outputs and exposed through `diagnostic_oil_beta` or stress-layer metrics only.
 > **2026-05-08 update:** Synthetic scenario **RC_top1 / RC_top3** concentration diagnostics now use **`taxonomy_blend_v1`**: a blend of sample monthly correlation with a block-structured target matrix (EQ / CR / ND / TI / CO / CA) resolved from `config/etf_universe.yml` and `config/stock_universe.yml`, per-scenario `lambda_blend`, explicit between-block overrides with defaults, per-block volatility multipliers, and PSD repair on the blended correlation. **Historical episodes** are unchanged (realized paths only). Optional `stress_cov_method="uniform_legacy"` restores the prior uniform risk-on correlation + scalar `vol_mult` for synthetic rows only. `rates_shock` and `inflation_stagflation` set `stress_cov=True` for RC diagnostics under the same taxonomy engine.
 > **2026-05-08 update (multi-frequency):** Config may set `returns_frequency` to `weekly` / `daily`, but **main portfolio metrics and optimizer inputs always use monthly** simple returns per `metrics_specification.md`. Non-monthly config values are disclosure-only (`configured_returns_frequency`, `main_metrics_frequency_forced`). Factor betas, synthetic shocks, and primary regression diagnostics remain **weekly**; macro regime labels remain **monthly**; regime factor analytics may load **daily** series when available. `stress_report.json` carries **`frequency_disclosure`** and **`periods_per_year`**; **`run_metadata.json`** mirrors **`frequency_disclosure`**. `frequency_mismatch_warning` stays **false** for the default monthly main-metrics path.
-> **2026-05-20 update (governance Session 08):** `crypto_shock` and `volatility_shock` / `vix_shock` are **not** in the mandatory `run_stress` suite. See Section 2.3 and [DEC-2026-05-20-002](../../DECISIONS.md); reviewable proposal in [docs/proposals/2026-05-20_crypto_vol_stress_scenarios_proposal.md](../proposals/2026-05-20_crypto_vol_stress_scenarios_proposal.md). Portfolio X-Ray `volatility_spike` remains **factor-only** per [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) §2.7.
+> **2026-05-20 update (governance Session 08):** `crypto_shock` and `volatility_shock` / `vix_shock` are **not** in the mandatory `run_stress` suite. See Section 2.3 and [DEC-2026-05-20-002](../../DECISIONS.md); reviewable proposal in [docs/proposals/2026-05-20_crypto_vol_stress_scenarios_proposal.md](../proposals/2026-05-20_crypto_vol_stress_scenarios_proposal.md). Portfolio Diagnosis `volatility_spike` remains **factor-only** per [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) §2.7.
 
 ---
 
@@ -26,7 +26,7 @@
 
 Scenario and episode checks below are **for PM reporting** in legacy mandate mode; they do not replace the mandate gate and **do not apply** to Core MVP portfolio-first stress (`loss_gate_mode="diagnostic"`).
 
-**Core MVP product rule:** Block 1 Input, Blocks 2.1...2.6 X-Ray, and Block 3 Stress Test Lab do **not** require or compare against client profile targets (horizon, liquidity, target return/vol/MaxDD, suitability). The implemented Client Fit Check may compare bounded profile targets only after Stress Lab, while legacy mandate fields remain in config/`resolved_mandate` for legacy/advanced optimization compatibility. Do not read this rule as "no Client Profile in the web journey"; it is only the Blocks 1...3 calculation boundary.
+**Core MVP product rule:** Block 1 Input, Blocks 2.1...2.6 Diagnosis, and Block 3 Stress Test Lab do **not** require or compare against client profile targets (horizon, liquidity, target return/vol/MaxDD, suitability). The implemented Client Fit Check may compare bounded profile targets only after Stress Lab, while legacy mandate fields remain in config/`resolved_mandate` for legacy/advanced optimization compatibility. Do not read this rule as "no Client Profile in the web journey"; it is only the Blocks 1...3 calculation boundary.
 
 ---
 
@@ -125,8 +125,8 @@ The `scenario_results` row for `recession_severe` includes `shock_vector`, `cali
 
 | Scenario id (proposed) | In `run_stress` today | Where surfaced instead |
 | --- | --- | --- |
-| `volatility_shock` / `vix_shock` | **No** | Portfolio X-Ray `volatility_spike` weakness — **factor-only** (`beta_vix`, tail `es_95`); see [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) §2.7 |
-| `crypto_shock` | **No** | Portfolio X-Ray conditional `crypto_shock` weakness when crypto taxonomy/weights present |
+| `volatility_shock` / `vix_shock` | **No** | Portfolio Diagnosis `volatility_spike` weakness — **factor-only** (`beta_vix`, tail `es_95`); see [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md) §2.7 |
+| `crypto_shock` | **No** | Portfolio Diagnosis conditional `crypto_shock` weakness when crypto taxonomy/weights present |
 
 **Rationale for deferral:** The production synthetic engine maps **six** factor shocks (`shock_eq` … `shock_cmd`)
 only. Adding VIX or crypto channels requires spec-approved shock units, beta coverage, optional
@@ -1096,7 +1096,7 @@ seven synthetic-linked risk types; no taxonomy hedge labels). Normative field ru
 
 `stress_report.json.hedge_gap_analysis` records stress-evidence of hedge weakness. **Aggregate (v1):**
 worst synthetic scenario globally (minimum `portfolio_pnl_pct`). **Per risk type (v2):** for each
-weakness bucket mapped via `HEDGE_GAP_SCENARIO_BY_RISK` (aligned with X-Ray `WEAKNESS_SCENARIO_MAP`),
+weakness bucket mapped via `HEDGE_GAP_SCENARIO_BY_RISK` (aligned with Diagnosis `WEAKNESS_SCENARIO_MAP`),
 evaluate hedge-labeled holdings in the worst mapped scenario for that bucket. Hedge-labeled tickers
 come from universe `risk_role` metadata (`crisis_hedge`, `defensive`, `inflation_hedge`, `tail_hedge`)
 passed into `run_stress` from `run_report.py`.

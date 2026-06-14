@@ -49,7 +49,7 @@ evidence**). Confusion audit:
 
 - Comparison output is **evidence for decision support**, not a recommendation.
 - Wording in downstream reports must not imply "choose this portfolio" unless [selection_engine_spec.md](selection_engine_spec.md) decision artifacts and reporting rules explicitly allow decision-support phrasing for that surface.
-- Portfolio X-Ray, commentary, and stress diagnostics remain non-binding inputs; comparison does not override them.
+- Portfolio Diagnosis, commentary, and stress diagnostics remain non-binding inputs; comparison does not override them.
 
 ## Canonical Artifact
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-This file is the top-level source of truth for Portfolio MRI / Portfolio X-Ray product UI, dashboard, generated HTML, and visual-interface work.
+This file is the top-level source of truth for Portfolio MRI product UI, dashboard, generated HTML, and visual-interface work.
 
 It replaces all former external-reference and prototype design guidance. Use the implemented frontend and the documents linked here as current design authority. For current website structure and route-by-route content, use [docs/design/current_website_structure.md](docs/design/current_website_structure.md). For enforceable UI review rules, use [docs/contracts/DESIGN_SYSTEM_CONTRACT.md](docs/contracts/DESIGN_SYSTEM_CONTRACT.md).
 
@@ -19,7 +19,7 @@ Landing
 -> Required email sign-in
 -> Onboarding
 -> Portfolio Input
--> Portfolio X-Ray
+-> Portfolio Diagnosis
 -> Stress Test Lab
 -> Client Fit
 -> Hypothesis
@@ -123,7 +123,7 @@ Platform routes use:
 Current platform steps:
 
 1. Portfolio
-2. X-Ray
+2. Diagnosis
 3. Stress Lab
 4. Client Fit
 5. Hypothesis

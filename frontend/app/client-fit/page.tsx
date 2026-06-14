@@ -31,7 +31,7 @@ function LockedClientFitState() {
       <StatusBadge tone="amber">Client Fit locked</StatusBadge>
       <h2 className="pmri-heading-section mt-4 text-2xl text-pmri-text">Run profile-first diagnosis before Client Fit.</h2>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-pmri-muted">
-        Client Fit needs a completed Client Profile, Portfolio X-Ray, and Stress Test Lab evidence. Backend and CLI runs can still produce a missing-profile compatibility state, but the web journey asks for the profile first.
+        Client Fit needs a completed Client Profile, Portfolio Diagnosis, and Stress Test Lab evidence. Backend and CLI runs can still produce a missing-profile compatibility state, but the web journey asks for the profile first.
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
         <Link href="/client-profile" className="pmri-focus pmri-primary-action rounded-full px-5 py-2.5 text-sm font-medium transition">Open Client Profile</Link>

@@ -11,13 +11,13 @@ Update this file only when agent operating rules, source-of-truth routing, gener
 
 ## Current Product Truth
 
-Portfolio MRI / Portfolio X-Ray is a diagnosis-first, current-portfolio-first investment decision-support system. It is not optimizer-first.
+Portfolio MRI is a diagnosis-first, current-portfolio-first investment decision-support system. It is not optimizer-first.
 
 Canonical current product flow:
 
 ```text
 Input Portfolio
--> Portfolio X-Ray
+-> Portfolio Diagnosis
 -> Stress Test Lab
 -> Client Fit Check
 -> Problem Classification
@@ -156,7 +156,7 @@ Do not describe these as the current Core MVP product flow unless a current spec
 - Advanced monitoring UI or multi-client monitoring workspace.
 - Crisis Replay UI and What Happens If simulator UI.
 - Client Fit suitability approval.
-- Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, full custom constraints UI, or multi-client workspace.
+- Asset Diagnostics, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, full custom constraints UI, or multi-client workspace.
 - Polished PDF report product as the default output path.
 
 If these capabilities exist in code or generated outputs, classify them as `Advanced`, `Backend evidence`, `Technical artifact`, `Legacy`, `Generated support artifact`, or `Future/backlog`; do not promote them into current product truth merely because files exist.

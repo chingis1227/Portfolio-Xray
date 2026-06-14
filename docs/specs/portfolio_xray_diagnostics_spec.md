@@ -1,4 +1,4 @@
-# Portfolio X-Ray Diagnostics Specification
+# Portfolio Diagnosis Diagnostics Specification
 
 Status: source-of-truth for section contracts, thresholds, and JSON fields (Block 2).
 
@@ -9,11 +9,11 @@ This spec defines the intended contract for the current-portfolio diagnostic lay
 
 ## Scope
 
-The Portfolio X-Ray layer diagnoses the current `analysis_subject` in the portfolio-first workflow:
+The Portfolio Diagnosis layer diagnoses the current `analysis_subject` in the portfolio-first workflow:
 
 ```text
 analysis_subject
--> subject diagnostics / Portfolio X-Ray
+-> subject diagnostics / Portfolio Diagnosis
 -> candidate generation and comparison
 -> decision package
 ```
@@ -40,7 +40,7 @@ product surface and must not gain `block_2_7_*` modules without an explicit spec
 
 ## Non-Goals
 
-Portfolio X-Ray must not:
+Portfolio Diagnosis must not:
 
 - optimize the portfolio
 - select candidates
@@ -64,7 +64,7 @@ Current and target report consumers:
 - generated HTML report surfaces
 - generated PDF-style report surfaces
 
-Generated report surfaces should render the X-Ray as structured sections and tables. `portfolio_xray.json` remains the canonical generated source for X-Ray rendering.
+Generated report surfaces should render the Diagnosis as structured sections and tables. `portfolio_xray.json` remains the canonical generated source for diagnosis rendering.
 
 ## Top-Level JSON Contract
 
@@ -119,7 +119,7 @@ Existing sections do not yet meet this full target. The active plan moves them t
 
 ## Data and Cutoff Policy
 
-All Portfolio X-Ray diagnostics must respect the analysis-effective date:
+All Portfolio Diagnosis evidence must respect the analysis-effective date:
 
 - `analysis_end` is the latest completed period allowed for diagnostics.
 - Raw cached or exported input panels may contain later incomplete rows only when clearly treated as raw input evidence.
@@ -357,7 +357,7 @@ Post-audit Session 05 (`RM-945`):
 
 Section-level provenance (post-audit Session 03, `RM-943`): `risk_diagnostics` exposes `method`, `frequency` (`mixed` when monthly metrics and daily tail risk coexist), `window`, `n_obs`, and `benchmark` (from `metric_quality` / tail window labels). When the multi-window panel is present, `window` lists the panel horizons and `data_sources_used` includes `snapshot_{3y,5y,10y}.json metrics` for loaded files.
 
-Canonical formula ownership remains in [metrics_specification.md](metrics_specification.md). This spec owns how those metrics are grouped, disclosed, and interpreted in the X-Ray layer.
+Canonical formula ownership remains in [metrics_specification.md](metrics_specification.md). This spec owns how those metrics are grouped, disclosed, and interpreted in the Portfolio Diagnosis technical layer.
 
 #### 2.2.1 Block 2.2 product contract (`block_2_2_portfolio_metrics`)
 
@@ -588,7 +588,7 @@ per-factor rows in `by_factor` with OLS point `beta` plus **HAC/Newey-West** `ha
 Classical OLS `ols_t` / `ols_p` / `ols_ci_*` are diagnostic-only. Summaries:
 `factor_multicollinearity` (severity, max VIF, cond(R), `assessment_en`),
 `serial_correlation_diagnostics` (Durbin–Watson, minimum Breusch–Godfrey p),
-`heteroskedasticity_diagnostics` (Breusch–Pagan p). X-Ray does not recompute inference; if regression
+`heteroskedasticity_diagnostics` (Breusch–Pagan p). Diagnosis does not recompute inference; if regression
 blocks are absent, emit warning `factor regression inference panels missing from stress_report`.
 
 Canonical factor behavior remains in [factor_diagnostics_spec.md](factor_diagnostics_spec.md) and stress behavior in [stress_testing_spec.md](stress_testing_spec.md).
@@ -927,7 +927,7 @@ Scorecard as a primary product module, and advanced monitoring. **Not** part of 
 or treat archetype as a six-file / `output_manifest` product requirement until a separate migration promotes it.
 
 **Implementation (legacy compatibility):** rule-based scorecard in `src/portfolio_xray.py`
-(`_portfolio_archetype_section`) continues to populate `sections.portfolio_archetype` on full X-Ray
+(`_portfolio_archetype_section`) continues to populate `sections.portfolio_archetype` on full Diagnosis
 builds so golden tests, `report.txt` / HTML formatters, and older consumers keep working. UI/API and
 portfolio-first operators should read **Blocks 2.1–2.6** for the current product diagnosis.
 
@@ -1012,11 +1012,11 @@ Each row should separate:
 
 #### `volatility_spike` methodology (Session 08, `RM-948`, Option B)
 
-**Decision:** **Option B — factor-only.** Portfolio X-Ray does **not** map `volatility_spike` to a
+**Decision:** **Option B — factor-only.** Portfolio Diagnosis does **not** map `volatility_spike` to a
 synthetic `stress_report.scenario_results` row. A dedicated `vix_shock` / `volatility_spike` synthetic
 scenario (**Option A**) is **deferred** for Stress Lab ([DEC-2026-05-20-002](../../DECISIONS.md),
 [proposal](../proposals/2026-05-20_crypto_vol_stress_scenarios_proposal.md) §3); it would require an
-explicit change to [stress_testing_spec.md](stress_testing_spec.md) §2.3 and `src/stress.py`, not X-Ray alone.
+explicit change to [stress_testing_spec.md](stress_testing_spec.md) §2.3 and `src/stress.py`, not Portfolio Diagnosis alone.
 
 **Evidence channels (diagnostic only):**
 
@@ -1164,7 +1164,7 @@ Legacy weakness ids (`equity_crash`, `rates_up`, `inflation_shock`, `credit_spre
 
 Status: canonical registry (post-audit Session 02, `RM-942`, 2026-05-20).
 
-Portfolio X-Ray uses named, diagnostic-only thresholds to classify existing metrics into
+Portfolio Diagnosis uses named, diagnostic-only thresholds to classify existing metrics into
 `flagged` / `below_threshold` / severity bands. These thresholds do **not** define optimizer
 constraints, mandate gates, stress pass/fail, production release, or trade instructions.
 
@@ -1248,7 +1248,7 @@ Every section should avoid false confidence:
 ## Current Known Gaps
 
 Known gaps are tracked in [KNOWN_ISSUES.md](../../KNOWN_ISSUES.md), the active
-[Portfolio X-Ray Post-Audit Roadmap](../exec_plans/2026-05-20_portfolio_xray_post_audit_roadmap.md),
+[Portfolio Diagnosis Post-Audit Roadmap](../exec_plans/2026-05-20_portfolio_xray_post_audit_roadmap.md),
 and the methodology baseline
 [2026-05-20_portfolio_xray_methodology_map.md](../audits/2026-05-20_portfolio_xray_methodology_map.md).
 
@@ -1295,7 +1295,7 @@ Resolved in Session 08 (2026-05-20):
 
 - report/HTML productization via `format_portfolio_xray_html` and structured `format_portfolio_xray_text`
 - compact commentary via `format_portfolio_xray_commentary`
-- generated-output X-Ray wording QA in `src/generated_output_qa.py` (`scan_portfolio_xray_report_text`, `scan_portfolio_xray_html_text`)
+- generated-output diagnosis wording QA in `src/generated_output_qa.py` (`scan_portfolio_xray_report_text`, `scan_portfolio_xray_html_text`)
 
 ## Verification
 
@@ -1310,7 +1310,7 @@ Expected implementation checks:
 - threshold registry drift: `tests/test_portfolio_xray_threshold_registry.py`
 - golden JSON contract: `tests/test_portfolio_xray_contract.py` and
   `tests/fixtures/portfolio_xray_golden_v2.json` (regenerate: `python tests/portfolio_xray_golden_inputs.py`)
-- focused X-Ray tests under `tests/test_portfolio_xray.py`
+- focused Diagnosis tests under `tests/test_portfolio_xray.py`
 - focused metrics/frequency tests
 - focused data-cutoff tests
 - generated artifact review of `{output_dir_final}/analysis_subject/portfolio_xray.json`
@@ -1325,5 +1325,5 @@ Acceptance criteria:
 - hidden risk outputs show evidence, confidence, and caveats (Core MVP Block 2.4)
 - risk budget product block shows weight vs RC and bucket contribution for all positive-weight holdings when RC exists (Core MVP Block 2.5); product block excludes stress PnL fields
 - legacy archetype and weakness section outputs (2.6–2.7) show evidence, confidence, and caveats when
-  present on full X-Ray builds, but are not required for Core MVP acceptance
+  present on full Portfolio Diagnosis builds, but are not required for Core MVP acceptance
 - report surfaces are understandable without reading raw JSON

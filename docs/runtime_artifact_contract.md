@@ -37,7 +37,7 @@ Default output folder: `{output_dir_final}` from `config.yml` (demo: `Main portf
 Core-only runs invoke `apply_core_blocks_product_bundle_hygiene` after materialize (Session 04).
 
 Client Fit V1 is a non-binding interpretation overlay with active web onboarding/display routes and
-backend/CLI missing-profile compatibility. The artifact is generated after X-Ray/Stress and before
+backend/CLI missing-profile compatibility. The artifact is generated after Diagnosis/Stress and before
 Problem Classification. The frontend route chain collects bounded Client Fit context through
 onboarding, shows `/client-fit` before Hypothesis, and keeps `/client-profile` as an advanced/manual
 editor rather than the normal entry step. Client Fit target return, volatility, maximum drawdown, and

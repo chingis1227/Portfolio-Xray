@@ -5,7 +5,7 @@ Use this file before interpreting generated JSON or starting a new chat on produ
 
 **Input Layer (frozen 2026-05-26):** [Input Layer MVP Migration](exec_plans/2026-05-26_input_layer_mvp_migration.md) closed; contract frozen - [audit](audits/2026-05-26_input_layer_mvp_acceptance_audit.md), `DEC-2026-05-26-001`. Do not reopen input redesign unless Block 1 regresses.
 
-**Active product focus:** downstream of input - Portfolio X-Ray (Block 2), Stress Lab (Block 3), Client Fit Check, Problem Classification / Candidate Launchpad (Block 4), Portfolio Alternatives Builder (Block 6), one-attempt Candidate Generation (Block 7), Current vs Candidate (Block 8), Decision Verdict (Block 9), and AI Commentary grounding. Use this guide's read order and product-bundle chain; not more first-screen fields.
+**Active product focus:** downstream of input - Portfolio Diagnosis (Block 2), Stress Lab (Block 3), Client Fit Check, Problem Classification / Candidate Launchpad (Block 4), Portfolio Alternatives Builder (Block 6), one-attempt Candidate Generation (Block 7), Current vs Candidate (Block 8), Decision Verdict (Block 9), and AI Commentary grounding. Use this guide's read order and product-bundle chain; not more first-screen fields.
 **Product-flow backend (closed):** [Product Flow MVP Backend ExecPlan](exec_plans/2026-05-25_product_flow_mvp_backend_plan.md).
 **Origin audit:** [Product-Flow Validation Audit](audits/2026-05-25_product_flow_validation_audit.md).
 
@@ -45,7 +45,7 @@ Read in this order after a portfolio-first run (new chat, demo prep, or code rev
 | Step | What to open | Why |
 | --- | --- | --- |
 | 1 | `{output_dir_final}/analysis_subject/run_metadata.json` | Subject type, weights source, `analysis_setup.core_mvp_input_surface` / `input_assumptions.core_mvp_input_contract`, analysis window |
-| 2 | `analysis_subject/portfolio_xray.json` | Blocks 1-2 diagnostics; prefer product blocks `block_2_1_asset_allocation` through `block_2_6_portfolio_weakness_map` when present (Section2.1.1-Section2.6.1 in [portfolio_xray_diagnostics_spec.md](specs/portfolio_xray_diagnostics_spec.md)); legacy seven sections remain for full X-Ray formatters |
+| 2 | `analysis_subject/portfolio_xray.json` | Blocks 1-2 diagnostics; prefer product blocks `block_2_1_asset_allocation` through `block_2_6_portfolio_weakness_map` when present (Section2.1.1-Section2.6.1 in [portfolio_xray_diagnostics_spec.md](specs/portfolio_xray_diagnostics_spec.md)); legacy seven sections remain for full technical diagnosis formatters |
 | 3 | `analysis_subject/stress_report.json` | Block 3 stress scenarios and factor context |
 | 4 | `analysis_subject/client_fit_check.json` | Non-binding Client Fit context; `not_provided` is valid for backend/CLI compatibility |
 | 5 | `analysis_subject/problem_classification.json` | Top problems and test paths |
@@ -126,7 +126,7 @@ Paths are relative to `{output_dir_final}` (typically `Main portfolio/`).
 
 | # | Artifact | Default path | When present | Schema (offline gate) | Primary reader question |
 | --- | --- | --- | --- | --- | --- |
-| 1 | `client_fit_check.json` | `analysis_subject/client_fit_check.json` | After X-Ray/Stress in product diagnosis; `not_provided` is valid for backend/CLI compatibility | `client_fit_check_v1` | Does current risk fit the provided profile as non-binding context... |
+| 1 | `client_fit_check.json` | `analysis_subject/client_fit_check.json` | After Diagnosis/Stress in product diagnosis; `not_provided` is valid for backend/CLI compatibility | `client_fit_check_v1` | Does current risk fit the provided profile as non-binding context... |
 | 2 | `problem_classification.json` | `analysis_subject/problem_classification.json` | After default diagnosis / materialize | `problem_classification_v3` | What is wrong with the current portfolio... |
 | 3 | `candidate_launchpad.json` | `analysis_subject/candidate_launchpad.json` | After default diagnosis / materialize | `candidate_launchpad_v3` | What hypotheses should we test next... |
 | 4 | `portfolio_alternatives_builder.json` | `analysis_subject/portfolio_alternatives_builder.json` | After Launchpad when a primary card can be mapped | `portfolio_alternatives_builder_v1` | What setup would be tested if the user explicitly generates a candidate... |

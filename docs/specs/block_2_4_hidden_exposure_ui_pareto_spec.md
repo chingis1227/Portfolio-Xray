@@ -14,7 +14,7 @@ Related:
 
 ### 1.1 What this spec owns
 
-- **Hidden Risk Cards** — the default user-facing representation of Block 2.4 on Portfolio X-Ray / diagnosis screens.
+- **Hidden Risk Cards** — the default user-facing representation of Block 2.4 on Portfolio Diagnosis screens.
 - **Pareto view** — per alert, show only the minimum set an advisor or investor needs to understand *where* the hidden risk is, *why* the system flags it, *which holdings* matter, and *what to run next* in Stress Lab.
 - **Mapping rules** from `portfolio_xray.json` → `block_2_4_hidden_exposure` → UI view models.
 - **Prioritization** for top-3 vs full-six layouts, confidence caveats, and `Unavailable` handling.

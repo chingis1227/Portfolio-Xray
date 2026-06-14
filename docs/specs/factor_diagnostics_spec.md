@@ -6,7 +6,7 @@ This document owns the detailed contract for factor diagnostic outputs. The deta
 
 Factor diagnostics are diagnostic-only unless another canonical spec explicitly makes a field binding. They must not replace optimizer inputs, mandate gates, stress pass/fail logic, or weight release.
 
-Portfolio X-Ray Block 2.3 (`block_2_3_factor_exposure`) is a product-facing adapter over these diagnostics. It must read existing `stress_report.json` fields and must not trigger OLS/HAC regressions, Kalman calculations, factor variance decomposition, or data loading. If `stress_report.json` is missing required fields, Block 2.3 reports `partial` or `unavailable` with warnings; the missing calculation is fixed upstream in stress report generation / `src/stress_factors.py`.
+Portfolio Diagnosis Block 2.3 (`block_2_3_factor_exposure`) is a product-facing adapter over these diagnostics. It must read existing `stress_report.json` fields and must not trigger OLS/HAC regressions, Kalman calculations, factor variance decomposition, or data loading. If `stress_report.json` is missing required fields, Block 2.3 reports `partial` or `unavailable` with warnings; the missing calculation is fixed upstream in stress report generation / `src/stress_factors.py`.
 
 Block 2.3 exposes `factor_signal_confidence` for normal weekly OLS/HAC factor betas (HAC preferred, OLS fallback). Full regression inference remains in `stress_report.factor_regression_*` only; Block 2.3 must not surface raw p-values, t-stats, or multicollinearity/residual diagnostics in the Core MVP product JSON.
 

@@ -45,7 +45,7 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 | Step | Route | Screen label | Contract |
 | --- | --- | --- | --- |
 | 01 | `/portfolio-input` | Portfolio | Define factual current holdings and run diagnosis. |
-| 02 | `/diagnosis` | X-Ray | Explain current portfolio exposures and weaknesses. |
+| 02 | `/diagnosis` | Diagnosis | Explain current portfolio exposures and weaknesses. |
 | 03 | `/evidence` | Stress Lab | Show stress behavior and evidence limits. |
 | 04 | `/client-fit` | Client Fit | Compare current evidence with the provided planning profile. |
 | 05 | `/hypothesis` | Hypothesis | Select, prepare, and generate one diagnostic test candidate. |
@@ -101,10 +101,10 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 
 ### Diagnosis `/diagnosis`
 
-- Must show `Portfolio X-Ray Diagnosis`.
+- Must show `Current Portfolio Diagnosis`.
 - Locked state must say `Complete Portfolio Input first to unlock Diagnosis.` and link to Portfolio Input.
 - Ready state must explain current portfolio evidence before any candidate test.
-- Must not recommend rebalance from X-Ray alone.
+- Must not recommend rebalance from Portfolio Diagnosis alone.
 
 ### Stress Test Lab `/evidence`
 

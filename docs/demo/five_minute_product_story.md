@@ -17,7 +17,7 @@ showing, and is there enough evidence to justify testing a change...
 ## What Portfolio MRI does
 
 Portfolio MRI diagnoses the current portfolio first. It reads the portfolio, builds Portfolio
-X-Ray evidence, runs stress evidence, classifies the main problem, and then creates candidate
+diagnosis evidence, runs stress evidence, classifies the main problem, and then creates candidate
 hypotheses only after the problem is visible.
 
 If a hypothesis is worth testing, the product generates one candidate attempt, compares it against
@@ -28,7 +28,7 @@ keep-current, test-another-candidate, or evidence-insufficient outcomes.
 
 ```text
 Input portfolio
--> Portfolio X-Ray
+-> Portfolio Diagnosis
 -> Stress Test Lab
 -> Problem Classification
 -> Candidate Launchpad

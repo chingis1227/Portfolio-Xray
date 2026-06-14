@@ -6,7 +6,7 @@ Scripts in this directory are **not** part of the current Core MVP product runti
 
 | Command | Scope |
 | --- | --- |
-| `python run_core_diagnostics.py` | Blocks 1-3: Input, Portfolio X-Ray, Stress Test Lab |
+| `python run_core_diagnostics.py` | Blocks 1-3: Input, Portfolio Diagnosis, Stress Test Lab |
 | `python run_portfolio_review.py` | Full diagnosis-first product workflow (candidates off by default) |
 | `python run_portfolio_review.py --candidates equal_weight` | Full workflow + one explicit candidate through Decision Verdict |
 

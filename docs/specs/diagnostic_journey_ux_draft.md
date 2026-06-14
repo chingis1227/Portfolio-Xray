@@ -8,7 +8,7 @@ Portfolio MRI is **diagnosis-first**. Blocks 1–3 must read as **one guided dia
 
 ```text
 Portfolio Setup (Block 1)
-  → Portfolio X-Ray (Block 2)
+  → Portfolio Diagnosis (Block 2)
   → Stress Test Lab (Block 3)
   → Problem bridge preview (Block 4 entry only)
 ```
@@ -23,10 +23,10 @@ Portfolio Setup (Block 1)
 
 | Section | ID | Primary JSON sources | Ends with |
 | --- | --- | --- | --- |
-| 1 Portfolio Setup | `#setup` | `run_metadata.json`, `input_assumptions` (via run_metadata), weights from `analysis_setup` | CTA: Run Portfolio X-Ray |
-| 2 Portfolio X-Ray | `#xray` | `portfolio_xray.json` (`block_2_1` … `block_2_6`) | CTA: Run Stress Test Lab |
+| 1 Portfolio Setup | `#setup` | `run_metadata.json`, `input_assumptions` (via run_metadata), weights from `analysis_setup` | CTA: Run Portfolio Diagnosis |
+| 2 Portfolio Diagnosis | `#xray` | `portfolio_xray.json` (`block_2_1` … `block_2_6`) | CTA: Run Stress Test Lab |
 | 3 Stress Test Lab | `#stress` | `stress_report.json` (`stress_results_v1`, `hedge_gap_analysis_v1`, `current_portfolio_stress_scorecard_v1`) | CTA: View suggested improvement paths |
-| 4 Problem bridge | `#bridge` | `problem_classification.json` (`problem_classification_v3`), `candidate_launchpad.json` (`candidate_launchpad_v3`); else deterministic fallback from stress/X-Ray | CTA: Open Candidate Launchpad (disabled until wired) |
+| 4 Problem bridge | `#bridge` | `problem_classification.json` (`problem_classification_v3`), `candidate_launchpad.json` (`candidate_launchpad_v3`); else deterministic fallback from stress/Diagnosis | CTA: Open Candidate Launchpad (disabled until wired) |
 
 ## Block 2 information hierarchy
 
@@ -50,7 +50,7 @@ Portfolio Setup (Block 1)
 | 3.1 Scenario overview | Which scenarios hurt most... | Sorted damaging vs less damaging | Full tables, historical limits |
 | 3.2 Assets hurt/helped | Who drove the loss... | Top hurt/helped in worst scenario | Per-scenario attribution |
 | 3.3 Hedge gap | Is there internal offset... | Gap label, coverage ratio, protection status | Per-scenario hedge rows |
-| 3.4 Stress scorecard | What next for decisions... | Main weakness, confirmed/not confirmed X-Ray risks, failure mode | Full scorecard JSON |
+| 3.4 Stress scorecard | What next for decisions... | Main weakness, confirmed/not confirmed Diagnosis risks, failure mode | Full scorecard JSON |
 
 **Language:** Use *hurt*, *helped*, *did not materially help* — not *hedge* unless scenario evidence supports offset.
 
@@ -79,7 +79,7 @@ Open `http://localhost:5006` after a core diagnostics or portfolio review run th
 
 ## Acceptance checklist
 
-See task acceptance criteria in product brief; prototype implements navigation, section order, executive-first X-Ray, stress summary-first Lab, RC vs stress loss separation (copy), and hypothesis-only bridge cards.
+See task acceptance criteria in product brief; prototype implements navigation, section order, executive-first Diagnosis, stress summary-first Lab, RC vs stress loss separation (copy), and hypothesis-only bridge cards.
 
 ## Related specs
 

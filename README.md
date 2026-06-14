@@ -1,12 +1,12 @@
-# Portfolio MRI / Portfolio X-Ray
+# Portfolio MRI
 
-Portfolio MRI / Portfolio X-Ray is a diagnosis-first, current-portfolio-first investment decision-support system. It is not optimizer-first.
+Portfolio MRI is a diagnosis-first, current-portfolio-first investment decision-support system. It is not optimizer-first.
 
 Canonical current product flow:
 
 ```text
 Input Portfolio
--> Portfolio X-Ray
+-> Portfolio Diagnosis
 -> Stress Test Lab
 -> Client Fit Check
 -> Problem Classification
@@ -21,7 +21,7 @@ Input Portfolio
 
 Its purpose is diagnosis before action, not black-box allocation. The system helps a user understand the current portfolio first, compare the evidence with non-binding Client Fit context, identify problems, test one selected candidate hypothesis when useful, compare trade-offs, and reach a defensible verdict.
 
-The implementation remains CLI/file-driven and still contains older optimizer/report/scorecard-heavy infrastructure. That infrastructure is support code unless explicitly promoted by current specs. In particular, Portfolio Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client Fit suitability approval, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objectives, tactical tilt, full custom constraints UI, multi-client workspace, and polished PDF report product are **advanced / backend / legacy / future-backlog**, not the current Core MVP product flow.
+The implementation remains CLI/file-driven and still contains older optimizer/report/scorecard-heavy infrastructure. That infrastructure is support code unless explicitly promoted by current specs. In particular, Portfolio Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client Fit suitability approval, Asset Diagnostics, Max Sharpe, tax-aware optimization, turnover-aware optimizer objectives, tactical tilt, full custom constraints UI, multi-client workspace, and polished PDF report product are **advanced / backend / legacy / future-backlog**, not the current Core MVP product flow.
 
 Product concept documents describe target direction only. Current behavior is governed by [SPEC.md](SPEC.md), [RULES.md](RULES.md), [DATA.md](DATA.md), [OUTPUTS.md](OUTPUTS.md), and detailed specs under [docs/specs/](docs/specs/README.md). Historical audits, completed plans, and archived legacy copies are retained for traceability only; active behavior remains governed by current specs, contracts, and code.
 
@@ -62,7 +62,7 @@ practical operator guide remains at [docs/demo/full_demo_mvp.md](docs/demo/full_
 
 | Use case (primary product runtime) | Command | Factory profile |
 | --- | --- | --- |
-| **Core diagnostics only** (Blocks 1-3: Input, X-Ray, Stress) | `python run_core_diagnostics.py` | none |
+| **Core diagnostics only** (Blocks 1-3: Input, Diagnosis, Stress) | `python run_core_diagnostics.py` | none |
 | Portfolio diagnosis / site/API backend run | `python run_portfolio_review.py` | none (diagnosis-only) |
 | **Canonical product demo** (one selected hypothesis) | `python scripts/run_blocks_5_to_9_vertical_flow.py --method equal_weight` | one selected Launchpad card + one Block 7 attempt |
 | One explicit backend candidate compatibility path | `python run_portfolio_review.py --candidates equal_weight` | explicit candidate id; skips the Builder/Block 7 artifact loop |
@@ -149,7 +149,7 @@ The current product workflow contract is:
 
 ```text
 current portfolio / analysis_subject
--> Portfolio X-Ray diagnostics
+-> Portfolio Diagnosis evidence
 -> Stress Test Lab
 -> Client Fit Check
 -> Problem Classification
@@ -210,7 +210,7 @@ diagnosed fallback (`source_used: fred_csv_fallback`).
 ### Blocks 1-5 MVP core (first five product blocks)
 
 Blocks 1-5 are the practical reliability core for the current file-first implementation: Input and
-Assumptions, Portfolio X-Ray, Stress Lab, candidate hypothesis building, and optimizer-backed
+Assumptions, Portfolio Diagnosis, Stress Lab, candidate hypothesis building, and optimizer-backed
 candidate methods. This is not the Core MVP product story. Product-facing UX should route through
 diagnosis, Candidate Launchpad, Alternatives Builder, comparison, and verdict language, while the
 Candidate Factory remains backend/advanced/research orchestration. Optimizer-backed candidates are

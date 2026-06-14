@@ -17,8 +17,8 @@ const workflow = [
   },
   {
     number: "02",
-    title: "X-Ray",
-    text: "Break the portfolio into exposures, concentrations, risk contributors, and structural weak points."
+    title: "Diagnosis",
+    text: "Diagnose exposures, concentration, risk contributors, and structural weak points in the current portfolio."
   },
   {
     number: "03",
@@ -38,7 +38,7 @@ const workflow = [
 ];
 
 const architecture = [
-  ["Portfolio X-Ray", "Composition, factor sensitivity, hidden exposure, risk budget, and weakness map."],
+  ["Portfolio Diagnosis", "Composition, factor sensitivity, hidden exposure, risk budget, and weakness map."],
   ["Stress Test Lab", "Synthetic and historical pressure tests with helped/hurt evidence and hedge-gap context."],
   ["Problem Classification", "Turns evidence into a diagnosis before any candidate portfolio is tested."],
   ["Candidate Launchpad", "Suggests one diagnostic test path from the actual problem, not from generic optimization."],
@@ -89,10 +89,10 @@ export default function Home() {
             Portfolio diagnostics & investment decision-support system
           </p>
           <h1 className="mx-auto mt-8 max-w-6xl text-5xl font-semibold leading-[0.98] tracking-[-0.055em] text-pmri-text md:text-7xl lg:text-8xl">
-            X-Ray your portfolio before you change it.
+            Diagnose portfolio risk before you rebalance.
           </h1>
           <p className="mx-auto mt-7 max-w-3xl text-lg leading-8 text-pmri-text2 md:text-xl">
-            Understand what your current allocation really contains, how it behaves under stress, and whether a candidate test actually improves the decision evidence.
+            Portfolio MRI turns current holdings into stress-tested decision evidence before any alternative is considered.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link href={platformEntryHref} className="pmri-focus pmri-primary-action inline-flex items-center justify-center rounded-full px-8 py-3.5 text-sm font-semibold transition">
@@ -176,7 +176,7 @@ export default function Home() {
               Diagnosis architecture, not an optimizer cockpit.
             </h2>
             <p className="mt-7 text-lg leading-8 text-pmri-text2">
-              Portfolio MRI connects X-Ray evidence, stress behavior, Client Fit context, candidate testing, comparison, verdict, and grounded commentary into one portfolio-first workflow.
+              Portfolio MRI connects diagnosis evidence, stress behavior, Client Fit context, candidate testing, comparison, verdict, and grounded commentary into one portfolio-first workflow.
             </p>
           </Reveal>
           <div className="grid gap-4 md:grid-cols-2">

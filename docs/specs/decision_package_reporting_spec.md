@@ -100,7 +100,7 @@ Fixed order for V1:
 - In portfolio-first summaries, call `analysis_subject` the "Starting portfolio" and call scored
   non-baseline rows "Candidate alternatives"; do not frame generated policy optimization as the
   user's starting point.
-- Portfolio X-Ray and commentary remain separate diagnostic surfaces; this summary does not replace them.
+- Portfolio Diagnosis and commentary remain separate diagnostic surfaces; this summary does not replace them.
 
 ## `report.txt` integration
 

@@ -7,7 +7,7 @@ This document is part of the active project documentation after the documentatio
 Working names:
 
 - Portfolio MRI
-- Portfolio X-Ray
+- Portfolio Diagnosis
 - Portfolio Research & Decision System
 
 Preferred product identity:
@@ -22,7 +22,7 @@ Canonical current product flow:
 
 ```text
 Input portfolio
--> Portfolio X-Ray
+-> Portfolio Diagnosis
 -> Stress Test Lab
 -> Problem Classification
 -> Candidate Launchpad
@@ -39,7 +39,7 @@ be treated as the current Core MVP product flow just because some implementation
 Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate arena,
 Assumption Sensitivity, Pareto/Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan
 / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens
-If UI, Client-Fit Check, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer
+If UI, Client-Fit Check, Asset Diagnostics, Max Sharpe, tax-aware optimization, turnover-aware optimizer
 objective, tactical tilt, full custom constraints UI, multi-client workspace, and polished PDF
 report product are advanced/backend/legacy/future unless explicitly promoted by canonical specs.
 
@@ -130,7 +130,7 @@ evidence.
 
 ```text
 Input portfolio
--> Portfolio X-Ray
+-> Portfolio Diagnosis
 -> Stress Test Lab
 -> Problem Classification
 -> Candidate Launchpad
@@ -183,7 +183,7 @@ Current implementation boundary:
   detailed specs, and code.
 - Any full UI behavior remains target product work.
 
-### 5.2 Portfolio X-Ray
+### 5.2 Portfolio Diagnosis
 
 Purpose:
 
@@ -212,7 +212,7 @@ Questions answered:
 
 Boundary:
 
-Portfolio X-Ray is diagnostic. It should not be framed as the decision engine.
+Portfolio Diagnosis is diagnostic. It should not be framed as the decision engine.
 
 ### 5.3 Stress Test Lab
 
@@ -453,7 +453,7 @@ to test a candidate.
 
 Target outputs:
 
-- Portfolio X-Ray.
+- Portfolio Diagnosis.
 - Stress & Risk Diagnosis.
 - Top problems.
 - Weakness map.
@@ -496,7 +496,7 @@ Exact fields and schemas require code/spec verification.
 ### Core MVP
 
 - Input current portfolio.
-- Portfolio X-Ray.
+- Portfolio Diagnosis.
 - Stress Test Lab.
 - Problem Classification.
 - Candidate Launchpad.
@@ -540,7 +540,7 @@ These items are not Core MVP requirements. Do not describe them as implemented u
 - White-label / API integration.
 - Full PDF report design.
 - Advanced Parameter Builder settings.
-- Asset X-Ray / Asset Diagnostics.
+- Asset Diagnostics / Asset Diagnostics.
 - Client-Fit Check / questionnaire.
 - Portfolio Archetype Classification is an optional later diagnostic layer that can classify the
   portfolio by behavior, such as Equity Growth Portfolio, Balanced 60/40-like, Credit Carry
@@ -569,8 +569,8 @@ The older concept listed 24 product blocks. Reclassify them as follows:
 | Old concept block | New classification |
 | --- | --- |
 | Input & Assumptions Layer | Core MVP, simplified first screen plus system defaults. |
-| Portfolio X-Ray / Diagnostics | Core MVP. |
-| Portfolio Archetype Classification | Advanced / Later optional diagnostic layer; not part of core Portfolio X-Ray until explicitly implemented and approved. |
+| Portfolio Diagnosis | Core MVP. |
+| Portfolio Archetype Classification | Advanced / Later optional diagnostic layer; not part of core Portfolio Diagnosis until explicitly implemented and approved. |
 | Stress Test Lab | Core MVP. |
 | Candidate Portfolio Factory / Portfolio Menu | Reframed as Candidate Launchpad + Alternatives Builder; current batch factory preserved as implementation/advanced/research as applicable. |
 | Optimization Engine | Internal candidate construction capability; not the product front door. |

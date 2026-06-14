@@ -58,7 +58,7 @@ No neon, rainbow, crypto-style glow systems, or decorative red/green chart color
 ## Layout contract
 
 - Landing and onboarding must not show the platform sidebar or top journey rail.
-- Platform screens must show the 8-step rail: Portfolio, X-Ray, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report.
+- Platform screens must show the 8-step rail: Portfolio, Diagnosis, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report.
 - Page headers must use matching step numbers and route names.
 - Locked screens must display the actual route step while explaining the missing prerequisite.
 - Advanced/manual Client Fit editing remains `/client-profile` and is not the main onboarding path.

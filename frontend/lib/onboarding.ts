@@ -199,6 +199,6 @@ export function diagnosticEmphasisForOnboarding(state: OnboardingState) {
       return "inflation, real-asset, and currency resilience";
     case "unknown":
     default:
-      return "broad X-Ray and Stress Lab evidence";
+      return "broad portfolio diagnosis and Stress Lab evidence";
   }
 }

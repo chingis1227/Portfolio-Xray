@@ -1,6 +1,6 @@
-# Portfolio X-Ray Layer Specification
+# Portfolio Diagnosis Layer Specification
 
-Status: active source-of-truth for Block 2 (Portfolio X-Ray) implementation boundary.
+Status: active source-of-truth for Block 2 (Portfolio Diagnosis) implementation boundary.
 
 This document maps sub-blocks 2.1 to 2.7 into current code contracts. It is diagnostic-only and
 does not override mandate gates, stress pass/fail, optimizer weights, or candidate selection.
@@ -8,11 +8,11 @@ does not override mandate gates, stress pass/fail, optimizer weights, or candida
 Detailed section contracts, thresholds, and field-level JSON rules live in
 [portfolio_xray_diagnostics_spec.md](portfolio_xray_diagnostics_spec.md). Methodology provenance and
 audit gaps are tracked in
-[Portfolio X-Ray Methodology Map](../audits/2026-05-20_portfolio_xray_methodology_map.md).
+[Portfolio Diagnosis Methodology Map](../audits/2026-05-20_portfolio_xray_methodology_map.md).
 
 ## Scope
 
-Portfolio X-Ray covers the current `analysis_subject` before candidates and the decision package.
+Portfolio Diagnosis covers the current `analysis_subject` before candidates and the decision package.
 
 **Current Core MVP (Block 2 product contracts):**
 
@@ -52,7 +52,7 @@ run_report.py (--materialize-analysis-subject) / snapshot rebuild
 Orchestration entry points:
 
 - `src/snapshot.py` — `_xray_summary_from_output_dir` writes `{output_dir}/portfolio_xray.json`
-  and embeds X-Ray in HTML/text reports.
+  and embeds Diagnosis in HTML/text reports.
 - `run_report.py` — materializes `analysis_subject/` and passes pipeline outputs into the builder.
 - `run_portfolio_review.py` — portfolio-first review consumes the same subject folder artifacts.
 
@@ -81,7 +81,7 @@ Required top-level fields (v2):
 - `legacy_summary`: backward-compatible v1-style summary; `_scope.product_surface=false` and not
   part of the Core MVP product consumer surface.
 - `data_trust_signals` (`xray_data_trust_signals_v1`, RM-1016): rollup of section `warnings` plus
-  optional `stress_report.data_trust_summary` lines for commentary; does not change X-Ray formulas.
+  optional `stress_report.data_trust_summary` lines for commentary; does not change Diagnosis formulas.
 
 Section JSON keys (stable; match `sections` in the artifact). **Product block numbers** (2.1–2.7) follow the diagnostics spec Scope table; **`XRAY_SECTION_KEYS` iteration order** in code keeps `portfolio_archetype` before `risk_budget_view` for backward compatibility.
 
@@ -98,7 +98,7 @@ Section JSON keys (stable; match `sections` in the artifact). **Product block nu
 Common section envelope (where implemented): `status`, `data_sources_used`, `method`, `frequency`,
 `window`, `n_obs`, `benchmark`, `items`, `warnings`, `limitations`, `confidence`.
 
-## Upstream inputs (do not recompute in X-Ray)
+## Upstream inputs (do not recompute in Diagnosis)
 
 `build_portfolio_xray_v2` summarizes existing pipeline outputs only. Canonical formulas remain in
 owning modules/specs:
@@ -134,7 +134,7 @@ owning modules/specs:
 - Metrics owner: `src/metrics_portfolio.py` — `portfolio_metrics_one_window` → snapshot `metrics` (Session 03 adds `downside_deviation`)
 - Analytics owner: `src/portfolio_analytics.py` — `drawdown_structure`, `compute_tail_risk_historical`, `rolling_summary`; snapshot `analytics`, `drawdown_structure`
 - Report pipeline: `run_report.py` STEP 7–8 (metrics, RC/corr CSV, rolling CSV, tail risk)
-- Tail risk: daily historical VaR/ES via `portfolio_analytics.tail_risk` (not recomputed in X-Ray)
+- Tail risk: daily historical VaR/ES via `portfolio_analytics.tail_risk` (not recomputed in Diagnosis)
 - Correlation matrix CSV: `src/io_export.py` — `correlation_matrix_{3y,5y,10y}.csv` under `results_csv/`; Block 2.2 top-3 pairs from primary matrix (Session 03)
 - Multi-window panel (legacy only): `load_portfolio_windows_from_dir` + `multi_window_metrics` item
 - ExecPlan (active): [2026-05-26_block_2_2_portfolio_metrics_plan.md](../exec_plans/2026-05-26_block_2_2_portfolio_metrics_plan.md); acceptance audit planned Session 08
@@ -223,19 +223,19 @@ User-facing rendering (diagnostic tables, section order, English prose policy):
 - PDF-facing Markdown: `src/pdf_reports.py` (client summaries; not a raw JSON dump)
 
 `commentary.txt` in portfolio folders follows [portfolio-commentary](../../.cursor/rules/portfolio-commentary.mdc)
-rules separately from X-Ray JSON.
+rules separately from Diagnosis JSON.
 
 ## Non-goals
 
-- No portfolio optimization, weight changes, or mandate release from X-Ray diagnostics.
+- No portfolio optimization, weight changes, or mandate release from Portfolio Diagnosis evidence.
 - No candidate selection or binding buy/sell/hold recommendations.
-- No alternate formulas for metrics, RC_vol, factor betas, VaR/ES, or stress PnL inside the X-Ray builder.
+- No alternate formulas for metrics, RC_vol, factor betas, VaR/ES, or stress PnL inside the Portfolio Diagnosis builder.
 - No UI product surface in this layer spec (CLI/file artifacts only).
 
 ## Post-audit governance wave (Phase 12)
 
 Active ExecPlan:
-[Portfolio X-Ray Post-Audit Roadmap](../exec_plans/2026-05-20_portfolio_xray_post_audit_roadmap.md).
+[Portfolio Diagnosis Post-Audit Roadmap](../exec_plans/2026-05-20_portfolio_xray_post_audit_roadmap.md).
 
 | Session | RM ID | Focus |
 | --- | --- | --- |

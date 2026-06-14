@@ -37,7 +37,7 @@ Recorded defaults when the user continues the plan without overrides:
 | **Action Engine** | Implementation plan (`action_plan.json`); journal summarizes action status and turnover, not trade execution. |
 | **Monitoring / What Changed** | Temporal diff vs prior run; journal may embed `what_changed_summary` from `monitoring_diff.txt` / `summary_plain_en`. |
 | **Scorecards / comparison** | Diagnostic evidence; journal cites scores and stress context, does not treat them as automatic truth. |
-| **Commentary / X-Ray** | Analyst diagnostics; journal may reference paths but does not duplicate full commentary text in V1. |
+| **Commentary / Diagnosis** | Analyst diagnostics; journal may reference paths but does not duplicate full commentary text in V1. |
 
 ## Canonical Artifacts
 
@@ -307,7 +307,7 @@ Users must not treat `decision_journal.json` as mandate or weight source. Manual
 - Post-hoc outcome scoring ("was the decision good in hindsight").
 - Automatic `follow_up_review_date` scheduling or alerts.
 - Compact PDF/report integration beyond the generated JSON/TXT files.
-- Duplicating full `commentary.txt` or Portfolio X-Ray bodies.
+- Duplicating full `commentary.txt` or Portfolio Diagnosis bodies.
 - Multi-portfolio workspace journals.
 - Recomputing metrics, scores, or selection inside the journal module.
 

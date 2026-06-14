@@ -1,6 +1,6 @@
 # Documentation Synchronization Contract
 
-Status: **canonical documentation-governance contract** for Portfolio MRI / Portfolio X-Ray product, code, design, QA, generated-output, and ExecPlan work.
+Status: **canonical documentation-governance contract** for Portfolio MRI product, code, design, QA, generated-output, and ExecPlan work.
 
 Scope: documentation impact rules, source-of-truth routing, dynamic documentation sync matrix, final-response reporting, generated-output boundaries, and examples of when owning docs must be updated or explicitly waived. This contract does not change runtime behavior, backend formulas, frontend implementation, tests, generated artifacts, routes, schemas, or visual styling by itself.
 

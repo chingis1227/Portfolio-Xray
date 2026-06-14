@@ -100,7 +100,7 @@ Supporting keys on the same file (suite context, not separate sub-blocks):
 
 Written after `run_stress`; required on full report paths per workspace stress-factor rules:
 
-- `factor_diagnostics_meta` (availability/source/reason metadata for factor beta diagnostics; missing diagnostics must be visible to X-Ray and stress trust output)
+- `factor_diagnostics_meta` (availability/source/reason metadata for factor beta diagnostics; missing diagnostics must be visible to Diagnosis and stress trust output)
 - `factor_regression_5y`, `factor_regression_10y` (HAC inference, multicollinearity, serial correlation)
 - `factor_betas_rolling_*`, `factor_betas_rolling_artifacts`, `factor_betas_stability`
 - `scenario_library_meta`, `scenario_library_normalized_meta`
@@ -218,7 +218,7 @@ Tests: `tests/test_stress_historical_fields.py`, `tests/test_stress_mandate_pass
 | RC diagnostics | `taxonomy_blend_v1` on stressed covariance; **does not** change scenario PnL | **C** **S** §2.2, §10 |
 | `recession_severe` | Calibrated from 2008/2020 weekly factor sums | **C** **S** §2.1 |
 | Pass/fail | `portfolio_pnl_pct >= -max_dd_limit` → `DIAG_LOSS_*` if fail | **C** **S** §1, §5 | Legacy mandate mode only |
-| Not in `run_stress` | `crypto_shock`, `volatility_shock` — deferred ([DEC-2026-05-20-002](../../DECISIONS.md), [proposal](../proposals/2026-05-20_crypto_vol_stress_scenarios_proposal.md)); X-Ray weakness only | **C** **S** §2.3 |
+| Not in `run_stress` | `crypto_shock`, `volatility_shock` — deferred ([DEC-2026-05-20-002](../../DECISIONS.md), [proposal](../proposals/2026-05-20_crypto_vol_stress_scenarios_proposal.md)); Diagnosis weakness only | **C** **S** §2.3 |
 
 Tests: `tests/test_stress_mandate_pass.py`, `tests/test_stress_covariance_taxonomy.py`,
 `tests/test_stress_simulator_contract.py`.

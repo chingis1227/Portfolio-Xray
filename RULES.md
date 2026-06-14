@@ -1,6 +1,6 @@
 # RULES.md
 
-This file is the high-level rule map for Portfolio X-Ray & Optimization Terminal / Portfolio MRI.
+This file is the high-level rule map for Portfolio MRI / Optimization Terminal.
 
 It defines the project-wide principles, boundaries, and required working discipline. Detailed formulas, scenario definitions, optimizer rules, data handling, UI rules, and agent workflow rules live in their canonical documents listed below. Do not duplicate those details here.
 

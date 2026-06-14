@@ -26,7 +26,7 @@ Landing
 -> Required email sign-in
 -> Onboarding
 -> Portfolio Input
--> Portfolio X-Ray
+-> Portfolio Diagnosis
 -> Stress Test Lab
 -> Client Fit
 -> Hypothesis
@@ -38,7 +38,7 @@ Landing
 Platform rail:
 
 1. Portfolio
-2. X-Ray
+2. Diagnosis
 3. Stress Lab
 4. Client Fit
 5. Hypothesis

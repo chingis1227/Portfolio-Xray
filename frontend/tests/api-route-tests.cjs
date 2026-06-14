@@ -13,6 +13,8 @@ const reviewRecoverRoutePath = path.resolve(frontendRoot, "app", "api", "portfol
 const reviewStatusRoutePath = path.resolve(frontendRoot, "app", "api", "portfolio", "review", "status", "route.ts");
 const supabasePersistencePath = path.resolve(frontendRoot, "lib", "supabase", "persistence.tsx");
 const supabaseSchemaPath = path.resolve(frontendRoot, "..", "docs", "supabase", "supabase_free_schema.sql");
+const supabaseAuthCallbackPath = path.resolve(frontendRoot, "app", "auth", "callback", "route.ts");
+const sidebarPath = path.resolve(frontendRoot, "components", "layout", "Sidebar.tsx");
 const portfolioInputTablePath = path.resolve(frontendRoot, "components", "portfolio", "PortfolioInputTable.tsx");
 const reviewStatePath = path.resolve(frontendRoot, "lib", "reviewState.tsx");
 const journeyPath = path.resolve(frontendRoot, "lib", "journey.ts");
@@ -432,6 +434,8 @@ test("active review state advances downstream staged progress after explicit sta
 test("Supabase staged persistence keeps canonical stage names and strips raw artifact references", () => {
   const persistenceSource = fs.readFileSync(supabasePersistencePath, "utf8");
   const schemaSource = fs.readFileSync(supabaseSchemaPath, "utf8");
+  const callbackSource = fs.readFileSync(supabaseAuthCallbackPath, "utf8");
+  const sidebarSource = fs.readFileSync(sidebarPath, "utf8");
 
   for (const stage of ["input", "data_load", "xray", "stress", "client_fit", "problem_classification", "launchpad_builder"]) {
     assert.match(schemaSource, new RegExp(`'${stage}'`), `schema should allow staged progress row ${stage}`);
@@ -443,6 +447,9 @@ test("Supabase staged persistence keeps canonical stage names and strips raw art
   assert.match(persistenceSource, /isUnsafeCloudString/);
   assert.match(persistenceSource, /persistStagedProgressForReview/);
   assert.match(persistenceSource, /compactCloudRecord\(summary\)/);
+  assert.match(callbackSource, /url\.pathname = "\/onboarding\/name"/);
+  assert.match(sidebarSource, /<PersistenceStatus \/>/);
+  assert.match(sidebarSource, /<SavedReviewsPanel \/>/);
   assert.doesNotMatch(persistenceSource, /artifactRefs:\s*reviewSummary\.rawOutputKeys/);
   assert.doesNotMatch(persistenceSource, /summary:\s*activeReview\.verdictResult/);
 });
@@ -684,7 +691,7 @@ test("report route returns a display model from the FastAPI public envelope", as
     assert.equal(result.body.report_display_model.title, "Grounded client-ready report summary");
     assert.match(result.body.report_display_model.sections.map((section) => section.body).join(" "), /Diagnosis summary from the public API/);
     assert.deepEqual(result.body.report_display_model.evidenceUsed.slice(0, 2), [
-      "Portfolio X-Ray diagnosis",
+      "Portfolio Diagnosis",
       "decision evidence"
     ]);
     assert.match(result.body.report_display_model.boundaryNote, /Decision-support only from FastAPI context/);

@@ -287,7 +287,7 @@ variant reports:
 | `snapshot_{3y,5y,10y}.json` | Comparison metrics, RC, stress embed |
 | `stress_report.json` | Comparison `stress` block |
 | `results_csv/*` | Correlation, rolling betas, backtest exports |
-| `portfolio_xray.json` | X-Ray layer (not required for comparison contract) |
+| `portfolio_xray.json` | Portfolio Diagnosis technical layer (not required for comparison contract) |
 | `commentary.txt` | Folder narrative |
 
 Backtest: dynamic NaN-safe path via report pipeline (**C** `data_policy_spec.md`); no separate

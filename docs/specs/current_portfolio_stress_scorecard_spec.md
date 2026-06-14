@@ -241,7 +241,7 @@ Legacy top-level `diagnosis_summary_en` (MVP) remains for one release as an alia
 | `aggregate_confirmation` | Both bridges evaluated | `unavailable` if neither attached |
 
 Each sub-block may copy confirmation rows from `hedge_gap_analysis_v1.hidden_exposure_confirmation` /
-`weakness_map_confirmation` when already populated by Portfolio X-Ray wire-time bridges; do not
+`weakness_map_confirmation` when already populated by Portfolio Diagnosis wire-time bridges; do not
 recompute offset math in Block 3.4.
 
 Statuses: `confirmed` \| `partially_confirmed` \| `not_confirmed` \| `preliminary` \| `unavailable` \|

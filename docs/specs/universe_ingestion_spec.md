@@ -10,7 +10,7 @@ Related specs:
 
 - [asset_taxonomy_onboarding_spec.md](asset_taxonomy_onboarding_spec.md) — per-ticker stress block report after rows exist in universe YAML
 - [etf_universe_spec.md](etf_universe_spec.md) / [stock_universe_spec.md](stock_universe_spec.md) — production schemas
-- [taxonomy_spec.md](taxonomy_spec.md) — X-Ray allocation taxonomy
+- [taxonomy_spec.md](taxonomy_spec.md) — Diagnosis allocation taxonomy
 - [stress_testing_spec.md](stress_testing_spec.md) — synthetic PnL vs synthetic RC boundaries
 
 ## Sources (V1)
@@ -87,7 +87,7 @@ Draft rows use `data_source: [public_listing_ingestion]` where the ETF schema al
 
 ## Readiness layers
 
-### X-Ray readiness
+### diagnosis readiness
 
 Draft rows include required taxonomy fields for routing (asset class, region, currency, risk factors). Full production validation may still fail until enums and index membership are curated (e.g. stocks default to empty `index_membership` until operator assigns `SP500` or another supported value).
 
@@ -184,9 +184,9 @@ Per-ticker onboarding after manual merge:
 python scripts/taxonomy_onboard_report.py --tickers VOO,HYG,NEW_TICKER
 ```
 
-## Connection to Portfolio X-Ray and Stress Test Lab
+## Connection to Portfolio Diagnosis and Stress Test Lab
 
-- **Portfolio X-Ray** uses taxonomy fields (asset class, sector, region, risk factors) for allocation breakdowns and diagnostics.
+- **Portfolio Diagnosis** uses taxonomy fields (asset class, sector, region, risk factors) for allocation breakdowns and diagnostics.
 - **Stress Test Lab synthetic PnL** uses estimated factor betas and scenario shocks; ingestion does not compute betas.
 - **Stress Test Lab synthetic RC** maps taxonomy → stress blocks (EQ/CR/ND/TI/CO/CA) for block-blended correlation; unknown or wrong taxonomy creates silent EQ risk — the pipeline flags those cases explicitly.
 

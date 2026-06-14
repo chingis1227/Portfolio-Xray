@@ -70,7 +70,7 @@ export function DataLimitationsPanel({
         <article className="rounded-2xl border border-pmri-border/55 bg-black/10 p-5">
           <h3 className="text-sm font-semibold text-pmri-text">Still usable</h3>
           <p className="mt-4 text-sm leading-6 text-pmri-text2">
-            Current Portfolio X-Ray diagnostics and synthetic stress scenarios remain available as supporting evidence before testing any candidate hypothesis.
+            Current portfolio diagnosis evidence and synthetic stress scenarios remain available as supporting evidence before testing any candidate hypothesis.
           </p>
         </article>
       </div>

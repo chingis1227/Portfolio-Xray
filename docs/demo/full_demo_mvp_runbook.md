@@ -1,6 +1,6 @@
 # Full Demo MVP Runbook
 
-This runbook explains how to show the current Portfolio MRI / Portfolio X-Ray Core MVP without
+This runbook explains how to show the current Portfolio MRI Core MVP without
 oral hand-holding from the developer. It is practical on purpose: run one command, open the output
 files in order, and explain only what the files support.
 
@@ -12,7 +12,7 @@ Core product path:
 
 ```text
 Input portfolio
--> Portfolio X-Ray
+-> Portfolio Diagnosis
 -> Stress Test Lab
 -> Problem Classification
 -> Candidate Launchpad
@@ -29,7 +29,7 @@ The demo proves that the current MVP can run a complete file-driven product loop
 
 - read a demo portfolio config;
 - materialize the diagnosed `analysis_subject`;
-- produce Portfolio X-Ray and Stress Test Lab evidence;
+- produce Portfolio Diagnosis and Stress Test Lab evidence;
 - classify the main problem;
 - create Launchpad hypotheses;
 - create one Builder setup;
@@ -128,7 +128,7 @@ Read these files in order:
 | Step | File | Why it matters |
 | --- | --- | --- |
 | 1 | `analysis_subject/run_metadata.json` | Confirms the current portfolio, weights, currency, analysis window, and that the subject is diagnostic current-portfolio evidence. |
-| 2 | `analysis_subject/portfolio_xray.json` | Current Portfolio X-Ray evidence. |
+| 2 | `analysis_subject/portfolio_xray.json` | Current Portfolio Diagnosis evidence. |
 | 3 | `analysis_subject/stress_report.json` | Stress Test Lab evidence and hedge-gap context. |
 | 4 | `analysis_subject/problem_classification.json` | Primary diagnosis, evidence, and next diagnostic step. |
 | 5 | `analysis_subject/candidate_launchpad.json` | Hypothesis cards; these are tests to consider, not rebalance instructions. |

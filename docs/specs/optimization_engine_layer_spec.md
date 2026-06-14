@@ -47,7 +47,7 @@ allocator in the current product. It is a set of distinct paths with different a
 | --- | --- | --- |
 | Legacy policy | `run_optimization.py` / `src/optimization.py::run_max_return_optimization`; can write `portfolio_weights.yml` and `run_result.json` after release checks. | Production-compatible compatibility path only. Not the default portfolio-first subject. |
 | Candidate-only | Builder scripts create fixed weights for comparison, then run the report pipeline. | Does not overwrite policy weights or change mandate gates. |
-| Diagnostic-only | Metrics, stress, RC_vol, factor, macro, X-Ray, comparison, scorecards, health score, and most decision-support artifacts. | Informs review; does not bind weights unless another canonical spec says so. |
+| Diagnostic-only | Metrics, stress, RC_vol, factor, macro, Diagnosis, comparison, scorecards, health score, and most decision-support artifacts. | Informs review; does not bind weights unless another canonical spec says so. |
 | Calibration-only | Tools such as Robust MV lambda calibration that select or evaluate parameters for later candidate builds. | Does not itself release policy weights and is not a candidate factory step unless a later spec changes it. |
 | Target-only | Product concepts not shipped as optimizers. | No runtime behavior. Requires later spec decision before implementation. |
 
@@ -158,7 +158,7 @@ reported, ranked, or reviewed, but they do not bind weights unless a specific ca
 | Stress diagnostics and `DIAG_*` / stress `FAIL_*` text | Diagnostic-only except mandate MaxDD path | Do not block release when mandate passes. |
 | Factor and macro diagnostics | Diagnostic-only | Do not bind optimizer universe, weights, or selection. |
 | ETF/stock taxonomy | Annotation and some benchmark bucketing | Does not generally select optimizer universe in V1. |
-| Portfolio X-Ray and scorecards | Diagnostic-only | Do not optimize, release, or select weights by themselves. |
+| Portfolio Diagnosis and scorecards | Diagnostic-only | Do not optimize, release, or select weights by themselves. |
 
 ## Block 5.7 - Status, Failure, And Fallback Matrix
 
@@ -393,7 +393,7 @@ only aligns `optimizer_methodology`, `optimizer_quality`, and `optimization_read
 | Fixed weights | Required check: `weights.json`, `snapshot_10y.final_weights_total`, or `baseline_weights_metadata` weights. |
 | Snapshot metrics | Required check: `snapshot_10y.json` present; row `available` / `degraded` still governed by comparison status rules. |
 | Stress summary | Required for `fair_comparison_ready`; absence may still allow `degraded` row status with gap `stress_summary`. |
-| X-Ray/report diagnostics | Optional check: `portfolio_xray.json` when present; not required for fair comparison (G7). |
+| Diagnosis/report diagnostics | Optional check: `portfolio_xray.json` when present; not required for fair comparison (G7). |
 | Freshness | Required check uses factory `freshness_status`, snapshot `analysis_end`, and stale warnings. |
 | Construction disclosure | Required check: `disclosure_status` available or partial; `available` required for fair comparison. |
 | Optimizer methodology | Required for `fair_comparison_ready` on optimizer/robust rows via `optimizer_methodology`. |
