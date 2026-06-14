@@ -6,6 +6,12 @@ This document describes the current product architecture direction and operating
 
 Portfolio MRI currently has a Python, CLI/file-driven, site/API-first backend architecture for a diagnosis-first, current-portfolio-first decision-support workflow.
 
+Current web architecture includes staged review execution: the web path creates `review_id`
+immediately, writes `review_state_v1`, shows progress, unlocks partial results by canonical stage,
+and preserves compact active-review state across browser refreshes. The source of truth for that
+wrapper is `docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`. The additive synchronous FastAPI and
+CLI/file-driven paths remain valid compatibility behavior.
+
 This document uses four labels:
 
 - **Current implementation:** supported by current specs/code and safe to describe as implemented only after verification.
@@ -38,6 +44,8 @@ Current implementation characteristics:
 
 - CLI and file driven.
 - JSON/cache are the normal site/API-first contract.
+- The staged web wrapper uses the current runtime artifacts rather than replacing formulas or
+  generated artifact schemas.
 - CSV/TXT/HTML/PNG/PDF/Markdown/CSS outputs are explicit export/report artifacts, not the default source of truth.
 - `analysis_subject/` should be inspected before interpreting candidate or decision artifacts in portfolio-first review runs.
 - Legacy policy optimization remains callable as compatibility infrastructure.
@@ -79,6 +87,30 @@ Input Portfolio
 This architecture changes the user-facing product shape, not automatically the existing backend capabilities. Existing backend modules may be reused, wrapped, reclassified, or preserved as advanced/legacy infrastructure.
 
 ## 4. Target Architecture Layers
+
+### 4.0 Staged Web Review State Layer
+
+Target responsibility:
+
+- Create a stable `review_id` immediately when the user starts diagnosis.
+- Track progress with `review_state_v1` across `input`, `data_load`, `xray`, `stress`,
+  `client_fit`, `problem_classification`, `launchpad_builder`, `candidate`, `comparison`,
+  `verdict`, and `report`.
+- Expose a compact status endpoint for frontend polling, refresh recovery, and partial-result
+  route unlocks.
+- Keep Demo / QA mode deterministic and separate from live mode.
+- Keep Supabase compact-only: status, stage summaries, and saved-review metadata only.
+
+Current implementation mapping:
+
+- Target contract only until implemented. The current synchronous FastAPI diagnosis endpoint and
+  CLI/file-driven run-local artifacts remain the current runtime truth.
+
+Architecture boundary:
+
+- This layer is orchestration state, not analytics logic.
+- It must not invent new formulas, hide failed stages, store raw artifacts in Supabase, or trust
+  stale downstream files without same-run lineage.
 
 ### 4.1 Input Portfolio Layer
 

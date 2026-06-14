@@ -5,6 +5,13 @@ import { useReviewState } from "@/lib/reviewState";
 import { useSupabasePersistence, type SavedReviewRecord } from "@/lib/supabase/persistence";
 
 const STAGE_LABELS = {
+  input: "Input",
+  data_load: "Data",
+  xray: "X-Ray",
+  stress: "Stress",
+  client_fit: "Fit",
+  problem_classification: "Problem",
+  launchpad_builder: "Launchpad",
   diagnosis: "Dx",
   builder: "Builder",
   candidate: "Candidate",
@@ -15,6 +22,7 @@ const STAGE_LABELS = {
 
 function reviewTitle(review: SavedReviewRecord) {
   if (review.title) return review.title;
+  if (typeof review.compactSummary.currentStage === "string") return `Staged review: ${review.compactSummary.currentStage}`;
   const headline = typeof review.compactSummary.diagnosisHeadline === "string" ? review.compactSummary.diagnosisHeadline : undefined;
   return headline || `Review ${review.reviewId}`;
 }
@@ -60,7 +68,7 @@ export function SavedReviewsPanel() {
           return (
             <article key={review.id} className="rounded-xl border border-pmri-border/35 bg-white/[0.018] p-3">
               <p className="text-xs font-medium leading-5 text-pmri-text2">{reviewTitle(review)}</p>
-              <p className="mt-1 text-[11px] leading-4 text-pmri-muted">{formatReviewDate(review.updatedAt ?? review.completedAt)} ? {review.reviewId}</p>
+              <p className="mt-1 text-[11px] leading-4 text-pmri-muted">{formatReviewDate(review.updatedAt ?? review.completedAt)} - {review.reviewId}</p>
               <div className="mt-2 flex flex-wrap gap-1">
                 {stages.slice(0, 6).map((stage) => (
                   <span key={stage} className="rounded-full border border-pmri-border/35 px-2 py-0.5 text-[10px] text-pmri-muted">

@@ -16,6 +16,8 @@ Use this document for the cross-step product flow. Use the following documents f
 - `PRODUCT.md` for product direction, Core MVP vs advanced/later boundaries, and user goals.
 - `docs/product_flow_operator_guide.md` for operator read order, demo commands, product-bundle paths, and anti-patterns.
 - `docs/runtime_entrypoints.md` for active vs legacy runtime entrypoints.
+- `docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md` for the staged web execution contract,
+  `review_state_v1`, canonical stage names, status semantics, and compact Supabase boundary.
 - `docs/specs/portfolio_review_workflow_spec.md` for `analysis_subject`, diagnosis-before-candidates order, and legacy policy boundary.
 - `docs/specs/input_assumptions_spec.md` for Core MVP input assumptions.
 - `docs/specs/portfolio_xray_diagnostics_spec.md` and `docs/specs/portfolio_xray_layer_spec.md` for Portfolio X-Ray.
@@ -77,6 +79,39 @@ The public landing opens the required email sign-in step. Local development may 
 `/client-fit` displays the bounded fit interpretation after Stress Lab and before Hypothesis. `/hypothesis` may contain Problem Classification handoff, Candidate Launchpad, Builder setup, and the explicit candidate-generation attempt for the current MVP. There is no separate current Monitoring route; Monitoring / What Changed is a light product artifact and may be surfaced later or in report/summary context. Route merges do not change the product step order or boundaries.
 
 Client Fit V1 status: active web onboarding and display route, plus backend compatibility for missing profiles. Backend/CLI runs may write `analysis_subject/client_fit_check.json` after Stress Lab and before Problem Classification, including `not_provided` when no profile exists. The normal frontend journey requires Client Fit context from onboarding before diagnosis and shows `/client-fit` before Hypothesis. Block 4, Launchpad, Builder, Current vs Candidate, Verdict, and Report may use bounded Client Fit context as display or hypothesis-test evidence only.
+
+## Staged web execution
+
+The web execution model is migrating toward staged, not synchronous, behavior. The intended
+user-visible path is:
+
+```text
+User clicks Run diagnosis
+-> backend creates review_id immediately
+-> frontend shows progress
+-> backend runs canonical stages
+-> frontend receives compact stage state
+-> frontend unlocks partial results when the owning stage is ready
+```
+
+The stage-state contract is `review_state_v1` in
+`docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`. Its canonical stages are `input`, `data_load`,
+`xray`, `stress`, `client_fit`, `problem_classification`, `launchpad_builder`, `candidate`,
+`comparison`, `verdict`, and `report`. The backend start/status and diagnosis-stage runner
+foundation is implemented through `POST /api/v1/reviews/staged` and
+`GET /api/v1/reviews/{review_id}/status`; frontend staged polling and route unlocking remain later
+migration work. The existing synchronous FastAPI and
+CLI/file-driven compatibility paths remain valid current behavior until the frontend is explicitly
+migrated.
+
+Supabase remains compact-only in this target model. It may store review status, current stage, stage
+statuses, compact summaries, timestamps, and saved portfolio links. It must not store raw generated
+artifacts, raw X-Ray or Stress JSON, price history, PDFs, full run folders, or local artifact paths.
+
+The target first-run/demo path must support deterministic Demo / QA mode. Demo / QA mode uses frozen
+fixture evidence and fixed data-freshness disclosure so the first product experience does not depend
+on live market-data provider behavior. Live mode remains available with visible provider status and
+freshness disclosure.
 
 ## Global product boundaries
 

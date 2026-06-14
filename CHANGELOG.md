@@ -1,5 +1,39 @@
 # CHANGELOG.md
 
+## 2026-06-14
+
+- Completed staged review pipeline Session 7 and closed the ExecPlan. Downstream FastAPI
+  candidate/comparison/verdict/report actions now synchronize `review_state_v1`, Demo / QA mode has
+  deterministic downstream fixtures, Portfolio Input auto-resumes in-flight staged reviews after
+  refresh, progress copy is product-facing, and one-scenario browser vertical QA passes.
+- Implemented staged review pipeline Session 6 Supabase compact persistence. Signed-in staged
+  polling now writes compact cloud review/progress rows, the Supabase schema accepts canonical
+  staged stage names, cloud recovery can restore in-flight compact staged progress, and cloud
+  payloads are sanitized to avoid raw artifact refs, generated artifact filenames, path maps, and
+  local paths.
+- Implemented staged review pipeline Session 5 frontend polling. The Next.js diagnosis proxy now
+  starts `POST /api/v1/reviews/staged`, Portfolio Input stores `reviewId` immediately, polls staged
+  status through a new status proxy, displays stage progress/provider status, and hydrates screen
+  summaries through same-run recovery when the diagnosis chain is ready. Also fixed the FastAPI
+  TypeScript generator so optional fields render as valid `?` properties.
+- Implemented staged review pipeline Session 4 deterministic Demo / QA backend mode. Staged
+  `options.sample_mode: true` now runs a frozen fixture materializer, writes diagnosis-stage
+  `analysis_subject/` artifacts, reports `frozen_fixture` provider status, and does not call live
+  market-data providers. Live mode remains unchanged.
+- Implemented staged review pipeline Session 3 backend stage-runner synchronization. The staged
+  background runner now derives diagnosis-stage status from run-local artifact presence, records
+  missing Client Fit context as non-blocking partial state, fails safely with `ARTIFACT_MISSING`
+  when required artifacts are absent, and keeps runtime staged errors free of tracebacks and local
+  absolute paths.
+- Implemented staged review pipeline Session 2 backend foundation. FastAPI now exposes
+  `POST /api/v1/reviews/staged` and `GET /api/v1/reviews/{review_id}/status`, writes run-local
+  `review_state_v1`, starts the existing diagnosis adapter in the background, returns safe compact
+  status without absolute paths or tracebacks, and keeps the synchronous review endpoint available.
+- Added the staged review pipeline Session 1 architecture contract and active ExecPlan. The target
+  web path now has a documented `review_state_v1`, staged API shape, canonical stage names,
+  Demo / QA mode boundary, and compact-only Supabase persistence rule. This is documentation-only;
+  backend/frontend runtime behavior is unchanged until later sessions implement the contract.
+
 ## 2026-06-13
 
 - Completed source-of-truth reconciliation Sessions 02-03: runtime labels, manifest discovery,

@@ -22,6 +22,23 @@ def _request(method: str, path: str, *, json_body: dict | None = None) -> httpx.
     return asyncio.run(_send())
 
 
+def _write_staged_state_for_test(run_dir: Path, review_id: str, *, current_stage: str = "candidate") -> None:
+    state = review_service._initial_staged_state(review_id, mode="live")
+    state["status"] = "partial"
+    state["current_stage"] = current_stage
+    for stage in [
+        "input",
+        "data_load",
+        "xray",
+        "stress",
+        "client_fit",
+        "problem_classification",
+        "launchpad_builder",
+    ]:
+        state["stages"][stage]["status"] = "completed"
+    review_service._write_staged_state(run_dir, state)
+
+
 def test_health_endpoint_returns_public_envelope() -> None:
     response = _request("GET", "/api/v1/health")
 
@@ -66,7 +83,9 @@ def test_openapi_includes_session_03_typed_mvp_surface() -> None:
     expected_paths = {
         "/api/v1/health": "get",
         "/api/v1/reviews": "post",
+        "/api/v1/reviews/staged": "post",
         "/api/v1/reviews/{review_id}": "get",
+        "/api/v1/reviews/{review_id}/status": "get",
         "/api/v1/reviews/{review_id}/builder": "post",
         "/api/v1/reviews/{review_id}/candidate": "post",
         "/api/v1/reviews/{review_id}/comparison": "post",
@@ -81,6 +100,11 @@ def test_openapi_includes_session_03_typed_mvp_surface() -> None:
     schemas = schema["components"]["schemas"]
     for schema_name in [
         "CreateReviewRequest",
+        "StagedReviewStartedResponse",
+        "StagedReviewStatusResponse",
+        "StagedStageState",
+        "StagedProviderStatus",
+        "StagedSafeError",
         "ClientFitInput",
         "ClientFitRangeInput",
         "ClientFitDisplaySummary",
@@ -115,6 +139,15 @@ def test_openapi_includes_session_03_typed_mvp_surface() -> None:
     recover_review = schema["paths"]["/api/v1/reviews/{review_id}"]["get"]
     recovery_ref = recover_review["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
     assert recovery_ref.endswith("/ReviewRecoveryResponse")
+
+    staged_review = schema["paths"]["/api/v1/reviews/staged"]["post"]
+    staged_request_ref = staged_review["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+    assert staged_request_ref.endswith("/CreateReviewRequest")
+    staged_response_ref = staged_review["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
+    assert staged_response_ref.endswith("/StagedReviewStartedResponse")
+    staged_status = schema["paths"]["/api/v1/reviews/{review_id}/status"]["get"]
+    staged_status_ref = staged_status["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
+    assert staged_status_ref.endswith("/StagedReviewStatusResponse")
 
 
 def _fake_review_result(review_id: str = "frontend_review_fastapi_unit") -> dict:
@@ -537,7 +570,7 @@ def test_generate_candidate_runs_adapter_and_returns_public_envelope(
         assert kwargs["review_id"] == review_id
         assert kwargs["selected_card_id"] == "launchpad_01_reduce_concentration"
         assert kwargs["factory_execution_mode"] == "fast"
-        return {
+        result = {
             "review_id": review_id,
             "status": "completed",
             "stage": "candidate_generation",
@@ -568,9 +601,15 @@ def test_generate_candidate_runs_adapter_and_returns_public_envelope(
                 },
             },
         }
+        (run_dir / "candidate_generation.json").write_text(
+            json.dumps(result["candidate_generation"]),
+            encoding="utf-8",
+        )
+        return result
 
     monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
     monkeypatch.setattr(review_service, "generate_selected_candidate", fake_generate_selected_candidate)
+    _write_staged_state_for_test(run_dir, review_id, current_stage="candidate")
 
     response = _request(
         "POST",
@@ -597,6 +636,11 @@ def test_generate_candidate_runs_adapter_and_returns_public_envelope(
     }
     assert "Traceback" not in json.dumps(body)
     assert not re.search(r"[A-Z]:[\\/]", json.dumps(body))
+    staged_state = json.loads((run_dir / "review_state.json").read_text(encoding="utf-8"))
+    assert staged_state["status"] == "partial"
+    assert staged_state["current_stage"] == "comparison"
+    assert staged_state["stages"]["candidate"]["status"] == "completed"
+    assert staged_state["stages"]["candidate"]["artifact_refs"] == ["candidate_generation.json"]
 
 
 def _write_candidate_generation(run_dir: Path) -> None:
@@ -684,7 +728,7 @@ def test_run_comparison_runs_adapter_and_returns_public_envelope(
     def fake_compare_selected_candidate(**kwargs):
         assert kwargs["review_id"] == review_id
         assert kwargs["selected_card_id"] == "launchpad_01_reduce_concentration"
-        return {
+        result = {
             "review_id": review_id,
             "status": "completed",
             "stage": "current_vs_candidate",
@@ -697,9 +741,16 @@ def test_run_comparison_runs_adapter_and_returns_public_envelope(
             },
             "current_vs_candidate": _current_vs_candidate_doc(),
         }
+        (run_dir / "current_vs_candidate.json").write_text(
+            json.dumps(result["current_vs_candidate"]),
+            encoding="utf-8",
+        )
+        (run_dir / "candidate_comparison.json").write_text(json.dumps({"status": "ok"}), encoding="utf-8")
+        return result
 
     monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
     monkeypatch.setattr(review_service, "compare_selected_candidate", fake_compare_selected_candidate)
+    _write_staged_state_for_test(run_dir, review_id, current_stage="comparison")
 
     response = _request(
         "POST",
@@ -736,6 +787,14 @@ def test_run_comparison_runs_adapter_and_returns_public_envelope(
         "current_vs_candidate",
     }
     assert not re.search(r"[A-Z]:[\\/]", json.dumps(body))
+    staged_state = json.loads((run_dir / "review_state.json").read_text(encoding="utf-8"))
+    assert staged_state["status"] == "partial"
+    assert staged_state["current_stage"] == "verdict"
+    assert staged_state["stages"]["comparison"]["status"] == "completed"
+    assert set(staged_state["stages"]["comparison"]["artifact_refs"]) >= {
+        "current_vs_candidate.json",
+        "candidate_comparison.json",
+    }
 
 
 def test_generate_verdict_runs_adapter_and_returns_public_envelope(
@@ -754,7 +813,7 @@ def test_generate_verdict_runs_adapter_and_returns_public_envelope(
     def fake_write_selected_candidate_verdict(**kwargs):
         assert kwargs["review_id"] == review_id
         assert kwargs["selected_card_id"] == "launchpad_01_reduce_concentration"
-        return {
+        result = {
             "review_id": review_id,
             "status": "completed",
             "stage": "decision_verdict",
@@ -786,6 +845,11 @@ def test_generate_verdict_runs_adapter_and_returns_public_envelope(
             },
             "site_explanation_bundle_path": f"runs/{review_id}/site_explanation_bundle.json",
         }
+        (run_dir / "decision_verdict.json").write_text(
+            json.dumps(result["decision_verdict"]),
+            encoding="utf-8",
+        )
+        return result
 
     monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
     monkeypatch.setattr(
@@ -793,6 +857,7 @@ def test_generate_verdict_runs_adapter_and_returns_public_envelope(
         "write_selected_candidate_verdict",
         fake_write_selected_candidate_verdict,
     )
+    _write_staged_state_for_test(run_dir, review_id, current_stage="verdict")
 
     response = _request(
         "POST",
@@ -820,6 +885,11 @@ def test_generate_verdict_runs_adapter_and_returns_public_envelope(
     assert "schema_version" not in body["data"]["client_fit"]
     assert body["data"]["next_allowed_actions"] == ["generate_report"]
     assert "Traceback" not in json.dumps(body)
+    staged_state = json.loads((run_dir / "review_state.json").read_text(encoding="utf-8"))
+    assert staged_state["status"] == "partial"
+    assert staged_state["current_stage"] == "report"
+    assert staged_state["stages"]["verdict"]["status"] == "completed"
+    assert staged_state["stages"]["verdict"]["artifact_refs"] == ["decision_verdict.json"]
 
 
 def test_generate_report_runs_adapter_and_returns_grounded_preview(
@@ -856,7 +926,7 @@ def test_generate_report_runs_adapter_and_returns_grounded_preview(
     def fake_write_selected_report_context(**kwargs):
         assert kwargs["review_id"] == review_id
         assert kwargs["selected_card_id"] == "launchpad_01_reduce_concentration"
-        return {
+        result = {
             "review_id": review_id,
             "status": "completed",
             "stage": "report_commentary",
@@ -890,6 +960,11 @@ def test_generate_report_runs_adapter_and_returns_grounded_preview(
             },
             "site_explanation_bundle_path": f"runs/{review_id}/site_explanation_bundle.json",
         }
+        (run_dir / "ai_commentary_context.json").write_text(
+            json.dumps(result["ai_commentary_context"]),
+            encoding="utf-8",
+        )
+        return result
 
     monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
     monkeypatch.setattr(
@@ -897,6 +972,7 @@ def test_generate_report_runs_adapter_and_returns_grounded_preview(
         "write_selected_report_context",
         fake_write_selected_report_context,
     )
+    _write_staged_state_for_test(run_dir, review_id, current_stage="report")
 
     response = _request(
         "POST",
@@ -926,6 +1002,11 @@ def test_generate_report_runs_adapter_and_returns_grounded_preview(
         "decision_verdict",
         "current_vs_candidate",
     }
+    staged_state = json.loads((run_dir / "review_state.json").read_text(encoding="utf-8"))
+    assert staged_state["status"] == "completed"
+    assert staged_state["current_stage"] == "report"
+    assert staged_state["stages"]["report"]["status"] == "completed"
+    assert staged_state["stages"]["report"]["artifact_refs"] == ["ai_commentary_context.json"]
 
 
 def test_generated_frontend_api_types_match_openapi_schema() -> None:
@@ -935,6 +1016,11 @@ def test_generated_frontend_api_types_match_openapi_schema() -> None:
 
     assert generated == expected
     assert '"/api/v1/reviews/{review_id}/report"' in generated
+    assert '"/api/v1/reviews/staged"' in generated
+    assert '"/api/v1/reviews/{review_id}/status"' in generated
     assert '"createReview"' in generated
+    assert '"startStagedReview"' in generated
+    assert '"getStagedReviewStatus"' in generated
     assert 'export type CreateReviewRequest = Components["schemas"]["CreateReviewRequest"];' in generated
+    assert 'export type StagedReviewStatusResponse = Components["schemas"]["StagedReviewStatusResponse"];' in generated
     assert 'export type ReportResponse = Components["schemas"]["ReportResponse"];' in generated

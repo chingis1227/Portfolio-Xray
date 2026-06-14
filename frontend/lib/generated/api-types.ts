@@ -385,6 +385,55 @@ export interface Components {
       retryable: boolean;
       user_action: "fix_input" | "retry" | "return_to_hypothesis" | "rerun_comparison" | "rerun_verdict" | "contact_operator" | "none";
     };
+    "StagedProviderStatus": {
+      freshness: string;
+      message: string;
+      source: string;
+    };
+    "StagedReviewStartedResponse": {
+      api_version?: "v1";
+      current_stage: "input" | "data_load" | "xray" | "stress" | "client_fit" | "problem_classification" | "launchpad_builder" | "candidate" | "comparison" | "verdict" | "report";
+      mode: "demo_qa" | "live";
+      review_id: string;
+      safe_error?: Components["schemas"]["StagedSafeError"] | null;
+      schema_version?: "review_started_v1";
+      stage?: "diagnosis";
+      status: "pending" | "running" | "completed" | "partial" | "blocked" | "failed";
+      warnings?: Array<string>;
+    };
+    "StagedReviewStatusResponse": {
+      api_version?: "v1";
+      artifacts?: {
+      [key: string]: string;
+    };
+      created_at?: string | null;
+      current_stage: "input" | "data_load" | "xray" | "stress" | "client_fit" | "problem_classification" | "launchpad_builder" | "candidate" | "comparison" | "verdict" | "report";
+      mode: "demo_qa" | "live";
+      provider_status: Components["schemas"]["StagedProviderStatus"];
+      review_id: string;
+      safe_error?: Components["schemas"]["StagedSafeError"] | null;
+      schema_version?: "review_state_v1";
+      stage?: "diagnosis";
+      stages?: {
+      [key: string]: Components["schemas"]["StagedStageState"];
+    };
+      status: "pending" | "running" | "completed" | "partial" | "blocked" | "failed";
+      updated_at?: string | null;
+      warnings?: Array<string>;
+    };
+    "StagedSafeError": {
+      code: "DATA_PROVIDER_FAILED" | "INVALID_TICKER" | "PYTHON_STAGE_FAILED" | "TIMEOUT" | "ARTIFACT_MISSING" | "LINEAGE_MISMATCH";
+      message: string;
+      retryable: boolean;
+      stage?: "input" | "data_load" | "xray" | "stress" | "client_fit" | "problem_classification" | "launchpad_builder" | "candidate" | "comparison" | "verdict" | "report" | null;
+      user_action: "fix_input" | "retry" | "return_to_portfolio_input" | "contact_operator" | "none";
+    };
+    "StagedStageState": {
+      artifact_refs?: Array<string>;
+      completed_at?: string | null;
+      started_at?: string | null;
+      status?: "pending" | "running" | "completed" | "partial" | "blocked" | "failed" | "skipped";
+    };
     "ValidationError": {
       ctx?: {
     };
@@ -474,6 +523,11 @@ export type ReviewRecoveryData = Components["schemas"]["ReviewRecoveryData"];
 export type ReviewRecoveryResponse = Components["schemas"]["ReviewRecoveryResponse"];
 export type ReviewSummary = Components["schemas"]["ReviewSummary"];
 export type SafeError = Components["schemas"]["SafeError"];
+export type StagedProviderStatus = Components["schemas"]["StagedProviderStatus"];
+export type StagedReviewStartedResponse = Components["schemas"]["StagedReviewStartedResponse"];
+export type StagedReviewStatusResponse = Components["schemas"]["StagedReviewStatusResponse"];
+export type StagedSafeError = Components["schemas"]["StagedSafeError"];
+export type StagedStageState = Components["schemas"]["StagedStageState"];
 export type ValidationError = Components["schemas"]["ValidationError"];
 export type VerdictData = Components["schemas"]["VerdictData"];
 export type VerdictIdRequest = Components["schemas"]["VerdictIdRequest"];
@@ -493,6 +547,13 @@ export interface Operations {
     path: "/api/v1/reviews";
     request: Components["schemas"]["CreateReviewRequest"];
     response: Components["schemas"]["CreateReviewResponse"];
+    responseStatus: "200";
+  };
+  "startStagedReview": {
+    method: "POST";
+    path: "/api/v1/reviews/staged";
+    request: Components["schemas"]["CreateReviewRequest"];
+    response: Components["schemas"]["StagedReviewStartedResponse"];
     responseStatus: "200";
   };
   "recoverReview": {
@@ -528,6 +589,13 @@ export interface Operations {
     path: "/api/v1/reviews/{review_id}/report";
     request: Components["schemas"]["VerdictIdRequest"];
     response: Components["schemas"]["ReportResponse"];
+    responseStatus: "200";
+  };
+  "getStagedReviewStatus": {
+    method: "GET";
+    path: "/api/v1/reviews/{review_id}/status";
+    request: never;
+    response: Components["schemas"]["StagedReviewStatusResponse"];
     responseStatus: "200";
   };
   "generateVerdict": {

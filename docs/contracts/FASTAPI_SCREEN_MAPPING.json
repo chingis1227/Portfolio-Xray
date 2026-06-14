@@ -7,6 +7,7 @@
   },
   "contract_docs": [
     "docs/contracts/FASTAPI_V1_API_CONTRACT.md",
+    "docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md",
     "docs/contracts/ARTIFACT_TO_SCREEN_MAP.md",
     "docs/contracts/SCREEN_CONTRACTS.md",
     "frontend/README.md"
@@ -74,6 +75,46 @@
       "screen_mapping_status": "current",
       "screen_contract_section": "Onboarding context -> Portfolio Input -> Portfolio X-Ray / Diagnosis -> Stress Test Lab -> Client Fit -> Hypothesis Builder",
       "mapping_note": "Creates diagnosis-first review state from portfolio input plus Client Fit context prepared by onboarding or the advanced manual editor. Backend/CLI compatibility still supports missing Client Fit. Public client_fit is a bounded display summary, not raw client_fit_check.json."
+    },
+    {
+      "operation_id": "startStagedReview",
+      "method": "POST",
+      "path": "/api/v1/reviews/staged",
+      "request_schema": "CreateReviewRequest",
+      "success_status": "200",
+      "response_schema": "StagedReviewStartedResponse",
+      "data_schema": null,
+      "public_data_fields": [],
+      "screen_routes": [
+        "/portfolio-input",
+        "/diagnosis"
+      ],
+      "screen_mapping_status": "backend_current_frontend_pending",
+      "screen_contract_section": "Staged Portfolio Input start and progress handoff",
+      "mapping_note": "Starts a staged diagnosis review and returns review_id immediately. Frontend promotion remains pending; this endpoint is progress orchestration and must not change diagnosis formulas, run candidate generation, or imply advice."
+    },
+    {
+      "operation_id": "getStagedReviewStatus",
+      "method": "GET",
+      "path": "/api/v1/reviews/{review_id}/status",
+      "request_schema": null,
+      "success_status": "200",
+      "response_schema": "StagedReviewStatusResponse",
+      "data_schema": null,
+      "public_data_fields": [],
+      "screen_routes": [
+        "/portfolio-input",
+        "/diagnosis",
+        "/evidence",
+        "/client-fit",
+        "/hypothesis",
+        "/comparison",
+        "/verdict",
+        "/report"
+      ],
+      "screen_mapping_status": "backend_current_frontend_pending",
+      "screen_contract_section": "Staged progress polling and route unlock state",
+      "mapping_note": "Returns the safe public review_state_v1 progress document for staged route unlocking. It exposes compact status only and must not expose raw artifacts, absolute paths, tracebacks, secrets, or advice-like conclusions."
     },
     {
       "operation_id": "recoverReview",

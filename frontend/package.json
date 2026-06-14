@@ -4,7 +4,9 @@
     "private":  true,
     "description":  "Clean Next.js/React frontend prototype for Portfolio MRI Investment Decision Room.",
     "scripts":  {
-                    "dev":  "next dev",
+                    "dev":  "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/start_local_site.ps1",
+                    "dev:local":  "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/start_local_site.ps1",
+                    "dev:next":  "next dev",
                     "build":  "next build",
                     "start":  "next start",
                     "lint":  "next lint",

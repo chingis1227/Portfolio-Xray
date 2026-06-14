@@ -25,6 +25,15 @@ The implementation remains CLI/file-driven and still contains older optimizer/re
 
 Product concept documents describe target direction only. Current behavior is governed by [SPEC.md](SPEC.md), [RULES.md](RULES.md), [DATA.md](DATA.md), [OUTPUTS.md](OUTPUTS.md), and detailed specs under [docs/specs/](docs/specs/README.md). Historical audits, completed plans, and archived legacy copies are retained for traceability only; active behavior remains governed by current specs, contracts, and code.
 
+Staged web pipeline: the staged review implementation is documented in
+[docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md](docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md)
+and closed by
+[docs/exec_plans/2026-06-14_staged_review_pipeline_plan.md](docs/exec_plans/2026-06-14_staged_review_pipeline_plan.md).
+The web path now creates `review_id` immediately, writes `review_state_v1`, synchronizes diagnosis
+and downstream stage status from run-local artifacts, returns safe staged errors, polls progress in
+the frontend, persists compact active-review state, and unlocks routes from the same staged review
+lineage.
+
 Default execution is site/API-first: JSON contracts and cache are written for backend/UI
 consumption, while CSV/TXT/HTML/PNG/PDF/Markdown/CSS presentation artifacts are disabled unless an
 explicit export/report profile is selected. Default `run_portfolio_review.py` / `site_api` runs do
@@ -91,7 +100,10 @@ Current Core MVP product layer:
 - Canonical portfolio-first workflow contract through `analysis_subject`; runtime transition is active
   and governed by [portfolio_review_workflow_spec.md](docs/specs/portfolio_review_workflow_spec.md).
 - Portfolio-first CLI orchestration through `run_portfolio_review.py`.
-- Client Fit V1 as non-binding diagnostic context after Stress Lab and before Hypothesis.
+- Staged web review contract through
+  [STAGED_REVIEW_STATE_CONTRACT.md](docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md). The backend
+  start/status and stage-runner foundation wraps existing diagnosis artifacts in progress state; it
+  does not replace current formulas or synchronous compatibility paths yet.
 - Client Fit V1 as non-binding diagnostic context after Stress Lab and before Hypothesis.
 - Additive diagnosis-first product-bundle artifacts and adapters: Problem Classification (`problem_classification.json`), Candidate Launchpad (`candidate_launchpad.json`), Portfolio Alternatives Builder setup (`portfolio_alternatives_builder.json`), one-attempt Candidate Generation (`candidate_generation.json`), Current-vs-Candidate (`current_vs_candidate.json`), Decision Verdict (`decision_verdict.json`), AI Commentary grounding context (`ai_commentary_context.json`), and light What Changed summary (`what_changed_summary.json`). These are the current product-facing files where implemented: Builder setup is not a candidate, a candidate is not a recommendation, and Decision Verdict is where action/no-action is evaluated.
 - JSON generated artifacts by default; CSV, HTML, TXT, PNG, and PDF-style artifacts remain explicit export/report outputs.

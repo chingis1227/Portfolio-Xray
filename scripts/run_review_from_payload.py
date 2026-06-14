@@ -1180,12 +1180,22 @@ def build_failure_result(
 
 
 def run_from_payload(
-    payload_path: Path, *, mode: str = MODE_CORE_ONLY, timeout_seconds: int
+    payload_path: Path,
+    *,
+    mode: str = MODE_CORE_ONLY,
+    timeout_seconds: int,
+    review_id: str | None = None,
+    run_dir: Path | None = None,
 ) -> tuple[int, Path]:
     if mode not in SUPPORTED_MODES:
         raise ValueError(f"Unsupported bridge mode: {mode}")
 
-    review_id, run_dir = create_run_dir()
+    if (review_id is None) != (run_dir is None):
+        raise ValueError("review_id and run_dir must be provided together.")
+    if review_id is None or run_dir is None:
+        review_id, run_dir = create_run_dir()
+    else:
+        run_dir.mkdir(parents=True, exist_ok=True)
     result_path = run_dir / "review_result.json"
 
     try:

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import type { ReportResponse } from "@/lib/generated/api-types";
+import type { ReportResponse, StagedReviewStatusResponse } from "@/lib/generated/api-types";
 
 const FASTAPI_TIMEOUT_MS = 15 * 60 * 1000;
 const WEIGHT_TOLERANCE = 0.01;
@@ -21,6 +21,7 @@ type ValidatedPayload = {
   investor_currency: string;
   holdings: ValidatedHolding[];
   client_fit?: Record<string, unknown>;
+  sample_mode: boolean;
 };
 
 export type StageRequest = {
@@ -47,7 +48,11 @@ function projectRoot() {
 }
 
 function fastApiBaseUrl() {
-  return (process.env.PMRI_FASTAPI_BASE_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
+  return (
+    process.env.PMRI_FASTAPI_BASE_URL
+    || process.env.FASTAPI_BASE_URL
+    || "http://127.0.0.1:8000"
+  ).replace(/\/+$/, "");
 }
 
 export function jsonError(message: string, status = 400, details: string[] | string = []) {
@@ -292,7 +297,17 @@ function validatePortfolioPayload(body: PortfolioPayload): { payload?: Validated
   const { clientFit, clientFitErrors } = validateClientFitPayload(body.client_fit);
   errors.push(...clientFitErrors);
   if (errors.length) return { errors };
-  return { payload: { investor_currency: investorCurrency, holdings, client_fit: clientFit }, errors };
+  const requestedMode = typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "";
+  const sampleMode = ["demo_qa", "sample", "sample_demo"].includes(requestedMode);
+  return {
+    payload: {
+      investor_currency: investorCurrency,
+      holdings,
+      client_fit: clientFit,
+      sample_mode: sampleMode
+    },
+    errors
+  };
 }
 
 function fastApiCreateReviewBody(payload: ValidatedPayload) {
@@ -306,7 +321,7 @@ function fastApiCreateReviewBody(payload: ValidatedPayload) {
     options: {
       mode: "diagnosis_only",
       output_profile: "site_api",
-      sample_mode: false
+      sample_mode: payload.sample_mode
     }
   };
   if (payload.client_fit) body.client_fit = payload.client_fit;
@@ -512,29 +527,38 @@ export async function diagnoseViaFastApi(request: Request) {
   const { payload, errors } = validatePortfolioPayload(body);
   if (!payload) return jsonError("Portfolio input validation failed.", 400, errors);
 
-  const api = await callFastApi("POST", "/api/v1/reviews", fastApiCreateReviewBody(payload));
+  const api = await callFastApi("POST", "/api/v1/reviews/staged", fastApiCreateReviewBody(payload));
   if (!api.ok) {
     return NextResponse.json(legacyErrorFromFastApi(api.body, "Portfolio diagnosis failed."), { status: api.status });
   }
 
   const envelope = isRecord(api.body) ? api.body : {};
-  const reviewId = textValue(envelope.review_id, textValue(isRecord(envelope.lineage) ? envelope.lineage.review_id : undefined, ""));
+  const reviewId = textValue(envelope.review_id);
   if (!reviewId) return jsonError("FastAPI diagnosis did not return a review id.", 500);
   const reviewValidation = validateReviewId(reviewId);
   if (reviewValidation.errors.length) {
     return jsonError("FastAPI diagnosis returned an invalid review id.", 500, reviewValidation.errors);
   }
 
-  try {
-    const reviewResult = await readRunJson(reviewId, "review_result.json");
-    return NextResponse.json(isRecord(reviewResult)
-      ? { ...reviewResult, fastapi_envelope: api.body }
-      : reviewResult);
-  } catch (error) {
-    return jsonError("FastAPI diagnosis completed but the run-local review_result.json could not be read.", 500, [
-      scrubForClient(error instanceof Error ? error.message : String(error))
+  return NextResponse.json(api.body);
+}
+
+export async function stagedReviewStatusViaFastApi(reviewIdInput: unknown) {
+  const { reviewId, errors } = validateReviewId(reviewIdInput);
+  if (errors.length) return jsonError("Staged review status request validation failed.", 400, errors);
+
+  const api = await callFastApi("GET", `/api/v1/reviews/${encodeURIComponent(reviewId)}/status`);
+  if (!api.ok) {
+    return NextResponse.json(legacyErrorFromFastApi(api.body, "Staged review status failed."), { status: api.status });
+  }
+
+  const envelope: Partial<StagedReviewStatusResponse> = isRecord(api.body) ? api.body as StagedReviewStatusResponse : {};
+  if (envelope.review_id && envelope.review_id !== reviewId) {
+    return fastApiLineageMismatchResponse("staged_review_status", { reviewId }, [
+      `review_id mismatch: expected ${reviewId}; FastAPI returned ${envelope.review_id}.`
     ]);
   }
+  return NextResponse.json(api.body);
 }
 
 function sanitizeRecoveredReviewResult(value: unknown, reviewId: string) {

@@ -130,13 +130,15 @@ Use this current source-of-truth hierarchy:
 3. Current implementation contract: `SPEC.md`.
 4. Product flow and boundaries: `docs/contracts/PRODUCT_FLOW_CONTRACT.md`, `PRODUCT.md`.
 5. Screen flow and route responsibilities: `docs/contracts/SCREEN_CONTRACTS.md`, `docs/specs/frontend_screen_contracts.md`, `frontend/README.md`.
-6. Artifact-to-screen routing and same-run lineage: `docs/contracts/ARTIFACT_TO_SCREEN_MAP.md`.
-7. Runtime entrypoints: `docs/runtime_entrypoints.md`, `docs/specs/portfolio_review_workflow_spec.md`, `OUTPUTS.md`.
-8. Data rules: `DATA.md` and owning `docs/specs/*.md` files.
-9. Testing and QA: `TESTING.md`, `docs/contracts/QA_CONTRACT.md`, `KNOWN_ISSUES.md`.
-10. Design: `DESIGN.md`, `docs/design/current_website_structure.md`, `docs/design/portfolio_mri_design_system.md`.
-11. Decisions and history: `DECISIONS.md`, `CHANGELOG.md`, `docs/audits/README.md`, `docs/exec_plans/README.md`.
-12. ExecPlan rules for large/risky work: `PLANS.md`.
+6. Staged web review state, progress semantics, and compact persistence boundary:
+   `docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`.
+7. Artifact-to-screen routing and same-run lineage: `docs/contracts/ARTIFACT_TO_SCREEN_MAP.md`.
+8. Runtime entrypoints: `docs/runtime_entrypoints.md`, `docs/specs/portfolio_review_workflow_spec.md`, `OUTPUTS.md`.
+9. Data rules: `DATA.md` and owning `docs/specs/*.md` files.
+10. Testing and QA: `TESTING.md`, `docs/contracts/QA_CONTRACT.md`, `KNOWN_ISSUES.md`.
+11. Design: `DESIGN.md`, `docs/design/current_website_structure.md`, `docs/design/portfolio_mri_design_system.md`.
+12. Decisions and history: `DECISIONS.md`, `CHANGELOG.md`, `docs/audits/README.md`, `docs/exec_plans/README.md`.
+13. ExecPlan rules for large/risky work: `PLANS.md`.
 
 Product concept documents, historical audits, completed ExecPlans, and archived legacy docs are traceability only. They do not override current specs, contracts, code, frontend routes, formulas, output contracts, or runtime behavior.
 

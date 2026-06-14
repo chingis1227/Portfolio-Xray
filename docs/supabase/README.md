@@ -6,6 +6,14 @@ Supabase stores only lightweight records: profile metadata, saved portfolio inpu
 
 Supabase is not an analytics engine and not a generated-artifact store. Do not upload `runs/`, `Main portfolio/`, `cache/`, `pdf files/`, generated candidate folders, full `portfolio_xray.json`, full `stress_report.json`, price history, parquet, CSV exports, PDFs, or raw backend artifact bundles. Those remain local/generated evidence governed by `OUTPUTS.md`.
 
+The staged-review migration keeps the same compact-only boundary. Supabase stores staged progress
+as compact rows only: `review_id`, overall review status, current stage, stage statuses, provider
+freshness disclosure, safe errors, timestamps, compact verdict/report summaries, and saved
+portfolio links. The frontend sanitizes cloud review payloads before writing so local paths,
+artifact references, raw generated JSON filenames, raw `review_state.json`, raw artifact path maps,
+price history, and full run folders are not persisted. The canonical staged contract is
+`docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`.
+
 Client Fit persistence is compact display-state only. The frontend may save/recover Client Fit
 status label/tone, profile label, source-quality label, compact target rows, decision boundary, and
 next-test text inside `reviews.compact_summary` and `review_stage_summaries.summary`. It must not

@@ -37,6 +37,19 @@ presentation assets are export/report artifacts only and must be requested expli
 `full_report`, `legacy_export`, or PDF export commands. CSV exporters remain supported for audit,
 Excel review, debugging, and legacy reporting, but CSV is not produced by default.
 
+Staged web execution adds `review_state.json` under active `runs/frontend_review_*` folders as
+progress state for the web path. The backend start/status and stage-runner foundation writes this
+file through `POST /api/v1/reviews/staged` and reads it through
+`GET /api/v1/reviews/{review_id}/status`.
+`review_state.json` is generated run-local orchestration evidence, not source. It points to
+canonical artifacts and records stage status, provider status, and safe errors; it does not replace
+`analysis_subject/` artifacts or authorize stale downstream files. The contract is
+`docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`.
+When staged `demo_qa` mode is selected through `options.sample_mode: true`, the backend writes
+deterministic frozen fixture artifacts under the same run-local `analysis_subject/` roles for demo
+and QA reliability. Those fixture artifacts remain generated evidence for the run only; they do not
+replace live mode, CLI review behavior, or source contracts.
+
 ## Read this first
 
 When `{output_dir_final}` is `Main portfolio/` (typical), **two artifact trees coexist**. They describe
@@ -46,6 +59,7 @@ When `{output_dir_final}` is `Main portfolio/` (typical), **two artifact trees c
 | --- | --- | --- |
 | `{output_dir_final}/analysis_subject/` | Portfolio-first **subject** diagnosed before candidates | Starting weights, Blocks 1-3 diagnostics (X-Ray, stress, snapshots, `run_metadata.json`) for the reviewed portfolio |
 | `{output_dir_final}/` root - `run_result.json`, `portfolio_weights.yml`, root `portfolio_xray.json`, `stress_report.json`, `run_metadata.json` | **Legacy policy optimization** (`run_optimization.py`, optionally `--with-report`) | Policy release checks and historical policy runs only - **not** the portfolio-first subject |
+| `runs/frontend_review_*/review_state.json` | **Staged web progress state** for active frontend reviews | Progress, current stage, safe errors, provider status, and compact partial-result unlocks only - **not** raw calculation truth |
 
 **Operator rules:**
 

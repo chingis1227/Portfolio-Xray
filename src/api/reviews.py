@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -24,10 +26,16 @@ from scripts.run_review_from_payload import (
     PROJECT_ROOT,
     PayloadValidationError,
     ReportBridgeError,
+    SITE_EXPLANATION_BUNDLE_FILENAME,
     VerdictBridgeError,
+    build_success_result,
     compare_selected_candidate,
+    create_run_dir,
+    expected_output_paths,
     generate_selected_candidate,
+    normalize_payload,
     prepare_selected_builder_setup,
+    read_outputs,
     run_from_payload,
     safe_review_run_dir,
     scrub_failure_text,
@@ -76,6 +84,13 @@ from src.api.models import (
     ReviewRecoveryResponse,
     ReviewSummary,
     SafeError,
+    StagedProviderStatus,
+    StagedReviewMode,
+    StagedReviewStartedResponse,
+    StagedReviewStatusResponse,
+    StagedSafeError,
+    StagedStageName,
+    StagedStageState,
     VerdictData,
     VerdictIdRequest,
     VerdictResponse,
@@ -92,6 +107,108 @@ VERDICT_SCHEMA_VERSION = "decision_verdict_v1"
 REPORT_SCHEMA_VERSION = "report_grounding_v1"
 PAYLOAD_DIR = PROJECT_ROOT / "runs" / "fastapi_review_payloads"
 SAFE_REF_RE = re.compile(r"^[A-Za-z]:[\\/]|^/(...:Users|home|var|tmp|mnt)/")
+STAGED_REVIEW_STARTED_SCHEMA_VERSION = "review_started_v1"
+STAGED_REVIEW_STATE_SCHEMA_VERSION = "review_state_v1"
+STAGED_STAGE_NAMES: tuple[StagedStageName, ...] = (
+    "input",
+    "data_load",
+    "xray",
+    "stress",
+    "client_fit",
+    "problem_classification",
+    "launchpad_builder",
+    "candidate",
+    "comparison",
+    "verdict",
+    "report",
+)
+STAGED_INITIAL_PROVIDER_STATUS = {
+    "live": StagedProviderStatus(
+        source="live_provider",
+        freshness="pending",
+        message="Live mode uses the normal market-data provider path.",
+    ),
+    "demo_qa": StagedProviderStatus(
+        source="frozen_fixture",
+        freshness="fixed_demo_dataset",
+        message="Demo / QA mode uses deterministic fixture data and skips external market-data providers.",
+    ),
+}
+STAGED_ARTIFACT_REFS: dict[str, str] = {
+    "portfolio_xray": "analysis_subject/portfolio_xray.json",
+    "stress_report": "analysis_subject/stress_report.json",
+    "client_fit_check": "analysis_subject/client_fit_check.json",
+    "problem_classification": "analysis_subject/problem_classification.json",
+    "candidate_launchpad": "analysis_subject/candidate_launchpad.json",
+    "portfolio_alternatives_builder": "analysis_subject/portfolio_alternatives_builder.json",
+    "candidate_generation": "candidate_generation.json",
+    "candidate_factory_run": "candidate_factory_run.json",
+    "candidate_comparison": "candidate_comparison.json",
+    "current_vs_candidate": "current_vs_candidate.json",
+    "decision_verdict": "decision_verdict.json",
+    "ai_commentary_context": "ai_commentary_context.json",
+    "site_explanation_bundle": SITE_EXPLANATION_BUNDLE_FILENAME,
+}
+STAGED_DIAGNOSIS_STAGE_ARTIFACTS: dict[
+    StagedStageName,
+    dict[str, list[str]],
+] = {
+    "input": {
+        "required": ["payload.json"],
+        "optional": ["input.yml"],
+    },
+    "data_load": {
+        "required": ["analysis_subject/run_metadata.json"],
+        "optional": [],
+    },
+    "xray": {
+        "required": ["analysis_subject/portfolio_xray.json"],
+        "optional": [],
+    },
+    "stress": {
+        "required": ["analysis_subject/stress_report.json"],
+        "optional": [],
+    },
+    "client_fit": {
+        "required": [],
+        "optional": ["analysis_subject/client_fit_check.json"],
+    },
+    "problem_classification": {
+        "required": ["analysis_subject/problem_classification.json"],
+        "optional": [],
+    },
+    "launchpad_builder": {
+        "required": [
+            "analysis_subject/candidate_launchpad.json",
+            "analysis_subject/portfolio_alternatives_builder.json",
+        ],
+        "optional": [],
+    },
+}
+STAGED_DOWNSTREAM_STAGE_ARTIFACTS: dict[StagedStageName, dict[str, list[str]]] = {
+    "candidate": {
+        "required": ["candidate_generation.json"],
+        "optional": ["candidate_factory_run.json"],
+    },
+    "comparison": {
+        "required": ["current_vs_candidate.json"],
+        "optional": ["candidate_comparison.json", SITE_EXPLANATION_BUNDLE_FILENAME],
+    },
+    "verdict": {
+        "required": ["decision_verdict.json"],
+        "optional": [SITE_EXPLANATION_BUNDLE_FILENAME],
+    },
+    "report": {
+        "required": ["ai_commentary_context.json"],
+        "optional": [SITE_EXPLANATION_BUNDLE_FILENAME],
+    },
+}
+STAGED_NEXT_STAGE: dict[StagedStageName, StagedStageName] = {
+    "candidate": "comparison",
+    "comparison": "verdict",
+    "verdict": "report",
+    "report": "report",
+}
 
 
 def _record(value: Any) -> dict[str, Any]:
@@ -291,6 +408,981 @@ def _read_json_file(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError(f"{path.name} is not a JSON object.")
     return data
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _staged_state_path(run_dir: Path) -> Path:
+    return run_dir / "review_state.json"
+
+
+def _safe_staged_ref(value: Any, *, fallback: str) -> str:
+    ref = _safe_ref(value, fallback=fallback)
+    normalized = ref.replace("\\", "/")
+    if Path(normalized).is_absolute() or normalized.startswith("/") or SAFE_REF_RE.search(normalized):
+        return fallback
+    return normalized
+
+
+def _initial_staged_state(review_id: str, *, mode: StagedReviewMode) -> dict[str, Any]:
+    now = _utc_now_iso()
+    stages = {
+        stage: {"status": "pending", "started_at": None, "completed_at": None, "artifact_refs": []}
+        for stage in STAGED_STAGE_NAMES
+    }
+    stages["input"] = {
+        "status": "running",
+        "started_at": now,
+        "completed_at": None,
+        "artifact_refs": ["payload.json"],
+    }
+    return {
+        "schema_version": STAGED_REVIEW_STATE_SCHEMA_VERSION,
+        "review_id": review_id,
+        "status": "running",
+        "current_stage": "input",
+        "mode": mode,
+        "created_at": now,
+        "updated_at": now,
+        "stages": stages,
+        "artifacts": {},
+        "provider_status": STAGED_INITIAL_PROVIDER_STATUS[mode].model_dump(mode="json"),
+        "warnings": [],
+        "safe_error": None,
+    }
+
+
+def _write_staged_state(run_dir: Path, state: dict[str, Any]) -> None:
+    state["updated_at"] = _utc_now_iso()
+    temp_path = run_dir / "review_state.json.tmp"
+    write_json(temp_path, state)
+    temp_path.replace(_staged_state_path(run_dir))
+
+
+def _read_staged_state(run_dir: Path) -> dict[str, Any]:
+    state = _read_json_file(_staged_state_path(run_dir))
+    if state.get("schema_version") != STAGED_REVIEW_STATE_SCHEMA_VERSION:
+        raise ValueError("Run-local review_state.json is not review_state_v1.")
+    return state
+
+
+def _set_stage_status(
+    state: dict[str, Any],
+    stage: StagedStageName,
+    status: str,
+    *,
+    artifact_refs: list[str] | None = None,
+) -> None:
+    now = _utc_now_iso()
+    stages = _record(state.setdefault("stages", {}))
+    row = _record(stages.get(stage))
+    if not row.get("started_at") and status in {"running", "completed", "partial", "blocked", "failed"}:
+        row["started_at"] = now
+    if status in {"completed", "partial", "blocked", "failed", "skipped"}:
+        row["completed_at"] = now
+    row["status"] = status
+    if artifact_refs is not None:
+        row["artifact_refs"] = [
+            _safe_staged_ref(ref, fallback=f"logical://{stage}") for ref in artifact_refs
+        ]
+    stages[stage] = row
+    state["stages"] = stages
+    state["current_stage"] = stage
+
+
+def _staged_safe_error(
+    *,
+    code: str,
+    message: str,
+    user_action: str,
+    retryable: bool,
+    stage: StagedStageName | None,
+) -> StagedSafeError:
+    return StagedSafeError(
+        code=code,  # type: ignore[arg-type]
+        message=scrub_failure_text(message),
+        user_action=user_action,  # type: ignore[arg-type]
+        retryable=retryable,
+        stage=stage,
+    )
+
+
+def _classify_staged_failure(review_result: dict[str, Any], code: int) -> tuple[str, str, str, bool, StagedStageName]:
+    details = str(review_result.get("details") or "").lower()
+    message = _text(review_result.get("error"), "Portfolio diagnosis failed.") or "Portfolio diagnosis failed."
+    lowered = f"{message} {details}".lower()
+    if code == 124 or "timeout" in lowered:
+        return "TIMEOUT", message, "retry", True, "data_load"
+    if "input_validation_error" in details:
+        return "INVALID_TICKER", message, "fix_input", False, "input"
+    if "market" in lowered or "provider" in lowered or "price" in lowered or "quote" in lowered:
+        return "DATA_PROVIDER_FAILED", message, "retry", True, "data_load"
+    return "PYTHON_STAGE_FAILED", message, "retry", True, "data_load"
+
+
+def _existing_stage_refs(run_dir: Path, refs: list[str]) -> list[str]:
+    return [_safe_staged_ref(ref, fallback="logical://artifact") for ref in refs if (run_dir / ref).exists()]
+
+
+def _missing_stage_refs(run_dir: Path, refs: list[str]) -> list[str]:
+    return [_safe_staged_ref(ref, fallback="logical://artifact") for ref in refs if not (run_dir / ref).exists()]
+
+
+def _refresh_staged_artifact_map(state: dict[str, Any], run_dir: Path) -> None:
+    state["artifacts"] = {
+        key: _safe_staged_ref(ref, fallback=f"logical://{key}")
+        for key, ref in STAGED_ARTIFACT_REFS.items()
+        if (run_dir / ref).exists()
+    }
+
+
+def _sync_diagnosis_stage_artifacts(
+    state: dict[str, Any],
+    run_dir: Path,
+    *,
+    mark_missing_as_failed: bool,
+) -> tuple[StagedStageName | None, list[str], list[str]]:
+    """Update diagnosis-stage rows from run-local artifacts.
+
+    The underlying Python runner is still mostly monolithic, so this helper is
+    the staged wrapper: it records each canonical stage independently once the
+    adapter returns, preserves earlier completed stages, marks optional Client
+    Fit context as partial when absent, and reports the first missing required
+    artifact without exposing absolute paths.
+    """
+
+    warnings: list[str] = []
+    for stage, ref_groups in STAGED_DIAGNOSIS_STAGE_ARTIFACTS.items():
+        required_refs = ref_groups.get("required", [])
+        optional_refs = ref_groups.get("optional", [])
+        present_refs = _existing_stage_refs(run_dir, required_refs + optional_refs)
+        missing_required_refs = _missing_stage_refs(run_dir, required_refs)
+
+        if missing_required_refs:
+            status = "failed" if mark_missing_as_failed else "running"
+            _set_stage_status(state, stage, status, artifact_refs=present_refs)
+            _refresh_staged_artifact_map(state, run_dir)
+            return stage, missing_required_refs, warnings
+
+        if not required_refs and optional_refs and not present_refs:
+            _set_stage_status(state, stage, "partial", artifact_refs=[])
+            warnings.append(
+                "Client Fit context was not produced; use the not_provided compatibility state."
+            )
+            continue
+
+        _set_stage_status(state, stage, "completed", artifact_refs=present_refs)
+
+    _refresh_staged_artifact_map(state, run_dir)
+    return None, [], warnings
+
+
+def _try_update_staged_downstream_success(review_id: str, stage: StagedStageName) -> None:
+    """Best-effort synchronization of explicit downstream FastAPI stage calls.
+
+    Staged diagnosis can complete before candidate, comparison, verdict, and
+    report are requested. Those later endpoints remain explicit user actions,
+    but once they succeed the run-local ``review_state.json`` should reflect the
+    same active lineage so refresh/recovery and route gates do not depend only
+    on browser memory.
+    """
+
+    if stage not in STAGED_DOWNSTREAM_STAGE_ARTIFACTS:
+        return
+    try:
+        run_dir = safe_review_run_dir(review_id)
+        if not _staged_state_path(run_dir).is_file():
+            return
+        state = _read_staged_state(run_dir)
+        refs = STAGED_DOWNSTREAM_STAGE_ARTIFACTS[stage]
+        artifact_refs = _existing_stage_refs(run_dir, refs.get("required", []) + refs.get("optional", []))
+        _set_stage_status(state, stage, "completed", artifact_refs=artifact_refs)
+        _refresh_staged_artifact_map(state, run_dir)
+        state["status"] = "completed" if stage == "report" else "partial"
+        state["current_stage"] = STAGED_NEXT_STAGE.get(stage, stage)
+        state["safe_error"] = None
+        _write_staged_state(run_dir, state)
+    except Exception:
+        return
+
+
+def _try_update_staged_downstream_problem(
+    review_id: str,
+    stage: StagedStageName,
+    *,
+    blocked: bool,
+    message: str,
+    retryable: bool,
+) -> None:
+    """Best-effort downstream failure/blocker state without invalidating diagnosis."""
+
+    if stage not in STAGED_DOWNSTREAM_STAGE_ARTIFACTS:
+        return
+    try:
+        run_dir = safe_review_run_dir(review_id)
+        if not _staged_state_path(run_dir).is_file():
+            return
+        state = _read_staged_state(run_dir)
+        refs = STAGED_DOWNSTREAM_STAGE_ARTIFACTS[stage]
+        artifact_refs = _existing_stage_refs(run_dir, refs.get("required", []) + refs.get("optional", []))
+        _set_stage_status(state, stage, "blocked" if blocked else "failed", artifact_refs=artifact_refs)
+        _refresh_staged_artifact_map(state, run_dir)
+        state["status"] = "partial"
+        state["current_stage"] = stage
+        state["safe_error"] = _staged_safe_error(
+            code="PYTHON_STAGE_FAILED",
+            message=message,
+            user_action="retry" if retryable else "none",
+            retryable=retryable,
+            stage=stage,
+        ).model_dump(mode="json")
+        _write_staged_state(run_dir, state)
+    except Exception:
+        return
+
+
+def _demo_qa_client_fit_check(normalized: dict[str, Any]) -> dict[str, Any]:
+    """Build deterministic Client Fit fixture evidence from bounded input context."""
+
+    client_fit = _record(normalized.get("client_fit"))
+    if not client_fit or client_fit.get("source") == "missing":
+        return {
+            "schema_version": "client_fit_check_v1",
+            "client_fit_status": "not_provided",
+            "profile": {"source": "missing", "source_quality": "missing"},
+            "checks": [],
+            "recommendation_boundary": (
+                "Client Fit is non-binding decision support and was not provided for this demo run."
+            ),
+        }
+
+    profile = {
+        key: value
+        for key, value in client_fit.items()
+        if key
+        in {
+            "preset_id",
+            "source",
+            "source_quality",
+            "horizon_years",
+            "target_return_range",
+            "target_vol_range",
+            "target_max_drawdown_pct",
+        }
+    }
+    return {
+        "schema_version": "client_fit_check_v1",
+        "client_fit_status": "watch",
+        "profile": profile,
+        "checks": [
+            {
+                "dimension": "volatility_vs_target",
+                "portfolio_value": 0.115,
+                "client_range": profile.get("target_vol_range") or {"min": 0.07, "max": 0.10},
+                "status": "watch",
+                "interpretation": (
+                    "Demo fixture evidence keeps Client Fit as context only; it does not approve "
+                    "suitability or clear objective portfolio issues."
+                ),
+            }
+        ],
+        "recommendation_boundary": (
+            "Client Fit is non-binding decision support. It does not approve suitability, execute "
+            "trades, or hide material portfolio issues."
+        ),
+    }
+
+
+def _demo_qa_fixture_outputs(review_id: str, normalized: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Return frozen diagnosis artifacts for staged Demo / QA mode.
+
+    The fixture is intentionally compact. It gives the staged UI predictable
+    Portfolio X-Ray, Stress, Client Fit, Problem Classification, Launchpad, and
+    Builder evidence without calling live market-data providers or changing
+    portfolio formulas.
+    """
+
+    tickers = [str(item) for item in _list(normalized.get("tickers"))]
+    weights = _record(normalized.get("current_weights"))
+    top_holding = max(weights.items(), key=lambda item: float(item[1]))[0] if weights else None
+    top_weight = float(weights.get(top_holding, 0.0)) if top_holding else None
+    client_fit_check = _demo_qa_client_fit_check(normalized)
+    analysis_end = "2026-05-31"
+    provider = STAGED_INITIAL_PROVIDER_STATUS["demo_qa"].model_dump(mode="json")
+
+    portfolio_xray = {
+        "schema_version": "portfolio_xray_v2",
+        "mode": "demo_qa",
+        "analysis_end": analysis_end,
+        "data_source": "frozen_fixture",
+        "summary": {
+            "headline": "Demo fixture highlights concentration risk in the current portfolio.",
+            "top_holding": top_holding,
+            "top_holding_weight": top_weight,
+        },
+        "block_2_1_asset_allocation": {
+            "status": "ok",
+            "holdings_count": len(tickers),
+            "current_weights": weights,
+        },
+        "warnings": [
+            "Demo / QA mode uses frozen fixture evidence and is not live market data."
+        ],
+    }
+    stress_report = {
+        "schema_version": "stress_report_v1",
+        "mode": "demo_qa",
+        "analysis_end": analysis_end,
+        "data_source": "frozen_fixture",
+        "stress_results_v1": {
+            "block_status": "ok",
+            "worst_scenario": {
+                "scenario_id": "demo_equity_shock",
+                "portfolio_loss_pct": -0.18,
+                "interpretation": "The frozen demo stress row shows a material drawdown under an equity shock.",
+            },
+        },
+        "current_portfolio_stress_scorecard_v1": {
+            "block_status": "ok",
+            "stress_diagnosis": {
+                "headline": "Stress losses are concentrated in the largest risk exposures.",
+                "diagnosis_confidence": "medium",
+            },
+        },
+        "warnings": [
+            "Stress evidence is deterministic fixture data for QA and demo reliability."
+        ],
+    }
+    problem_classification = {
+        "schema_version": "problem_classification_v3",
+        "analysis_end": analysis_end,
+        "mode": "demo_qa",
+        "primary_diagnosis": {
+            "diagnosis_id": "high_concentration",
+            "label_en": "High concentration",
+            "thesis_en": "The current portfolio is too dependent on its largest exposures.",
+            "confidence": "medium",
+            "key_evidence": [
+                {
+                    "interpretation_en": "The frozen demo X-Ray shows the largest holding as the leading capital exposure.",
+                    "source_artifact": "portfolio_xray.json",
+                }
+            ],
+        },
+        "next_diagnostic_step": {
+            "step_type": "targeted_hypothesis_test",
+            "label": "Test a diversification candidate.",
+            "decision_boundary": "Decision Verdict decides after comparison; this is not a recommendation.",
+        },
+        "interpretation_chain": {
+            "schema_version": "diagnosis_interpretation_chain_v1",
+            "diagnostic_only": True,
+            "selected_diagnosis_id": "high_concentration",
+            "selected_diagnosis_role": "root_cause",
+            "source_artifacts": ["portfolio_xray.json", "stress_report.json"],
+            "root_cause_narrative": {
+                "diagnosis_id": "high_concentration",
+                "label_en": "High concentration",
+                "diagnosis_role": "root_cause",
+                "statement_en": "High concentration is the demo root-cause diagnosis.",
+                "root_cause_over_symptom_en": (
+                    "Concentration is treated as the root cause because the largest exposures drive "
+                    "the stress pattern in the fixture."
+                ),
+                "portfolio_manager_interpretation_en": (
+                    "The portfolio depends too much on a small set of positions."
+                ),
+                "confidence_context_en": "Confidence is medium because this is frozen QA evidence.",
+                "n_supporting_evidence_items": 2,
+                "n_rejected_alternatives": 1,
+                "source_refs": ["docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md#demo--qa-mode-and-live-mode"],
+            },
+            "diagnosis_evidence_items": [
+                {
+                    "evidence_item_id": "demo_ev_top_holding",
+                    "linked_problem_id": "high_concentration",
+                    "evidence_role": "supports_selected_diagnosis",
+                    "signal": "top_holding_weight",
+                    "source_artifact": "portfolio_xray.json",
+                    "source_block": "block_2_1_asset_allocation",
+                    "source_field_path": "summary.top_holding_weight",
+                    "observed_value": top_weight,
+                    "interpretation_en": "The largest holding dominates the frozen demo portfolio.",
+                    "why_relevant_to_diagnosis_en": "High top-holding weight supports concentration risk.",
+                    "severity": "medium",
+                    "confidence": "medium",
+                }
+            ],
+            "metric_to_diagnosis_trace": [
+                {
+                    "trace_id": "demo_trace_top_holding_weight",
+                    "source_artifact": "portfolio_xray.json",
+                    "source_block": "block_2_1_asset_allocation",
+                    "source_field_path": "summary.top_holding_weight",
+                    "metric_or_signal": "top_holding_weight",
+                    "evidence_item_id": "demo_ev_top_holding",
+                    "linked_problem_id": "high_concentration",
+                    "contributes_to_selected_diagnosis_id": "high_concentration",
+                    "contribution": "supports_selected_diagnosis",
+                    "interpretation_en": "The top holding is the leading capital exposure in the demo fixture.",
+                }
+            ],
+            "rejected_alternatives": [
+                {
+                    "problem_id": "data_quality_blocker",
+                    "label_en": "Data quality blocker",
+                    "reason_code": "demo_fixture_available",
+                    "reason_en": "Demo / QA mode uses a complete frozen fixture instead of live provider data.",
+                    "top_evidence_item_ids": ["demo_ev_top_holding"],
+                }
+            ],
+            "professional_rationale_refs": [
+                {
+                    "ref_id": "staged_demo_qa_contract",
+                    "source": "docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md",
+                    "reason_en": "Defines deterministic Demo / QA execution and live-mode separation.",
+                }
+            ],
+            "next_step_link": {
+                "step_type": "targeted_hypothesis_test",
+                "label": "Test a diversification candidate.",
+                "decision_boundary": "Decision Verdict decides after comparison.",
+            },
+            "recommendation_boundary_en": "This diagnosis is decision support only and not trade advice.",
+        },
+        "warnings": [
+            "Problem Classification is based on frozen Demo / QA fixture evidence."
+        ],
+    }
+    candidate_launchpad = {
+        "schema_version": "candidate_launchpad_v3",
+        "mode": "demo_qa",
+        "diagnostic_only": True,
+        "cards": [
+            {
+                "card_id": "launchpad_demo_reduce_concentration",
+                "title": "Test diversification",
+                "goal": "reduce_concentration",
+                "source_diagnosis_id": "high_concentration",
+                "source_problem_id": "high_concentration",
+                "hypothesis_to_test": "Test whether an Equal Weight candidate reduces concentration.",
+                "success_criteria": ["Reduce reliance on the largest exposure."],
+                "tradeoff_to_watch": "Potential return drag versus the current allocation.",
+                "when_to_skip": "Skip if the user only wants to monitor without testing alternatives.",
+                "decision_boundary": "Candidate Generation is a diagnostic test; Decision Verdict owns action language.",
+                "default_method": "equal_weight",
+                "suggested_methods": [{"candidate_method_id": "equal_weight", "method_role": "targeted_hypothesis"}],
+                "card_type": "targeted_hypothesis_test",
+                "launch_status": "ready",
+                "is_rebalance_recommendation": False,
+            }
+        ],
+        "warnings": [
+            "Launchpad cards in Demo / QA mode are fixture-backed diagnostic tests, not recommendations."
+        ],
+    }
+    builder = {
+        "schema_version": "portfolio_alternatives_builder_v1",
+        "diagnostic_only": True,
+        "mode": "demo_qa",
+        "status": "ok",
+        "reason": None,
+        "can_generate_candidate": True,
+        "selected_card_id": "launchpad_demo_reduce_concentration",
+        "candidate_setup": {
+            "candidate_setup_id": "candidate_setup_launchpad_demo_reduce_concentration",
+            "source_card_id": "launchpad_demo_reduce_concentration",
+            "method_id": "equal_weight",
+            "is_rebalance_recommendation": False,
+        },
+        "guardrails": {
+            "does_not_generate_candidate": True,
+            "does_not_write_weights": True,
+            "does_not_write_comparison_or_verdict": True,
+            "is_rebalance_recommendation": False,
+        },
+    }
+    run_metadata = {
+        "schema_version": "run_metadata_v1",
+        "review_id": review_id,
+        "mode": "demo_qa",
+        "analysis_end": analysis_end,
+        "analysis_setup": {
+            "input_mode": "current_portfolio",
+            "investor_currency": normalized.get("investor_currency"),
+            "analysis_window": analysis_end,
+            "market_data_provider": "frozen_fixture",
+            "provider_status": provider,
+        },
+        "input_assumptions": {
+            "analysis_window": analysis_end,
+            "current_weights": weights,
+        },
+    }
+    output_manifest = {
+        "schema_version": "output_manifest_v1",
+        "mode": "demo_qa",
+        "output_profile": "site_api",
+        "required_json": sorted(STAGED_ARTIFACT_REFS.values()),
+        "provider_status": provider,
+    }
+    site_explanation_bundle = {
+        "schema_version": "site_explanation_bundle_v1",
+        "mode": "demo_qa",
+        "summary": "Demo / QA mode uses deterministic fixture evidence for staged progress.",
+        "provider_status": provider,
+    }
+    ai_commentary_context = {
+        "schema_version": "ai_commentary_context_v1",
+        "mode": "demo_qa",
+        "grounding_phase": "diagnosis",
+        "source_artifacts": {
+            "portfolio_xray": "portfolio_xray.json",
+            "stress_report": "stress_report.json",
+            "problem_classification": "problem_classification.json",
+        },
+        "warnings": ["This is deterministic fixture context and not LLM-generated commentary."],
+    }
+    return {
+        "run_metadata": run_metadata,
+        "portfolio_xray": portfolio_xray,
+        "stress_report": stress_report,
+        "client_fit_check": client_fit_check,
+        "problem_classification": problem_classification,
+        "candidate_launchpad": candidate_launchpad,
+        "portfolio_alternatives_builder": builder,
+        "output_manifest": output_manifest,
+        "site_explanation_bundle": site_explanation_bundle,
+        "ai_commentary_context": ai_commentary_context,
+    }
+
+
+def _materialize_demo_qa_review(
+    review_id: str,
+    payload_path: Path,
+    run_dir: Path,
+) -> tuple[int, Path]:
+    """Write deterministic staged Demo / QA artifacts without external providers."""
+
+    payload = _read_json_file(payload_path)
+    normalized = normalize_payload(payload)
+    analysis_subject = run_dir / "analysis_subject"
+    analysis_subject.mkdir(parents=True, exist_ok=True)
+    (run_dir / "input.yml").write_text(
+        "\n".join(
+            [
+                "mode: demo_qa",
+                "market_data_provider: frozen_fixture",
+                f"investor_currency: {normalized.get('investor_currency')}",
+                "tickers:",
+                *[f"  - {ticker}" for ticker in _list(normalized.get("tickers"))],
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    outputs = _demo_qa_fixture_outputs(review_id, normalized)
+    for key, document in outputs.items():
+        filename = f"{key}.json"
+        if key == "site_explanation_bundle":
+            filename = SITE_EXPLANATION_BUNDLE_FILENAME
+        write_json(analysis_subject / filename, document)
+
+    paths = expected_output_paths(run_dir, mode=MODE_DIAGNOSIS_PLUS_PROBLEM)
+    read_outputs_data = read_outputs(paths, mode=MODE_DIAGNOSIS_PLUS_PROBLEM)
+    result = build_success_result(
+        review_id=review_id,
+        mode="demo_qa",
+        normalized=normalized,
+        paths=paths,
+        outputs=read_outputs_data,
+    )
+    result["provider_status"] = STAGED_INITIAL_PROVIDER_STATUS["demo_qa"].model_dump(mode="json")
+    result_path = run_dir / "review_result.json"
+    write_json(result_path, result)
+    return 0, result_path
+
+
+def _is_demo_qa_staged_review(review_id: str) -> bool:
+    try:
+        state = _read_staged_state(safe_review_run_dir(review_id))
+    except Exception:
+        return False
+    return state.get("mode") == "demo_qa"
+
+
+def _demo_qa_current_vs_candidate_doc(candidate_generation: dict[str, Any], candidate_id: str) -> dict[str, Any]:
+    candidate = _record(candidate_generation.get("candidate"))
+    return {
+        "schema_version": "current_vs_candidate_v1",
+        "mode": "demo_qa",
+        "comparison_status": "available",
+        "view_mode": "one_candidate",
+        "baseline": {"display_name": "Current portfolio"},
+        "selected_candidate_ids": [candidate_id],
+        "comparisons": [
+            {
+                "candidate_id": candidate_id,
+                "display_name": _text(candidate.get("candidate_name"), "Equal Weight diagnostic candidate"),
+                "candidate_boundary": _text(
+                    candidate.get("decision_boundary"),
+                    "This candidate is a diagnostic test, not a recommendation.",
+                ),
+                "what_improved": [{"label": "Largest-position concentration is lower in the fixture comparison."}],
+                "what_worsened": [{"label": "Turnover and tracking difference require review."}],
+                "what_stayed_similar": [{"label": "The candidate still keeps broad market exposure."}],
+                "unavailable_metrics": [{"field": "live price refresh"}],
+                "success_criteria_result": {"overall_status": "met"},
+                "materiality_for_decision_review": {"status": "review_candidate"},
+                "tradeoff_to_watch": _text(candidate.get("tradeoff_to_watch")),
+            }
+        ],
+        "warnings": [
+            "Demo / QA comparison uses deterministic fixture evidence and is not live market data."
+        ],
+    }
+
+
+def _write_demo_qa_comparison(review_id: str, candidate_id: str) -> dict[str, Any]:
+    run_dir = safe_review_run_dir(review_id)
+    candidate_generation = _read_run_local_json(review_id, "candidate_generation.json")
+    selected_card_id, actual_candidate_id = _candidate_lineage(review_id, candidate_id)
+    current_vs_candidate = _demo_qa_current_vs_candidate_doc(candidate_generation, actual_candidate_id)
+    candidate_comparison = {
+        "schema_version": "candidate_comparison_v1",
+        "mode": "demo_qa",
+        "candidate_menu": {
+            "review_mode": "demo_qa",
+            "is_partial_menu": True,
+            "intended_menu_size": 1,
+        },
+        "candidates": current_vs_candidate["comparisons"],
+        "warnings": current_vs_candidate["warnings"],
+    }
+    write_json(run_dir / "current_vs_candidate.json", current_vs_candidate)
+    write_json(run_dir / "candidate_comparison.json", candidate_comparison)
+    return {
+        "review_id": review_id,
+        "status": "completed",
+        "stage": "current_vs_candidate",
+        "selected_card_id": selected_card_id,
+        "candidate_id": actual_candidate_id,
+        "paths": {
+            "candidate_comparison": f"runs/{review_id}/candidate_comparison.json",
+            "current_vs_candidate": f"runs/{review_id}/current_vs_candidate.json",
+            "site_explanation_bundle": f"runs/{review_id}/{SITE_EXPLANATION_BUNDLE_FILENAME}",
+        },
+        "current_vs_candidate": current_vs_candidate,
+    }
+
+
+def _demo_qa_decision_verdict_doc(candidate_id: str) -> dict[str, Any]:
+    return {
+        "schema_version": "decision_verdict_v1",
+        "mode": "demo_qa",
+        "verdict_id": "evidence_insufficient",
+        "verdict_reason_id": "demo_fixture_decision_support_only",
+        "reviewed_candidate_id": candidate_id,
+        "confidence": "medium",
+        "rationale_summary": (
+            "The deterministic demo comparison shows concentration improvement, but it is fixture "
+            "evidence and must not be treated as a trade instruction."
+        ),
+        "recommended_action": "Use the candidate only as a diagnostic comparison in this demo.",
+        "confidence_limitations": ["Demo / QA mode does not use live market data."],
+        "evidence_summary": {
+            "improvements": [{"label": "Concentration improved in the fixture comparison."}],
+            "deteriorations": [{"label": "Turnover and tracking difference require review."}],
+            "client_fit_decision_context": {
+                "client_fit_status": "watch",
+                "diagnostic_quality_status": "issue",
+                "decision_action": "evidence_insufficient",
+                "status_label": "Client Fit watch",
+                "status_tone": "amber",
+                "boundary_en": "Client Fit remains non-binding display context only.",
+                "next_best_test_en": "Review live evidence before making any decision.",
+            },
+        },
+        "what_would_change_verdict": ["Run live mode with current market data."],
+        "guardrails": {"does_not_execute_trades": True},
+        "warnings": ["Demo / QA verdict is fixture-backed decision support only."],
+    }
+
+
+def _write_demo_qa_verdict(review_id: str, comparison_id: str) -> dict[str, Any]:
+    selected_card_id, candidate_id, normalized_comparison_id = _active_comparison_lineage(
+        review_id,
+        comparison_id,
+    )
+    verdict = _demo_qa_decision_verdict_doc(candidate_id)
+    run_dir = safe_review_run_dir(review_id)
+    write_json(run_dir / "decision_verdict.json", verdict)
+    return {
+        "review_id": review_id,
+        "status": "completed",
+        "stage": "decision_verdict",
+        "selected_card_id": selected_card_id,
+        "candidate_id": candidate_id,
+        "comparison_id": normalized_comparison_id,
+        "path": f"runs/{review_id}/decision_verdict.json",
+        "decision_verdict": verdict,
+        "site_explanation_bundle_path": f"runs/{review_id}/{SITE_EXPLANATION_BUNDLE_FILENAME}",
+    }
+
+
+def _demo_qa_ai_commentary_context(verdict_id: str) -> dict[str, Any]:
+    return {
+        "schema_version": "ai_commentary_context_v1",
+        "mode": "demo_qa",
+        "grounding_phase": "post_compare",
+        "client_explanation_draft": {
+            "sentences": [
+                {"topic": "diagnosis", "text": "The demo diagnosis highlights concentration risk."},
+                {
+                    "topic": "current_vs_candidate_comparison",
+                    "text": "The demo candidate lowers concentration but adds implementation tradeoffs.",
+                },
+                {
+                    "topic": "decision_verdict",
+                    "text": "The demo verdict is evidence-insufficient for action because it uses fixture data.",
+                },
+            ]
+        },
+        "light_decision_journal": {
+            "decision_verdict": verdict_id,
+            "key_assumptions_and_limits": ["Demo / QA mode uses frozen fixture evidence."],
+            "next_review_trigger": "Run live mode before treating any result as current evidence.",
+        },
+        "evidence_references": [
+            {"artifact": "decision_verdict.json", "field_path": "verdict_id"},
+            {"artifact": "current_vs_candidate.json", "field_path": "comparisons[0]"},
+        ],
+        "source_artifacts": {
+            "decision_verdict": "decision_verdict.json",
+            "current_vs_candidate": "current_vs_candidate.json",
+        },
+        "warnings": ["Grounded demo report context is fixture-backed and non-binding."],
+    }
+
+
+def _write_demo_qa_report_context(review_id: str, verdict_id: str) -> dict[str, Any]:
+    selected_card_id, candidate_id, comparison_id, actual_verdict_id = _active_verdict_lineage(
+        review_id,
+        verdict_id,
+    )
+    ai_context = _demo_qa_ai_commentary_context(actual_verdict_id)
+    run_dir = safe_review_run_dir(review_id)
+    write_json(run_dir / "ai_commentary_context.json", ai_context)
+    return {
+        "review_id": review_id,
+        "status": "completed",
+        "stage": "report_commentary",
+        "selected_card_id": selected_card_id,
+        "candidate_id": candidate_id,
+        "comparison_id": comparison_id,
+        "path": f"runs/{review_id}/ai_commentary_context.json",
+        "ai_commentary_context": ai_context,
+        "site_explanation_bundle_path": f"runs/{review_id}/{SITE_EXPLANATION_BUNDLE_FILENAME}",
+    }
+
+
+def _public_staged_status_from_state(state: dict[str, Any]) -> StagedReviewStatusResponse:
+    raw_mode = _text(state.get("mode"), "live") or "live"
+    mode: StagedReviewMode = "demo_qa" if raw_mode == "demo_qa" else "live"
+    stages: dict[str, StagedStageState] = {}
+    for stage, raw_row in _record(state.get("stages")).items():
+        row = _record(raw_row)
+        refs = [
+            _safe_staged_ref(ref, fallback=f"logical://{stage}")
+            for ref in _list(row.get("artifact_refs"))
+        ]
+        stages[str(stage)] = StagedStageState(
+            status=_text(row.get("status"), "pending") or "pending",  # type: ignore[arg-type]
+            started_at=_text(row.get("started_at")),
+            completed_at=_text(row.get("completed_at")),
+            artifact_refs=refs,
+        )
+    artifacts = {
+        str(key): _safe_staged_ref(value, fallback=f"logical://{key}")
+        for key, value in _record(state.get("artifacts")).items()
+    }
+    provider_status = StagedProviderStatus(
+        **_record(state.get("provider_status") or STAGED_INITIAL_PROVIDER_STATUS[mode].model_dump(mode="json"))
+    )
+    safe_error = None
+    if isinstance(state.get("safe_error"), dict):
+        raw_error = _record(state.get("safe_error"))
+        safe_error = _staged_safe_error(
+            code=_text(raw_error.get("code"), "PYTHON_STAGE_FAILED") or "PYTHON_STAGE_FAILED",
+            message=_text(raw_error.get("message"), "Staged review failed.") or "Staged review failed.",
+            user_action=_text(raw_error.get("user_action"), "retry") or "retry",
+            retryable=bool(raw_error.get("retryable")),
+            stage=_text(raw_error.get("stage")) or None,  # type: ignore[arg-type]
+        )
+    current_stage = _text(state.get("current_stage"), "input") or "input"
+    return StagedReviewStatusResponse(
+        api_version=API_VERSION,
+        schema_version=STAGED_REVIEW_STATE_SCHEMA_VERSION,
+        review_id=_text(state.get("review_id"), "unknown") or "unknown",
+        stage="diagnosis",
+        status=_text(state.get("status"), "running") or "running",  # type: ignore[arg-type]
+        current_stage=current_stage,  # type: ignore[arg-type]
+        mode=mode,
+        created_at=_text(state.get("created_at")),
+        updated_at=_text(state.get("updated_at")),
+        stages=stages,
+        artifacts=artifacts,
+        provider_status=provider_status,
+        warnings=_string_list(state.get("warnings")),
+        safe_error=safe_error,
+    )
+
+
+def _staged_status_not_found(review_id: str, message: str) -> StagedReviewStatusResponse:
+    now = _utc_now_iso()
+    return StagedReviewStatusResponse(
+        api_version=API_VERSION,
+        schema_version=STAGED_REVIEW_STATE_SCHEMA_VERSION,
+        review_id=review_id,
+        stage="diagnosis",
+        status="failed",
+        current_stage="input",
+        mode="live",
+        created_at=None,
+        updated_at=now,
+        stages={},
+        artifacts={},
+        provider_status=STAGED_INITIAL_PROVIDER_STATUS["live"],
+        warnings=[],
+        safe_error=_staged_safe_error(
+            code="ARTIFACT_MISSING",
+            message=message,
+            user_action="none",
+            retryable=False,
+            stage="input",
+        ),
+    )
+
+
+def _run_staged_review_background(
+    review_id: str,
+    payload_path: Path,
+    *,
+    mode: StagedReviewMode,
+) -> None:
+    """Run the diagnosis adapter and keep run-local staged state synchronized."""
+
+    run_dir = safe_review_run_dir(review_id)
+    try:
+        state = _read_staged_state(run_dir)
+    except Exception:
+        state = _initial_staged_state(review_id, mode=mode)
+
+    try:
+        _set_stage_status(state, "input", "completed", artifact_refs=["payload.json"])
+        _set_stage_status(state, "data_load", "running")
+        _write_staged_state(run_dir, state)
+
+        if mode == "demo_qa":
+            code, result_path = _materialize_demo_qa_review(review_id, payload_path, run_dir)
+            state["provider_status"] = STAGED_INITIAL_PROVIDER_STATUS["demo_qa"].model_dump(
+                mode="json"
+            )
+        else:
+            code, result_path = run_from_payload(
+                payload_path,
+                mode=MODE_DIAGNOSIS_PLUS_PROBLEM,
+                timeout_seconds=DEFAULT_TIMEOUT_SECONDS,
+                review_id=review_id,
+                run_dir=run_dir,
+            )
+        review_result = _read_json_file(result_path)
+        if code != 0 or review_result.get("status") != "completed":
+            error_code, message, user_action, retryable, failed_stage = _classify_staged_failure(
+                review_result,
+                code,
+            )
+            artifact_failed_stage, missing_refs, warnings = _sync_diagnosis_stage_artifacts(
+                state,
+                run_dir,
+                mark_missing_as_failed=False,
+            )
+            if error_code == "PYTHON_STAGE_FAILED" and artifact_failed_stage is not None:
+                failed_stage = artifact_failed_stage
+            elif artifact_failed_stage is not None and failed_stage == "data_load":
+                failed_stage = artifact_failed_stage
+            _set_stage_status(state, failed_stage, "failed")
+            state["status"] = "failed"
+            state["safe_error"] = _staged_safe_error(
+                code=error_code,
+                message=message,
+                user_action=user_action,
+                retryable=retryable,
+                stage=failed_stage,
+            ).model_dump(mode="json")
+            if missing_refs:
+                warnings.append(f"Missing expected staged artifact(s): {', '.join(missing_refs)}.")
+            state["warnings"] = warnings
+            _write_staged_state(run_dir, state)
+            return
+
+        missing_stage, missing_refs, warnings = _sync_diagnosis_stage_artifacts(
+            state,
+            run_dir,
+            mark_missing_as_failed=True,
+        )
+        if missing_stage is not None:
+            state["status"] = "failed"
+            state["safe_error"] = _staged_safe_error(
+                code="ARTIFACT_MISSING",
+                message=(
+                    "Portfolio diagnosis completed but a required staged artifact "
+                    "was not found."
+                ),
+                user_action="retry",
+                retryable=True,
+                stage=missing_stage,
+            ).model_dump(mode="json")
+            warnings.append(f"Missing expected staged artifact(s): {', '.join(missing_refs)}.")
+            state["warnings"] = warnings
+            _write_staged_state(run_dir, state)
+            return
+
+        state["status"] = "partial"
+        state["current_stage"] = "candidate"
+        state["warnings"] = warnings
+        state["safe_error"] = None
+        _write_staged_state(run_dir, state)
+    except Exception as exc:
+        _set_stage_status(state, "data_load", "failed")
+        state["status"] = "failed"
+        state["safe_error"] = _staged_safe_error(
+            code="PYTHON_STAGE_FAILED",
+            message="Portfolio diagnosis failed during staged execution.",
+            user_action="retry",
+            retryable=True,
+            stage="data_load",
+        ).model_dump(mode="json")
+        state["warnings"] = [scrub_failure_text(str(exc))]
+        _write_staged_state(run_dir, state)
+
+
+def _start_staged_background_worker(
+    review_id: str,
+    payload_path: Path,
+    *,
+    mode: StagedReviewMode,
+) -> None:
+    worker = threading.Thread(
+        target=_run_staged_review_background,
+        kwargs={"review_id": review_id, "payload_path": payload_path, "mode": mode},
+        name=f"staged-review-{review_id}",
+        daemon=True,
+    )
+    worker.start()
 
 
 def _request_to_bridge_payload(request: CreateReviewRequest) -> dict[str, Any]:
@@ -666,6 +1758,44 @@ def _failed_create_envelope(
         ),
         evidence=ApiEvidence(source_artifacts=[], data_quality="unknown", confidence="unknown"),
     )
+
+
+def create_staged_review(request: CreateReviewRequest) -> tuple[int, StagedReviewStartedResponse]:
+    """Create a staged web review and return before diagnosis execution completes."""
+
+    mode: StagedReviewMode = "demo_qa" if request.options.sample_mode else "live"
+    review_id, run_dir = create_run_dir()
+    run_dir.mkdir(parents=True, exist_ok=True)
+    payload = _request_to_bridge_payload(request)
+    payload_path = run_dir / "payload.json"
+    write_json(payload_path, payload)
+    state = _initial_staged_state(review_id, mode=mode)
+    _write_staged_state(run_dir, state)
+    _start_staged_background_worker(review_id, payload_path, mode=mode)
+    return 200, StagedReviewStartedResponse(
+        api_version=API_VERSION,
+        schema_version=STAGED_REVIEW_STARTED_SCHEMA_VERSION,
+        review_id=review_id,
+        stage="diagnosis",
+        status="running",
+        current_stage="input",
+        mode=mode,
+        warnings=[],
+        safe_error=None,
+    )
+
+
+def get_staged_review_status(review_id: str) -> tuple[int, StagedReviewStatusResponse]:
+    """Return the public safe staged-review status for one run-local review."""
+
+    try:
+        run_dir = safe_review_run_dir(review_id)
+        state = _read_staged_state(run_dir)
+    except FileNotFoundError:
+        return 404, _staged_status_not_found(review_id, "Staged review state was not found.")
+    except (PayloadValidationError, ValueError):
+        return 404, _staged_status_not_found(review_id, "Staged review state was not found.")
+    return 200, _public_staged_status_from_state(state)
 
 
 def _failed_builder_envelope(
@@ -1090,6 +2220,13 @@ def generate_candidate_from_builder(
         )
     except (BuilderSelectionError, CandidateBridgeError, ValueError, FileNotFoundError) as exc:
         status_code, code, user_action, retryable = _error_code_for_stage_exception(exc, stage="candidate")
+        _try_update_staged_downstream_problem(
+            review_id,
+            "candidate",
+            blocked=True,
+            message=str(exc),
+            retryable=retryable,
+        )
         return status_code, _failed_candidate_envelope(
             review_id=review_id,
             builder_setup_id=request.builder_setup_id,
@@ -1100,6 +2237,13 @@ def generate_candidate_from_builder(
             retryable=retryable,
         )
     except Exception as exc:
+        _try_update_staged_downstream_problem(
+            review_id,
+            "candidate",
+            blocked=False,
+            message="Candidate generation failed.",
+            retryable=True,
+        )
         return 500, _failed_candidate_envelope(
             review_id=review_id,
             builder_setup_id=request.builder_setup_id,
@@ -1140,6 +2284,15 @@ def generate_candidate_from_builder(
             user_action="return_to_hypothesis",
             retryable=False,
         )
+        _try_update_staged_downstream_problem(
+            review_id,
+            "candidate",
+            blocked=True,
+            message=safe_error.message,
+            retryable=False,
+        )
+    else:
+        _try_update_staged_downstream_success(review_id, "candidate")
     return 200, CandidateResponse(
         api_version=API_VERSION,
         schema_version=CANDIDATE_SCHEMA_VERSION,
@@ -1419,16 +2572,26 @@ def run_current_vs_candidate(
     selected_card_id: str | None = None
     try:
         selected_card_id, _candidate_id = _candidate_lineage(review_id, request.candidate_id)
-        result = compare_selected_candidate(
-            review_id=review_id,
-            selected_card_id=selected_card_id,
-        )
+        if _is_demo_qa_staged_review(review_id):
+            result = _write_demo_qa_comparison(review_id, request.candidate_id)
+        else:
+            result = compare_selected_candidate(
+                review_id=review_id,
+                selected_card_id=selected_card_id,
+            )
     except (CandidateBridgeError, ComparisonBridgeError, FileNotFoundError, ValueError) as exc:
         status_code, code, user_action, retryable = _error_code_for_stage_exception(exc, stage="comparison")
         if code == "backend_failed":
             code = "comparison_unavailable"
             user_action = "return_to_hypothesis"
             retryable = False
+        _try_update_staged_downstream_problem(
+            review_id,
+            "comparison",
+            blocked=True,
+            message=str(exc),
+            retryable=retryable,
+        )
         return status_code, _failed_comparison_envelope(
             review_id=review_id,
             candidate_id=request.candidate_id,
@@ -1439,6 +2602,13 @@ def run_current_vs_candidate(
             retryable=retryable,
         )
     except Exception as exc:
+        _try_update_staged_downstream_problem(
+            review_id,
+            "comparison",
+            blocked=False,
+            message="Current-vs-candidate comparison failed.",
+            retryable=True,
+        )
         return 500, _failed_comparison_envelope(
             review_id=review_id,
             candidate_id=request.candidate_id,
@@ -1484,6 +2654,7 @@ def run_current_vs_candidate(
         ),
     ]
     warnings = [str(item) for item in _list(current_vs_candidate.get("warnings")) if str(item).strip()]
+    _try_update_staged_downstream_success(review_id, "comparison")
     return 200, ComparisonResponse(
         api_version=API_VERSION,
         schema_version=COMPARISON_SCHEMA_VERSION,
@@ -1595,16 +2766,26 @@ def generate_decision_verdict(
             review_id,
             request.comparison_id,
         )
-        result = write_selected_candidate_verdict(
-            review_id=review_id,
-            selected_card_id=selected_card_id,
-        )
+        if _is_demo_qa_staged_review(review_id):
+            result = _write_demo_qa_verdict(review_id, request.comparison_id)
+        else:
+            result = write_selected_candidate_verdict(
+                review_id=review_id,
+                selected_card_id=selected_card_id,
+            )
     except (CandidateBridgeError, ComparisonBridgeError, VerdictBridgeError, FileNotFoundError, ValueError) as exc:
         status_code, code, user_action, retryable = _error_code_for_stage_exception(exc, stage="verdict")
         if code == "backend_failed":
             code = "verdict_unavailable"
             user_action = "rerun_comparison"
             retryable = False
+        _try_update_staged_downstream_problem(
+            review_id,
+            "verdict",
+            blocked=True,
+            message=str(exc),
+            retryable=retryable,
+        )
         return status_code, _failed_verdict_envelope(
             review_id=review_id,
             comparison_id=comparison_id,
@@ -1616,6 +2797,13 @@ def generate_decision_verdict(
             retryable=retryable,
         )
     except Exception as exc:
+        _try_update_staged_downstream_problem(
+            review_id,
+            "verdict",
+            blocked=False,
+            message="Decision Verdict generation failed.",
+            retryable=True,
+        )
         return 500, _failed_verdict_envelope(
             review_id=review_id,
             comparison_id=comparison_id,
@@ -1647,6 +2835,7 @@ def generate_decision_verdict(
         ),
     ]
     warnings = [str(item) for item in _list(verdict.get("warnings")) if str(item).strip()]
+    _try_update_staged_downstream_success(review_id, "verdict")
     return 200, VerdictResponse(
         api_version=API_VERSION,
         schema_version=VERDICT_SCHEMA_VERSION,
@@ -1773,16 +2962,26 @@ def generate_report_grounding(
             review_id,
             request.verdict_id,
         )
-        result = write_selected_report_context(
-            review_id=review_id,
-            selected_card_id=selected_card_id,
-        )
+        if _is_demo_qa_staged_review(review_id):
+            result = _write_demo_qa_report_context(review_id, request.verdict_id)
+        else:
+            result = write_selected_report_context(
+                review_id=review_id,
+                selected_card_id=selected_card_id,
+            )
     except (CandidateBridgeError, ComparisonBridgeError, VerdictBridgeError, ReportBridgeError, FileNotFoundError, ValueError) as exc:
         status_code, code, user_action, retryable = _error_code_for_stage_exception(exc, stage="report")
         if code == "backend_failed":
             code = "report_unavailable"
             user_action = "rerun_verdict"
             retryable = False
+        _try_update_staged_downstream_problem(
+            review_id,
+            "report",
+            blocked=True,
+            message=str(exc),
+            retryable=retryable,
+        )
         return status_code, _failed_report_envelope(
             review_id=review_id,
             verdict_id=verdict_id,
@@ -1795,6 +2994,13 @@ def generate_report_grounding(
             retryable=retryable,
         )
     except Exception as exc:
+        _try_update_staged_downstream_problem(
+            review_id,
+            "report",
+            blocked=False,
+            message="Grounded report context generation failed.",
+            retryable=True,
+        )
         return 500, _failed_report_envelope(
             review_id=review_id,
             verdict_id=verdict_id,
@@ -1828,6 +3034,7 @@ def generate_report_grounding(
         ),
     ]
     warnings = [str(item) for item in _list(ai_context.get("warnings")) if str(item).strip()]
+    _try_update_staged_downstream_success(review_id, "report")
     return 200, ReportResponse(
         api_version=API_VERSION,
         schema_version=REPORT_SCHEMA_VERSION,

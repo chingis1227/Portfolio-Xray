@@ -11,6 +11,11 @@ import type {
   CreateReviewResponse,
   DiagnosisSummary as FastApiDiagnosisSummary,
   DownstreamEvidenceChainContext,
+  StagedProviderStatus,
+  StagedReviewStartedResponse,
+  StagedReviewStatusResponse,
+  StagedSafeError,
+  StagedStageState,
   VerdictResponse
 } from "@/lib/generated/api-types";
 import { evidenceQualityLabel, formatUnknownValue, normalizeDisplaySentence } from "@/lib/displayLabels";
@@ -18,7 +23,7 @@ import { instrumentByTicker } from "@/data/instrumentUniverse";
 import { buildStressLabModelFromOutputs } from "@/components/evidence/stressLabModel";
 import type { StressLabModel } from "@/components/evidence/stressLabTypes";
 import { useSupabaseAuth } from "@/lib/supabase/auth";
-import { persistCompactStageSummariesForReview, persistDiagnosisSummaryForReview, useSupabasePersistence, type SavedReviewRecord } from "@/lib/supabase/persistence";
+import { persistCompactStageSummariesForReview, persistDiagnosisSummaryForReview, persistStagedProgressForReview, useSupabasePersistence, type SavedReviewRecord } from "@/lib/supabase/persistence";
 
 export type ReviewHolding = {
   id: string;
@@ -44,7 +49,20 @@ export type ReviewResult = {
 };
 
 export type ReviewRunMode = "sample_demo" | "real_run";
-export type ReviewRunStatus = "draft" | "completed" | "failed";
+export type ReviewRunStatus = "draft" | "running" | "completed" | "failed";
+
+export type StagedReviewProgress = {
+  schemaVersion: "review_state_v1" | "review_started_v1";
+  reviewId: string;
+  status: "pending" | "running" | "completed" | "partial" | "blocked" | "failed";
+  currentStage: string;
+  mode: "demo_qa" | "live";
+  stages: Record<string, StagedStageState>;
+  providerStatus?: StagedProviderStatus;
+  safeError?: StagedSafeError | null;
+  updatedAt?: string | null;
+  warnings: string[];
+};
 
 export type ReviewErrorState = {
   message: string;
@@ -348,6 +366,7 @@ export type ActiveReviewState = {
   reviewId?: string;
   reviewResult?: ReviewResult;
   reviewSummary?: ReviewSummary;
+  stagedProgress?: StagedReviewProgress;
   builderSetup?: BuilderSetupSummary;
   candidateGeneration?: CandidateGenerationSummary;
   comparisonResult?: ComparisonResultSummary;
@@ -386,6 +405,8 @@ type ReviewStateContextValue = {
   saveClientFitProfile: (profile: ClientFitInput) => void;
   savePortfolioInput: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings">) => void;
   submitPortfolioInput: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings" | "reviewResult">) => void;
+  startStagedReview: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings"> & { started: StagedReviewStartedResponse }) => void;
+  recordStagedProgress: (progress: StagedReviewStatusResponse) => void;
   recordReviewError: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings"> & { message: string; details?: string }) => void;
   linkCloudPortfolio: (portfolio: ActiveReviewState["cloudPortfolio"]) => void;
   loadCloudPortfolioInput: (input: { portfolioId: string; name: string; investorCurrency: string; holdings: ReviewHolding[] }) => void;
@@ -733,11 +754,144 @@ function comparisonResultCanGenerateVerdict(value: ComparisonResultSummary | und
   return value.status.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_") === "completed";
 }
 
+const STAGED_STAGE_NAMES = [
+  "input",
+  "data_load",
+  "xray",
+  "stress",
+  "client_fit",
+  "problem_classification",
+  "launchpad_builder",
+  "candidate",
+  "comparison",
+  "verdict",
+  "report"
+] as const;
+
+function isStagedStageReady(progress: StagedReviewProgress | undefined, stage: string) {
+  const status = progress?.stages?.[stage]?.status;
+  return status === "completed" || status === "partial";
+}
+
+function cleanStageRow(value: unknown): StagedStageState {
+  const row = isRecord(value) ? value : {};
+  const status = typeof row.status === "string" && ["pending", "running", "completed", "partial", "blocked", "failed", "skipped"].includes(row.status)
+    ? row.status as StagedStageState["status"]
+    : "pending";
+  return {
+    status,
+    started_at: typeof row.started_at === "string" ? row.started_at : null,
+    completed_at: typeof row.completed_at === "string" ? row.completed_at : null,
+    artifact_refs: Array.isArray(row.artifact_refs)
+      ? row.artifact_refs.filter((item): item is string => typeof item === "string")
+      : []
+  };
+}
+
+function compactStagedProgressFromStarted(started: StagedReviewStartedResponse): StagedReviewProgress {
+  const stages = Object.fromEntries(STAGED_STAGE_NAMES.map((stage) => [
+    stage,
+    cleanStageRow({ status: stage === started.current_stage ? started.status : "pending" })
+  ])) as Record<string, StagedStageState>;
+
+  return {
+    schemaVersion: started.schema_version ?? "review_started_v1",
+    reviewId: started.review_id,
+    status: started.status,
+    currentStage: started.current_stage,
+    mode: started.mode,
+    stages,
+    safeError: started.safe_error ?? null,
+    warnings: started.warnings ?? [],
+    updatedAt: nowIso()
+  };
+}
+
+function compactStagedProgressFromStatus(status: StagedReviewStatusResponse): StagedReviewProgress {
+  const sourceStages = isRecord(status.stages) ? status.stages : {};
+  const stages = Object.fromEntries(STAGED_STAGE_NAMES.map((stage) => [
+    stage,
+    cleanStageRow(sourceStages[stage])
+  ])) as Record<string, StagedStageState>;
+
+  return {
+    schemaVersion: status.schema_version ?? "review_state_v1",
+    reviewId: status.review_id,
+    status: status.status,
+    currentStage: status.current_stage,
+    mode: status.mode,
+    stages,
+    providerStatus: status.provider_status,
+    safeError: status.safe_error ?? null,
+    updatedAt: status.updated_at ?? nowIso(),
+    warnings: status.warnings ?? []
+  };
+}
+
+function cleanStagedReviewProgress(value: unknown): StagedReviewProgress | undefined {
+  if (!isRecord(value)) return undefined;
+  const reviewId = typeof value.reviewId === "string" ? value.reviewId : "";
+  if (!reviewId) return undefined;
+  const status = typeof value.status === "string" && ["pending", "running", "completed", "partial", "blocked", "failed"].includes(value.status)
+    ? value.status as StagedReviewProgress["status"]
+    : "running";
+  const mode = value.mode === "demo_qa" ? "demo_qa" : "live";
+  const sourceStages = isRecord(value.stages) ? value.stages : {};
+  const stages = Object.fromEntries(STAGED_STAGE_NAMES.map((stage) => [
+    stage,
+    cleanStageRow(sourceStages[stage])
+  ])) as Record<string, StagedStageState>;
+  return {
+    schemaVersion: value.schemaVersion === "review_started_v1" ? "review_started_v1" : "review_state_v1",
+    reviewId,
+    status,
+    currentStage: typeof value.currentStage === "string" ? value.currentStage : "input",
+    mode,
+    stages,
+    providerStatus: isRecord(value.providerStatus) ? value.providerStatus as StagedProviderStatus : undefined,
+    safeError: isRecord(value.safeError) ? value.safeError as StagedSafeError : null,
+    updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : null,
+    warnings: stringArray(value.warnings)
+  };
+}
+
+function advanceStagedProgress(
+  progress: StagedReviewProgress | undefined,
+  completedStage: string,
+  nextStage: string,
+  status: StagedReviewProgress["status"] = "partial"
+): StagedReviewProgress | undefined {
+  if (!progress) return undefined;
+  return {
+    ...progress,
+    schemaVersion: "review_state_v1",
+    status,
+    currentStage: nextStage,
+    stages: {
+      ...progress.stages,
+      [completedStage]: cleanStageRow({
+        ...progress.stages[completedStage],
+        status: "completed",
+        completed_at: nowIso()
+      })
+    },
+    safeError: null,
+    updatedAt: nowIso()
+  };
+}
+
 function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
   const reviewResult = cleanReviewResult(value.reviewResult);
   const reviewSummary = cleanReviewSummary(value.reviewSummary);
   const clientFitProfile = cleanClientFitProfileInput(value.clientFitProfile);
-  const runStatus: ReviewRunStatus = value.runStatus === "failed" ? "failed" : isCompletedReviewResult(reviewResult) || reviewSummary?.status === "completed" ? "completed" : "draft";
+  const stagedProgress = cleanStagedReviewProgress(value.stagedProgress);
+  const runStatus: ReviewRunStatus = value.runStatus === "failed" || stagedProgress?.status === "failed"
+    ? "failed"
+    : isCompletedReviewResult(reviewResult) || reviewSummary?.status === "completed"
+      ? "completed"
+      : value.runStatus === "running" || stagedProgress?.status === "running"
+        ? "running"
+        : "draft";
   const builderSetup = compactBuilderSetup(value.builderSetup) ?? reviewSummary?.builderSetup;
   const candidateGenerationRaw = cleanCandidateGenerationSummary(value.candidateGeneration);
   const candidateMatchesBuilder = Boolean(
@@ -794,6 +948,7 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
     reviewId: typeof value.reviewId === "string" ? value.reviewId : reviewSummary?.reviewId ?? reviewResult?.review_id,
     reviewResult,
     reviewSummary,
+    stagedProgress,
     builderSetup,
     candidateGeneration,
     comparisonResult: comparisonMatchesCandidate ? comparisonResult : undefined,
@@ -802,9 +957,9 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
     runMode: value.runMode === "real_run" ? "real_run" : "sample_demo",
     runStatus,
     reviewError: value.reviewError?.message ? value.reviewError : undefined,
-    diagnosisReady: Boolean(value.diagnosisReady && hasCompletedReviewResult),
-    evidenceReady: Boolean((value.evidenceReady ?? value.diagnosisReady) && hasCompletedReviewResult),
-    improvementPathsReady: Boolean((value.improvementPathsReady ?? value.diagnosisReady) && hasCompletedReviewResult),
+    diagnosisReady: Boolean(value.diagnosisReady && (hasCompletedReviewResult || isStagedStageReady(stagedProgress, "xray"))),
+    evidenceReady: Boolean((value.evidenceReady ?? value.diagnosisReady) && (hasCompletedReviewResult || isStagedStageReady(stagedProgress, "stress"))),
+    improvementPathsReady: Boolean((value.improvementPathsReady ?? value.diagnosisReady) && (hasCompletedReviewResult || isStagedStageReady(stagedProgress, "launchpad_builder"))),
     candidateReady: Boolean(value.candidateReady && candidateGeneration),
     comparisonReady: Boolean(value.comparisonReady && comparisonMatchesCandidate && comparisonResultCanGenerateVerdict(comparisonResult)),
     verdictReady: Boolean(value.verdictReady && verdictMatchesCandidate),
@@ -867,6 +1022,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   const { enabled: cloudEnabled, status: authStatus, user } = useSupabaseAuth();
   const { setNotice: setCloudNotice } = useSupabasePersistence();
   const lastPersistedDiagnosisKeyRef = useRef<string | null>(null);
+  const lastPersistedStagedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     setActiveReview(readStoredReview());
@@ -958,6 +1114,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       reviewId,
       reviewResult,
       reviewSummary,
+      stagedProgress: current?.stagedProgress,
       builderSetup: reviewSummary?.builderSetup,
       candidateGeneration: undefined,
       comparisonResult: undefined,
@@ -979,6 +1136,81 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       verdictReady: false,
       updatedAt: nowIso()
     }));
+  }, []);
+
+  const startStagedReview = useCallback((input: Pick<ActiveReviewState, "investorCurrency" | "holdings"> & { started: StagedReviewStartedResponse }) => {
+    const progress = compactStagedProgressFromStarted(input.started);
+    setActiveReview((current) => ({
+      investorCurrency: input.investorCurrency || "USD",
+      holdings: input.holdings,
+      clientFitProfile: current?.clientFitProfile,
+      cloudPortfolio: current?.cloudPortfolio,
+      reviewId: progress.reviewId,
+      reviewResult: undefined,
+      reviewSummary: undefined,
+      stagedProgress: progress,
+      builderSetup: undefined,
+      candidateGeneration: undefined,
+      comparisonResult: undefined,
+      verdictResult: undefined,
+      reportResult: undefined,
+      runMode: "real_run",
+      runStatus: progress.status === "failed" ? "failed" : "running",
+      reviewError: progress.safeError ? {
+        message: progress.safeError.message,
+        occurredAt: nowIso()
+      } : undefined,
+      submitted: true,
+      diagnosisReady: isStagedStageReady(progress, "xray"),
+      evidenceReady: isStagedStageReady(progress, "stress"),
+      improvementPathsReady: isStagedStageReady(progress, "launchpad_builder"),
+      candidateReady: false,
+      comparisonReady: false,
+      verdictReady: false,
+      updatedAt: nowIso()
+    }));
+  }, []);
+
+  const recordStagedProgress = useCallback((status: StagedReviewStatusResponse) => {
+    const progress = compactStagedProgressFromStatus(status);
+    setActiveReview((current) => current ? {
+      ...current,
+      reviewId: progress.reviewId,
+      stagedProgress: progress,
+      runMode: "real_run",
+      runStatus: progress.status === "failed" ? "failed" : current.runStatus === "completed" ? "completed" : "running",
+      reviewError: progress.safeError ? {
+        message: progress.safeError.message,
+        occurredAt: nowIso()
+      } : current.reviewError,
+      submitted: true,
+      diagnosisReady: current.diagnosisReady || isStagedStageReady(progress, "xray"),
+      evidenceReady: current.evidenceReady || isStagedStageReady(progress, "stress"),
+      improvementPathsReady: current.improvementPathsReady || isStagedStageReady(progress, "launchpad_builder"),
+      candidateReady: current.candidateReady || isStagedStageReady(progress, "candidate"),
+      comparisonReady: current.comparisonReady || isStagedStageReady(progress, "comparison"),
+      verdictReady: current.verdictReady || isStagedStageReady(progress, "verdict"),
+      updatedAt: nowIso()
+    } : {
+      investorCurrency: "USD",
+      holdings: [],
+      reviewId: progress.reviewId,
+      stagedProgress: progress,
+      runMode: "real_run",
+      runStatus: progress.status === "failed" ? "failed" : "running",
+      reviewError: progress.safeError ? {
+        message: progress.safeError.message,
+        occurredAt: nowIso()
+      } : undefined,
+      submitted: true,
+      diagnosisReady: isStagedStageReady(progress, "xray"),
+      evidenceReady: isStagedStageReady(progress, "stress"),
+      improvementPathsReady: isStagedStageReady(progress, "launchpad_builder"),
+      candidateReady: isStagedStageReady(progress, "candidate"),
+      comparisonReady: isStagedStageReady(progress, "comparison"),
+      verdictReady: isStagedStageReady(progress, "verdict"),
+      updatedAt: nowIso()
+    });
   }, []);
 
   const recordReviewError = useCallback((input: Pick<ActiveReviewState, "investorCurrency" | "holdings"> & { message: string; details?: string }) => {
@@ -1062,6 +1294,42 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const reportStage = getRecord(savedReview.stages.report);
     const portfolio = savedReview.portfolioSnapshot;
     const compact = savedReview.compactSummary;
+    const stagedProgress = cleanStagedReviewProgress(compact.stagedProgress);
+    if (!isRecord(diagnosisStage.diagnosis) && stagedProgress) {
+      setActiveReview(cleanReviewState({
+        investorCurrency: portfolio.investorCurrency ?? (typeof compact.investorCurrency === "string" ? compact.investorCurrency : "USD"),
+        holdings: portfolio.holdings ?? [],
+        clientFitProfile: undefined,
+        cloudPortfolio: savedReview.portfolioId && typeof compact.activeCloudPortfolioName === "string" ? {
+          id: savedReview.portfolioId,
+          name: compact.activeCloudPortfolioName
+        } : undefined,
+        reviewId: savedReview.reviewId,
+        reviewResult: undefined,
+        reviewSummary: undefined,
+        stagedProgress,
+        builderSetup: undefined,
+        candidateGeneration: undefined,
+        comparisonResult: undefined,
+        verdictResult: undefined,
+        reportResult: undefined,
+        runMode: "real_run",
+        runStatus: stagedProgress.status === "failed" ? "failed" : stagedProgress.status === "completed" ? "completed" : "running",
+        reviewError: stagedProgress.safeError ? {
+          message: stagedProgress.safeError.message,
+          occurredAt: savedReview.updatedAt ?? nowIso()
+        } : undefined,
+        submitted: true,
+        diagnosisReady: isStagedStageReady(stagedProgress, "xray"),
+        evidenceReady: isStagedStageReady(stagedProgress, "stress"),
+        improvementPathsReady: isStagedStageReady(stagedProgress, "launchpad_builder"),
+        candidateReady: false,
+        comparisonReady: false,
+        verdictReady: false,
+        updatedAt: savedReview.updatedAt ?? nowIso()
+      }));
+      return;
+    }
     const diagnosis = getRecord(diagnosisStage.diagnosis);
     const summaryGeneratedAt = typeof compact.generatedAt === "string" ? compact.generatedAt : savedReview.completedAt ?? savedReview.updatedAt ?? nowIso();
     const reviewSummary: ReviewSummary = {
@@ -1128,6 +1396,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       reviewId: savedReview.reviewId,
       reviewResult: undefined,
       reviewSummary,
+      stagedProgress,
       builderSetup: reviewSummary.builderSetup,
       candidateGeneration,
       comparisonResult,
@@ -1233,6 +1502,9 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       ...current,
       candidateGeneration: summary,
       candidateReady: status === "completed",
+      stagedProgress: summary.canCompare && status === "completed"
+        ? advanceStagedProgress(current.stagedProgress, "candidate", "comparison")
+        : current.stagedProgress,
       comparisonResult: undefined,
       verdictResult: undefined,
       reportResult: undefined,
@@ -1311,6 +1583,9 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
         siteExplanation
       } : current.reviewSummary,
       comparisonResult: summary,
+      stagedProgress: status === "completed" && comparisonResultCanGenerateVerdict(summary)
+        ? advanceStagedProgress(current.stagedProgress, "comparison", "verdict")
+        : current.stagedProgress,
       verdictResult: undefined,
       reportResult: undefined,
       candidateReady: true,
@@ -1429,6 +1704,9 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
         siteExplanation
       } : current.reviewSummary,
       verdictResult: summary,
+      stagedProgress: status === "completed"
+        ? advanceStagedProgress(current.stagedProgress, "verdict", "report")
+        : current.stagedProgress,
       reportResult: undefined,
       candidateReady: true,
       comparisonReady: Boolean(current.comparisonReady),
@@ -1463,11 +1741,52 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     setActiveReview((current) => current ? {
       ...current,
       reportResult: summary,
+      stagedProgress: summary.status === "completed"
+        ? advanceStagedProgress(current.stagedProgress, "report", "report", "completed")
+        : current.stagedProgress,
       updatedAt: nowIso()
     } : current);
   }, [activeReview]);
 
   const clearActiveReview = useCallback(() => setActiveReview(null), []);
+
+  useEffect(() => {
+    if (!hydrated || !cloudEnabled || authStatus !== "signed_in" || !user?.id) return;
+    if (!activeReview?.reviewId || !activeReview.stagedProgress) return;
+
+    const progress = activeReview.stagedProgress;
+    const stageStatuses = Object.entries(progress.stages)
+      .map(([stage, row]) => `${stage}:${row.status ?? "pending"}`)
+      .join("|");
+    const persistenceKey = [
+      user.id,
+      activeReview.reviewId,
+      progress.status,
+      progress.currentStage,
+      progress.updatedAt ?? activeReview.updatedAt,
+      stageStatuses
+    ].join(":");
+    if (lastPersistedStagedKeyRef.current === persistenceKey) return;
+    lastPersistedStagedKeyRef.current = persistenceKey;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const result = await persistStagedProgressForReview(user.id, activeReview);
+        if (!cancelled && result.skipped.length) {
+          setCloudNotice("warning", `Skipped oversized staged cloud summary: ${result.skipped.map((item) => `${item.stage} (${item.summarySizeBytes} bytes)`).join(", ")}. Local progress is unchanged.`);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          lastPersistedStagedKeyRef.current = null;
+          const message = error instanceof Error ? error.message : "Unknown cloud persistence error.";
+          setCloudNotice("warning", `Staged progress stayed local, but cloud progress sync failed. ${message}`);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeReview, authStatus, cloudEnabled, hydrated, setCloudNotice, user?.id]);
 
   useEffect(() => {
     if (!hydrated || !cloudEnabled || authStatus !== "signed_in" || !user?.id) return;
@@ -1555,6 +1874,8 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     saveClientFitProfile,
     savePortfolioInput,
     submitPortfolioInput,
+    startStagedReview,
+    recordStagedProgress,
     recordReviewError,
     linkCloudPortfolio,
     loadCloudPortfolioInput,
@@ -1569,7 +1890,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     markVerdictReady,
     clearActiveReview,
     journeyFlags
-  }), [activeReview, clearActiveReview, hydrated, journeyFlags, linkCloudPortfolio, loadCloudPortfolioInput, markCandidateReady, markComparisonReady, markVerdictReady, recordBuilderSetup, recordCandidateGeneration, recordComparisonResult, recordReportResult, recordReviewError, recordVerdictResult, saveClientFitProfile, savePortfolioInput, submitPortfolioInput]);
+  }), [activeReview, clearActiveReview, hydrated, journeyFlags, linkCloudPortfolio, loadCloudPortfolioInput, markCandidateReady, markComparisonReady, markVerdictReady, recordBuilderSetup, recordCandidateGeneration, recordComparisonResult, recordReportResult, recordReviewError, recordStagedProgress, recordVerdictResult, saveClientFitProfile, savePortfolioInput, startStagedReview, submitPortfolioInput]);
 
   return <ReviewStateContext.Provider value={value}>{children}</ReviewStateContext.Provider>;
 }

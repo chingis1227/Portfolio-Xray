@@ -27,6 +27,8 @@ from src.api.models import (
     HealthResponse,
     ReportResponse,
     ReviewRecoveryResponse,
+    StagedReviewStartedResponse,
+    StagedReviewStatusResponse,
     VerdictIdRequest,
     VerdictResponse,
 )
@@ -35,6 +37,8 @@ from src.api.models import (
 HEALTH_SCHEMA_VERSION = "health_v1"
 CREATE_REVIEW_SCHEMA_VERSION = review_service.CREATE_REVIEW_SCHEMA_VERSION
 RECOVERY_SCHEMA_VERSION = review_service.RECOVERY_SCHEMA_VERSION
+STAGED_REVIEW_STARTED_SCHEMA_VERSION = review_service.STAGED_REVIEW_STARTED_SCHEMA_VERSION
+STAGED_REVIEW_STATE_SCHEMA_VERSION = review_service.STAGED_REVIEW_STATE_SCHEMA_VERSION
 BUILDER_SCHEMA_VERSION = "builder_setup_v1"
 CANDIDATE_SCHEMA_VERSION = "candidate_generation_v1"
 COMPARISON_SCHEMA_VERSION = "current_vs_candidate_v1"
@@ -104,6 +108,22 @@ def create_app() -> FastAPI:
         response.status_code = http_status
         return envelope
 
+    @app.post(
+        "/api/v1/reviews/staged",
+        tags=["reviews"],
+        summary="Start a staged portfolio-first diagnosis review",
+        operation_id="startStagedReview",
+        response_model=StagedReviewStartedResponse,
+    )
+    def start_staged_review(
+        request: CreateReviewRequest, response: Response
+    ) -> StagedReviewStartedResponse:
+        """Create a run-local review state and start background diagnosis execution."""
+
+        http_status, envelope = review_service.create_staged_review(request)
+        response.status_code = http_status
+        return envelope
+
     @app.get(
         "/api/v1/reviews/{review_id}",
         tags=["reviews"],
@@ -115,6 +135,22 @@ def create_app() -> FastAPI:
         """Recover run-local diagnosis/evidence/hypothesis state through FastAPI."""
 
         http_status, envelope = review_service.recover_review_diagnosis(review_id)
+        response.status_code = http_status
+        return envelope
+
+    @app.get(
+        "/api/v1/reviews/{review_id}/status",
+        tags=["reviews"],
+        summary="Read staged review progress state",
+        operation_id="getStagedReviewStatus",
+        response_model=StagedReviewStatusResponse,
+    )
+    def staged_review_status(
+        review_id: str, response: Response
+    ) -> StagedReviewStatusResponse:
+        """Return the public safe view of run-local review_state.json."""
+
+        http_status, envelope = review_service.get_staged_review_status(review_id)
         response.status_code = http_status
         return envelope
 

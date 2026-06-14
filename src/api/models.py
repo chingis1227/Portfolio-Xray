@@ -17,9 +17,34 @@ API_VERSION = "v1"
 
 ApiStage = Literal["health", "diagnosis", "recovery", "builder", "candidate", "comparison", "verdict", "report"]
 ApiStatus = Literal["ok", "partial", "blocked", "failed"]
+StagedReviewMode = Literal["demo_qa", "live"]
+StagedReviewStatus = Literal["pending", "running", "completed", "partial", "blocked", "failed"]
+StagedStageName = Literal[
+    "input",
+    "data_load",
+    "xray",
+    "stress",
+    "client_fit",
+    "problem_classification",
+    "launchpad_builder",
+    "candidate",
+    "comparison",
+    "verdict",
+    "report",
+]
+StagedStageStatus = Literal["pending", "running", "completed", "partial", "blocked", "failed", "skipped"]
 DataQuality = Literal["ok", "partial", "blocked", "unknown"]
 Confidence = Literal["high", "medium", "low", "unknown"]
 ClientFitTone = Literal["green", "amber", "red"]
+StagedSafeErrorCode = Literal[
+    "DATA_PROVIDER_FAILED",
+    "INVALID_TICKER",
+    "PYTHON_STAGE_FAILED",
+    "TIMEOUT",
+    "ARTIFACT_MISSING",
+    "LINEAGE_MISMATCH",
+]
+StagedUserAction = Literal["fix_input", "retry", "return_to_portfolio_input", "contact_operator", "none"]
 SafeErrorCode = Literal[
     "invalid_portfolio_input",
     "review_not_found",
@@ -103,6 +128,66 @@ class SafeError(StrictModel):
     user_action: UserAction
     retryable: bool
     details: list[str] = Field(default_factory=list)
+
+
+class StagedSafeError(StrictModel):
+    """Public staged-review error safe for polling UI display."""
+
+    code: StagedSafeErrorCode
+    message: str
+    user_action: StagedUserAction
+    retryable: bool
+    stage: StagedStageName | None = None
+
+
+class StagedProviderStatus(StrictModel):
+    """Compact provider/freshness disclosure for staged review status."""
+
+    source: str
+    freshness: str
+    message: str
+
+
+class StagedStageState(StrictModel):
+    """Run-local state for one staged review step."""
+
+    status: StagedStageStatus = "pending"
+    started_at: str | None = None
+    completed_at: str | None = None
+    artifact_refs: list[str] = Field(default_factory=list)
+
+
+class StagedReviewStartedResponse(StrictModel):
+    """Immediate response from starting a staged web review."""
+
+    api_version: Literal["v1"] = API_VERSION
+    schema_version: Literal["review_started_v1"] = "review_started_v1"
+    review_id: str
+    stage: Literal["diagnosis"] = "diagnosis"
+    status: StagedReviewStatus
+    current_stage: StagedStageName
+    mode: StagedReviewMode
+    warnings: list[str] = Field(default_factory=list)
+    safe_error: StagedSafeError | None = None
+
+
+class StagedReviewStatusResponse(StrictModel):
+    """Public safe view of run-local review_state_v1."""
+
+    api_version: Literal["v1"] = API_VERSION
+    schema_version: Literal["review_state_v1"] = "review_state_v1"
+    review_id: str
+    stage: Literal["diagnosis"] = "diagnosis"
+    status: StagedReviewStatus
+    current_stage: StagedStageName
+    mode: StagedReviewMode
+    created_at: str | None = None
+    updated_at: str | None = None
+    stages: dict[str, StagedStageState] = Field(default_factory=dict)
+    artifacts: dict[str, str] = Field(default_factory=dict)
+    provider_status: StagedProviderStatus
+    warnings: list[str] = Field(default_factory=list)
+    safe_error: StagedSafeError | None = None
 
 
 DataT = TypeVar("DataT", bound=BaseModel)

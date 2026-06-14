@@ -10,6 +10,11 @@ const candidateGenerateRoutePath = path.resolve(frontendRoot, "app", "api", "por
 const diagnoseRoutePath = path.resolve(frontendRoot, "app", "api", "portfolio", "diagnose", "route.ts");
 const reportGenerateRoutePath = path.resolve(frontendRoot, "app", "api", "portfolio", "report", "generate", "route.ts");
 const reviewRecoverRoutePath = path.resolve(frontendRoot, "app", "api", "portfolio", "review", "recover", "route.ts");
+const reviewStatusRoutePath = path.resolve(frontendRoot, "app", "api", "portfolio", "review", "status", "route.ts");
+const supabasePersistencePath = path.resolve(frontendRoot, "lib", "supabase", "persistence.tsx");
+const supabaseSchemaPath = path.resolve(frontendRoot, "..", "docs", "supabase", "supabase_free_schema.sql");
+const portfolioInputTablePath = path.resolve(frontendRoot, "components", "portfolio", "PortfolioInputTable.tsx");
+const reviewStatePath = path.resolve(frontendRoot, "lib", "reviewState.tsx");
 const journeyPath = path.resolve(frontendRoot, "lib", "journey.ts");
 const clientFitContextCardPath = path.resolve(frontendRoot, "components", "client-fit", "ClientFitContextCard.tsx");
 const hypothesisPagePath = path.resolve(frontendRoot, "app", "hypothesis", "page.tsx");
@@ -256,74 +261,68 @@ test("builder prepare route returns legacy-compatible setup after FastAPI succes
   });
 });
 
-test("diagnosis route maps instrument and cash rows into the FastAPI create-review contract", async () => {
-  const root = path.resolve(process.cwd(), "..");
-  const expectedPath = path.join(root, "runs", "frontend_review_cash", "review_result.json");
+test("diagnosis route maps instrument and cash rows into the staged FastAPI create-review contract", async () => {
   const calls = [];
-  const route = loadRoute({
-    routePath: diagnoseRoutePath,
-    async readFileImpl(filePath, encoding) {
-      assert.equal(filePath, expectedPath);
-      assert.equal(encoding, "utf8");
-      return JSON.stringify({
+  const route = loadRoute({ routePath: diagnoseRoutePath });
+  const originalPmriBaseUrl = process.env.PMRI_FASTAPI_BASE_URL;
+  const originalFastApiBaseUrl = process.env.FASTAPI_BASE_URL;
+  delete process.env.PMRI_FASTAPI_BASE_URL;
+  process.env.FASTAPI_BASE_URL = "http://fastapi.test:53265/";
+
+  try {
+    await withMockFetch(async (url, options) => {
+      calls.push({ url, options });
+      return Response.json({
+        api_version: "v1",
+        schema_version: "review_started_v1",
         review_id: "frontend_review_cash",
-        status: "completed",
-        portfolio_input: { investor_currency: "USD", holdings: [] },
-        outputs: {}
+        stage: "diagnosis",
+        status: "running",
+        current_stage: "input",
+        mode: "live",
+        warnings: [],
+        safe_error: null
       });
-    }
-  });
-
-  await withMockFetch(async (url, options) => {
-    calls.push({ url, options });
-    return Response.json(fastApiEnvelope({ review_id: "frontend_review_cash", lineage: { review_id: "frontend_review_cash" } }));
-  }, async () => {
-    const result = await responseJson(await route.POST(makeJsonRequest({
-      investor_currency: "USD",
-      holdings: [
-        { type: "instrument", ticker: "SPY", weight: 80 },
-        { type: "cash", currency: "USD", weight: 20 }
-      ]
-    }, "http://localhost/api/portfolio/diagnose")));
-
-    assert.equal(result.status, 200);
-    assert.equal(result.body.review_id, "frontend_review_cash");
-    assert.equal(calls.length, 1);
-    assert.match(calls[0].url, /\/api\/v1\/reviews$/);
-    assert.deepEqual(JSON.parse(calls[0].options.body), {
-      portfolio: {
+    }, async () => {
+      const result = await responseJson(await route.POST(makeJsonRequest({
         investor_currency: "USD",
         holdings: [
-          { type: "instrument", ticker: "SPY", weight_pct: 80 },
-          { type: "cash", currency: "USD", weight_pct: 20 }
+          { type: "instrument", ticker: "SPY", weight: 80 },
+          { type: "cash", currency: "USD", weight: 20 }
         ]
-      },
-      options: {
-        mode: "diagnosis_only",
-        output_profile: "site_api",
-        sample_mode: false
-      }
+      }, "http://localhost/api/portfolio/diagnose")));
+
+      assert.equal(result.status, 200);
+      assert.equal(result.body.review_id, "frontend_review_cash");
+      assert.equal(result.body.schema_version, "review_started_v1");
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].url, "http://fastapi.test:53265/api/v1/reviews/staged");
+      assert.deepEqual(JSON.parse(calls[0].options.body), {
+        portfolio: {
+          investor_currency: "USD",
+          holdings: [
+            { type: "instrument", ticker: "SPY", weight_pct: 80 },
+            { type: "cash", currency: "USD", weight_pct: 20 }
+          ]
+        },
+        options: {
+          mode: "diagnosis_only",
+          output_profile: "site_api",
+          sample_mode: false
+        }
+      });
     });
-  });
+  } finally {
+    if (originalPmriBaseUrl === undefined) delete process.env.PMRI_FASTAPI_BASE_URL;
+    else process.env.PMRI_FASTAPI_BASE_URL = originalPmriBaseUrl;
+    if (originalFastApiBaseUrl === undefined) delete process.env.FASTAPI_BASE_URL;
+    else process.env.FASTAPI_BASE_URL = originalFastApiBaseUrl;
+  }
 });
 
-test("diagnosis route forwards completed Client Fit profile into the FastAPI create-review contract", async () => {
-  const root = path.resolve(process.cwd(), "..");
-  const expectedPath = path.join(root, "runs", "frontend_review_client_fit", "review_result.json");
+test("diagnosis route forwards completed Client Fit profile into the staged FastAPI create-review contract", async () => {
   const calls = [];
-  const route = loadRoute({
-    routePath: diagnoseRoutePath,
-    async readFileImpl(filePath, encoding) {
-      assert.equal(filePath, expectedPath);
-      assert.equal(encoding, "utf8");
-      return JSON.stringify({
-        review_id: "frontend_review_client_fit",
-        status: "completed",
-        portfolio_input: { investor_currency: "USD", holdings: [] },
-        outputs: {}
-      });
-    }
-  });
+  const route = loadRoute({ routePath: diagnoseRoutePath });
 
   const clientFit = {
     preset_id: "balanced",
@@ -338,7 +337,17 @@ test("diagnosis route forwards completed Client Fit profile into the FastAPI cre
 
   await withMockFetch(async (url, options) => {
     calls.push({ url, options });
-    return Response.json(fastApiEnvelope({ review_id: "frontend_review_client_fit", lineage: { review_id: "frontend_review_client_fit" } }));
+    return Response.json({
+      api_version: "v1",
+      schema_version: "review_started_v1",
+      review_id: "frontend_review_client_fit",
+      stage: "diagnosis",
+      status: "running",
+      current_stage: "input",
+      mode: "live",
+      warnings: [],
+      safe_error: null
+    });
   }, async () => {
     const result = await responseJson(await route.POST(makeJsonRequest({
       investor_currency: "USD",
@@ -353,7 +362,89 @@ test("diagnosis route forwards completed Client Fit profile into the FastAPI cre
     const body = JSON.parse(calls[0].options.body);
     assert.deepEqual(body.client_fit, clientFit);
     assert.equal(body.options.mode, "diagnosis_only");
+    assert.match(calls[0].url, /\/api\/v1\/reviews\/staged$/);
   });
+});
+
+test("staged review status route proxies to the FastAPI status endpoint", async () => {
+  const calls = [];
+  const route = loadRoute({ routePath: reviewStatusRoutePath });
+
+  await withMockFetch(async (url, options) => {
+    calls.push({ url, options });
+    return Response.json({
+      api_version: "v1",
+      schema_version: "review_state_v1",
+      review_id: "frontend_review_status",
+      stage: "diagnosis",
+      status: "partial",
+      current_stage: "candidate",
+      mode: "live",
+      stages: {
+        input: { status: "completed", started_at: "2026-06-14T00:00:00Z", completed_at: "2026-06-14T00:00:01Z", artifact_refs: ["payload.json"] },
+        xray: { status: "completed", started_at: null, completed_at: null, artifact_refs: ["analysis_subject/portfolio_xray.json"] }
+      },
+      artifacts: { portfolio_xray: "analysis_subject/portfolio_xray.json" },
+      provider_status: { source: "live_provider", freshness: "current", message: "Live mode uses the normal market-data provider path." },
+      warnings: [],
+      safe_error: null,
+      created_at: "2026-06-14T00:00:00Z",
+      updated_at: "2026-06-14T00:00:02Z"
+    });
+  }, async () => {
+    const result = await responseJson(await route.GET(new Request("http://localhost/api/portfolio/review/status?reviewId=frontend_review_status")));
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.schema_version, "review_state_v1");
+    assert.equal(result.body.review_id, "frontend_review_status");
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].url, /\/api\/v1\/reviews\/frontend_review_status\/status$/);
+    assert.equal(calls[0].options.method, "GET");
+  });
+});
+
+test("Portfolio Input resumes in-flight staged reviews after browser refresh", () => {
+  const source = fs.readFileSync(portfolioInputTablePath, "utf8");
+
+  assert.match(source, /stagedResumeRef/);
+  assert.match(source, /pollStagedDiagnosis\(reviewId\)/);
+  assert.match(source, /recoverCompletedDiagnosis\(\s*reviewId,/);
+  assert.match(source, /safe to refresh/);
+  assert.match(source, /Data freshness:/);
+  assert.match(source, /stagedStatusLabel/);
+  assert.doesNotMatch(source, /Staged diagnosis running/);
+  assert.doesNotMatch(source, /Demo \/ QA/);
+});
+
+test("active review state advances downstream staged progress after explicit stage actions", () => {
+  const source = fs.readFileSync(reviewStatePath, "utf8");
+
+  assert.match(source, /function advanceStagedProgress/);
+  assert.match(source, /advanceStagedProgress\(current\.stagedProgress, "candidate", "comparison"\)/);
+  assert.match(source, /advanceStagedProgress\(current\.stagedProgress, "comparison", "verdict"\)/);
+  assert.match(source, /advanceStagedProgress\(current\.stagedProgress, "verdict", "report"\)/);
+  assert.match(source, /advanceStagedProgress\(current\.stagedProgress, "report", "report", "completed"\)/);
+  assert.match(source, /candidateReady: current\.candidateReady \|\| isStagedStageReady\(progress, "candidate"\)/);
+  assert.match(source, /comparisonReady: current\.comparisonReady \|\| isStagedStageReady\(progress, "comparison"\)/);
+  assert.match(source, /verdictReady: current\.verdictReady \|\| isStagedStageReady\(progress, "verdict"\)/);
+});
+
+test("Supabase staged persistence keeps canonical stage names and strips raw artifact references", () => {
+  const persistenceSource = fs.readFileSync(supabasePersistencePath, "utf8");
+  const schemaSource = fs.readFileSync(supabaseSchemaPath, "utf8");
+
+  for (const stage of ["input", "data_load", "xray", "stress", "client_fit", "problem_classification", "launchpad_builder"]) {
+    assert.match(schemaSource, new RegExp(`'${stage}'`), `schema should allow staged progress row ${stage}`);
+    assert.match(persistenceSource, new RegExp(`"${stage}"`), `frontend persistence should know staged progress row ${stage}`);
+  }
+
+  assert.match(persistenceSource, /function compactCloudValue/);
+  assert.match(persistenceSource, /isCloudForbiddenKey/);
+  assert.match(persistenceSource, /isUnsafeCloudString/);
+  assert.match(persistenceSource, /persistStagedProgressForReview/);
+  assert.match(persistenceSource, /compactCloudRecord\(summary\)/);
+  assert.doesNotMatch(persistenceSource, /artifactRefs:\s*reviewSummary\.rawOutputKeys/);
+  assert.doesNotMatch(persistenceSource, /summary:\s*activeReview\.verdictResult/);
 });
 
 test("journey route order requires Client Fit before Hypothesis", () => {

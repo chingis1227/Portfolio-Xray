@@ -106,7 +106,7 @@ npm.cmd install
 
 ## Start the interactive demo
 
-Terminal 1, from `frontend/`:
+From `frontend/`:
 
 ```powershell
 npm.cmd run dev
@@ -118,8 +118,12 @@ Open:
 http://localhost:3000
 ```
 
-Keep the terminal open during the demo. The Next.js API routes call the Python bridge from
-the repository root.
+`dev` starts both FastAPI and Next.js, sets the frontend proxy to the active FastAPI URL, and
+prints the exact local site URL plus log paths. Use it for manual demos instead of starting
+`next dev` alone, otherwise the frontend may point at a stale or missing backend. This manual path
+preserves the normal live/offline provider diagnosis path; deterministic frozen fixture mode is only
+for explicit QA automation. Use `npm.cmd run dev:next` only for static frontend work that
+intentionally does not call FastAPI routes.
 
 ## Manual click-through guide
 

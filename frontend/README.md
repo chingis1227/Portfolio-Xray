@@ -12,7 +12,10 @@ product or trading system.
   comparison, verdict, grounded report commentary, and read-only review recovery. The normal
   frontend path keeps the existing Next.js route URLs for compatibility, but those handlers proxy
   to the local FastAPI backend instead of launching Python scripts directly:
-  - `POST /api/portfolio/diagnose` -> `POST /api/v1/reviews`
+  - `POST /api/portfolio/diagnose` -> `POST /api/v1/reviews/staged`, returning a `review_id`
+    immediately instead of waiting for the full diagnosis run.
+  - `GET /api/portfolio/review/status?reviewId=...` -> `GET /api/v1/reviews/{review_id}/status`
+    for staged progress polling.
   - `GET|POST /api/portfolio/review/recover` -> `GET /api/v1/reviews/{review_id}`
   - `POST /api/portfolio/builder/prepare` -> `POST /api/v1/reviews/{review_id}/builder`
   - `POST /api/portfolio/candidate/generate` -> `POST /api/v1/reviews/{review_id}/candidate`
@@ -61,6 +64,10 @@ product or trading system.
   Session 10 updates the frontend adapters so diagnosis, candidate, comparison, verdict, and report
   summaries prefer these FastAPI public display fields, including downstream
   `evidence_chain_context`, before falling back to same-run raw artifacts.
+  Staged pipeline Session 5 migrates the normal diagnosis route to
+  `POST /api/v1/reviews/staged` plus status polling through
+  `GET /api/v1/reviews/{review_id}/status`. After the diagnosis-stage chain is ready, the frontend
+  uses the existing review recovery path to build compact screen summaries from same-run artifacts.
 - `../docs/contracts/FASTAPI_SCREEN_MAPPING.json` is the governance map between FastAPI operations,
   generated response `data` fields, and approved Core MVP screen routes. Backend schema changes must
   regenerate `lib/generated/api-types.ts` and update this mapping before fields are surfaced in UI.
@@ -94,6 +101,12 @@ product or trading system.
   continue to Verdict so the system can show an evidence-insufficient decision-support outcome
   instead of silently blocking the journey.
 - The UI stores compact display state in `pmri.activeReview.v2`: the Client Fit profile, `reviewId`, portfolio input, diagnosis/stress/Client Fit evidence, launchpad/builder summaries, selected card/candidate, and stage summaries. Core screens consume these display models, not raw backend artifact trees. Candidate generation is enabled only when the active Builder setup matches the currently selected Launchpad card and says generation is allowed.
+- The staged migration adds compact `review_state_v1` progress fields to the active review state:
+  overall run status, current stage, per-stage statuses, provider status, mode (`demo_qa` or `live`),
+  and safe stage errors. Portfolio Input saves `reviewId` immediately, shows progress while polling,
+  and only hydrates screen summaries through run-local recovery after the X-Ray, Stress, Client Fit,
+  Problem Classification, and Launchpad/Builder evidence chain is available. The canonical contract
+  is `../docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`.
 - When Supabase is enabled and the user is signed in, the active review may also keep a compact
   link to the selected cloud portfolio so diagnosis-history rows can point back to the saved
   portfolio input without uploading generated evidence.
@@ -108,6 +121,9 @@ product or trading system.
 ## Run directory strategy
 
 - Every real frontend diagnosis creates `runs/frontend_review_<timestamp>_<id>/`.
+- Backend staged diagnosis writes `runs/frontend_review_<timestamp>_<id>/review_state.json` as the
+  active progress source for the future polling path. It records stage state only; it does not
+  replace the canonical calculation artifacts and must not be uploaded to Supabase as a raw artifact.
 - Later stages must use the same `reviewId`; lineage guards reject mismatched Builder, candidate,
   comparison, verdict, or report artifacts. Selecting another Launchpad card clears downstream
   candidate/comparison/verdict/report readiness until Builder setup is prepared for that card.
@@ -147,8 +163,10 @@ Current Supabase-backed behavior is kept as infrastructure and may be surfaced a
 
 - signed-in users can save, list, load, update, and delete compact portfolio inputs through the
   existing persistence layer when that UI is intentionally exposed;
-- successful local diagnosis automatically attempts a compact cloud upsert into `reviews` and a
-  compact `diagnosis` row in `review_stage_summaries`;
+- staged diagnosis progress automatically attempts compact cloud upserts into `reviews` and compact
+  canonical stage rows such as `input`, `xray`, `stress`, `client_fit`,
+  `problem_classification`, and `launchpad_builder` in `review_stage_summaries`; successful local
+  diagnosis still writes a compact `diagnosis` summary row when screen summaries are available;
 - later successful local stages can save compact `builder`, `candidate`, `comparison`, `verdict`,
   and `report` rows in `review_stage_summaries`; before each stage write the app measures the
   serialized JSON payload and skips the cloud write with a warning when it exceeds the 55 KB soft
@@ -161,16 +179,21 @@ Current Supabase-backed behavior is kept as infrastructure and may be surfaced a
 - Supabase remains an app-data layer only. The frontend does **not** upload `runs/`,
   `Main portfolio/`, `cache/`, PDFs, generated candidate folders, full `portfolio_xray.json`,
   full `stress_report.json`, price history, parquet, CSV exports, or raw generated artifact bundles.
+  Cloud payloads are sanitized before write to strip local paths, artifact references, raw generated
+  JSON filenames, and artifact path maps.
 
-```bash
-# terminal 1, from repository root
-.\.venv\Scripts\python.exe -m uvicorn src.api.app:app --host 127.0.0.1 --port 8000
-
-# terminal 2
+```powershell
 cd frontend
 npm install
-npm run dev
+npm.cmd run dev
 ```
+
+`dev` starts both FastAPI and Next.js, sets the Next.js proxy to the active FastAPI URL, waits
+for both servers to respond, and prints the local site link plus log file paths. This is the
+preferred manual localhost launcher because it prevents stale or mismatched FastAPI ports from
+surfacing as frontend `Method Not Allowed` errors while preserving the normal live/offline provider
+diagnosis path. Use `npm.cmd run dev:next` only for static frontend work that intentionally does not
+call FastAPI routes.
 
 Live vertical QA helper:
 
@@ -187,8 +210,9 @@ unavailable, treat the failure as a data-provider blocker and inspect the report
 frontend or product conclusions.
 
 Open `http://localhost:3000` to start at the landing page. Click `Enter Platform`, sign in with email when auth is available, complete the short onboarding, and the app will open Portfolio Input with Client Fit context already saved. For local preview while email sign-in is unavailable, open `http://localhost:3000/onboarding/name?dev_bypass=1`; this is a development shortcut, not the canonical product path.
-Override the FastAPI URL for the Next.js proxy with
-`PMRI_FASTAPI_BASE_URL` when using a non-default host or port.
+Override the FastAPI URL for the Next.js proxy with `PMRI_FASTAPI_BASE_URL` only when intentionally
+using a separately managed backend. `FASTAPI_BASE_URL` is also accepted as a compatibility alias for
+manual local launches.
 
 Optional checks:
 

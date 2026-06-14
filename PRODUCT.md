@@ -27,6 +27,12 @@ Input Portfolio
 
 This flow is the product truth agents should use when explaining the project. The current frontend MVP route surface covers Portfolio Input through Report / grounding, with Candidate Generation merged into Hypothesis and Monitoring / What Changed still deferred as a separate UI layer. Full hosted workspace behavior, polished export packaging, and advanced product modules remain future scope. Current implementation status is owned by `SPEC.md`, `OUTPUTS.md`, `docs/specs/*.md`, and code.
 
+Current web execution is staged: after `Run diagnosis`, the user receives a `review_id`
+immediately, sees progress, and receives partial results as X-Ray, Stress, Client Fit, Hypothesis,
+Candidate, Comparison, Verdict, and Report stages complete. The staged state contract is
+`docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`; runtime behavior remains governed by `SPEC.md`,
+`OUTPUTS.md`, and code.
+
 Advanced/later capabilities must not be described as the current Core MVP product flow even if code or generated artifacts exist: Portfolio Health Score, Robustness Scorecard, Macro Dashboard / Macro Overlay, full multi-candidate ranking/arena, Assumption Sensitivity, Pareto / Dominance, Regret Analysis, Model Risk Diagnostics, full Action Plan / Rebalancing Advisor, full Decision Journal, advanced monitoring, Crisis Replay UI, What Happens If UI, Client Fit suitability approval, Asset X-Ray, Max Sharpe, tax-aware optimization, turnover-aware optimizer objective, tactical tilt, full custom constraints UI, multi-client workspace, and polished PDF report product. Existing implementations of these belong to advanced/backend/legacy/generated support unless explicitly promoted by a canonical spec.
 
 ## 2. Product Principles
@@ -44,6 +50,8 @@ Advanced/later capabilities must not be described as the current Core MVP produc
 - **No-trade is valid.** The correct verdict may be to leave the portfolio unchanged.
 - **AI explains, code calculates.** AI Commentary explains deterministic outputs and JSON evidence;
   it does not invent metrics, statuses, stress results, or verdict evidence.
+- **Progress is evidence-backed.** Staged progress must reflect real backend stage state, not
+  cosmetic loading copy.
 - **Core view before appendix.** The main UX should show the decision-relevant evidence first and
   move advanced metrics to drill-down or appendix views.
 - **Current vs target separation.** Product concepts do not override current implementation

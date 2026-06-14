@@ -56,7 +56,9 @@ The actual scripts in `frontend/package.json` are:
 | `test:api` | `npm.cmd run test:api` | Node API-route tests: `node --test tests/api-route-tests.cjs`. |
 | `test:smoke` | `npm.cmd run test:smoke` | Frontend smoke tests: `node --test tests/frontend-smoke-tests.cjs`. |
 | `qa:vertical` | `npm.cmd run qa:vertical` | Live FastAPI + Next.js + Playwright vertical QA helper. It starts fresh local FastAPI/Next servers on free ports, clears browser storage, runs multiple portfolio scenarios through the frontend compatibility API routes, probes stale selected-card rejection, captures screenshots or DOM fallbacks, and writes `output/playwright/**/qa-report.json`. |
-| `dev` | `npm.cmd run dev` | Manual/browser QA local server: `next dev`. |
+| `dev` | `npm.cmd run dev` | Preferred manual localhost launcher. It starts FastAPI and Next.js together, passes `PMRI_FASTAPI_BASE_URL` to Next.js, preserves the normal live/offline provider diagnosis path, verifies both servers, and prints the active local URLs and logs. |
+| `dev:local` | `npm.cmd run dev:local` | Alias for `dev`; kept for explicit local-launch documentation. |
+| `dev:next` | `npm.cmd run dev:next` | Raw Next.js server only. Use only for static frontend work that intentionally does not call FastAPI routes. |
 | `start` | `npm.cmd run start` | Serve a built app: `next start`. |
 | `lint` | `npm.cmd run lint` | Optional lint script currently declared as `next lint`; run when lint or style rules are touched, or when requested. |
 
@@ -75,7 +77,8 @@ On Windows, do **not** run `next build`, `next dev`, typecheck generation, smoke
 
 Required behavior:
 
-1. Use one active local frontend target for visual QA.
+1. Use one active local frontend target for visual QA. Prefer `npm.cmd run dev` for manual
+   localhost review so the frontend cannot silently proxy to a stale FastAPI port.
 2. Do not run `npm.cmd run build` while `npm.cmd run dev` or a smoke test is writing/serving the same `.next` tree.
 3. If Next reports missing `.next` chunks, React Client Manifest errors, or compile failures, fix or restart the server before drawing product/UI conclusions.
 4. If a stale dev server may be open, use a fresh localhost port and record it in the QA report.

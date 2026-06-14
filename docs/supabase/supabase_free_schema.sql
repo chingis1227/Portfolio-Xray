@@ -94,7 +94,21 @@ create table if not exists public.review_stage_summaries (
   updated_at timestamptz not null default timezone('utc', now()),
   constraint review_stage_summaries_review_id_not_blank check (length(btrim(review_id)) > 0),
   constraint review_stage_summaries_stage_check check (
-    stage in ('diagnosis', 'builder', 'candidate', 'comparison', 'verdict', 'report')
+    stage in (
+      'diagnosis',
+      'builder',
+      'input',
+      'data_load',
+      'xray',
+      'stress',
+      'client_fit',
+      'problem_classification',
+      'launchpad_builder',
+      'candidate',
+      'comparison',
+      'verdict',
+      'report'
+    )
   ),
   constraint review_stage_summaries_summary_size_nonnegative check (
     summary_size_bytes is null or summary_size_bytes >= 0
@@ -131,6 +145,28 @@ create index if not exists review_stage_summaries_user_id_stage_idx
 create index if not exists review_stage_summaries_review_id_idx
   on public.review_stage_summaries(review_id);
 create index if not exists verdicts_user_id_updated_at_idx on public.verdicts(user_id, updated_at desc);
+
+alter table public.review_stage_summaries
+  drop constraint if exists review_stage_summaries_stage_check;
+
+alter table public.review_stage_summaries
+  add constraint review_stage_summaries_stage_check check (
+    stage in (
+      'diagnosis',
+      'builder',
+      'input',
+      'data_load',
+      'xray',
+      'stress',
+      'client_fit',
+      'problem_classification',
+      'launchpad_builder',
+      'candidate',
+      'comparison',
+      'verdict',
+      'report'
+    )
+  );
 
 do $$
 begin
@@ -615,6 +651,6 @@ comment on table public.portfolio_holdings is
 comment on table public.reviews is
   'Compact review records keyed by user_id and review_id. Does not store generated evidence artifacts.';
 comment on table public.review_stage_summaries is
-  'Compact per-stage summaries for diagnosis, builder, candidate, comparison, verdict, and report. Full outputs are not stored here.';
+  'Compact per-stage summaries for staged progress, diagnosis, builder, candidate, comparison, verdict, and report. Full outputs are not stored here.';
 comment on table public.verdicts is
   'Compact verdict summary for a review. Deleted automatically when the parent review is deleted.';

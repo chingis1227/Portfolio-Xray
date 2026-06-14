@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import type { Holding } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { instrumentByTicker, instrumentUniverse, type Instrument } from "@/data/instrumentUniverse";
-import { useReviewState, type ReviewHolding, type ReviewResult } from "@/lib/reviewState";
-import type { ClientFitInput } from "@/lib/generated/api-types";
+import { useReviewState, type ReviewHolding, type ReviewResult, type StagedReviewProgress } from "@/lib/reviewState";
+import type { ClientFitInput, StagedReviewStartedResponse, StagedReviewStatusResponse } from "@/lib/generated/api-types";
 import { useSupabaseAuth } from "@/lib/supabase/auth";
 import { useSupabasePersistence } from "@/lib/supabase/persistence";
 
@@ -29,6 +29,17 @@ type ValidationSummary = {
 
 const currencies = ["USD", "EUR"];
 const WEIGHT_TOLERANCE = 0.01;
+const STAGED_POLL_INTERVAL_MS = 1200;
+const STAGED_POLL_TIMEOUT_MS = 10 * 60 * 1000;
+const STAGED_PROGRESS_STAGES = [
+  { id: "input", label: "Portfolio input" },
+  { id: "data_load", label: "Data check" },
+  { id: "xray", label: "X-Ray" },
+  { id: "stress", label: "Stress Lab" },
+  { id: "client_fit", label: "Client Fit" },
+  { id: "problem_classification", label: "Problem diagnosis" },
+  { id: "launchpad_builder", label: "Candidate Launchpad" }
+] as const;
 const DEFAULT_CLIENT_FIT_PROFILE: ClientFitInput = {
   preset_id: "balanced",
   source: "questionnaire",
@@ -114,6 +125,71 @@ function formatWeight(value: number) {
 
 function formatTotalWeight(value: number) {
   return Math.abs(value - 100) <= WEIGHT_TOLERANCE ? "100" : formatWeight(value);
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function stageReady(progress: Pick<StagedReviewStatusResponse, "stages"> | StagedReviewProgress | null | undefined, stage: string) {
+  const status = progress?.stages?.[stage]?.status;
+  return status === "completed" || status === "partial";
+}
+
+function diagnosisChainReady(progress: Pick<StagedReviewStatusResponse, "stages"> | StagedReviewProgress) {
+  return stageReady(progress, "xray")
+    && stageReady(progress, "stress")
+    && stageReady(progress, "problem_classification")
+    && stageReady(progress, "launchpad_builder");
+}
+
+function stagedProgressPct(progress: StagedReviewProgress | undefined) {
+  if (!progress) return 0;
+  const readyCount = STAGED_PROGRESS_STAGES.filter((stage) => stageReady(progress, stage.id)).length;
+  return Math.round((readyCount / STAGED_PROGRESS_STAGES.length) * 100);
+}
+
+function stagedStatusTone(status: string | undefined): "green" | "amber" | "red" | "blue" | "slate" {
+  if (status === "completed" || status === "partial") return "green";
+  if (status === "running") return "blue";
+  if (status === "failed" || status === "blocked") return "red";
+  return "slate";
+}
+
+function stagedStatusLabel(status: string | undefined) {
+  const labels: Record<string, string> = {
+    pending: "Waiting",
+    running: "Running",
+    completed: "Ready",
+    partial: "Ready with limits",
+    blocked: "Needs input",
+    failed: "Failed",
+    skipped: "Skipped"
+  };
+  return labels[status || ""] ?? "Waiting";
+}
+
+function stagedModeLabel(mode: StagedReviewProgress["mode"] | undefined) {
+  return mode === "demo_qa" ? "Local demo" : "Live data";
+}
+
+function shortReviewId(reviewId: string | undefined) {
+  if (!reviewId) return "Starting";
+  const suffix = reviewId.slice(-8);
+  return `Run ...${suffix}`;
+}
+
+function stagedProgressMessage(progress: StagedReviewProgress | undefined, currentStageLabel: string) {
+  if (!progress) return "Starting diagnosis.";
+  if (progress.safeError?.message) return progress.safeError.message;
+  if (progress.mode === "demo_qa") {
+    return currentStageLabel
+      ? `${currentStageLabel} is running with deterministic local demo data.`
+      : "Running with deterministic local demo data.";
+  }
+  return currentStageLabel
+    ? `${currentStageLabel} is checking live market-data inputs.`
+    : "Checking live market-data inputs.";
 }
 
 function pctRangeLabel(range: { min: number; max: number } | null | undefined) {
@@ -468,7 +544,7 @@ function InstrumentCombobox({
 
 export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInputTableProps) {
   const router = useRouter();
-  const { activeReview, hydrated, saveClientFitProfile, savePortfolioInput, submitPortfolioInput, recordReviewError, linkCloudPortfolio, loadCloudPortfolioInput } = useReviewState();
+  const { activeReview, hydrated, saveClientFitProfile, savePortfolioInput, submitPortfolioInput, startStagedReview, recordStagedProgress, recordReviewError, linkCloudPortfolio, loadCloudPortfolioInput } = useReviewState();
   const { enabled: cloudEnabled, status: authStatus } = useSupabaseAuth();
   const { savedPortfolios, portfoliosLoading, savePortfolio, deletePortfolio } = useSupabasePersistence();
   const [currency, setCurrency] = useState(investorCurrency || "");
@@ -492,6 +568,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
   const [activeCloudDeleteId, setActiveCloudDeleteId] = useState<string | null>(null);
   const inputInitialized = useRef(false);
   const inputEdited = useRef(false);
+  const stagedResumeRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!hydrated || inputInitialized.current) return;
@@ -685,6 +762,75 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
     setRows((currentRows) => currentRows.filter((row) => row.id !== id));
   };
 
+  const pollStagedDiagnosis = async (reviewId: string) => {
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < STAGED_POLL_TIMEOUT_MS) {
+      const response = await fetch(`/api/portfolio/review/status?reviewId=${encodeURIComponent(reviewId)}`, {
+        method: "GET",
+        cache: "no-store"
+      });
+      const status = await response.json() as StagedReviewStatusResponse & { error?: string; details?: unknown };
+
+      if (!response.ok) {
+        const detailText = Array.isArray(status.details)
+          ? status.details.filter((item) => typeof item === "string").join(" ")
+          : "";
+        throw new Error([status.error || "Staged review status failed.", detailText].filter(Boolean).join(" "));
+      }
+
+      recordStagedProgress(status);
+
+      if (status.status === "failed" || status.safe_error) {
+        throw new Error(status.safe_error?.message || "Portfolio diagnosis failed during staged execution.");
+      }
+
+      if (diagnosisChainReady(status)) {
+        return status;
+      }
+
+      await sleep(STAGED_POLL_INTERVAL_MS);
+    }
+
+    throw new Error("Portfolio diagnosis is still running. Keep the review ID and retry recovery after the backend finishes.");
+  };
+
+  const recoverCompletedDiagnosis = async (reviewId: string, fallbackHoldings: ReviewHolding[], fallbackCurrency: string) => {
+    const response = await fetch("/api/portfolio/review/recover", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ review_id: reviewId })
+    });
+    const result = await response.json() as { review_result?: ReviewResult; error?: string; details?: unknown };
+
+    if (!response.ok || result.review_result?.status !== "completed") {
+      const detailText = Array.isArray(result.details)
+        ? result.details.filter((item) => typeof item === "string").join(" ")
+        : typeof result.details === "string"
+          ? result.details
+          : "";
+      throw new Error([result.error || "Review recovery failed.", detailText].filter(Boolean).join(" "));
+    }
+
+    const recoveredHoldings = holdingsFromRecoveredReview(result.review_result);
+    const nextHoldings = recoveredHoldings.length ? recoveredHoldings : fallbackHoldings;
+    if (!nextHoldings.length) {
+      throw new Error("Review recovery found the run, but portfolio_input.holdings could not be restored.");
+    }
+
+    const recoveredCurrency = currencyFromRecoveredReview(result.review_result) || fallbackCurrency;
+    inputEdited.current = false;
+    setCurrency(recoveredCurrency);
+    setRows(nextHoldings.map(reviewHoldingToEditable));
+    submitPortfolioInput({
+      investorCurrency: recoveredCurrency,
+      holdings: nextHoldings,
+      reviewResult: result.review_result
+    });
+  };
+
   const runPortfolioDiagnosis = async () => {
     if (!ready || isRunningDiagnosis) return;
 
@@ -709,18 +855,18 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
       });
 
       const responseText = await response.text();
-      let result: ReviewResult & { error?: string; details?: unknown };
+      let result: StagedReviewStartedResponse & { error?: string; details?: unknown };
       try {
-        result = responseText ? JSON.parse(responseText) as ReviewResult & { error?: string; details?: unknown } : { status: "failed", error: "Portfolio diagnosis failed." } as ReviewResult & { error?: string };
+        result = responseText ? JSON.parse(responseText) as StagedReviewStartedResponse & { error?: string; details?: unknown } : { status: "failed", error: "Portfolio diagnosis failed." } as StagedReviewStartedResponse & { error?: string };
       } catch (_error) {
         result = {
           status: "failed",
           error: response.ok ? "Portfolio diagnosis returned an unreadable response." : `Portfolio diagnosis failed with HTTP ${response.status}.`,
           details: responseText.slice(0, 500)
-        } as ReviewResult & { error?: string; details?: unknown };
+        } as StagedReviewStartedResponse & { error?: string; details?: unknown };
       }
 
-      if (!response.ok || result.status !== "completed") {
+      if (!response.ok || !result.review_id || result.status === "failed") {
         const detailText = Array.isArray(result.details)
           ? result.details.filter((item) => typeof item === "string").join(" ")
           : typeof result.details === "string"
@@ -736,11 +882,13 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
         throw new Error(message);
       }
 
-      submitPortfolioInput({
+      startStagedReview({
         investorCurrency: currency || "USD",
         holdings: reviewHoldings,
-        reviewResult: result
+        started: result
       });
+      await pollStagedDiagnosis(result.review_id);
+      await recoverCompletedDiagnosis(result.review_id, reviewHoldings, currency || "USD");
       router.push("/diagnosis");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Portfolio diagnosis failed.";
@@ -830,38 +978,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
     setIsRecoveringReview(true);
 
     try {
-      const response = await fetch("/api/portfolio/review/recover", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ review_id: reviewId })
-      });
-      const result = await response.json() as { review_result?: ReviewResult; error?: string; details?: unknown };
-
-      if (!response.ok || result.review_result?.status !== "completed") {
-        const detailText = Array.isArray(result.details)
-          ? result.details.filter((item) => typeof item === "string").join(" ")
-          : typeof result.details === "string"
-            ? result.details
-            : "";
-        throw new Error([result.error || "Review recovery failed.", detailText].filter(Boolean).join(" "));
-      }
-
-      const recoveredHoldings = holdingsFromRecoveredReview(result.review_result);
-      if (!recoveredHoldings.length) {
-        throw new Error("Review recovery found the run, but portfolio_input.holdings could not be restored.");
-      }
-
-      const recoveredCurrency = currencyFromRecoveredReview(result.review_result);
-      inputEdited.current = false;
-      setCurrency(recoveredCurrency);
-      setRows(recoveredHoldings.map(reviewHoldingToEditable));
-      submitPortfolioInput({
-        investorCurrency: recoveredCurrency,
-        holdings: recoveredHoldings,
-        reviewResult: result.review_result
-      });
+      await recoverCompletedDiagnosis(reviewId, [], currency || "USD");
       router.push("/diagnosis");
     } catch (error) {
       setRecoveryError(error instanceof Error ? error.message : "Review recovery failed.");
@@ -869,6 +986,54 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
       setIsRecoveringReview(false);
     }
   };
+
+  useEffect(() => {
+    if (!hydrated || isRunningDiagnosis || isRecoveringReview) return;
+    const review = activeReview;
+    const progress = review?.stagedProgress;
+    const reviewId = progress?.reviewId;
+    if (!reviewId || !review || review.reviewSummary) return;
+    if (progress.status !== "running" && progress.status !== "partial") return;
+    if (stagedResumeRef.current === reviewId) return;
+
+    let cancelled = false;
+    stagedResumeRef.current = reviewId;
+    setIsRunningDiagnosis(true);
+    setDiagnosisError(null);
+
+    void (async () => {
+      try {
+        await pollStagedDiagnosis(reviewId);
+        if (cancelled) return;
+        await recoverCompletedDiagnosis(
+          reviewId,
+          review.holdings,
+          review.investorCurrency || currency || "USD"
+        );
+        if (!cancelled) router.push("/diagnosis");
+      } catch (error) {
+        if (!cancelled) {
+          setDiagnosisError(error instanceof Error ? error.message : "Staged review recovery failed.");
+        }
+      } finally {
+        if (!cancelled) setIsRunningDiagnosis(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeReview, currency, hydrated, isRecoveringReview, isRunningDiagnosis, router]);
+
+  const stagedProgress = activeReview?.stagedProgress;
+  const showStagedProgress = Boolean(stagedProgress && (
+    isRunningDiagnosis
+    || !activeReview?.reviewSummary
+    || stagedProgress.status === "running"
+    || stagedProgress.status === "partial"
+  ));
+  const stagedPct = stagedProgressPct(stagedProgress);
+  const currentStageLabel = STAGED_PROGRESS_STAGES.find((stage) => stage.id === stagedProgress?.currentStage)?.label;
 
   return (
     <div className="space-y-5">
@@ -1036,7 +1201,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
         ) : null}
         <SimilarExposureWarning rows={rows} />
 
-        <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
+        <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_minmax(360px,420px)] lg:items-start">
           <section className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -1052,7 +1217,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
             </div>
           </section>
 
-          <div className="lg:max-w-xs">
+          <div>
             <button
               type="button"
               disabled={!ready || isRunningDiagnosis}
@@ -1075,6 +1240,51 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
               <p className="mt-3 rounded-xl border border-pmri-risk/35 bg-pmri-risk/10 px-4 py-3 text-sm leading-6 text-pmri-risk">
                 {diagnosisError}
               </p>
+            ) : null}
+            {showStagedProgress ? (
+              <div className="mt-3 overflow-hidden rounded-2xl border border-pmri-blue/25 bg-pmri-blue/10 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="pmri-label text-pmri-blueSoft">Diagnosis progress</p>
+                    <p className="mt-1 text-sm font-semibold leading-5 text-pmri-text">
+                      {currentStageLabel || "Starting diagnosis"}
+                    </p>
+                  </div>
+                  <StatusBadge tone={stagedProgress?.mode === "demo_qa" ? "amber" : "blue"}>
+                    {stagedModeLabel(stagedProgress?.mode)}
+                  </StatusBadge>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-pmri-muted">
+                  {stagedProgressMessage(stagedProgress, currentStageLabel ?? "")}
+                </p>
+                <p className="mt-2 text-xs leading-5 text-pmri-muted">
+                  {shortReviewId(stagedProgress?.reviewId)} - safe to refresh
+                </p>
+                {stagedProgress?.providerStatus?.freshness ? (
+                  <p className="mt-3 text-xs leading-5 text-pmri-muted">
+                    Data freshness: <span className="font-medium text-pmri-text2">{stagedProgress.providerStatus.freshness.replaceAll("_", " ")}</span>
+                  </p>
+                ) : null}
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10" aria-label="Staged diagnosis progress">
+                  <div className="h-full rounded-full bg-pmri-blue transition-all duration-500" style={{ width: `${stagedPct}%` }} />
+                </div>
+                <div className="mt-4 grid gap-2">
+                  {STAGED_PROGRESS_STAGES.map((stage) => {
+                    const status = stagedProgress?.stages?.[stage.id]?.status ?? "pending";
+                    return (
+                      <div key={stage.id} className="flex items-center justify-between gap-3 rounded-xl border border-pmri-border/35 bg-white/[0.022] px-3 py-2">
+                        <span className="text-xs font-medium text-pmri-text2">{stage.label}</span>
+                        <StatusBadge tone={stagedStatusTone(status)}>{stagedStatusLabel(status)}</StatusBadge>
+                      </div>
+                    );
+                  })}
+                </div>
+                {stagedProgress?.safeError ? (
+                  <p className="mt-3 rounded-xl border border-pmri-risk/35 bg-pmri-risk/10 px-3 py-2 text-xs leading-5 text-pmri-risk">
+                    {stagedProgress.safeError.message}
+                  </p>
+                ) : null}
+              </div>
             ) : null}
             {isRunningDiagnosis ? (
               <p className="mt-3 rounded-xl border border-pmri-blue/25 bg-pmri-blue/10 px-4 py-3 text-xs leading-5 text-pmri-blueSoft">

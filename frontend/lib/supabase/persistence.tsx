@@ -15,7 +15,20 @@ export type SavedPortfolioRecord = {
   createdAt?: string;
   updatedAt?: string;
 };
-export type ReviewStageName = "diagnosis" | "builder" | "candidate" | "comparison" | "verdict" | "report";
+export type ReviewStageName =
+  | "diagnosis"
+  | "builder"
+  | "input"
+  | "data_load"
+  | "xray"
+  | "stress"
+  | "client_fit"
+  | "problem_classification"
+  | "launchpad_builder"
+  | "candidate"
+  | "comparison"
+  | "verdict"
+  | "report";
 
 export type SavedReviewRecord = {
   id: string;
@@ -117,6 +130,19 @@ type ReviewStageSummaryRow = {
 };
 
 const REVIEW_STAGE_SUMMARY_SOFT_LIMIT_BYTES = 55 * 1024;
+const STAGED_REVIEW_STAGE_NAMES: ReviewStageName[] = [
+  "input",
+  "data_load",
+  "xray",
+  "stress",
+  "client_fit",
+  "problem_classification",
+  "launchpad_builder",
+  "candidate",
+  "comparison",
+  "verdict",
+  "report"
+];
 
 
 const SupabasePersistenceContext = createContext<SupabasePersistenceContextValue | null>(null);
@@ -133,6 +159,54 @@ function estimateJsonBytes(value: unknown) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isCloudForbiddenKey(key: string) {
+  const normalized = key.replace(/[_-]/g, "").toLowerCase();
+  return normalized === "path"
+    || normalized === "paths"
+    || normalized === "outputpaths"
+    || normalized === "artifactrefs"
+    || normalized === "artifactref"
+    || normalized === "sourceartifacts"
+    || normalized === "rawoutputkeys"
+    || normalized === "rawaccessstrategy"
+    || normalized === "sourcerefs"
+    || normalized.includes("localpath")
+    || normalized.endsWith("path");
+}
+
+function isUnsafeCloudString(value: string) {
+  return /[A-Za-z]:[\\/]/.test(value)
+    || /(^|[\\/])(runs|cache|Main portfolio|pdf files|pdf_md_sources|results_csv)([\\/]|$)/i.test(value)
+    || /frontend_review_[^/\\\s]+[\\/]/i.test(value)
+    || /\b(portfolio_xray|stress_report|client_fit_check|review_state|run_result|review_result|candidate_generation|current_vs_candidate|decision_verdict)\.json\b/i.test(value)
+    || /\.(pdf|csv|parquet|png|html|txt)\b/i.test(value);
+}
+
+function compactCloudValue(value: unknown): unknown {
+  if (typeof value === "string") {
+    return isUnsafeCloudString(value) ? undefined : value;
+  }
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => compactCloudValue(item))
+      .filter((item) => item !== undefined);
+  }
+  if (!isRecord(value)) return value;
+
+  const compact: Record<string, unknown> = {};
+  Object.entries(value).forEach(([key, item]) => {
+    if (isCloudForbiddenKey(key)) return;
+    const cleaned = compactCloudValue(item);
+    if (cleaned !== undefined) compact[key] = cleaned;
+  });
+  return compact;
+}
+
+function compactCloudRecord(value: Record<string, unknown>) {
+  const compact = compactCloudValue(value);
+  return isRecord(compact) ? compact : {};
 }
 
 function reviewHoldingsFromSnapshot(value: unknown): ReviewHolding[] {
@@ -576,8 +650,7 @@ function buildDiagnosisStageSummary(activeReview: ActiveReviewState) {
     suggestedActionPaths: reviewSummary.suggestedActionPaths,
     launchpadCardsCount: reviewSummary.launchpadCardsCount,
     launchpadCards: compactLaunchpadCardsForCloud(reviewSummary.launchpadCards),
-    builderSetup: compactBuilderSetupForCloud(reviewSummary.builderSetup),
-    artifactRefs: reviewSummary.rawOutputKeys
+    builderSetup: compactBuilderSetupForCloud(reviewSummary.builderSetup)
   };
 }
 
@@ -589,7 +662,7 @@ async function upsertReviewRowForUser(userId: string, activeReview: ActiveReview
   }
 
   const reviewSummary = activeReview.reviewSummary;
-  const compactSummary = compactReviewSummaryForCloud(reviewSummary, activeReview);
+  const compactSummary = compactCloudRecord(compactReviewSummaryForCloud(reviewSummary, activeReview));
   const portfolioSnapshot = compactPortfolioSnapshot(activeReview.investorCurrency, activeReview.holdings);
   const reviewPayload = {
     user_id: userId,
@@ -604,6 +677,100 @@ async function upsertReviewRowForUser(userId: string, activeReview: ActiveReview
     compact_summary: compactSummary,
     started_at: reviewSummary.generatedAt,
     completed_at: reviewSummary.generatedAt
+  };
+
+  const { data: reviewRow, error: reviewError } = await supabase
+    .from("reviews")
+    .upsert(reviewPayload, { onConflict: "user_id,review_id" })
+    .select("id")
+    .single();
+
+  if (reviewError) throw reviewError;
+  return (reviewRow as { id: string }).id;
+}
+
+function stagedStageStatusesForCloud(activeReview: ActiveReviewState) {
+  const progress = activeReview.stagedProgress;
+  if (!progress) return {};
+  return Object.fromEntries(STAGED_REVIEW_STAGE_NAMES.map((stage) => [
+    stage,
+    progress.stages[stage]?.status ?? "pending"
+  ]));
+}
+
+function compactStagedProgressForCloud(activeReview: ActiveReviewState) {
+  const progress = activeReview.stagedProgress;
+  if (!progress) return undefined;
+  return compactCloudRecord({
+    schemaVersion: progress.schemaVersion,
+    reviewId: progress.reviewId,
+    status: progress.status,
+    currentStage: progress.currentStage,
+    mode: progress.mode,
+    stageStatuses: stagedStageStatusesForCloud(activeReview),
+    providerStatus: progress.providerStatus,
+    safeError: progress.safeError,
+    warnings: progress.warnings,
+    updatedAt: progress.updatedAt
+  });
+}
+
+function buildStagedReviewCompactSummary(activeReview: ActiveReviewState) {
+  const stagedProgress = compactStagedProgressForCloud(activeReview);
+  const reviewSummary = activeReview.reviewSummary;
+  return compactCloudRecord({
+    reviewId: activeReview.reviewId,
+    status: activeReview.stagedProgress?.status ?? activeReview.runStatus,
+    mode: activeReview.stagedProgress?.mode ?? activeReview.runMode,
+    currentStage: activeReview.stagedProgress?.currentStage,
+    investorCurrency: activeReview.investorCurrency,
+    holdingsCount: activeReview.holdings.length,
+    totalWeight: activeReview.holdings.reduce((sum, holding) => sum + holding.weight, 0),
+    cashWeight: activeReview.holdings.filter((holding) => holding.type === "cash").reduce((sum, holding) => sum + holding.weight, 0),
+    diagnosisHeadline: reviewSummary?.diagnosis.headline,
+    diagnosisStatus: reviewSummary?.diagnosis.status,
+    evidenceQuality: reviewSummary?.diagnosis.evidenceQuality,
+    clientFit: compactClientFitForCloud(reviewSummary?.clientFit),
+    primaryProblem: reviewSummary?.primaryProblem,
+    problemSeverity: reviewSummary?.problemSeverity,
+    problemConfidence: reviewSummary?.problemConfidence,
+    launchpadCardsCount: reviewSummary?.launchpadCardsCount,
+    recommendedFirstTest: reviewSummary?.recommendedFirstTest,
+    suggestedActionPaths: reviewSummary?.suggestedActionPaths,
+    candidateLaunchpadAvailable: reviewSummary?.candidateLaunchpadAvailable,
+    problemClassificationAvailable: reviewSummary?.problemClassificationAvailable,
+    activeCloudPortfolioId: activeReview.cloudPortfolio?.id,
+    activeCloudPortfolioName: activeReview.cloudPortfolio?.name,
+    stagedProgress
+  });
+}
+
+async function upsertStagedReviewRowForUser(userId: string, activeReview: ActiveReviewState) {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) throw new Error("Cloud persistence is disabled.");
+  if (!activeReview.reviewId || !activeReview.stagedProgress) {
+    throw new Error("No staged review progress is available for cloud persistence.");
+  }
+
+  const progress = activeReview.stagedProgress;
+  const compactSummary = buildStagedReviewCompactSummary(activeReview);
+  const portfolioSnapshot = compactPortfolioSnapshot(activeReview.investorCurrency, activeReview.holdings);
+  const completedAt = progress.status === "completed" || progress.status === "failed"
+    ? progress.updatedAt ?? nowIso()
+    : null;
+  const reviewPayload = {
+    user_id: userId,
+    portfolio_id: activeReview.cloudPortfolio?.id ?? null,
+    review_id: activeReview.reviewId,
+    title: activeReview.cloudPortfolio?.name
+      ? `${activeReview.cloudPortfolio.name} staged review`
+      : `Portfolio MRI staged review ${activeReview.reviewId}`,
+    mode: progress.mode,
+    status: progress.status,
+    portfolio_snapshot: portfolioSnapshot,
+    compact_summary: compactSummary,
+    started_at: progress.updatedAt ?? activeReview.updatedAt,
+    completed_at: completedAt
   };
 
   const { data: reviewRow, error: reviewError } = await supabase
@@ -631,7 +798,8 @@ async function upsertStageSummaryForReview({
   status: string;
   summary: Record<string, unknown>;
 }): Promise<{ persisted: true; summarySizeBytes: number } | { persisted: false; summarySizeBytes: number; reason: string }> {
-  const summarySizeBytes = estimateJsonBytes(summary);
+  const cloudSummary = compactCloudRecord(summary);
+  const summarySizeBytes = estimateJsonBytes(cloudSummary);
   if (summarySizeBytes > REVIEW_STAGE_SUMMARY_SOFT_LIMIT_BYTES) {
     return {
       persisted: false,
@@ -651,7 +819,7 @@ async function upsertStageSummaryForReview({
       review_id: reviewId,
       stage,
       status,
-      summary,
+      summary: cloudSummary,
       summary_size_bytes: summarySizeBytes
     }, { onConflict: "review_row_id,stage" });
 
@@ -723,6 +891,54 @@ function buildReportStageSummary(activeReview: ActiveReviewState) {
   };
 }
 
+function buildStagedStageSummary(activeReview: ActiveReviewState, stage: ReviewStageName) {
+  const progress = activeReview.stagedProgress;
+  const row = progress?.stages[stage];
+  if (!progress || !row) return null;
+  return {
+    stage,
+    status: row.status ?? "pending",
+    reviewId: progress.reviewId,
+    currentStage: progress.currentStage,
+    mode: progress.mode,
+    startedAt: row.started_at,
+    completedAt: row.completed_at,
+    providerStatus: progress.providerStatus,
+    safeError: progress.safeError?.stage === stage ? progress.safeError : undefined,
+    warnings: progress.warnings,
+    updatedAt: progress.updatedAt
+  };
+}
+
+export async function persistStagedProgressForReview(userId: string, activeReview: ActiveReviewState): Promise<StagePersistenceResult> {
+  if (!activeReview.reviewId || !activeReview.stagedProgress) {
+    throw new Error("No staged review progress is available for cloud persistence.");
+  }
+
+  const reviewRowId = await upsertStagedReviewRowForUser(userId, activeReview);
+  const persisted: ReviewStageName[] = [];
+  const skipped: StagePersistenceResult["skipped"] = [];
+
+  for (const stage of STAGED_REVIEW_STAGE_NAMES) {
+    const status = activeReview.stagedProgress.stages[stage]?.status ?? "pending";
+    if (status === "pending") continue;
+    const summary = buildStagedStageSummary(activeReview, stage);
+    if (!summary) continue;
+    const result = await upsertStageSummaryForReview({
+      userId,
+      reviewRowId,
+      reviewId: activeReview.reviewId,
+      stage,
+      status,
+      summary
+    });
+    if (result.persisted) persisted.push(stage);
+    else skipped.push({ stage, summarySizeBytes: result.summarySizeBytes, reason: result.reason });
+  }
+
+  return { persisted, skipped };
+}
+
 export async function persistDiagnosisSummaryForReview(userId: string, activeReview: ActiveReviewState) {
   if (!activeReview.reviewId || !activeReview.reviewSummary) {
     throw new Error("No completed diagnosis review is available for cloud persistence.");
@@ -785,7 +1001,7 @@ export async function persistCompactStageSummariesForReview(userId: string, acti
         verdict: activeReview.verdictResult.decisionStatus,
         confidence: Number.isFinite(confidenceNumber) ? confidenceNumber : null,
         rationale: activeReview.verdictResult.explanation,
-        summary: activeReview.verdictResult,
+        summary: compactCloudRecord(activeReview.verdictResult),
         limitations: activeReview.verdictResult.limitations
       }, { onConflict: "review_row_id" });
     if (error) throw error;

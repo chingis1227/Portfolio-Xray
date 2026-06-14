@@ -60,6 +60,38 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-06-14-001
+Title: Use staged web review state with compact-only Supabase persistence
+
+- Status: accepted
+- Date: 2026-06-14
+- Decision: The web pipeline uses additive staged execution with
+  `POST /api/v1/reviews/staged`, `GET /api/v1/reviews/{review_id}/status`, and run-local
+  `review_state_v1` as the web progress state through diagnosis and explicit downstream actions. Supabase remains compact-only and must not become a
+  raw generated-artifact store. Demo / QA mode is mandatory for deterministic first-run and QA
+  experiences.
+- Context: The frontend already uses `reviewId`, stage, candidate, comparison, verdict, and report
+  concepts, while the backend still relies heavily on CLI/file-driven runs and generated JSON
+  artifacts. The synchronous diagnosis path can make users wait too long before seeing progress.
+- Rationale: Additive staged state closes the platform/CLI architecture gap without rewriting
+  formulas. Compact-only Supabase reduces privacy and retention risk. Demo / QA mode prevents the
+  first product experience from depending on live market-data provider randomness.
+- Alternatives considered: Replace the backend with a full service pipeline immediately (rejected
+  as too risky for this migration); store full artifacts in Supabase (rejected because portfolios,
+  Client Fit context, X-Ray/Stress artifacts, and price evidence are sensitive); keep synchronous
+  UX and show only cosmetic progress (rejected because it does not create real stage state).
+- Assumptions: Existing CLI and synchronous FastAPI paths remain as compatibility after the staged
+  path implementation. Stage state wraps existing deterministic artifacts and does not invent
+  calculations.
+- Consequences: Follow-up sessions must follow `docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`, keep raw
+  artifacts out of Supabase, preserve same-run lineage, and update frontend state/recovery around
+  `review_state_v1` when stage behavior changes.
+- Related documents:
+  [Staged Review State Contract](docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md),
+  [Staged Review Pipeline Migration](docs/exec_plans/2026-06-14_staged_review_pipeline_plan.md).
+- Review trigger: Revisit if cloud artifact storage is proposed, if downstream stages are moved to
+  background workers, or if the synchronous compatibility endpoint is considered for retirement.
+
 Decision ID: DEC-2026-06-13-002
 Title: Use product discovery manifest as a screen-critical artifact index
 

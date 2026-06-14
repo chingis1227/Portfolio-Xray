@@ -31,6 +31,8 @@ route must fail before trusting downstream artifacts.
 Use this document for artifact-to-screen routing and UI interpretation. Use lower-level sources for behavior details:
 
 - `docs/contracts/PRODUCT_FLOW_CONTRACT.md` for canonical product step order and product boundaries.
+- `docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md` for the implemented staged web execution state,
+  `review_state_v1`, canonical stage names, staged status semantics, and compact Supabase boundary.
 - `RULES.md`, `WORKFLOW.md`, and `SPEC.md` for repository discipline and current implementation contract.
 - `OUTPUTS.md` for generated output folders, product-bundle boundaries, and generated-vs-source rules.
 - `docs/runtime_artifact_contract.md` for which artifacts are required, tombstoned, absent, optional, or stale by runtime mode.
@@ -80,6 +82,12 @@ There is no current `/candidate`, `/monitoring`, `/what-changed`, optimizer-aren
 
 Client Fit V1 is active in the web journey through onboarding plus a dedicated display route. `client_fit_check.json` can be generated under `analysis_subject/` and feeds bounded display/test criteria in adapters. Primary UI consumes compact Client Fit request/display models, not raw generated artifacts. Backend/CLI paths remain compatible with missing Client Fit and may produce `not_provided`; the standard web journey requires Client Fit context from onboarding before diagnosis.
 
+The staged web path adds `review_state.json` as the active run-local progress source for
+`runs/frontend_review_*` reviews. `review_state.json` does not replace canonical calculation
+artifacts; it records stage status, current stage, safe errors, provider status, and allowed artifact
+references for the active web run. The detailed contract is
+`docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`.
+
 ## Runtime locations and trust boundaries
 
 ### Portfolio-first output folders
@@ -89,6 +97,7 @@ Client Fit V1 is active in the web journey through onboarding plus a dedicated d
 | `{output_dir_final}/analysis_subject/` | Authoritative for the diagnosed current portfolio after `run_portfolio_review.py` or frontend diagnosis bridge. Read this before root artifacts. | Input recovery, Diagnosis, Stress Lab, Problem Classification bridge, Hypothesis, Builder setup. |
 | `{output_dir_final}/` root | Authoritative only for post-candidate product-bundle artifacts generated in the same active workflow, or for explicitly targeted legacy/policy workflows. | Candidate status, Comparison, Verdict, Report, optional What Changed when lineage is current. |
 | `runs/frontend_review_<timestamp>_<id>/` | Authoritative for the active frontend vertical demo. Later API stages must use the same `reviewId`. | Live UI state, recovery, active candidate/comparison/verdict/report gates. |
+| `runs/frontend_review_<timestamp>_<id>/review_state.json` | Authoritative progress state for the staged web path. It is valid only for its own `reviewId` and does not override artifact-level lineage rules. | Progress screen, partial-result unlocks, refresh recovery, compact Supabase stage summaries. |
 | Root legacy policy files such as root `portfolio_xray.json`, `stress_report.json`, `run_result.json`, `portfolio_weights.yml` | Not authoritative for portfolio-first subject unless the task explicitly targets legacy policy. | Do not use as Core MVP primary screen evidence. |
 | CSV/TXT/HTML/PNG/PDF/Markdown sidecars and `pdf files/` | Generated exports that may be stale under default `site_api`. | Do not use as active UI truth unless the user explicitly targets export/report artifacts. |
 
@@ -120,6 +129,7 @@ Client Fit V1 is active in the web journey through onboarding plus a dedicated d
 | `what_changed_summary.json` | `src/light_monitoring_summary.py`; root or product-bundle path after compare/monitoring when prior evidence exists. | No current route; optional `/report` note only. | No active frontend screen; future Monitoring adapter. | Light What Changed summary: changes since prior review and retest/watch triggers. | Backend artifact exists but no MVP UI route; omission can look accidental; report may imply full monitoring product. | Treat as Deferred / Monitoring layer. If absent, say no comparable prior review or no monitoring evidence. If present, show only a short grounded note until a Monitoring route is approved. |
 | `output_manifest.json` | Output policy/report/factory/review writers; `analysis_subject/output_manifest.json` and/or root output manifest. | All screens as discovery/support, not hero content. | Backend API results; `reviewState.tsx` compact `outputPaths`; recovery API. | Machine-readable index for generated paths, product-bundle discovery, output profile, and artifact categories. | Raw paths can leak into UI; stale sidecar/PDF assumptions can mislead. | Use for path resolution and QA, not primary user copy. UI must not show manifest keys as product labels. Manifest does not override same-run lineage checks. |
 | `review_result.json` | Frontend bridge `scripts/run_review_from_payload.py`; active `runs/frontend_review_*` folder. | `/portfolio-input` recovery and all run-local screens through active review state. | `frontend/app/api/portfolio/review/recover/route.ts`; `reviewState.tsx` compact storage. | Run-local envelope for frontend diagnosis/recovery. | Browser storage or recovery can accidentally trust stale downstream candidate/comparison/verdict artifacts. | Store compact summaries only in browser. Recovery restores diagnosis/launchpad/builder only and must clear candidate/comparison/verdict/report readiness unless same-run stage APIs regenerate or verify them. |
+| `review_state.json` | Staged backend wrapper under the active `runs/frontend_review_*` folder. | Progress state across `/portfolio-input`, `/diagnosis`, `/evidence`, `/client-fit`, `/hypothesis`, `/comparison`, `/verdict`, and `/report`. | FastAPI `GET /api/v1/reviews/{review_id}/status`; frontend staged polling/refresh recovery; optional compact Supabase rows. | Web execution state: overall status, current stage, per-stage readiness, provider status, safe errors, and allowed artifact references. | Could be misread as a replacement for canonical artifacts or as permission to trust stale downstream files. | Use only as progress and routing state. Artifact contents and downstream unlocks still require same-run and same-candidate lineage. Do not expose raw file paths or stage ids as primary user copy. |
 
 ## Technical, advanced, legacy, and deferred artifacts
 

@@ -5,8 +5,10 @@ Status: **Session 10 accepted one-candidate MVP runtime contract with governance
 `POST /api/v1/reviews/{review_id}/builder`, and
 `POST /api/v1/reviews/{review_id}/candidate`,
 `POST /api/v1/reviews/{review_id}/comparison`,
-`POST /api/v1/reviews/{review_id}/verdict`, and
-`POST /api/v1/reviews/{review_id}/report` are implemented as live FastAPI endpoints.
+`POST /api/v1/reviews/{review_id}/verdict`,
+`POST /api/v1/reviews/{review_id}/report`,
+`POST /api/v1/reviews/staged`, and
+`GET /api/v1/reviews/{review_id}/status` are implemented as live FastAPI endpoints.
 Diagnosis interpretation Session 08 expands the diagnosis display envelope with typed
 interpretation-chain fields. Diagnosis interpretation Session 09 carries the same evidence-chain
 context into comparison, verdict, and report responses and regenerates frontend API types. Diagnosis
@@ -28,6 +30,9 @@ meaning:
 - `SPEC.md` for the current implementation contract and product scope.
 - `OUTPUTS.md` for generated-vs-source boundaries and product-bundle artifact policy.
 - `docs/contracts/PRODUCT_FLOW_CONTRACT.md` for product step order and forbidden behavior.
+- `docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md` for the implemented staged web execution contract,
+  `review_state_v1`, stage names, stage status semantics, staged start/status endpoints, and
+  compact Supabase boundary.
 - `docs/contracts/ARTIFACT_TO_SCREEN_MAP.md` for screen ownership and stale-data rules.
 - `docs/contracts/SCREEN_CONTRACTS.md` for user-facing route responsibilities.
 - `docs/specs/block_4_diagnosis_v3_spec.md` for Problem Classification and Launchpad semantics.
@@ -156,6 +161,51 @@ Response data:
     }
 
 This endpoint must not read portfolio artifacts or run diagnostics.
+
+### Staged web review endpoints
+
+Implementation status: staged pipeline Sessions 2-7 are implemented in `src/api/app.py`,
+`src/api/models.py`, `src/api/reviews.py`, the Next.js portfolio proxies, and the compact frontend
+review state. The current synchronous endpoint remains `POST /api/v1/reviews` as backend
+compatibility until a later explicit retirement plan.
+
+The additive staged endpoints are:
+
+```text
+POST /api/v1/reviews/staged
+GET /api/v1/reviews/{review_id}/status
+```
+
+`POST /api/v1/reviews/staged` creates a run-local `review_id`, writes the initial payload and
+`review_state.json`, starts backend execution in a daemon background thread, and returns with
+`schema_version: review_started_v1`, `status: running`, `current_stage`, and `mode`.
+
+`GET /api/v1/reviews/{review_id}/status` returns the public, safe view of `review_state_v1`. The
+status response is the backend source of truth for staged progress and partial-result unlocking. It
+must not expose Python tracebacks, local absolute paths, secrets, environment variables, raw
+generated artifact trees, or arbitrary run-folder scans.
+
+Live mode uses the existing diagnosis adapter in the background and synchronizes per-stage status
+from run-local artifacts after execution. A successful diagnosis run marks required diagnosis
+stages completed when their artifacts exist, records missing Client Fit context as non-blocking
+`partial`, fails safely with `ARTIFACT_MISSING` when a required artifact is absent, and preserves
+earlier completed stage rows if a later runtime failure occurs. `candidate`, `comparison`,
+`verdict`, and `report` start pending after diagnosis and then update when their explicit FastAPI
+actions run for the same `review_id`.
+
+Staged `demo_qa` mode is selected by `options.sample_mode: true`. It writes deterministic frozen
+fixture evidence under the run-local `analysis_subject/` folder, skips external market-data
+providers, and uses deterministic fixture branches for explicit comparison, verdict, and report
+actions. The public status reports provider source `frozen_fixture` and fixed fixture freshness.
+This mode is for demo and QA reliability only; it does not replace live mode or the synchronous
+compatibility endpoint. Frontend polling, refresh recovery, and optional compact Supabase
+persistence are implemented for the staged path.
+
+The canonical staged contract, stage list, safe error codes, Demo / QA mode boundary, live mode
+disclosure, and compact-only Supabase boundary are defined in
+`docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`. The screen mapping is registered in
+`docs/contracts/FASTAPI_SCREEN_MAPPING.json`, and frontend API types must be regenerated after any
+intentional staged API shape change.
 
 ### `POST /api/v1/reviews`
 
