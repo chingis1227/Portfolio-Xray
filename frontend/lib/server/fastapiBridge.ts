@@ -104,10 +104,13 @@ function parseJsonWithNonFinite(raw: string) {
 
 function scrubForClient(value: string, root = projectRoot()) {
   if (!value) return "";
-  return value
-    .slice(-4000)
-    .replaceAll(root, "[project]")
-    .replaceAll(root.replaceAll("\\", "/"), "[project]")
+  let cleaned = value.slice(-4000);
+  if (root) {
+    cleaned = cleaned
+      .replaceAll(root, "[project]")
+      .replaceAll(root.replaceAll("\\", "/"), "[project]");
+  }
+  return cleaned
     .replace(/\[project\][\\/][^\s'")<>]+/g, "[path]")
     .replace(/Traceback \(most recent call last\):[\s\S]*/g, "Backend failure details were captured safely.")
     .replace(/File "[^"]+", line \d+(?:, in [^\r\n]+)?/g, "Backend file reference hidden.")
@@ -629,7 +632,9 @@ function artifactRefsToPathMap(refs: unknown) {
 }
 
 function recoveredLaunchpadOutput(launchpadValue: unknown) {
-  const launchpad = isRecord(launchpadValue) ? launchpadValue : {};
+  const launchpad = Array.isArray(launchpadValue)
+    ? (isRecord(launchpadValue[0]) ? launchpadValue[0] : {})
+    : (isRecord(launchpadValue) ? launchpadValue : {});
   const cardId = textValue(launchpad.card_id);
   if (!cardId) return undefined;
   return {
@@ -646,7 +651,9 @@ function recoveredLaunchpadOutput(launchpadValue: unknown) {
 }
 
 function recoveredBuilderOutput(launchpadValue: unknown) {
-  const launchpad = isRecord(launchpadValue) ? launchpadValue : {};
+  const launchpad = Array.isArray(launchpadValue)
+    ? (isRecord(launchpadValue[0]) ? launchpadValue[0] : {})
+    : (isRecord(launchpadValue) ? launchpadValue : {});
   const selectedCardId = textValue(launchpad.card_id);
   if (!selectedCardId) return undefined;
   const methodId = textValue(launchpad.method_id);
