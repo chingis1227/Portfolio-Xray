@@ -235,22 +235,35 @@ test("builder prepare route proxies to FastAPI and scrubs safe backend errors", 
 });
 
 test("builder prepare route returns legacy-compatible setup after FastAPI success", async () => {
-  const root = path.resolve(process.cwd(), "..");
-  const expectedPath = path.join(root, "runs", "frontend_review_ok", "analysis_subject", "portfolio_alternatives_builder.json");
-  const route = loadRoute({
-    async readFileImpl(filePath, encoding) {
-      assert.equal(filePath, expectedPath);
-      assert.equal(encoding, "utf8");
-      return JSON.stringify({
-        selected_card_id: "card_equal_weight",
-        can_generate_candidate: true,
-        builder_prefill: { suggested_method: "equal_weight" },
-        candidate_setup: { candidate_setup_id: "candidate_setup_card_equal_weight", can_generate_candidate: true }
-      });
-    }
-  });
+  const route = loadRoute();
 
-  await withMockFetch(async () => Response.json(fastApiEnvelope()), async () => {
+  await withMockFetch(async () => Response.json(fastApiEnvelope({
+    lineage: {
+      review_id: "frontend_review_ok",
+      selected_card_id: "card_equal_weight",
+      builder_setup_id: "candidate_setup_card_equal_weight"
+    },
+    data: {
+      candidate_generation_allowed: true,
+      builder_setup: {
+        builder_setup_id: "candidate_setup_card_equal_weight",
+        selected_card_id: "card_equal_weight",
+        method_id: "equal_weight",
+        generation_readiness: "ready"
+      },
+      next_allowed_actions: ["generate_candidate"]
+    },
+    evidence: {
+      source_artifacts: [{
+        kind: "portfolio_alternatives_builder",
+        ref: "runs/frontend_review_ok/analysis_subject/portfolio_alternatives_builder.json",
+        scope: "analysis_subject",
+        raw_path_exposed: false
+      }],
+      data_quality: "ok",
+      confidence: "medium"
+    }
+  })), async () => {
     const result = await responseJson(await route.POST(makeJsonRequest({
       review_id: "frontend_review_ok",
       selected_card_id: "card_equal_weight"
@@ -449,7 +462,7 @@ test("Supabase staged persistence keeps canonical stage names and strips raw art
   assert.match(persistenceSource, /isUnsafeCloudString/);
   assert.match(persistenceSource, /persistStagedProgressForReview/);
   assert.match(persistenceSource, /compactCloudRecord\(summary\)/);
-  assert.match(callbackSource, /url\.pathname = "\/client-profile"/);
+  assert.match(callbackSource, /url\.pathname = "\/onboarding\/name"/);
   assert.doesNotMatch(persistenceSource, /artifactRefs:\s*reviewSummary\.rawOutputKeys/);
   assert.doesNotMatch(persistenceSource, /summary:\s*activeReview\.verdictResult/);
 });
@@ -648,40 +661,7 @@ test("review recovery route validates review id and path separators", async () =
 });
 
 test("review recovery route uses FastAPI readiness and returns only safe run-local diagnosis artifacts", async () => {
-  const root = path.resolve(process.cwd(), "..");
-  const expectedPath = path.join(root, "runs", "frontend_review_recover_ok", "review_result.json");
-  const route = loadRoute({
-    routePath: reviewRecoverRoutePath,
-    async readFileImpl(filePath, encoding) {
-      assert.equal(filePath, expectedPath);
-      assert.equal(encoding, "utf8");
-      return JSON.stringify({
-        review_id: "frontend_review_recover_ok",
-        status: "completed",
-        portfolio_input: {
-          investor_currency: "USD",
-          holdings: [
-            { type: "instrument", ticker: "SPY", weight: 60 },
-            { type: "cash", currency: "USD", weight: 40 }
-          ]
-        },
-        paths: {
-          run_dir: "runs/frontend_review_recover_ok",
-          portfolio_xray: "runs/frontend_review_recover_ok/analysis_subject/portfolio_xray.json",
-          current_vs_candidate: "runs/frontend_review_recover_ok/current_vs_candidate.json"
-        },
-        outputs: {
-          portfolio_xray: { version: "portfolio_xray_v2" },
-          stress_report: { stress_conclusions: {} },
-          candidate_launchpad: { cards: [] },
-          portfolio_alternatives_builder: { selected_card_id: "card_ok" },
-          candidate_generation: { stale: true },
-          current_vs_candidate: { stale: true },
-          decision_verdict: { stale: true }
-        }
-      });
-    }
-  });
+  const route = loadRoute({ routePath: reviewRecoverRoutePath });
 
   await withMockFetch(async (url, options) => {
     assert.match(url, /\/api\/v1\/reviews\/frontend_review_recover_ok$/);
@@ -689,7 +669,37 @@ test("review recovery route uses FastAPI readiness and returns only safe run-loc
     return Response.json(fastApiEnvelope({
       review_id: "frontend_review_recover_ok",
       stage: "recovery",
-      lineage: { review_id: "frontend_review_recover_ok" }
+      lineage: { review_id: "frontend_review_recover_ok" },
+      data: {
+        review_summary: {
+          investor_currency: "USD"
+        },
+        diagnosis: {
+          primary_diagnosis: "Concentration",
+          headline: "Concentration deserves a diagnostic test."
+        },
+        launchpad: [{
+          card_id: "card_ok",
+          title: "Equal Weight reference test",
+          method_id: "equal_weight",
+          generation_allowed: true,
+          is_rebalance_recommendation: false
+        }],
+        next_allowed_actions: ["prepare_builder"],
+        artifact_refs: [
+          { kind: "problem_classification", ref: "runs/frontend_review_recover_ok/analysis_subject/problem_classification.json", scope: "analysis_subject", raw_path_exposed: false },
+          { kind: "portfolio_alternatives_builder", ref: "runs/frontend_review_recover_ok/analysis_subject/portfolio_alternatives_builder.json", scope: "analysis_subject", raw_path_exposed: false }
+        ],
+        downstream_artifacts_restored_as_active: false,
+        restored_active_stages: ["diagnosis", "evidence", "hypothesis_setup"]
+      },
+      evidence: {
+        source_artifacts: [
+          { kind: "problem_classification", ref: "runs/frontend_review_recover_ok/analysis_subject/problem_classification.json", scope: "analysis_subject", raw_path_exposed: false }
+        ],
+        data_quality: "ok",
+        confidence: "medium"
+      }
     }));
   }, async () => {
     const result = await responseJson(await route.POST(makeJsonRequest({ review_id: "frontend_review_recover_ok" })));
@@ -701,7 +711,6 @@ test("review recovery route uses FastAPI readiness and returns only safe run-loc
     assert.equal(result.body.recovery.downstream_artifacts_restored_as_active, false);
     assert.deepEqual(result.body.recovery.restored_active_stages, ["diagnosis", "evidence", "hypothesis_setup"]);
     assert.equal(result.body.review_result.status, "completed");
-    assert.equal(result.body.review_result.outputs.portfolio_xray.version, "portfolio_xray_v2");
     assert.equal(result.body.review_result.outputs.portfolio_alternatives_builder.selected_card_id, "card_ok");
     assert.equal(result.body.review_result.outputs.candidate_generation, undefined);
     assert.equal(result.body.review_result.outputs.current_vs_candidate, undefined);
@@ -711,35 +720,14 @@ test("review recovery route uses FastAPI readiness and returns only safe run-loc
 });
 
 test("candidate route rejects FastAPI lineage from a different active review before trusting downstream artifacts", async () => {
-  const root = path.resolve(process.cwd(), "..");
-  const builderPath = path.join(root, "runs", "frontend_review_user_a", "analysis_subject", "portfolio_alternatives_builder.json");
-  const candidatePath = path.join(root, "runs", "frontend_review_user_a", "candidate_generation.json");
-  const reads = [];
-  const route = loadRoute({
-    routePath: candidateGenerateRoutePath,
-    async readFileImpl(filePath, encoding) {
-      reads.push(filePath);
-      assert.equal(encoding, "utf8");
-      if (filePath === builderPath) {
-        return JSON.stringify({
-          selected_card_id: "card_equal_weight",
-          builder_prefill: { source_card_id: "card_equal_weight" },
-          candidate_setup: {
-            candidate_setup_id: "candidate_setup_card_equal_weight",
-            source_card_id: "card_equal_weight"
-          }
-        });
-      }
-      if (filePath === candidatePath) {
-        throw new Error("candidate_generation.json must not be trusted after a FastAPI lineage mismatch");
-      }
-      throw new Error(`unexpected read ${filePath}`);
-    }
-  });
+  const route = loadRoute({ routePath: candidateGenerateRoutePath });
 
   await withMockFetch(async (url, options) => {
     assert.match(url, /\/api\/v1\/reviews\/frontend_review_user_a\/candidate$/);
     assert.equal(options.method, "POST");
+    assert.deepEqual(JSON.parse(options.body), {
+      builder_setup_id: "candidate_setup_card_equal_weight"
+    });
     return Response.json(fastApiEnvelope({
       review_id: "frontend_review_user_b",
       stage: "candidate",
@@ -751,7 +739,8 @@ test("candidate route rejects FastAPI lineage from a different active review bef
   }, async () => {
     const result = await responseJson(await route.POST(makeJsonRequest({
       review_id: "frontend_review_user_a",
-      selected_card_id: "card_equal_weight"
+      selected_card_id: "card_equal_weight",
+      builder_setup_id: "candidate_setup_card_equal_weight"
     }, "http://localhost/api/portfolio/candidate/generate")));
 
     assert.equal(result.status, 409);
@@ -759,33 +748,11 @@ test("candidate route rejects FastAPI lineage from a different active review bef
     assert.equal(result.body.stage, "candidate_generation");
     assert.match(result.body.error, /lineage did not match/);
     assert.match(result.body.details.join(" "), /review_id mismatch/);
-    assert.deepEqual(reads, [builderPath]);
   });
 });
 
 test("report route returns a display model from the FastAPI public envelope", async () => {
-  const root = path.resolve(process.cwd(), "..");
-  const files = {
-    [path.join(root, "runs", "frontend_review_report_ok", "candidate_generation.json")]: {
-      selected_card_id: "card_equal_weight",
-      candidate: { candidate_id: "equal_weight" },
-      handoff_to_comparison: { candidate_id: "equal_weight", can_compare: true }
-    },
-    [path.join(root, "runs", "frontend_review_report_ok", "decision_verdict.json")]: {
-      verdict_id: "no_material_rebalance_recommended"
-    },
-    [path.join(root, "runs", "frontend_review_report_ok", "ai_commentary_context.json")]: {
-      client_explanation_draft: { sentences: [] }
-    }
-  };
-  const route = loadRoute({
-    routePath: reportGenerateRoutePath,
-    async readFileImpl(filePath, encoding) {
-      assert.equal(encoding, "utf8");
-      assert.ok(Object.prototype.hasOwnProperty.call(files, filePath), `unexpected read ${filePath}`);
-      return JSON.stringify(files[filePath]);
-    }
-  });
+  const route = loadRoute({ routePath: reportGenerateRoutePath });
 
   await withMockFetch(async (url, options) => {
     assert.match(url, /\/api\/v1\/reviews\/frontend_review_report_ok\/report$/);
@@ -805,7 +772,9 @@ test("report route returns a display model from the FastAPI public envelope", as
   }, async () => {
     const result = await responseJson(await route.POST(makeJsonRequest({
       review_id: "frontend_review_report_ok",
-      selected_card_id: "card_equal_weight"
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight",
+      verdict_id: "no_material_rebalance_recommended"
     }, "http://localhost/api/portfolio/report/generate")));
 
     assert.equal(result.status, 200);

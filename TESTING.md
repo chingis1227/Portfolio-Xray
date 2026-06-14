@@ -51,8 +51,23 @@ Use these PowerShell shortcuts for routine local verification when a full test s
 | --- | --- | --- | --- |
 | Fast daily QA | `.\scripts\qa_fast.ps1` (`.\scripts\qa_fast.cmd` if PowerShell policy blocks scripts) | Default local gate for docs consistency, core offline workflow smoke, product-bundle adapters, frontend typecheck, and frontend API routes. Target runtime is roughly 3 minutes on the Windows desktop setup. | Full `python -m pytest`, live E2E, frontend build, frontend smoke, Playwright/browser visual QA. |
 | Contract QA | `.\scripts\qa_contracts.ps1` (`.\scripts\qa_contracts.cmd` if PowerShell policy blocks scripts) | Runtime contract, candidate factory, comparison JSON, or golden fixture changes. It runs the candidate factory/comparison suites while excluding the still-open KI-2026-05-26-001 drift test. | Networked/live checks and full `python -m pytest`. |
+| Exhaustive local QA | `.\scripts\qa_exhaustive.cmd -LocalOnly -SkipLive` | Release-candidate local static gate. It writes `output/qa_runs/<timestamp>/qa-summary.*`, per-step logs, `qa-findings.*`, and `qa-release-readiness.*`; runs environment readiness, the staged Run Diagnosis OpenAPI guard, fast QA, contract QA, FastAPI governance, full pytest, frontend typecheck/build/API/smoke, docs verification, and Supabase compact/privacy checks. | Browser vertical QA and staging readiness are skipped by `-SkipLive` / `-LocalOnly`; use the release commands below before declaring release readiness. Known baseline failures are classified as `known_failure`; unexpected failures are `new_failure`. |
+| Exhaustive local + browser vertical QA | `.\scripts\qa_exhaustive.cmd -LocalOnly` | Local release-readiness gate that adds `npm.cmd run qa:vertical -- --scenario-limit 5` after the local static gate. It records active `reviewId` lineage, selected Launchpad card, Builder/Candidate/Comparison/Verdict/Report ids, screenshots or DOM fallbacks, and stale selected-card HTTP 409 evidence in `qa-findings.*`. | Staging readiness is skipped because `-LocalOnly` is supplied. |
+| Exhaustive staging release readiness | `.\scripts\qa_exhaustive.cmd -Staging` with `PMRI_QA_ALLOW_STAGING=1`, `PMRI_QA_FRONTEND_URL`, and `PMRI_QA_FASTAPI_URL` | Full release-readiness gate. It runs the local checks, local browser vertical QA, staging Run Diagnosis compatibility, and staging route-chain journey checks through Report. | Requires configured staging URLs and may create a normal demo QA staged review in staging. External provider outages may be classified as `blocked_external`. |
 
 Keep full `python -m pytest` as a manual/nightly or risk-based check, not the everyday fast gate. Run live core/full E2E only for demo, release, or explicit operator proof.
+
+Current exhaustive baseline note: the 2026-06-14 Session 02 run completed as
+`passed_with_known_failures`. `KNOWN_ISSUES.md` tracks the current full-pytest count and
+`KI-2026-06-14-001`, where `npm.cmd run build` can return exit `-1` inside the long exhaustive
+runner even though the same build passes standalone. Session 03 upgrades the same runner to
+`qa_exhaustive_session03_v1` and adds `qa-release-readiness.*`; known P0/P1/P2 failures remain
+release blockers in the readiness summary even when they are classified as known baselines.
+The previous browser vertical blocker `KI-2026-06-14-002` is resolved: downstream frontend bridge
+routes must stay deployment-safe by consuming FastAPI response payloads plus explicit lineage ids
+from frontend state, not by reading run-local files from Next.js route handlers. Demo QA mode uses
+fixed fixture diagnosis text across scenarios, so the vertical helper records that as a warning
+rather than a route-chain failure; release evidence is the same-run lineage and stale-card 409 proof.
 
 ### Known full-suite status
 

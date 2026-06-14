@@ -42,8 +42,24 @@ Use these repository-root PowerShell shortcuts when the goal is fast, repeatable
 | --- | --- | --- |
 | Fast daily QA | `.\scripts\qa_fast.ps1` (`.\scripts\qa_fast.cmd` if PowerShell policy blocks scripts) | Canonical quick gate: docs verification, core offline workflow smoke, product-bundle adapter checks, frontend typecheck, and frontend API route tests. It intentionally skips full pytest, live E2E, frontend build, frontend smoke, and browser visual QA. |
 | Contract QA | `.\scripts\qa_contracts.ps1` (`.\scripts\qa_contracts.cmd` if PowerShell policy blocks scripts) | Candidate factory/comparison contract and golden-fixture gate. It intentionally skips networked/live checks, full pytest, and the still-open KI-2026-05-26-001 drift test. |
+| Exhaustive local QA | `.\scripts\qa_exhaustive.cmd -LocalOnly -SkipLive` | Release-candidate local static gate that writes timestamped summaries, logs, findings, and release-readiness files under `output/qa_runs/`; it runs the staged Run Diagnosis compatibility guard, local backend/frontend/docs/Supabase gates, and classifies failures as `known_failure`, `new_failure`, or `blocked_external`. Browser vertical and staging readiness are intentionally skipped by these flags. |
+| Exhaustive local + browser vertical QA | `.\scripts\qa_exhaustive.cmd -LocalOnly` | Local release-readiness gate that adds `npm.cmd run qa:vertical -- --scenario-limit 5` after the local static gate and records active `reviewId` lineage, selected Launchpad card, Builder/Candidate/Comparison/Verdict/Report ids, screenshots or DOM fallbacks, and stale selected-card HTTP 409 proof. |
+| Exhaustive staging release readiness | `.\scripts\qa_exhaustive.cmd -Staging` plus `PMRI_QA_ALLOW_STAGING=1`, `PMRI_QA_FRONTEND_URL`, and `PMRI_QA_FASTAPI_URL` | Full release-readiness gate that runs local static checks, local browser vertical QA, staging Run Diagnosis compatibility, and the staging frontend route-chain journey through Report. |
 
 Full `python -m pytest` remains a manual/nightly or risk-based check. Live core/full E2E remains operator proof for demos, releases, or explicit requests, not the default daily gate.
+
+Current exhaustive baseline note: the 2026-06-14 Session 02 run completed as
+`passed_with_known_failures`. `KNOWN_ISSUES.md` tracks the current full-pytest count and
+`KI-2026-06-14-001`, where `npm.cmd run build` can return exit `-1` inside the long exhaustive
+runner even though the same build passes standalone. Session 03 changes the report schema to
+`qa_exhaustive_session03_v1` and adds `qa-release-readiness.*`; P0/P1/P2 failures are release
+blockers in that readiness summary even when they are already-known baselines.
+The previous browser vertical blocker `KI-2026-06-14-002` is resolved. Downstream Next.js
+compatibility routes must remain deployment-safe: they pass explicit lineage ids from frontend
+state to FastAPI and build screen-compatible responses from FastAPI public envelopes, not from
+local filesystem artifact reads inside Edge route handlers. Demo QA mode uses fixed fixture
+diagnosis text across scenarios, so `qa:vertical` may warn about identical diagnosis summaries
+without failing the route-chain gate.
 
 ## Standard frontend checks
 

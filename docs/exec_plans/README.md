@@ -25,8 +25,14 @@ governed by `SPEC.md`, `OUTPUTS.md`, detailed specs, and code.
 
 ## Current Pointer
 
-**Active:** None. The staged review pipeline migration was completed on 2026-06-14 and is now
-listed as completed history below. Start a new ExecPlan only for a new complex or risky follow-up.
+**Active:** [Exhaustive QA System](2026-06-14_exhaustive_qa_system_plan.md) - current release-grade
+QA handoff. Sessions 01-03 delivered the baseline orchestrator, P0 Run Diagnosis compatibility
+guard, local exhaustive gate, browser vertical/staging release-readiness hooks, detailed findings,
+and `qa-release-readiness.*`. Current release readiness is **not ready** until the blockers recorded
+in `KNOWN_ISSUES.md` are fixed, especially `KI-2026-06-14-002`.
+
+**Completed:** [Staged Review Pipeline Migration](2026-06-14_staged_review_pipeline_plan.md) -
+completed 2026-06-14 and listed as completed history below.
 
 **Completed:** [Source-of-Truth Reconciliation Plan](2026-06-13_source_of_truth_reconciliation_plan.md) - completed 2026-06-13. Sessions 1-3 aligned AGENTS.md, root source-of-truth docs, runtime documentation, Client Fit status, product-bundle discovery, manifest/hygiene behavior, focused tests, and final verification around the implemented diagnosis-first/current-portfolio-first product.
 
@@ -159,6 +165,7 @@ Parallel or deferred backlog remains in [ROADMAP](../ROADMAP.md) (e.g. UI `RM-50
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
+| 2026-06-14 | [Exhaustive QA System](2026-06-14_exhaustive_qa_system_plan.md) | **Active** | User-requested permanent maximum QA system after observing `Run Diagnosis` fail on the working site | Sessions 01-03 delivered: baseline `qa_exhaustive` orchestrator, P0 frontend/backend staged endpoint compatibility guard, full local exhaustive gate, browser vertical/staging release-readiness hooks, detailed findings, and release-readiness files. Current release status is not ready because blockers such as `KI-2026-06-14-002` remain. |
 | 2026-06-14 | [Staged Review Pipeline Migration](2026-06-14_staged_review_pipeline_plan.md) | **Completed** | User-approved architecture remediation for long synchronous diagnosis, CLI/file-driven backend gap, run-local artifact truth risk, Supabase/privacy boundary, and frontend partial-result UX | Sessions 1-7 closed: `review_state_v1`, staged FastAPI start/status, diagnosis and downstream stage synchronization, deterministic Demo / QA fixtures, frontend polling/refresh recovery, compact Supabase persistence, and one-scenario vertical QA PASS. |
 | 2026-06-13 | [Source-of-Truth Reconciliation Plan](2026-06-13_source_of_truth_reconciliation_plan.md) | **Completed** | [Current State Source-of-Truth Alignment Audit](../audits/2026-06-13_current_state_source_of_truth_alignment_audit.md) | Sessions 1-3 closed 2026-06-13: root truth reset, obsolete root historical file removal, contract/runtime alignment, product-bundle/manifest acceptance, and final verification. |
 | 2026-06-11 | [Dynamic Diagnosis Interpretation Foundation](2026-06-11_diagnosis_interpretation_foundation_plan.md) | **Completed** | [Session 00 diagnosis interpretation baseline audit](../audits/2026-06-11_diagnosis_interpretation_session00_audit.md) | Sessions 00-16 closed 2026-06-12: deterministic evidence-to-diagnosis rulebook foundation, additive Block 4 interpretation chain, site/FastAPI/frontend display envelopes, source/provenance governance, multi-user lineage rejection, fixture matrix, and live vertical QA acceptance. Closure: [Session 16 closure](../audits/2026-06-12_diagnosis_interpretation_session16_closure.md). |

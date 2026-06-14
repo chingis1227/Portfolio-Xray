@@ -56,12 +56,27 @@ Title: Short title
 
 ## Active Issues
 
-### Full pytest suite contract drift index (current audit: 2026-06-12)
+Issue ID: KI-2026-06-14-001
+Title: Exhaustive QA runner can report Next build exit -1 after full pytest
 
-Latest recorded full-suite audit: `python -m pytest -q` on **2026-06-12** reported
-**13 failed, 1898 passed, 3 skipped**. Treat this as the current full-suite status until a newer full
-run supersedes it. Source:
-[docs/audits/2026-06-12_full_pytest_failure_audit_after_client_fit.md](docs/audits/2026-06-12_full_pytest_failure_audit_after_client_fit.md).
+- Status: open
+- Severity: medium
+- Area: testing
+- Risk: `.\scripts\qa_exhaustive.cmd -LocalOnly -SkipLive` may report the frontend production build as failed even when `npm.cmd run build` passes standalone, making release-candidate QA look like a product build regression when the issue is likely runner/order/environment-related.
+- Evidence: Session 02 QA runs `output/qa_runs/20260614T160725Z/qa-summary.md` and `output/qa_runs/20260614T162235Z/qa-summary.md` recorded `Frontend production build` with exit code `-1` after full pytest. A standalone `npm.cmd run build` from `frontend/` passed with exit code 0 in the same session.
+- Current mitigation: The exhaustive gate retries the build step once and records attempts in the per-step log. Treat this as a known QA-runner failure until the command-order or process-capture cause is fixed; do not infer a production build regression without rerunning `npm.cmd run build` standalone.
+- Next action: Isolate whether the failure is caused by command order after full pytest, resource pressure, `.next` state, or PowerShell process capture; then fix the runner or split build into a clean subprocess.
+- Source links: [scripts/qa_exhaustive.ps1](scripts/qa_exhaustive.ps1), [TESTING.md](TESTING.md), [docs/contracts/QA_CONTRACT.md](docs/contracts/QA_CONTRACT.md), [docs/exec_plans/2026-06-14_exhaustive_qa_system_plan.md](docs/exec_plans/2026-06-14_exhaustive_qa_system_plan.md).
+- Remove when: `.\scripts\qa_exhaustive.cmd -LocalOnly -SkipLive` records `Frontend production build` as passed without special classification on a clean local run, and standalone `npm.cmd run build` also passes.
+
+### Full pytest suite contract drift index (current audit: 2026-06-14)
+
+Latest recorded full-suite audit: `python -m pytest` inside the Session 02 exhaustive QA gate on
+**2026-06-14** reported **34 failed, 1887 passed, 3 skipped**. Treat this as the current full-suite
+status until a newer full run supersedes it. The previous structured failure grouping came from
+[docs/audits/2026-06-12_full_pytest_failure_audit_after_client_fit.md](docs/audits/2026-06-12_full_pytest_failure_audit_after_client_fit.md);
+the grouping table below is therefore a starting index, not a complete classification of all 34
+current failures.
 
 These failures are tracked as broad contract/fixture/test-harness debt, not as blockers for focused
 product-bundle or Client Fit checks unless the touched area overlaps one of the rows below.

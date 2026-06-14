@@ -311,6 +311,7 @@ export type LaunchpadCardSummary = {
 export type BuilderSetupSummary = {
   selected_card_id: string;
   can_generate_candidate: boolean;
+  builder_setup_id?: string;
   builder_prefill: {
     goal?: string;
     suggested_method?: string;
@@ -319,6 +320,7 @@ export type BuilderSetupSummary = {
     min_asset_weight?: number | string;
   };
   candidate_setup: {
+    candidate_setup_id?: string;
     validation_status?: string;
     can_generate_candidate: boolean;
   };
@@ -2485,6 +2487,7 @@ function compactBuilderSetup(value: unknown): BuilderSetupSummary | undefined {
   return {
     selected_card_id: selectedCardId,
     can_generate_candidate: builder.can_generate_candidate === true || candidateSetup.can_generate_candidate === true,
+    builder_setup_id: firstText(builder.builder_setup_id, candidateSetup.candidate_setup_id, candidateSetup.setup_id),
     builder_prefill: {
       goal: firstText(builderPrefill.goal),
       suggested_method: firstText(builderPrefill.suggested_method) ? formatUnknownValue(firstText(builderPrefill.suggested_method)) : undefined,
@@ -2493,6 +2496,7 @@ function compactBuilderSetup(value: unknown): BuilderSetupSummary | undefined {
       min_asset_weight: typeof builderPrefill.min_asset_weight === "number" || typeof builderPrefill.min_asset_weight === "string" ? builderPrefill.min_asset_weight : undefined
     },
     candidate_setup: {
+      candidate_setup_id: firstText(candidateSetup.candidate_setup_id, candidateSetup.setup_id),
       validation_status: firstText(candidateSetup.validation_status) ? formatUnknownValue(firstText(candidateSetup.validation_status)) : undefined,
       can_generate_candidate: candidateSetup.can_generate_candidate === true
     }

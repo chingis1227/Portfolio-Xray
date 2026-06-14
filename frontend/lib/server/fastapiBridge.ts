@@ -40,6 +40,10 @@ type ValidatedPayload = {
 export type StageRequest = {
   review_id?: unknown;
   selected_card_id?: unknown;
+  builder_setup_id?: unknown;
+  candidate_id?: unknown;
+  comparison_id?: unknown;
+  verdict_id?: unknown;
 };
 
 type FastApiCallResult = {
@@ -51,6 +55,7 @@ type FastApiCallResult = {
 type ExpectedFastApiLineage = {
   reviewId?: string;
   selectedCardId?: string;
+  builderSetupId?: string;
   candidateId?: string;
   comparisonId?: string;
   verdictId?: string;
@@ -114,6 +119,7 @@ function scrubForClient(value: string, root = projectRoot()) {
     .replace(/\[project\][\\/][^\s'")<>]+/g, "[path]")
     .replace(/Traceback \(most recent call last\):[\s\S]*/g, "Backend failure details were captured safely.")
     .replace(/File "[^"]+", line \d+(?:, in [^\r\n]+)?/g, "Backend file reference hidden.")
+    .replace(/[^\s'")<>]*run_review_from_payload\.py/g, "[path]")
     .replace(/[A-Za-z]:[\\/][^\s'")<>]+/g, "[path]")
     .replace(/\/(?:Users|home|var|tmp|mnt)\/[^\s'")<>]+/g, "[path]")
     .trim();
@@ -221,6 +227,7 @@ async function callFastApi(method: "GET" | "POST", apiPath: string, body?: unkno
       method,
       headers: body === undefined ? undefined : { "Content-Type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
+      cache: "no-store",
       signal: controller.signal
     });
     const responseText = await response.text();
@@ -366,71 +373,8 @@ function validateReviewId(value: unknown) {
   return { reviewId, errors };
 }
 
-function runDirForReview(reviewId: string) {
-  const runsRoot = path.resolve(projectRoot(), "runs");
-  const runDir = path.resolve(runsRoot, reviewId);
-  const relative = path.relative(runsRoot, runDir);
-  if (relative.startsWith("..") || path.isAbsolute(relative)) return null;
-  return runDir;
-}
-
-async function readRunJson(reviewId: string, relativePath: string): Promise<unknown> {
-  void reviewId;
-  void relativePath;
-  throw new Error("Run-local artifact reads are unavailable in the Cloudflare Pages runtime. Use FastAPI response payloads or external artifact storage.");
-}
-
-async function readOptionalRunJson(reviewId: string, relativePath: string): Promise<unknown | undefined> {
-  try {
-    return await readRunJson(reviewId, relativePath);
-  } catch {
-    return undefined;
-  }
-}
-
 function artifactPath(reviewId: string, relativePath: string) {
   return `runs/${reviewId}/${relativePath.replaceAll("\\", "/")}`;
-}
-
-function selectedBuilderSetupId(builderDocument: unknown) {
-  const builder = isRecord(builderDocument) ? builderDocument : {};
-  const candidateSetup = isRecord(builder.candidate_setup) ? builder.candidate_setup : {};
-  return textValue(candidateSetup.candidate_setup_id, textValue(candidateSetup.setup_id, ""));
-}
-
-function selectedCardFromBuilder(builderDocument: unknown) {
-  const builder = isRecord(builderDocument) ? builderDocument : {};
-  const builderPrefill = isRecord(builder.builder_prefill) ? builder.builder_prefill : {};
-  const candidateSetup = isRecord(builder.candidate_setup) ? builder.candidate_setup : {};
-  return textValue(builder.selected_card_id, textValue(builderPrefill.source_card_id, textValue(candidateSetup.source_card_id, "")));
-}
-
-function lineageMismatchError(stage: string, reviewId: string, selectedCardId: string, actualCardId: string) {
-  return NextResponse.json({
-    status: "failed",
-    stage,
-    review_id: reviewId,
-    selected_card_id: selectedCardId,
-    error: "Selected Launchpad card does not match the active run-local stage artifact.",
-    details: [`Expected ${selectedCardId}; found ${actualCardId}. Return to Hypothesis and prepare the selected test again.`]
-  }, { status: 409 });
-}
-
-function candidateFromGeneration(candidateGeneration: unknown) {
-  const generation = isRecord(candidateGeneration) ? candidateGeneration : {};
-  const candidate = isRecord(generation.candidate) ? generation.candidate : {};
-  const handoff = isRecord(generation.handoff_to_comparison) ? generation.handoff_to_comparison : {};
-  return {
-    selectedCardId: textValue(generation.selected_card_id, textValue(candidate.source_card_id, textValue(isRecord(generation.source_builder_setup) ? generation.source_builder_setup.source_card_id : undefined, ""))),
-    candidateId: textValue(handoff.candidate_id, textValue(candidate.candidate_id, textValue(isRecord(generation.method_availability) ? generation.method_availability.backend_candidate_id : undefined, ""))),
-    generationStatus: textValue(generation.generation_status, textValue(candidate.status, "unknown")),
-    canCompare: handoff.can_compare === true
-  };
-}
-
-function verdictIdFromDocument(decisionVerdict: unknown) {
-  const verdict = isRecord(decisionVerdict) ? decisionVerdict : {};
-  return textValue(verdict.verdict_id, textValue(verdict.decision_verdict_id, "unknown"));
 }
 
 function fastApiLineageValue(body: unknown, key: string) {
@@ -443,6 +387,7 @@ function fastApiLineageErrors(body: unknown, expected: ExpectedFastApiLineage) {
   const checks: Array<[string, string | undefined]> = [
     ["review_id", expected.reviewId],
     ["selected_card_id", expected.selectedCardId],
+    ["builder_setup_id", expected.builderSetupId],
     ["candidate_id", expected.candidateId],
     ["comparison_id", expected.comparisonId],
     ["verdict_id", expected.verdictId]
@@ -456,6 +401,146 @@ function fastApiLineageErrors(body: unknown, expected: ExpectedFastApiLineage) {
     }
   }
   return errors;
+}
+
+function fastApiData(body: unknown) {
+  const envelope = isRecord(body) ? body : {};
+  return isRecord(envelope.data) ? envelope.data : {};
+}
+
+function fastApiLineage(body: unknown) {
+  const envelope = isRecord(body) ? body : {};
+  return isRecord(envelope.lineage) ? envelope.lineage : {};
+}
+
+function stageBodyText(body: StageRequest, key: keyof StageRequest) {
+  return typeof body[key] === "string" ? String(body[key]).trim() : "";
+}
+
+function sourceArtifactPath(body: unknown, kind: string, fallback: string) {
+  const envelope = isRecord(body) ? body : {};
+  const evidence = isRecord(envelope.evidence) ? envelope.evidence : {};
+  const refs = Array.isArray(evidence.source_artifacts) ? evidence.source_artifacts : [];
+  for (const item of refs) {
+    const ref = isRecord(item) ? item : {};
+    if (textValue(ref.kind) === kind) return textValue(ref.ref, fallback);
+  }
+  return fallback;
+}
+
+function publicBuilderDocumentFromFastApi(body: unknown, selectedCardId: string) {
+  const data = fastApiData(body);
+  const setup = isRecord(data.builder_setup) ? data.builder_setup : {};
+  const setupId = textValue(setup.builder_setup_id);
+  const methodId = textValue(setup.method_id);
+  const canGenerate = data.candidate_generation_allowed === true;
+  return {
+    selected_card_id: textValue(setup.selected_card_id, selectedCardId),
+    can_generate_candidate: canGenerate,
+    builder_prefill: {
+      source_card_id: textValue(setup.selected_card_id, selectedCardId),
+      suggested_method: methodId || null,
+      success_criteria: stringArray(setup.success_criteria),
+      tradeoff_to_watch: textValue(setup.tradeoff_to_watch) || null,
+      decision_boundary: textValue(setup.decision_boundary) || null
+    },
+    candidate_setup: {
+      candidate_setup_id: setupId,
+      source_card_id: textValue(setup.selected_card_id, selectedCardId),
+      selected_method: methodId || null,
+      validation_status: canGenerate ? "valid" : "blocked",
+      can_generate_candidate: canGenerate,
+      success_criteria: stringArray(setup.success_criteria),
+      tradeoff_to_watch: textValue(setup.tradeoff_to_watch) || null,
+      decision_boundary: textValue(setup.decision_boundary) || null,
+      parameters: {
+        mode: textValue(setup.mode) || null
+      }
+    }
+  };
+}
+
+function publicCandidateGenerationFromFastApi(body: unknown, selectedCardId: string) {
+  const data = fastApiData(body);
+  const candidate = isRecord(data.candidate) ? data.candidate : {};
+  const hypothesis = isRecord(data.hypothesis) ? data.hypothesis : {};
+  const lineage = fastApiLineage(body);
+  const candidateId = textValue(lineage.candidate_id, textValue(candidate.candidate_id));
+  const generationStatus = textValue(candidate.generation_status, "unknown");
+  return {
+    selected_card_id: textValue(lineage.selected_card_id, selectedCardId),
+    generation_status: generationStatus,
+    candidate: {
+      candidate_id: candidateId,
+      source_card_id: textValue(lineage.selected_card_id, selectedCardId),
+      candidate_name: textValue(candidate.method_label, candidateId),
+      method: textValue(candidate.method_label),
+      weights: isRecord(candidate.weight_summary) ? candidate.weight_summary : {},
+      status: generationStatus,
+      hypothesis_to_test: textValue(hypothesis.hypothesis),
+      success_criteria: stringArray(hypothesis.success_criteria),
+      tradeoff_to_watch: textValue(hypothesis.tradeoff_to_watch),
+      decision_boundary: textValue(hypothesis.decision_boundary)
+    },
+    handoff_to_comparison: {
+      candidate_id: candidateId,
+      can_compare: stringArray(data.next_allowed_actions).includes("run_comparison")
+    }
+  };
+}
+
+function publicCurrentVsCandidateFromFastApi(body: unknown, candidateId: string) {
+  const data = fastApiData(body);
+  const comparison = isRecord(data.comparison) ? data.comparison : {};
+  const context = isRecord(data.evidence_chain_context) ? data.evidence_chain_context : {};
+  const resolvedCandidateId = candidateId || textValue(fastApiLineage(body).candidate_id);
+  return {
+    comparison_status: textValue(comparison.candidate_label) ? "available" : "partial",
+    view_mode: "current_vs_candidate",
+    selected_candidate_ids: resolvedCandidateId ? [resolvedCandidateId] : [],
+    baseline: {
+      display_name: textValue(comparison.current_label, "Current portfolio")
+    },
+    comparisons: [
+      {
+        candidate_id: resolvedCandidateId,
+        display_name: textValue(comparison.candidate_label, resolvedCandidateId),
+        candidate_label: textValue(comparison.candidate_label, resolvedCandidateId),
+        hypothesis_to_test: textValue(context.tested_hypothesis),
+        success_criteria_result: {
+          overall_status: textValue(comparison.success_criteria_result, "unknown")
+        },
+        what_improved: stringArray(comparison.what_improved),
+        what_worsened: stringArray(comparison.what_worsened),
+        what_stayed_similar: stringArray(comparison.what_stayed_similar),
+        unavailable_metrics: stringArray(comparison.unavailable_metrics).map((field) => ({ field })),
+        materiality_for_decision_review: {
+          status: textValue(comparison.materiality, "unknown")
+        },
+        source_artifacts: stringArray(context.source_artifacts)
+      }
+    ],
+    warnings: stringArray((isRecord(body) ? body : {}).warnings)
+  };
+}
+
+function publicDecisionVerdictFromFastApi(body: unknown) {
+  const data = fastApiData(body);
+  const verdict = isRecord(data.verdict) ? data.verdict : {};
+  const lineage = fastApiLineage(body);
+  return {
+    verdict_id: textValue(lineage.verdict_id, textValue(verdict.verdict_id, "unknown")),
+    reviewed_candidate_id: textValue(lineage.candidate_id),
+    selection_decision_status: textValue(verdict.verdict, "unknown"),
+    confidence: textValue(verdict.confidence, "unknown"),
+    rationale_summary: stringArray(verdict.rationale)[0] || "",
+    confidence_limitations: stringArray(verdict.limitations),
+    what_would_change_verdict: stringArray(verdict.what_would_change_verdict),
+    evidence_summary: {
+      improvements: stringArray(verdict.evidence_used)
+    },
+    warnings: stringArray((isRecord(body) ? body : {}).warnings)
+  };
 }
 
 function fastApiLineageMismatchResponse(stage: string, expected: ExpectedFastApiLineage, details: string[]) {
@@ -759,25 +844,17 @@ export async function builderViaFastApi(request: Request) {
     return fastApiLineageMismatchResponse("builder_setup", { reviewId, selectedCardId }, builderLineageErrors);
   }
 
-  try {
-    const builderDocument = await readRunJson(reviewId, "analysis_subject/portfolio_alternatives_builder.json");
-    const envelope = isRecord(api.body) ? api.body : {};
-    const data = isRecord(envelope.data) ? envelope.data : {};
-    return NextResponse.json({
-      review_id: reviewId,
-      status: "completed",
-      stage: "builder_setup",
-      selected_card_id: selectedCardId,
-      fastapi_envelope: api.body,
-      can_generate_candidate: data.candidate_generation_allowed === true,
-      path: artifactPath(reviewId, "analysis_subject/portfolio_alternatives_builder.json"),
-      portfolio_alternatives_builder: builderDocument
-    });
-  } catch (error) {
-    return jsonError("Builder setup prepare finished but the result could not be read.", 500, [
-      scrubForClient(error instanceof Error ? error.message : String(error))
-    ]);
-  }
+  return NextResponse.json({
+    review_id: reviewId,
+    status: "completed",
+    stage: "builder_setup",
+    selected_card_id: selectedCardId,
+    builder_setup_id: textValue(fastApiLineage(api.body).builder_setup_id, textValue(fastApiData(api.body).builder_setup_id)),
+    fastapi_envelope: api.body,
+    can_generate_candidate: fastApiData(api.body).candidate_generation_allowed === true,
+    path: sourceArtifactPath(api.body, "portfolio_alternatives_builder", artifactPath(reviewId, "analysis_subject/portfolio_alternatives_builder.json")),
+    portfolio_alternatives_builder: publicBuilderDocumentFromFastApi(api.body, selectedCardId)
+  });
 }
 
 export async function candidateViaFastApi(request: Request) {
@@ -790,19 +867,29 @@ export async function candidateViaFastApi(request: Request) {
   const { reviewId, selectedCardId, errors } = validateStageRequest(body);
   if (errors.length) return jsonError("Candidate generation request validation failed.", 400, errors);
 
-  let builderDocument: unknown;
-  try {
-    builderDocument = await readRunJson(reviewId, "analysis_subject/portfolio_alternatives_builder.json");
-  } catch (error) {
-    return jsonError("Candidate generation requires a prepared Builder setup for this review.", 409, [
-      scrubForClient(error instanceof Error ? error.message : String(error))
-    ]);
+  let builderSetupId = stageBodyText(body, "builder_setup_id");
+
+  if (!builderSetupId) {
+    const builderApi = await callFastApi("POST", `/api/v1/reviews/${encodeURIComponent(reviewId)}/builder`, {
+      selected_card_id: selectedCardId,
+      overrides: {}
+    });
+    if (!builderApi.ok) {
+      const legacyError = legacyErrorFromFastApi(builderApi.body, "Candidate generation requires a prepared Builder setup for this review.");
+      const status = JSON.stringify(builderApi.body).includes("Selected Launchpad card was not found") ? 409 : builderApi.status;
+      return NextResponse.json({
+        ...legacyError,
+        stage: "candidate_generation",
+        review_id: reviewId,
+        selected_card_id: selectedCardId
+      }, { status });
+    }
+    const builderLineageErrors = fastApiLineageErrors(builderApi.body, { reviewId, selectedCardId });
+    if (builderLineageErrors.length) {
+      return fastApiLineageMismatchResponse("candidate_generation", { reviewId, selectedCardId }, builderLineageErrors);
+    }
+    builderSetupId = textValue(fastApiLineage(builderApi.body).builder_setup_id);
   }
-  const builderCardId = selectedCardFromBuilder(builderDocument);
-  if (builderCardId && builderCardId !== selectedCardId) {
-    return lineageMismatchError("candidate_generation", reviewId, selectedCardId, builderCardId);
-  }
-  const builderSetupId = selectedBuilderSetupId(builderDocument);
   if (!builderSetupId) return jsonError("Candidate generation requires a Builder setup id.", 409);
 
   const api = await callFastApi("POST", `/api/v1/reviews/${encodeURIComponent(reviewId)}/candidate`, {
@@ -816,32 +903,26 @@ export async function candidateViaFastApi(request: Request) {
       selected_card_id: selectedCardId
     }, { status: api.status });
   }
-  const candidateLineageErrors = fastApiLineageErrors(api.body, { reviewId, selectedCardId });
+  const candidateLineageErrors = fastApiLineageErrors(api.body, { reviewId, selectedCardId, builderSetupId });
   if (candidateLineageErrors.length) {
     return fastApiLineageMismatchResponse("candidate_generation", { reviewId, selectedCardId }, candidateLineageErrors);
   }
 
-  try {
-    const candidateGeneration = await readRunJson(reviewId, "candidate_generation.json");
-    const candidate = candidateFromGeneration(candidateGeneration);
-    return NextResponse.json({
-      review_id: reviewId,
-      status: "completed",
-      stage: "candidate_generation",
-      selected_card_id: selectedCardId || candidate.selectedCardId,
-      candidate_id: candidate.candidateId,
-      fastapi_envelope: api.body,
-      generation_status: candidate.generationStatus,
-      can_compare: candidate.canCompare,
-      path: artifactPath(reviewId, "candidate_generation.json"),
-      candidate_generation: candidateGeneration,
-      candidate_factory_run: await readOptionalRunJson(reviewId, "candidate_factory_run.json")
-    });
-  } catch (error) {
-    return jsonError("Candidate generation finished but the result could not be read.", 500, [
-      scrubForClient(error instanceof Error ? error.message : String(error))
-    ]);
-  }
+  const candidateGeneration = publicCandidateGenerationFromFastApi(api.body, selectedCardId);
+  const candidate: Record<string, unknown> = isRecord(candidateGeneration.candidate) ? candidateGeneration.candidate : {};
+  return NextResponse.json({
+    review_id: reviewId,
+    status: "completed",
+    stage: "candidate_generation",
+    selected_card_id: textValue(fastApiLineage(api.body).selected_card_id, selectedCardId),
+    builder_setup_id: builderSetupId,
+    candidate_id: textValue(fastApiLineage(api.body).candidate_id, textValue(candidate.candidate_id)),
+    fastapi_envelope: api.body,
+    generation_status: textValue(candidate.generation_status, "unknown"),
+    can_compare: isRecord(candidateGeneration.handoff_to_comparison) && candidateGeneration.handoff_to_comparison.can_compare === true,
+    path: sourceArtifactPath(api.body, "candidate_generation", artifactPath(reviewId, "candidate_generation.json")),
+    candidate_generation: candidateGeneration
+  });
 }
 
 export async function comparisonViaFastApi(request: Request) {
@@ -854,22 +935,11 @@ export async function comparisonViaFastApi(request: Request) {
   const { reviewId, selectedCardId, errors } = validateStageRequest(body);
   if (errors.length) return jsonError("Comparison request validation failed.", 400, errors);
 
-  let candidateGeneration: unknown;
-  try {
-    candidateGeneration = await readRunJson(reviewId, "candidate_generation.json");
-  } catch (error) {
-    return jsonError("Comparison requires an active generated candidate for this review.", 409, [
-      scrubForClient(error instanceof Error ? error.message : String(error))
-    ]);
-  }
-  const candidate = candidateFromGeneration(candidateGeneration);
-  if (candidate.selectedCardId && candidate.selectedCardId !== selectedCardId) {
-    return lineageMismatchError("current_vs_candidate", reviewId, selectedCardId, candidate.selectedCardId);
-  }
-  if (!candidate.candidateId) return jsonError("Comparison requires a generated candidate id.", 409);
+  const candidateId = stageBodyText(body, "candidate_id");
+  if (!candidateId) return jsonError("Comparison requires a generated candidate id.", 400);
 
   const api = await callFastApi("POST", `/api/v1/reviews/${encodeURIComponent(reviewId)}/comparison`, {
-    candidate_id: candidate.candidateId
+    candidate_id: candidateId
   });
   if (!api.ok) {
     return NextResponse.json({
@@ -882,40 +952,33 @@ export async function comparisonViaFastApi(request: Request) {
   const comparisonLineageErrors = fastApiLineageErrors(api.body, {
     reviewId,
     selectedCardId,
-    candidateId: candidate.candidateId
+    candidateId
   });
   if (comparisonLineageErrors.length) {
     return fastApiLineageMismatchResponse("current_vs_candidate", {
       reviewId,
       selectedCardId,
-      candidateId: candidate.candidateId
+      candidateId
     }, comparisonLineageErrors);
   }
 
-  try {
-    const currentVsCandidate = await readRunJson(reviewId, "current_vs_candidate.json");
-    const paths = {
-      candidate_comparison: artifactPath(reviewId, "candidate_comparison.json"),
-      current_vs_candidate: artifactPath(reviewId, "current_vs_candidate.json"),
-      site_explanation_bundle: artifactPath(reviewId, "site_explanation_bundle.json")
-    };
-    return NextResponse.json({
-      review_id: reviewId,
-      status: "completed",
-      stage: "current_vs_candidate",
-      selected_card_id: selectedCardId || candidate.selectedCardId,
-      candidate_id: candidate.candidateId,
-      fastapi_envelope: api.body,
-      paths,
-      current_vs_candidate: currentVsCandidate,
-      candidate_comparison: await readOptionalRunJson(reviewId, "candidate_comparison.json"),
-      site_explanation_bundle: await readOptionalRunJson(reviewId, "site_explanation_bundle.json")
-    });
-  } catch (error) {
-    return jsonError("Comparison finished but the result could not be read.", 500, [
-      scrubForClient(error instanceof Error ? error.message : String(error))
-    ]);
-  }
+  const comparisonId = textValue(fastApiLineage(api.body).comparison_id, `current_vs_candidate:${candidateId}`);
+  const paths = {
+    candidate_comparison: sourceArtifactPath(api.body, "candidate_comparison", artifactPath(reviewId, "candidate_comparison.json")),
+    current_vs_candidate: sourceArtifactPath(api.body, "current_vs_candidate", artifactPath(reviewId, "current_vs_candidate.json")),
+    site_explanation_bundle: sourceArtifactPath(api.body, "site_explanation_bundle", artifactPath(reviewId, "site_explanation_bundle.json"))
+  };
+  return NextResponse.json({
+    review_id: reviewId,
+    status: "completed",
+    stage: "current_vs_candidate",
+    selected_card_id: textValue(fastApiLineage(api.body).selected_card_id, selectedCardId),
+    candidate_id: textValue(fastApiLineage(api.body).candidate_id, candidateId),
+    comparison_id: comparisonId,
+    fastapi_envelope: api.body,
+    paths,
+    current_vs_candidate: publicCurrentVsCandidateFromFastApi(api.body, candidateId)
+  });
 }
 
 export async function verdictViaFastApi(request: Request) {
@@ -928,20 +991,9 @@ export async function verdictViaFastApi(request: Request) {
   const { reviewId, selectedCardId, errors } = validateStageRequest(body);
   if (errors.length) return jsonError("Decision verdict request validation failed.", 400, errors);
 
-  let candidateGeneration: unknown;
-  try {
-    candidateGeneration = await readRunJson(reviewId, "candidate_generation.json");
-  } catch (error) {
-    return jsonError("Decision verdict requires an active generated candidate for this review.", 409, [
-      scrubForClient(error instanceof Error ? error.message : String(error))
-    ]);
-  }
-  const candidate = candidateFromGeneration(candidateGeneration);
-  if (candidate.selectedCardId && candidate.selectedCardId !== selectedCardId) {
-    return lineageMismatchError("decision_verdict", reviewId, selectedCardId, candidate.selectedCardId);
-  }
-  if (!candidate.candidateId) return jsonError("Decision verdict requires a generated candidate id.", 409);
-  const comparisonId = `current_vs_candidate:${candidate.candidateId}`;
+  const candidateId = stageBodyText(body, "candidate_id");
+  const comparisonId = stageBodyText(body, "comparison_id") || (candidateId ? `current_vs_candidate:${candidateId}` : "");
+  if (!comparisonId) return jsonError("Decision verdict requires a comparison id.", 400);
 
   const api = await callFastApi("POST", `/api/v1/reviews/${encodeURIComponent(reviewId)}/verdict`, {
     comparison_id: comparisonId
@@ -957,40 +1009,33 @@ export async function verdictViaFastApi(request: Request) {
   const verdictLineageErrors = fastApiLineageErrors(api.body, {
     reviewId,
     selectedCardId,
-    candidateId: candidate.candidateId,
+    candidateId,
     comparisonId
   });
   if (verdictLineageErrors.length) {
     return fastApiLineageMismatchResponse("decision_verdict", {
       reviewId,
       selectedCardId,
-      candidateId: candidate.candidateId,
+      candidateId,
       comparisonId
     }, verdictLineageErrors);
   }
 
-  try {
-    const decisionVerdict = await readRunJson(reviewId, "decision_verdict.json");
-    const verdict = isRecord(decisionVerdict) ? decisionVerdict : {};
-    return NextResponse.json({
-      review_id: reviewId,
-      status: "completed",
-      stage: "decision_verdict",
-      selected_card_id: selectedCardId || candidate.selectedCardId,
-      candidate_id: candidate.candidateId,
-      fastapi_envelope: api.body,
-      verdict_id: verdictIdFromDocument(decisionVerdict),
-      selection_decision_status: textValue(verdict.selection_decision_status, textValue(verdict.recommended_action, "unknown")),
-      confidence: textValue(verdict.confidence, "unknown"),
-      path: artifactPath(reviewId, "decision_verdict.json"),
-      decision_verdict: decisionVerdict,
-      site_explanation_bundle: await readOptionalRunJson(reviewId, "site_explanation_bundle.json")
-    });
-  } catch (error) {
-    return jsonError("Decision verdict finished but the result could not be read.", 500, [
-      scrubForClient(error instanceof Error ? error.message : String(error))
-    ]);
-  }
+  const decisionVerdict = publicDecisionVerdictFromFastApi(api.body);
+  return NextResponse.json({
+    review_id: reviewId,
+    status: "completed",
+    stage: "decision_verdict",
+    selected_card_id: textValue(fastApiLineage(api.body).selected_card_id, selectedCardId),
+    candidate_id: textValue(fastApiLineage(api.body).candidate_id, candidateId),
+    comparison_id: textValue(fastApiLineage(api.body).comparison_id, comparisonId),
+    fastapi_envelope: api.body,
+    verdict_id: textValue(fastApiLineage(api.body).verdict_id, textValue(decisionVerdict.verdict_id, "unknown")),
+    selection_decision_status: textValue(decisionVerdict.selection_decision_status, "unknown"),
+    confidence: textValue(decisionVerdict.confidence, "unknown"),
+    path: sourceArtifactPath(api.body, "decision_verdict", artifactPath(reviewId, "decision_verdict.json")),
+    decision_verdict: decisionVerdict
+  });
 }
 
 export async function reportViaFastApi(request: Request) {
@@ -1003,21 +1048,9 @@ export async function reportViaFastApi(request: Request) {
   const { reviewId, selectedCardId, errors } = validateStageRequest(body);
   if (errors.length) return jsonError("Report commentary request validation failed.", 400, errors);
 
-  let candidateGeneration: unknown;
-  let decisionVerdict: unknown;
-  try {
-    candidateGeneration = await readRunJson(reviewId, "candidate_generation.json");
-    decisionVerdict = await readRunJson(reviewId, "decision_verdict.json");
-  } catch (error) {
-    return jsonError("Report commentary requires active candidate and verdict evidence for this review.", 409, [
-      scrubForClient(error instanceof Error ? error.message : String(error))
-    ]);
-  }
-  const candidate = candidateFromGeneration(candidateGeneration);
-  if (candidate.selectedCardId && candidate.selectedCardId !== selectedCardId) {
-    return lineageMismatchError("report_commentary", reviewId, selectedCardId, candidate.selectedCardId);
-  }
-  const verdictId = verdictIdFromDocument(decisionVerdict);
+  const candidateId = stageBodyText(body, "candidate_id");
+  const verdictId = stageBodyText(body, "verdict_id");
+  if (!verdictId) return jsonError("Report commentary requires a verdict id.", 400);
 
   const api = await callFastApi("POST", `/api/v1/reviews/${encodeURIComponent(reviewId)}/report`, {
     verdict_id: verdictId
@@ -1033,35 +1066,27 @@ export async function reportViaFastApi(request: Request) {
   const reportLineageErrors = fastApiLineageErrors(api.body, {
     reviewId,
     selectedCardId,
-    candidateId: candidate.candidateId,
+    candidateId,
     verdictId
   });
   if (reportLineageErrors.length) {
     return fastApiLineageMismatchResponse("report_commentary", {
       reviewId,
       selectedCardId,
-      candidateId: candidate.candidateId,
+      candidateId,
       verdictId
     }, reportLineageErrors);
   }
 
-  try {
-    const aiCommentaryContext = await readRunJson(reviewId, "ai_commentary_context.json");
-    return NextResponse.json({
-      review_id: reviewId,
-      status: "completed",
-      stage: "report_commentary",
-      selected_card_id: selectedCardId || candidate.selectedCardId,
-      candidate_id: candidate.candidateId,
-      fastapi_envelope: api.body,
-      report_display_model: reportDisplayModelFromFastApi(isRecord(api.body) ? api.body : {}),
-      path: artifactPath(reviewId, "ai_commentary_context.json"),
-      ai_commentary_context: aiCommentaryContext,
-      site_explanation_bundle: await readOptionalRunJson(reviewId, "site_explanation_bundle.json")
-    });
-  } catch (error) {
-    return jsonError("Report commentary finished but the result could not be read.", 500, [
-      scrubForClient(error instanceof Error ? error.message : String(error))
-    ]);
-  }
+  return NextResponse.json({
+    review_id: reviewId,
+    status: "completed",
+    stage: "report_commentary",
+    selected_card_id: textValue(fastApiLineage(api.body).selected_card_id, selectedCardId),
+    candidate_id: textValue(fastApiLineage(api.body).candidate_id, candidateId),
+    verdict_id: textValue(fastApiLineage(api.body).verdict_id, verdictId),
+    fastapi_envelope: api.body,
+    report_display_model: reportDisplayModelFromFastApi(isRecord(api.body) ? api.body : {}),
+    path: sourceArtifactPath(api.body, "ai_commentary_context", artifactPath(reviewId, "ai_commentary_context.json"))
+  });
 }

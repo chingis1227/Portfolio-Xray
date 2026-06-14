@@ -208,7 +208,9 @@ export default function VerdictPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           review_id: reviewId,
-          selected_card_id: selectedCardId
+          selected_card_id: selectedCardId,
+          candidate_id: candidateId,
+          comparison_id: candidateId ? `current_vs_candidate:${candidateId}` : undefined
         })
       });
       const result = await response.json() as unknown;

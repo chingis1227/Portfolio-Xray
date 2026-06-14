@@ -227,7 +227,9 @@ export default function ReportPage() {
         headers: { "Content-Type": "application/json" },
         body: encodeRequestBody({
           review_id: reviewId,
-          selected_card_id: selectedCardId
+          selected_card_id: selectedCardId,
+          candidate_id: candidateId,
+          verdict_id: verdict?.verdictId
         })
       });
       const result = await response.json() as unknown;

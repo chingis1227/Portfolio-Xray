@@ -2,6 +2,14 @@
 
 ## 2026-06-14
 
+- Fixed the Session 03 browser vertical blocker. Downstream frontend compatibility routes now use
+  FastAPI public response envelopes plus explicit lineage IDs instead of reading run-local artifacts
+  from the Next.js runtime, preserving stale selected-card HTTP 409 rejection and allowing the
+  one- and five-scenario vertical QA chains to pass.
+- Implemented Exhaustive QA System Session 03. `scripts/qa_exhaustive.ps1` now writes Session 03
+  summary/findings schemas, `qa-release-readiness.*`, optional browser vertical QA, staging
+  route-chain checks, and P0/P1/P2 release-blocker summaries. The first browser vertical check
+  surfaced `KI-2026-06-14-002`, so release readiness is explicitly not green.
 - Rebranded public product language around Portfolio MRI and Portfolio Diagnosis. The landing page,
   visible frontend labels, active source-of-truth docs, demo docs, and frontend tests now use the
   new public naming while internal technical identifiers and generated artifact contracts remain

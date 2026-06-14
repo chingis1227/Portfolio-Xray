@@ -972,13 +972,20 @@ export default function HypothesisPage() {
         return;
       }
       recordBuilderSetup(prepareResult);
+      const prepareEnvelope = isRecord(prepareResult) && isRecord(prepareResult.fastapi_envelope)
+        ? prepareResult.fastapi_envelope
+        : {};
+      const prepareLineage = isRecord(prepareEnvelope.lineage) ? prepareEnvelope.lineage : {};
+      const builderSetupId = optionalText(prepareLineage.builder_setup_id)
+        ?? (isRecord(prepareResult) ? optionalText(prepareResult.builder_setup_id) : undefined);
 
       const response = await fetch("/api/portfolio/candidate/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           review_id: reviewId,
-          selected_card_id: selectedCardId
+          selected_card_id: selectedCardId,
+          builder_setup_id: builderSetupId
         })
       });
       const result = await response.json() as unknown;

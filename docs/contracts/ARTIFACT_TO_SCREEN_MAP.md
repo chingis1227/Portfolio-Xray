@@ -166,7 +166,7 @@ references for the active web run. The detailed contract is
 ## Lineage and stale-data rules
 
 1. **Same current portfolio first.** Diagnosis artifacts must belong to the submitted current portfolio under `analysis_subject/` or the active `runs/frontend_review_*` folder.
-2. **Same `reviewId` in frontend.** Recovery, Builder prepare, candidate generation, comparison, verdict, and report API calls must use the active review folder and must reject mismatched FastAPI response lineage before reading or trusting downstream run-local artifacts.
+2. **Same `reviewId` in frontend.** Recovery, Builder prepare, candidate generation, comparison, verdict, and report API calls must use the active review lineage and must reject mismatched FastAPI response lineage. Next.js compatibility route handlers must not read downstream run-local JSON files in Edge/deployed runtimes; they should pass explicit lineage ids to FastAPI and consume FastAPI public response payloads or another deployment-safe artifact access path.
 3. **Same selected hypothesis.** Builder setup must link to the selected Launchpad card. Selecting a different card clears downstream candidate, comparison, verdict, and report readiness.
 4. **Same generated candidate.** Comparison must scope `selected_candidate_ids` / comparison rows to the generated candidate for the active setup. Verdict must review that same candidate or valid no-candidate/evidence-insufficient state.
 5. **Tombstones are states, not failures.** Diagnosis-only `no_candidate_v1` comparison/verdict tombstones mean no active candidate exists; they must not be shown as broken output.

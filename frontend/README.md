@@ -35,8 +35,10 @@ product or trading system.
   of redirecting directly into an internal product step.
 - `app/api/portfolio/*` routes are compatibility proxies over the local FastAPI v1 API. They keep
   the current screen-facing response shape while FastAPI runs the Python review stages and enforces
-  typed request/response contracts. The proxy layer may read same-run artifacts for lineage and
-  fallback/debug evidence, but screens consume display models from `reviewState` and FastAPI public
+  typed request/response contracts. The proxy layer is deployment-safe for Edge-style route
+  handlers: it passes explicit same-run lineage ids from frontend state to FastAPI and builds
+  screen-compatible responses from FastAPI public envelopes instead of reading `runs/...` files
+  from the Next.js runtime. Screens consume display models from `reviewState` and FastAPI public
   envelopes rather than raw artifact internals. The proxy no longer spawns
   `scripts/run_review_from_payload.py`.
 - `components/layout/` contains the application shell, sidebar, top journey progress, and page header.
@@ -63,7 +65,8 @@ product or trading system.
   `rejected_alternatives`, `professional_rationale_refs`, and `recommendation_boundary`).
   Session 10 updates the frontend adapters so diagnosis, candidate, comparison, verdict, and report
   summaries prefer these FastAPI public display fields, including downstream
-  `evidence_chain_context`, before falling back to same-run raw artifacts.
+  `evidence_chain_context`, and downstream compatibility routes no longer require local filesystem
+  artifact reads in the Next.js runtime.
   Staged pipeline Session 5 migrates the normal diagnosis route to
   `POST /api/v1/reviews/staged` plus status polling through
   `GET /api/v1/reviews/{review_id}/status`. After the diagnosis-stage chain is ready, the frontend
@@ -110,7 +113,7 @@ product or trading system.
 - When Supabase is enabled and the user is signed in, the active review may also keep a compact
   link to the selected cloud portfolio so diagnosis-history rows can point back to the saved
   portfolio input without uploading generated evidence.
-- The complete `review_result.json` is not persisted in browser storage. During the current tab session compatibility routes may keep raw same-run fields as fallback/debug evidence, but screen rendering relies on compact display summaries, FastAPI public envelopes, and `reviewId`.
+- The complete `review_result.json` is not persisted in browser storage. During the current tab session compatibility routes may include bounded FastAPI-derived compatibility fields for older screen adapters, but screen rendering relies on compact display summaries, FastAPI public envelopes, explicit lineage ids, and `reviewId`; Next.js route handlers must not read run-local JSON files as part of the normal deployed path.
 - Portfolio Input includes a read-only recovery control for `frontend_review_*` IDs. It calls
   `/api/portfolio/review/recover`, reads only run-local diagnosis/launchpad/builder artifacts, and
   restores candidate/comparison/verdict/report readiness as false so stale downstream artifacts are
@@ -205,7 +208,9 @@ npm.cmd run qa:vertical -- --scenario-limit 3
 This starts fresh FastAPI and Next.js servers on free localhost ports, opens a clean Playwright
 browser context, clears browser storage before each scenario, runs diagnosis through report via the
 frontend compatibility API routes, probes stale selected-card rejection, and writes screenshots or
-DOM fallbacks plus `qa-report.json` under `../output/playwright/`. If live market data is
+DOM fallbacks plus `qa-report.json` under `../output/playwright/`. Demo QA mode uses fixed fixture
+diagnosis text across scenarios, so the helper treats identical diagnosis summaries as a warning
+when the route chain and stale-card 409 proof pass. If live market data is
 unavailable, treat the failure as a data-provider blocker and inspect the report/logs before making
 frontend or product conclusions.
 
