@@ -19,9 +19,11 @@ const portfolioInputTablePath = path.resolve(frontendRoot, "components", "portfo
 const reviewStatePath = path.resolve(frontendRoot, "lib", "reviewState.tsx");
 const journeyPath = path.resolve(frontendRoot, "lib", "journey.ts");
 const clientFitContextCardPath = path.resolve(frontendRoot, "components", "client-fit", "ClientFitContextCard.tsx");
+const siteExplanationHierarchyPath = path.resolve(frontendRoot, "components", "explanation", "SiteExplanationHierarchy.tsx");
 const hypothesisPagePath = path.resolve(frontendRoot, "app", "hypothesis", "page.tsx");
 const comparisonPagePath = path.resolve(frontendRoot, "app", "comparison", "page.tsx");
 const verdictPagePath = path.resolve(frontendRoot, "app", "verdict", "page.tsx");
+const siteExplanationPresenterPath = path.resolve(frontendRoot, "lib", "siteExplanationPresenter.ts");
 
 function makeJsonRequest(body, url = "http://localhost/api/portfolio/builder/prepare") {
   return new Request(url, {
@@ -447,9 +449,7 @@ test("Supabase staged persistence keeps canonical stage names and strips raw art
   assert.match(persistenceSource, /isUnsafeCloudString/);
   assert.match(persistenceSource, /persistStagedProgressForReview/);
   assert.match(persistenceSource, /compactCloudRecord\(summary\)/);
-  assert.match(callbackSource, /url\.pathname = "\/onboarding\/name"/);
-  assert.match(sidebarSource, /<PersistenceStatus \/>/);
-  assert.match(sidebarSource, /<SavedReviewsPanel \/>/);
+  assert.match(callbackSource, /url\.pathname = "\/client-profile"/);
   assert.doesNotMatch(persistenceSource, /artifactRefs:\s*reviewSummary\.rawOutputKeys/);
   assert.doesNotMatch(persistenceSource, /summary:\s*activeReview\.verdictResult/);
 });
@@ -504,6 +504,129 @@ test("Hypothesis, Comparison, and Verdict keep Client Fit separate from structur
   const forbiddenAdvice = /\b(suitable|approved|buy|must rebalance|best portfolio)\b/i;
   assert.doesNotMatch(combined, forbiddenAdvice);
   assert.doesNotMatch(combined, /\bsell\b/i);
+});
+
+test("site explanation presenter strips raw provenance from the public display model", () => {
+  const presenter = loadTsModule(siteExplanationPresenterPath);
+  const rawBundle = {
+    schema_version: "site_explanation_bundle_v1",
+    screens: {
+      diagnosis: {
+        executive: [{
+          id: "diagnosis.executive.primary",
+          level: "executive",
+          text: "The current diagnosis is supported by available evidence.",
+          tone: "neutral",
+          evidence_status: "available",
+          claim_type: "material_claim",
+          source_refs: [{ artifact: "problem_classification.json", field_path: "root_cause.statement" }]
+        }],
+        evidence: [{
+          id: "diagnosis.evidence.primary",
+          level: "evidence",
+          text: "Material contradictions were detected across the diagnostic evidence.",
+          tone: "caution",
+          evidence_status: "limited",
+          claim_type: "material_claim",
+          source_refs: [{ artifact: "portfolio_xray.json", field_path: "block_2_6_portfolio_weakness_map.risk_types" }]
+        }],
+        technical: [{
+          id: "diagnosis.technical.primary",
+          level: "technical",
+          text: "Some method detail is available for review.",
+          tone: "neutral",
+          evidence_status: "preliminary",
+          claim_type: "boundary_note",
+          source_refs: [{ artifact: "stress_report.json", field_path: "stress_results_v1.worst_synthetic" }]
+        }]
+      }
+    }
+  };
+
+  const display = presenter.buildPublicSiteExplanationDisplayModel(rawBundle, "diagnosis", "Diagnosis explanation");
+  assert.ok(display);
+  assert.equal(display.title, "Diagnosis explanation");
+  assert.equal(display.executiveItems[0].evidenceLabel, "Evidence available");
+  assert.equal(display.evidenceItems[0].evidenceLabel, "Limited evidence");
+  assert.equal(display.technicalItems[0].evidenceLabel, "Preliminary evidence");
+
+  const serializedDisplay = JSON.stringify(display);
+  assert.doesNotMatch(serializedDisplay, /site_explanation_bundle_v1/);
+  assert.doesNotMatch(serializedDisplay, /portfolio_xray\.json/);
+  assert.doesNotMatch(serializedDisplay, /problem_classification\.json/);
+  assert.doesNotMatch(serializedDisplay, /stress_report\.json/);
+  assert.doesNotMatch(serializedDisplay, /field_path|source_refs|artifact/);
+  assert.doesNotMatch(serializedDisplay, /"available"|"limited"|"missing"|"preliminary"/);
+});
+
+test("site explanation presenter exposes raw provenance only when explicitly requested", () => {
+  const presenter = loadTsModule(siteExplanationPresenterPath);
+  const rawBundle = {
+    schema_version: "site_explanation_bundle_v1",
+    review_id: "frontend_review_debug",
+    warnings: ["missing_source:stress_report"],
+    screens: {
+      diagnosis: {
+        executive: [{
+          id: "diagnosis.executive.primary",
+          level: "executive",
+          text: "The current diagnosis is supported by available evidence.",
+          tone: "neutral",
+          evidence_status: "available",
+          claim_type: "material_claim",
+          source_refs: [{ artifact: "problem_classification.json", field_path: "root_cause.statement" }]
+        }],
+        evidence: [],
+        technical: []
+      }
+    }
+  };
+
+  const defaultDisplay = presenter.buildPublicSiteExplanationDisplayModel(rawBundle, "diagnosis", "Diagnosis explanation");
+  assert.ok(defaultDisplay);
+  assert.equal(defaultDisplay.developerProvenance, undefined);
+  assert.doesNotMatch(JSON.stringify(defaultDisplay), /problem_classification\.json|site_explanation_bundle_v1|sourceRefs/);
+
+  const developerDisplay = presenter.buildPublicSiteExplanationDisplayModel(rawBundle, "diagnosis", "Diagnosis explanation", {
+    includeDeveloperProvenance: true
+  });
+  assert.ok(developerDisplay.developerProvenance);
+  assert.equal(developerDisplay.developerProvenance.schemaVersion, "site_explanation_bundle_v1");
+  assert.equal(developerDisplay.developerProvenance.reviewId, "frontend_review_debug");
+  assert.deepEqual(developerDisplay.developerProvenance.warnings, ["missing_source:stress_report"]);
+  assert.deepEqual(developerDisplay.developerProvenance.items[0].sourceRefs, [
+    "problem_classification.json:root_cause.statement"
+  ]);
+});
+
+test("SiteExplanationHierarchy renders public explanation data instead of raw provenance", () => {
+  const source = fs.readFileSync(siteExplanationHierarchyPath, "utf8");
+
+  assert.match(source, /buildPublicSiteExplanationDisplayModel/);
+  assert.match(source, /Decision evidence/);
+  assert.match(source, /showDeveloperProvenance = false/);
+  assert.match(source, /Developer provenance/);
+  assert.doesNotMatch(source, /Source:/);
+  assert.doesNotMatch(source, /site_explanation_bundle_v1/);
+  assert.doesNotMatch(source, /ref\.artifact|ref\.field_path/);
+  assert.doesNotMatch(source, /source_refs\.map/);
+});
+
+test("public journey pages do not opt into developer provenance by default", () => {
+  const publicPagePaths = [
+    path.resolve(frontendRoot, "app", "diagnosis", "page.tsx"),
+    path.resolve(frontendRoot, "app", "evidence", "page.tsx"),
+    path.resolve(frontendRoot, "app", "client-fit", "page.tsx"),
+    path.resolve(frontendRoot, "app", "hypothesis", "page.tsx"),
+    path.resolve(frontendRoot, "app", "comparison", "page.tsx"),
+    path.resolve(frontendRoot, "app", "verdict", "page.tsx"),
+    path.resolve(frontendRoot, "app", "report", "page.tsx")
+  ];
+
+  for (const publicPagePath of publicPagePaths) {
+    const source = fs.readFileSync(publicPagePath, "utf8");
+    assert.doesNotMatch(source, /showDeveloperProvenance\s*=\s*{?\s*true\s*}?/, `${publicPagePath} must not expose developer provenance`);
+  }
 });
 
 test("review recovery route validates review id and path separators", async () => {

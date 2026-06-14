@@ -53,6 +53,7 @@ There is no current `/candidate`, `/monitoring`, `/what-changed`, optimizer-aren
 7. Client Fit is diagnostic context, not suitability approval or optimizer mandate.
 8. Missing, partial, stale, blocked, locked, and evidence-insufficient states are valid and visible.
 9. Raw artifact filenames, JSON keys, booleans, backend IDs, run folder paths, and operator terms are not primary UI copy.
+10. Evidence-provenance traces from `site_explanation_bundle.json` are hidden by default. Public explanation cards show product-language evidence labels; raw schema names, artifact filenames, and field paths may appear only in an explicit developer/debug provenance panel.
 
 ## Route contracts
 

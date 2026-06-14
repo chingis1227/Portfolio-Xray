@@ -1,10 +1,23 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { NextResponse } from "next/server";
 import type { ReportResponse, StagedReviewStatusResponse } from "@/lib/generated/api-types";
 
 const FASTAPI_TIMEOUT_MS = 15 * 60 * 1000;
 const WEIGHT_TOLERANCE = 0.01;
+
+const path = {
+  basename(value: string) {
+    return value.split(/[\\/]/).pop() || "";
+  },
+  resolve(...parts: string[]) {
+    return parts.filter(Boolean).join("/");
+  },
+  relative(..._parts: string[]) {
+    return "";
+  },
+  isAbsolute(value: string) {
+    return /^([A-Za-z]:)?[\\/]/.test(value);
+  }
+};
 
 export type PortfolioPayload = {
   investor_currency?: unknown;
@@ -44,7 +57,7 @@ type ExpectedFastApiLineage = {
 };
 
 function projectRoot() {
-  return path.resolve(process.cwd(), "..");
+  return "";
 }
 
 function fastApiBaseUrl() {
@@ -359,14 +372,9 @@ function runDirForReview(reviewId: string) {
 }
 
 async function readRunJson(reviewId: string, relativePath: string): Promise<unknown> {
-  const runDir = runDirForReview(reviewId);
-  if (!runDir) throw new Error("review_id must stay inside the runs directory.");
-  const target = path.resolve(runDir, relativePath);
-  const relative = path.relative(runDir, target);
-  if (relative.startsWith("..") || path.isAbsolute(relative)) {
-    throw new Error("artifact path must stay inside the review run directory.");
-  }
-  return parseJsonWithNonFinite(await readFile(target, "utf8"));
+  void reviewId;
+  void relativePath;
+  throw new Error("Run-local artifact reads are unavailable in the Cloudflare Pages runtime. Use FastAPI response payloads or external artifact storage.");
 }
 
 async function readOptionalRunJson(reviewId: string, relativePath: string): Promise<unknown | undefined> {

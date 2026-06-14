@@ -106,6 +106,7 @@ references for the active web run. The detailed contract is
 | Adapter/source file | Current responsibility | Contract boundary |
 | --- | --- | --- |
 | `frontend/lib/reviewState.tsx` | Active review state, compact summaries, lineage gates, localStorage cleanup, journey flags, and presentation mapping for diagnosis, evidence, Builder, candidate, comparison, and verdict summaries. | May map artifacts to product states; must not turn raw filenames, raw enum ids, booleans, or stale downstream artifacts into primary UI copy. Session 8 may split adapter responsibilities, but this file is the current concentration point. |
+| `frontend/lib/siteExplanationPresenter.ts` | Presentation boundary for `site_explanation_bundle.json` on public explanation cards. | Converts backend explanation-bundle rows into public display labels and keeps raw schema/source provenance out of default UI. Developer provenance is allowed only through an explicit opt-in debug display. |
 | `frontend/lib/displayLabels.ts` | Shared normalization for raw labels, method IDs, scenario IDs, backend terms, and unknown values. | Must convert backend/internal vocabulary into approved user-facing labels and hide path-like artifact filenames in normal copy. |
 | `frontend/lib/journey.ts` | Route list and unlock flags. | Must preserve Core MVP order and must not introduce hidden candidate/monitoring routes without contract updates. |
 | `frontend/lib/types.ts` | Shared lightweight UI types. | Must represent product-facing concepts, not backend schema copies. |
@@ -174,6 +175,10 @@ references for the active web run. The detailed contract is
 8. **Generated exports are not UI truth.** PDFs, CSVs, TXT, HTML, PNG, and Markdown sidecars are stale unless explicitly refreshed in the active task.
 9. **Missing/partial evidence is visible.** Adapters must present unavailable, partial, limited, blocked, stale/ignored, and evidence-insufficient states separately.
 10. **No raw artifact names in primary copy.** Artifact filenames in this contract are implementer vocabulary. User-facing UI uses product labels.
+11. **Explanation provenance is opt-in debug data.** `site_explanation_bundle.json` keeps exact
+    `source_refs` for audit, but public explanation cards must use the frontend presenter boundary
+    and hide raw schema names, artifact filenames, and field paths unless a developer-only
+    provenance display is explicitly enabled.
 
 ## Artifact lifecycle by runtime mode
 

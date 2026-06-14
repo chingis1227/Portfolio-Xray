@@ -23,6 +23,13 @@ Primary UI must answer the user's question, not expose how the product is wired 
 
 Technical language is allowed only in clearly developer/operator surfaces, docs, logs, API errors, or appendices that are not primary UI. If a term appears in a screen hero, primary card, CTA, empty state, badge, or report summary, it must follow this contract.
 
+`site_explanation_bundle.json` has a special presentation boundary. The backend bundle may keep
+`schema_version`, `source_refs`, artifact filenames, field paths, warnings, and raw evidence-status
+ids for audit. Public explanation cards must consume the bundle through
+`frontend/lib/siteExplanationPresenter.ts` and show product labels such as `Evidence available`,
+`Limited evidence`, `Evidence missing`, or `Preliminary evidence`. Raw provenance may be rendered
+only in an explicitly enabled developer/debug panel, not in the default public journey.
+
 ## Product safety boundaries
 
 These boundaries apply to every replacement below:
@@ -47,6 +54,7 @@ Use this table for primary UI copy, user-visible labels, report preview text, ba
 | `analysis_subject` | current portfolio; diagnosed portfolio | Keep `analysis_subject/` for docs/operators only. |
 | `frontend_review_*`, `Review ID`, `reviewId`, run folder path | current review; saved review; review reference | If an operator ID must be shown, put it in diagnostics, not hero copy. |
 | `output_manifest.json`, `outputs.*`, `outputPaths` | output index; available review files; supporting output list | Do not make manifests user-visible proof. |
+| `site_explanation_bundle_v1`, `source_refs`, `field_path` | evidence-backed explanation; supporting evidence; developer provenance when explicitly enabled | Preserve raw fields in data, but do not show them on default public explanation cards. |
 | `portfolio_xray.json` | Portfolio Diagnosis evidence | Screen label remains Portfolio Diagnosis. |
 | `stress_report.json` | Stress Test Lab evidence; stress-test evidence | Prefer product label `Stress Test Lab`. |
 | `problem_classification.json` | main portfolio diagnosis; diagnosis bridge | Do not expose diagnosis ids as labels. |

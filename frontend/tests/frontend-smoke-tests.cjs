@@ -121,12 +121,22 @@ test("frontend static journey pages respond on a local Next server", { timeout: 
       ["/verdict", /Verdict|Decision/i],
       ["/report", /Report|Commentary/i]
     ];
+    const publicProvenanceLeakPatterns = [
+      /Source:\s*(?:portfolio_xray|problem_classification|stress_report|site_explanation_bundle)\.json/i,
+      /site_explanation_bundle_v1/i,
+      /portfolio_xray\.json/i,
+      /problem_classification\.json/i,
+      /field_path/i
+    ];
 
     for (const [route, expectedText] of pages) {
       const response = await fetchWithTimeout(`${baseUrl}${route}`, pageFetchTimeoutMs, route);
       assert.equal(response.status, 200, `${route} should render successfully.\n${outputTail(outputLines)}`);
       const html = await response.text();
       assert.match(html, expectedText, `${route} should include expected stage text`);
+      for (const forbiddenPattern of publicProvenanceLeakPatterns) {
+        assert.doesNotMatch(html, forbiddenPattern, `${route} should not expose raw backend provenance`);
+      }
     }
   } finally {
     stopServer(child);

@@ -49,6 +49,11 @@ Runtime integration:
 - The frontend renders executive copy first, supporting evidence second, and technical copy inside
   a disclosure panel. It treats the bundle as additive explanation, not as a replacement for the
   underlying artifact-specific panels.
+- The frontend must render the bundle through a presentation boundary instead of printing raw
+  bundle fields directly. Public screens use product-language evidence labels such as `Evidence
+  available` and `Limited evidence`. Raw `schema_version`, artifact filenames, JSON field paths,
+  and source-reference rows may appear only in an explicit developer provenance view that is off by
+  default.
 
 ## Allowed source artifacts
 
@@ -170,6 +175,32 @@ text may have an empty `source_refs` list only when the bundle also records an e
 as `missing_source:portfolio_xray` or `missing_source:stress_report`.
 
 The bundle must never silently emit a material claim without source references.
+
+## Public presentation boundary
+
+The backend bundle is an audit contract, not a direct public UI contract. The frontend must preserve
+`source_refs`, schema versions, warnings, and artifact names in data so QA and developers can trace
+claims back to deterministic evidence. Normal user-facing screens must not render those raw fields
+as primary copy, badges, card text, subtitles, or report-preview text.
+
+The current frontend boundary is `frontend/lib/siteExplanationPresenter.ts`. It converts a
+`SiteExplanationBundle` into a public display model with only screen title, subtitle, grouped text
+items, and product-language evidence labels. `frontend/components/explanation/SiteExplanationHierarchy.tsx`
+consumes that public display model. The component may render raw provenance only when explicitly
+called with a developer/debug option such as `showDeveloperProvenance={true}`; public journey pages
+must not pass that option by default.
+
+Allowed public labels include:
+
+- `Evidence available`
+- `Limited evidence`
+- `Evidence missing`
+- `Preliminary evidence`
+
+Disallowed public explanation-card output includes raw artifact filenames such as
+`portfolio_xray.json`, raw field-path labels, `site_explanation_bundle_v1`, and strings formatted as
+`artifact:field_path`. These values remain valid inside backend artifacts, tests, developer
+provenance panels, logs, and implementation documentation.
 
 ## Copy hierarchy rules
 
