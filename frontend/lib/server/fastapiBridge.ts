@@ -614,6 +614,87 @@ function sanitizeRecoveredReviewResult(value: unknown, reviewId: string) {
   };
 }
 
+function artifactRefsToPathMap(refs: unknown) {
+  const pathEntries = Array.isArray(refs)
+    ? refs
+      .map((item): [string, string] | null => {
+        const ref = isRecord(item) ? item : {};
+        const kind = textValue(ref.kind);
+        const value = textValue(ref.ref);
+        return kind && value ? [kind, value] : null;
+      })
+      .filter((item): item is [string, string] => Boolean(item))
+    : [];
+  return Object.fromEntries(pathEntries);
+}
+
+function recoveredLaunchpadOutput(launchpadValue: unknown) {
+  const launchpad = isRecord(launchpadValue) ? launchpadValue : {};
+  const cardId = textValue(launchpad.card_id);
+  if (!cardId) return undefined;
+  return {
+    cards: [
+      {
+        card_id: cardId,
+        title: textValue(launchpad.title, "Test candidate"),
+        default_method: textValue(launchpad.method_id),
+        generates_portfolio: launchpad.generation_allowed === true,
+        is_rebalance_recommendation: launchpad.is_rebalance_recommendation === true
+      }
+    ]
+  };
+}
+
+function recoveredBuilderOutput(launchpadValue: unknown) {
+  const launchpad = isRecord(launchpadValue) ? launchpadValue : {};
+  const selectedCardId = textValue(launchpad.card_id);
+  if (!selectedCardId) return undefined;
+  const methodId = textValue(launchpad.method_id);
+  const canGenerate = launchpad.generation_allowed === true;
+  return {
+    selected_card_id: selectedCardId,
+    can_generate_candidate: canGenerate,
+    builder_prefill: {
+      suggested_method: methodId || null
+    },
+    candidate_setup: {
+      source_card_id: selectedCardId,
+      candidate_setup_id: methodId ? `fastapi_recovered:${methodId}` : `fastapi_recovered:${selectedCardId}`,
+      validation_status: canGenerate ? "valid" : "blocked",
+      can_generate_candidate: canGenerate
+    }
+  };
+}
+
+function recoveredReviewResultFromFastApi(body: unknown, reviewId: string) {
+  const envelope = isRecord(body) ? body : {};
+  const data = isRecord(envelope.data) ? envelope.data : {};
+  const evidence = isRecord(envelope.evidence) ? envelope.evidence : {};
+  const summary = isRecord(data.review_summary) ? data.review_summary : {};
+  const launchpadOutput = recoveredLaunchpadOutput(data.launchpad);
+  const builderOutput = recoveredBuilderOutput(data.launchpad);
+  const outputs = Object.fromEntries(
+    Object.entries({
+      problem_classification: data.diagnosis,
+      candidate_launchpad: launchpadOutput,
+      portfolio_alternatives_builder: builderOutput
+    }).filter(([, value]) => value !== undefined && value !== null)
+  );
+  const paths = artifactRefsToPathMap(data.artifact_refs ?? evidence.source_artifacts);
+
+  return sanitizeRecoveredReviewResult({
+    review_id: reviewId,
+    status: "completed",
+    portfolio_input: {
+      investor_currency: textValue(summary.investor_currency, "USD"),
+      holdings: []
+    },
+    paths,
+    outputs,
+    fastapi_envelope: body
+  }, reviewId);
+}
+
 export async function recoverViaFastApi(reviewIdInput: unknown) {
   const { reviewId, errors } = validateReviewId(reviewIdInput);
   if (errors.length) return jsonError("Review recovery request validation failed.", 400, errors);
@@ -627,28 +708,21 @@ export async function recoverViaFastApi(reviewIdInput: unknown) {
     return fastApiLineageMismatchResponse("review_recovery", { reviewId }, recoveryLineageErrors);
   }
 
-  try {
-    const reviewResult = await readRunJson(reviewId, "review_result.json");
-    const sanitized = sanitizeRecoveredReviewResult(reviewResult, reviewId);
-    if (!sanitized) return jsonError("Run-local review_result.json is not a completed matching frontend review.", 409);
-    return NextResponse.json({
-      status: "completed",
-      stage: "review_recovery",
-      review_id: reviewId,
-      fastapi_envelope: api.body,
-      recovery: {
-        source: "fastapi_v1_review_recovery",
-        restored_active_stages: ["diagnosis", "evidence", "hypothesis_setup"],
-        downstream_artifacts_restored_as_active: false,
-        note: "Candidate, comparison, verdict, and report artifacts are not restored as active state during recovery."
-      },
-      review_result: sanitized
-    });
-  } catch (error) {
-    return jsonError("No recoverable run-local review_result.json was found for this review_id.", 404, [
-      scrubForClient(error instanceof Error ? error.message : String(error))
-    ]);
-  }
+  const sanitized = recoveredReviewResultFromFastApi(api.body, reviewId);
+  if (!sanitized) return jsonError("FastAPI did not return recoverable review data for this review_id.", 409);
+  return NextResponse.json({
+    status: "completed",
+    stage: "review_recovery",
+    review_id: reviewId,
+    fastapi_envelope: api.body,
+    recovery: {
+      source: "fastapi_v1_review_recovery",
+      restored_active_stages: ["diagnosis", "evidence", "hypothesis_setup"],
+      downstream_artifacts_restored_as_active: false,
+      note: "Candidate, comparison, verdict, and report artifacts are not restored as active state during recovery."
+    },
+    review_result: sanitized
+  });
 }
 
 export async function builderViaFastApi(request: Request) {
