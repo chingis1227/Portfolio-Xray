@@ -92,7 +92,7 @@ product-bundle or Client Fit checks unless the touched area overlaps one of the 
 | Portfolio X-Ray golden drift | `tests/test_portfolio_xray_contract.py::test_live_build_matches_golden_document` | Live X-Ray differs from checked golden | Run targeted JSON diff before choosing fix vs fixture refresh |
 
 The older 2026-05-26 six-row index below remains as historical detail for overlapping known rows,
-but the 2026-06-12 audit above is the current full-suite status.
+but the 2026-06-14 audit above is the current full-suite status.
 
 ---
 

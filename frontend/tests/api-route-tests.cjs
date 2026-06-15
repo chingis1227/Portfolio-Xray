@@ -383,6 +383,28 @@ test("diagnosis route forwards completed Client Fit profile into the staged Fast
   });
 });
 
+test("diagnosis route reports frontend backend version mismatch when staged FastAPI route is missing", async () => {
+  const route = loadRoute({ routePath: diagnoseRoutePath });
+
+  await withMockFetch(async () => Response.json({
+    detail: "Method Not Allowed"
+  }, { status: 405 }), async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      investor_currency: "USD",
+      holdings: [
+        { type: "instrument", ticker: "SPY", weight: 80 },
+        { type: "cash", currency: "USD", weight: 20 }
+      ]
+    }, "http://localhost/api/portfolio/diagnose")));
+
+    assert.equal(result.status, 502);
+    assert.equal(result.body.status, "failed");
+    assert.match(result.body.error, /Frontend\/backend version mismatch/);
+    assert.match(result.body.error, /POST \/api\/v1\/reviews\/staged/);
+    assert.match(result.body.error, /Restart the FastAPI backend and Next\.js frontend/);
+  });
+});
+
 test("staged review status route proxies to the FastAPI status endpoint", async () => {
   const calls = [];
   const route = loadRoute({ routePath: reviewStatusRoutePath });

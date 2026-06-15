@@ -779,19 +779,19 @@ function Invoke-Session02LocalGate {
     $python = @(Get-ProjectPython)
     Test-EnvironmentReadiness
     Test-LocalFastApiOpenApi
-    $null = Invoke-QaCommand "Fast daily QA" $RepoRoot @("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\qa_fast.ps1") -KnownFailureReason "Known Session 01 baseline: qa_fast includes frontend API route tests, and npm.cmd run test:api reported 14 passed and 6 failed." -Subsystem "cross-cutting" -Severity "P1"
+    $null = Invoke-QaCommand "Fast daily QA" $RepoRoot @("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\qa_fast.ps1") -Subsystem "cross-cutting" -Severity "P1"
     $null = Invoke-QaCommand "Contract QA" $RepoRoot @("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\qa_contracts.ps1") -Subsystem "backend contracts" -Severity "P1"
     $null = Invoke-QaCommand "FastAPI governance verification" $RepoRoot ($python + @("scripts\verify_fastapi_contract_governance.py")) -Subsystem "FastAPI" -Severity "P1"
     $null = Invoke-QaCommand "Focused FastAPI public contract pytest" $RepoRoot ($python + @("-m", "pytest", "tests\test_fastapi_app.py", "tests\test_fastapi_contract_governance.py", "-q", "--basetemp=tmp\qa_exhaustive_fastapi_contract")) -Subsystem "FastAPI" -Severity "P1"
     $null = Invoke-QaCommand "Full backend pytest" $RepoRoot ($python + @("-m", "pytest")) -KnownFailureReason "Known full-suite baseline tracked in KNOWN_ISSUES.md: Session 02 exhaustive QA reported 34 failed, 1887 passed, 3 skipped on 2026-06-14." -Subsystem "backend" -Severity "P1"
     $null = Invoke-QaCommand "Frontend typecheck" $FrontendRoot @("npm.cmd", "run", "typecheck") -Subsystem "frontend" -Severity "P1"
     $null = Invoke-QaCommand "Frontend production build" $FrontendRoot @("npm.cmd", "run", "build") -KnownFailureReason "Known Session 02 runner baseline tracked as KI-2026-06-14-001: npm.cmd run build can return -1 inside the long exhaustive gate after full pytest, while the same build command passes when run standalone." -Subsystem "frontend" -Severity "P1" -MaxAttempts 2
-    $null = Invoke-QaCommand "Frontend API route tests" $FrontendRoot @("npm.cmd", "run", "test:api") -KnownFailureReason "Known Session 01 baseline: npm.cmd run test:api reported 14 passed and 6 failed; diagnosis staged-route tests passed." -Subsystem "frontend API" -Severity "P1"
+    $null = Invoke-QaCommand "Frontend API route tests" $FrontendRoot @("npm.cmd", "run", "test:api") -Subsystem "frontend API" -Severity "P1"
     $null = Invoke-QaCommand "Frontend smoke tests" $FrontendRoot @("npm.cmd", "run", "test:smoke") -Subsystem "frontend" -Severity "P1"
     $null = Invoke-QaCommand "Docs verification" $RepoRoot ($python + @("scripts\verify_docs.py")) -Subsystem "docs" -Severity "P2"
     $null = Invoke-QaCommand "Docs link pytest" $RepoRoot ($python + @("-m", "pytest", "tests\test_docs_links.py", "-q", "--basetemp=tmp\qa_exhaustive_docs_links")) -Subsystem "docs" -Severity "P2"
     $null = Invoke-QaCommand "Supabase compact Client Fit pytest" $RepoRoot ($python + @("-m", "pytest", "tests\test_supabase_client_fit_compact_storage.py", "-q", "--basetemp=tmp\qa_exhaustive_supabase_compact")) -Subsystem "Supabase" -Severity "P2"
-    $null = Invoke-QaCommand "Supabase compact/privacy frontend API rows" $FrontendRoot @("node", "--test", "--test-name-pattern=Supabase", "tests/api-route-tests.cjs") -KnownFailureReason "Known Session 01 frontend API baseline: the Supabase staged persistence row is part of the recorded non-green npm.cmd run test:api suite." -Subsystem "Supabase" -Severity "P2"
+    $null = Invoke-QaCommand "Supabase compact/privacy frontend API rows" $FrontendRoot @("node", "--test", "--test-name-pattern=Supabase", "tests/api-route-tests.cjs") -Subsystem "Supabase" -Severity "P2"
 }
 
 function Write-QaSummary {

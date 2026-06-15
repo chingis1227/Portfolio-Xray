@@ -34,6 +34,11 @@ in `KNOWN_ISSUES.md` are fixed, especially `KI-2026-06-14-002`.
 **Completed:** [Staged Review Pipeline Migration](2026-06-14_staged_review_pipeline_plan.md) -
 completed 2026-06-14 and listed as completed history below.
 
+**Deferred:** [Architecture Debt Roadmap for Staged Review Runtime, Frontend State, and Legacy
+Runners](2026-06-15_architecture_debt_roadmap_plan.md) - created as a Session 6 handoff from the
+Run Diagnostics stabilization work. It splits future architecture cleanup into API/subprocess,
+frontend module, and legacy wrapper tracks without changing runtime behavior.
+
 **Completed:** [Source-of-Truth Reconciliation Plan](2026-06-13_source_of_truth_reconciliation_plan.md) - completed 2026-06-13. Sessions 1-3 aligned AGENTS.md, root source-of-truth docs, runtime documentation, Client Fit status, product-bundle discovery, manifest/hygiene behavior, focused tests, and final verification around the implemented diagnosis-first/current-portfolio-first product.
 
 **Completed:** [Current Frontend Design Documentation Synchronization](2026-06-13_current_frontend_design_docs_sync_plan.md) - 2026-06-13 docs/code sync that made the implemented frontend the source of truth for design tokens, route structure, landing/onboarding flow, 8-step platform shell, and local-only dev bypass.
@@ -165,6 +170,7 @@ Parallel or deferred backlog remains in [ROADMAP](../ROADMAP.md) (e.g. UI `RM-50
 
 | Date | Plan | Status | Origin audit | Current handoff |
 | --- | --- | --- | --- | --- |
+| 2026-06-15 | [Architecture Debt Roadmap for Staged Review Runtime, Frontend State, and Legacy Runners](2026-06-15_architecture_debt_roadmap_plan.md) | Deferred | Session 6 of the Run Diagnostics stabilization plan | Future work is split into three safe tracks: replace staged API subprocess boundaries with direct service calls where proven, extract low-risk seams from `frontend/lib/server/fastapiBridge.ts` and `frontend/lib/reviewState.tsx`, and define root legacy wrapper retirement criteria. |
 | 2026-06-14 | [Exhaustive QA System](2026-06-14_exhaustive_qa_system_plan.md) | **Active** | User-requested permanent maximum QA system after observing `Run Diagnosis` fail on the working site | Sessions 01-03 delivered: baseline `qa_exhaustive` orchestrator, P0 frontend/backend staged endpoint compatibility guard, full local exhaustive gate, browser vertical/staging release-readiness hooks, detailed findings, and release-readiness files. Current release status is not ready because blockers such as `KI-2026-06-14-002` remain. |
 | 2026-06-14 | [Staged Review Pipeline Migration](2026-06-14_staged_review_pipeline_plan.md) | **Completed** | User-approved architecture remediation for long synchronous diagnosis, CLI/file-driven backend gap, run-local artifact truth risk, Supabase/privacy boundary, and frontend partial-result UX | Sessions 1-7 closed: `review_state_v1`, staged FastAPI start/status, diagnosis and downstream stage synchronization, deterministic Demo / QA fixtures, frontend polling/refresh recovery, compact Supabase persistence, and one-scenario vertical QA PASS. |
 | 2026-06-13 | [Source-of-Truth Reconciliation Plan](2026-06-13_source_of_truth_reconciliation_plan.md) | **Completed** | [Current State Source-of-Truth Alignment Audit](../audits/2026-06-13_current_state_source_of_truth_alignment_audit.md) | Sessions 1-3 closed 2026-06-13: root truth reset, obsolete root historical file removal, contract/runtime alignment, product-bundle/manifest acceptance, and final verification. |

@@ -90,6 +90,10 @@ product or trading system.
 - Portfolio weights must add up to 100%, with a 0.01 tolerance for rounding.
 - Weights are never auto-normalized or silently corrected; the diagnosis CTA remains disabled until blocking validation passes.
 - The Next.js compatibility route repeats lightweight validation before calling FastAPI.
+- After changing FastAPI route contracts or generated API types, restart both the FastAPI backend
+  and the Next.js frontend. A stale backend that does not expose
+  `POST /api/v1/reviews/staged` is reported as a frontend/backend version mismatch, not as a
+  generic Python diagnosis failure.
 - The backend bridge retries the same diagnosis command once when the first attempt returns a
   transient empty market-data panel on a cold cache. The retry does not change formulas or accept
   partial results.
@@ -197,6 +201,8 @@ preferred manual localhost launcher because it prevents stale or mismatched Fast
 surfacing as frontend `Method Not Allowed` errors while preserving the normal live/offline provider
 diagnosis path. Use `npm.cmd run dev:next` only for static frontend work that intentionally does not
 call FastAPI routes.
+If Next.js reports missing `.next` chunks, React Client Manifest errors, or failed compilation,
+restart the dev server before making visual QA conclusions.
 
 Live vertical QA helper:
 

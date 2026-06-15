@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 
 from src import stress_factors as sf
-from src import data_fred
+from src import data_ecb, data_fred
 from scripts.warm_factor_cache import warm_factor_cache
 from run_report import (
     _factor_data_metadata_from_diagnostics,
@@ -290,6 +290,8 @@ def test_fred_api_key_is_primary_when_configured(monkeypatch) -> None:
 
     assert not out.empty
     assert data_fred.FRED_API_OBSERVATIONS_URL in captured["url"]
+    assert captured["url"].startswith(f"{data_fred.FRED_API_OBSERVATIONS_URL}?")
+    assert f"{data_fred.FRED_API_OBSERVATIONS_URL}..." not in captured["url"]
     assert "api_key=unit-test-key" in captured["url"]
     assert "observation_start=2024-01-01" in captured["url"]
     assert out.attrs["source_used"] == "fred_api"
@@ -319,6 +321,8 @@ def test_fred_csv_fallback_is_disclosed_when_api_key_missing(monkeypatch) -> Non
 
     assert not out.empty
     assert data_fred.FRED_CSV_GRAPH_URL in captured["url"]
+    assert captured["url"].startswith(f"{data_fred.FRED_CSV_GRAPH_URL}?")
+    assert f"{data_fred.FRED_CSV_GRAPH_URL}..." not in captured["url"]
     assert out.attrs["source_used"] == "fred_csv_fallback"
     assert "fred_api_key_missing_csv_fallback" in out.attrs["warnings"]
 
@@ -427,9 +431,39 @@ def test_fred_csv_fetch_pushes_requested_date_range_into_url(monkeypatch) -> Non
     )
 
     assert not out.empty
+    assert captured["url"].startswith(f"{data_fred.FRED_CSV_GRAPH_URL}?")
+    assert f"{data_fred.FRED_CSV_GRAPH_URL}..." not in captured["url"]
     assert "id=DFII10" in captured["url"]
     assert "cosd=2024-01-01" in captured["url"]
     assert "coed=2024-01-31" in captured["url"]
+
+
+def test_ecb_estr_fetch_pushes_requested_date_range_into_url(monkeypatch) -> None:
+    captured: dict[str, str] = {}
+
+    class _Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return b'[{"date":"2024-01-05","value":"3.90"}]'
+
+    def fake_urlopen(req, **_kwargs):
+        captured["url"] = str(req.full_url)
+        return _Response()
+
+    monkeypatch.setattr(data_ecb.urllib.request, "urlopen", fake_urlopen)
+
+    out = data_ecb.fetch_estr("2024-01-01", "2024-01-31")
+
+    assert not out.empty
+    assert captured["url"].startswith(f"{data_ecb.ESTR_API}?")
+    assert f"{data_ecb.ESTR_API}..." not in captured["url"]
+    assert "from=2024-01-01" in captured["url"]
+    assert "to=2024-01-31" in captured["url"]
 
 
 def test_warm_factor_cache_check_only_reports_not_ready_for_partial_cache(monkeypatch, tmp_path) -> None:

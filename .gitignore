@@ -59,6 +59,8 @@ candidate_weights_build.json
 results/
 FINAL RESULTS/
 Main portfolio/
+pdf files/
+pdf_md_sources/
 equal-weight portfolio/
 equal-weight by asset-class portfolio/
 risk parity portfolio/

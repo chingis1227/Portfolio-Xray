@@ -51,6 +51,10 @@ Write-Host "Repository: $RepoRoot"
 
 Invoke-QaStep "Docs verification" $RepoRoot ($Python + @("scripts\verify_docs.py"))
 
+Invoke-QaStep "Staged Run Diagnosis compatibility guard" $RepoRoot ($Python + @(
+    "scripts\verify_staged_route_compatibility.py"
+))
+
 Invoke-QaStep "Backend fast offline pytest" $RepoRoot ($Python + @(
     "-m", "pytest",
     "tests\test_portfolio_review_workflow.py",

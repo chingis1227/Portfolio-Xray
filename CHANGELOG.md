@@ -1,7 +1,21 @@
 # CHANGELOG.md
 
+## 2026-06-15
+
+- Added the architecture debt roadmap for staged review runtime, frontend state, and legacy runner
+  cleanup. The new ExecPlan separates future API/subprocess migration, large frontend module
+  extraction, and root legacy wrapper retirement criteria without changing runtime behavior.
+- Synchronized QA status and generated-output tracking policy. The current full-suite baseline now
+  matches the 2026-06-14 audit (**34 failed, 1887 passed, 3 skipped**), stale frontend API
+  known-failure labels were removed from the exhaustive QA runner, and routine generated PDF /
+  Markdown sidecars are ignored instead of tracked as source.
+
 ## 2026-06-14
 
+- Stabilized staged Run Diagnosis failure handling and local route compatibility QA. Staged
+  backend failures now classify provider text from safe stdout/stderr tails as
+  `DATA_PROVIDER_FAILED`, timeouts remain `TIMEOUT`, and fast QA now checks that the frontend
+  diagnosis proxy and FastAPI OpenAPI agree on `POST /api/v1/reviews/staged`.
 - Fixed the Session 03 browser vertical blocker. Downstream frontend compatibility routes now use
   FastAPI public response envelopes plus explicit lineage IDs instead of reading run-local artifacts
   from the Next.js runtime, preserving stale selected-card HTTP 409 rejection and allowing the

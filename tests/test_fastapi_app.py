@@ -150,6 +150,68 @@ def test_openapi_includes_session_03_typed_mvp_surface() -> None:
     assert staged_status_ref.endswith("/StagedReviewStatusResponse")
 
 
+def test_staged_failure_classifier_uses_stderr_tail_for_fred_http_failure() -> None:
+    result = {
+        "status": "failed",
+        "error": "Backend run failed.",
+        "details": "python_stage_failed",
+        "stderr_tail": (
+            'Traceback (most recent call last):\n'
+            '  File "D:\\repo\\src\\data_fred.py", line 10, in fetch\n'
+            "urllib.error.HTTPError: HTTP Error 404: FRED series DTB3 download failed"
+        ),
+    }
+
+    code, message, user_action, retryable, stage = review_service._classify_staged_failure(result, 1)
+
+    assert code == "DATA_PROVIDER_FAILED"
+    assert message == "Backend run failed."
+    assert user_action == "retry"
+    assert retryable is True
+    assert stage == "data_load"
+    safe_error = review_service._staged_safe_error(
+        code=code,
+        message=result["stderr_tail"],
+        user_action=user_action,
+        retryable=retryable,
+        stage=stage,
+    ).model_dump(mode="json")
+    assert "Traceback" not in json.dumps(safe_error)
+    assert not re.search(r"[A-Z]:[\\/]", json.dumps(safe_error))
+
+
+def test_staged_failure_classifier_timeout_stays_timeout_from_tail() -> None:
+    result = {
+        "status": "failed",
+        "error": "Backend run failed.",
+        "details": "python_stage_failed",
+        "stdout_tail": "Market data provider request timeout while loading Yahoo prices.",
+    }
+
+    code, _message, user_action, retryable, stage = review_service._classify_staged_failure(result, 1)
+
+    assert code == "TIMEOUT"
+    assert user_action == "retry"
+    assert retryable is True
+    assert stage == "data_load"
+
+
+def test_staged_failure_classifier_unknown_python_failure_remains_python_stage_failed() -> None:
+    result = {
+        "status": "failed",
+        "error": "Backend run failed.",
+        "details": "python_stage_failed",
+        "stderr_tail": "ValueError: unexpected internal state while formatting diagnostics.",
+    }
+
+    code, _message, user_action, retryable, stage = review_service._classify_staged_failure(result, 1)
+
+    assert code == "PYTHON_STAGE_FAILED"
+    assert user_action == "retry"
+    assert retryable is True
+    assert stage == "data_load"
+
+
 def _fake_review_result(review_id: str = "frontend_review_fastapi_unit") -> dict:
     return {
         "review_id": review_id,

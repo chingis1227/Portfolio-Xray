@@ -460,6 +460,14 @@ function publicBuilderDocumentFromFastApi(body: unknown, selectedCardId: string)
   };
 }
 
+function stagedRouteVersionMismatchResponse(status: number) {
+  return NextResponse.json({
+    status: "failed",
+    error: "Frontend/backend version mismatch: FastAPI does not expose POST /api/v1/reviews/staged. Restart the FastAPI backend and Next.js frontend so both use the same route contract.",
+    details: []
+  }, { status: status === 404 || status === 405 ? 502 : status });
+}
+
 function publicCandidateGenerationFromFastApi(body: unknown, selectedCardId: string) {
   const data = fastApiData(body);
   const candidate = isRecord(data.candidate) ? data.candidate : {};
@@ -625,6 +633,9 @@ export async function diagnoseViaFastApi(request: Request) {
 
   const api = await callFastApi("POST", "/api/v1/reviews/staged", fastApiCreateReviewBody(payload));
   if (!api.ok) {
+    if (api.status === 404 || api.status === 405) {
+      return stagedRouteVersionMismatchResponse(api.status);
+    }
     return NextResponse.json(legacyErrorFromFastApi(api.body, "Portfolio diagnosis failed."), { status: api.status });
   }
 

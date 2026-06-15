@@ -1,6 +1,7 @@
-"""
-Fetch ECB €STR (Euro Short-Term Rate) for risk-free in EUR. Uses estr.dev API (ECB-sourced).
-Returns Series with DatetimeIndex and annual percent (same convention as FRED).
+"""Fetch Euro Short-Term Rate data for EUR risk-free rates.
+
+The estr.dev API is ECB-sourced. Returned values use a DatetimeIndex and annual
+percent convention, matching the FRED risk-free helper.
 """
 from __future__ import annotations
 
@@ -13,11 +14,9 @@ ESTR_API = "https://api.estr.dev/historical"
 
 
 def fetch_estr(start: str, end: str) -> pd.Series:
-    """
-    Fetch €STR historical rates. Returns Series with DatetimeIndex and annual percent (e.g. 3.9 for 3.9%).
-    """
+    """Fetch Euro Short-Term Rate history as annual percent values."""
     params = urllib.parse.urlencode({"from": start, "to": end})
-    url = f"{ESTR_API}...{params}"
+    url = f"{ESTR_API}?{params}"
     req = urllib.request.Request(url, headers={"User-Agent": "PortfolioMetrics/1.0 (python)"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         data = resp.read().decode("utf-8")

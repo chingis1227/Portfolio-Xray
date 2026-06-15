@@ -509,15 +509,42 @@ def _staged_safe_error(
     )
 
 
+STAGED_PROVIDER_FAILURE_TERMS = (
+    "fred",
+    "yahoo",
+    "market data",
+    "market-data",
+    "price",
+    "quote",
+    "http error",
+    "download failed",
+    "provider",
+)
+
+
+def _safe_failure_text_for_classification(review_result: dict[str, Any]) -> str:
+    parts = [
+        review_result.get("error"),
+        review_result.get("details"),
+        review_result.get("stdout_tail"),
+        review_result.get("stderr_tail"),
+    ]
+    return " ".join(
+        str(part)
+        for part in parts
+        if part is not None and str(part).strip()
+    ).lower()
+
+
 def _classify_staged_failure(review_result: dict[str, Any], code: int) -> tuple[str, str, str, bool, StagedStageName]:
     details = str(review_result.get("details") or "").lower()
     message = _text(review_result.get("error"), "Portfolio diagnosis failed.") or "Portfolio diagnosis failed."
-    lowered = f"{message} {details}".lower()
+    lowered = _safe_failure_text_for_classification(review_result)
     if code == 124 or "timeout" in lowered:
         return "TIMEOUT", message, "retry", True, "data_load"
     if "input_validation_error" in details:
         return "INVALID_TICKER", message, "fix_input", False, "input"
-    if "market" in lowered or "provider" in lowered or "price" in lowered or "quote" in lowered:
+    if any(term in lowered for term in STAGED_PROVIDER_FAILURE_TERMS):
         return "DATA_PROVIDER_FAILED", message, "retry", True, "data_load"
     return "PYTHON_STAGE_FAILED", message, "retry", True, "data_load"
 

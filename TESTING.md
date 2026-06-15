@@ -49,7 +49,7 @@ Use these PowerShell shortcuts for routine local verification when a full test s
 
 | Gate | Command | Use when | Excludes |
 | --- | --- | --- | --- |
-| Fast daily QA | `.\scripts\qa_fast.ps1` (`.\scripts\qa_fast.cmd` if PowerShell policy blocks scripts) | Default local gate for docs consistency, core offline workflow smoke, product-bundle adapters, frontend typecheck, and frontend API routes. Target runtime is roughly 3 minutes on the Windows desktop setup. | Full `python -m pytest`, live E2E, frontend build, frontend smoke, Playwright/browser visual QA. |
+| Fast daily QA | `.\scripts\qa_fast.ps1` (`.\scripts\qa_fast.cmd` if PowerShell policy blocks scripts) | Default local gate for docs consistency, staged Run Diagnosis route compatibility, core offline workflow smoke, product-bundle adapters, frontend typecheck, and frontend API routes. Target runtime is roughly 3 minutes on the Windows desktop setup. | Full `python -m pytest`, live E2E, frontend build, frontend smoke, Playwright/browser visual QA. |
 | Contract QA | `.\scripts\qa_contracts.ps1` (`.\scripts\qa_contracts.cmd` if PowerShell policy blocks scripts) | Runtime contract, candidate factory, comparison JSON, or golden fixture changes. It runs the candidate factory/comparison suites while excluding the still-open KI-2026-05-26-001 drift test. | Networked/live checks and full `python -m pytest`. |
 | Exhaustive local QA | `.\scripts\qa_exhaustive.cmd -LocalOnly -SkipLive` | Release-candidate local static gate. It writes `output/qa_runs/<timestamp>/qa-summary.*`, per-step logs, `qa-findings.*`, and `qa-release-readiness.*`; runs environment readiness, the staged Run Diagnosis OpenAPI guard, fast QA, contract QA, FastAPI governance, full pytest, frontend typecheck/build/API/smoke, docs verification, and Supabase compact/privacy checks. | Browser vertical QA and staging readiness are skipped by `-SkipLive` / `-LocalOnly`; use the release commands below before declaring release readiness. Known baseline failures are classified as `known_failure`; unexpected failures are `new_failure`. |
 | Exhaustive local + browser vertical QA | `.\scripts\qa_exhaustive.cmd -LocalOnly` | Local release-readiness gate that adds `npm.cmd run qa:vertical -- --scenario-limit 5` after the local static gate. It records active `reviewId` lineage, selected Launchpad card, Builder/Candidate/Comparison/Verdict/Report ids, screenshots or DOM fallbacks, and stale selected-card HTTP 409 evidence in `qa-findings.*`. | Staging readiness is skipped because `-LocalOnly` is supplied. |
@@ -71,11 +71,11 @@ rather than a route-chain failure; release evidence is the same-run lineage and 
 
 ### Known full-suite status
 
-As of the latest recorded full-suite audit on **2026-06-12**, `python -m pytest` reported
-**13 failed, 1898 passed, 3 skipped**. Treat this as the current full-suite status until a newer
-full run is recorded. Details and failing rows are tracked in
-[docs/audits/2026-06-12_full_pytest_failure_audit_after_client_fit.md](docs/audits/2026-06-12_full_pytest_failure_audit_after_client_fit.md)
-and summarized in [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+As of the latest recorded full-suite audit on **2026-06-14**, `python -m pytest` reported
+**34 failed, 1887 passed, 3 skipped**. Treat this as the current full-suite status until a newer
+full run is recorded. The previous structured grouping came from
+[docs/audits/2026-06-12_full_pytest_failure_audit_after_client_fit.md](docs/audits/2026-06-12_full_pytest_failure_audit_after_client_fit.md);
+the current count and active drift index are summarized in [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 Until the remaining rows are closed: use focused pytest for the changed layer and the fast QA gates
 above; do not claim full-suite green or make it a release gate without rerunning and reconciling the
