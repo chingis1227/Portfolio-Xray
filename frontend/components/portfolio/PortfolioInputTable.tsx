@@ -1240,17 +1240,13 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
                 {diagnosisError}
               </p>
             ) : null}
-            {showStagedProgress ? (
+            {showStagedProgress || isRunningDiagnosis ? (
               <div className="mt-3 rounded-2xl border border-pmri-blue/25 bg-pmri-blue/10 px-4 py-3 text-xs leading-5 text-pmri-blueSoft">
-                <div className="flex items-center gap-2 font-medium text-pmri-text">
+                <p className="flex items-center gap-2 font-medium text-pmri-text">
                   <span className="pmri-spinner" aria-hidden="true" />
-                  Preparing your diagnosis...
-                </div>
-                <p className="mt-2 text-pmri-muted">
-                  Portfolio MRI is reviewing allocation, concentration, risk drivers, and stress vulnerabilities.
-                  You can keep this page open; results will appear automatically.
+                  Reviewing your portfolio&apos;s allocation, concentration, risk drivers, and stress vulnerabilities.
                 </p>
-                <p className="sr-only">{stagedStatusLabel(stagedProgress)}</p>
+                {stagedProgress ? <p className="sr-only">{stagedStatusLabel(stagedProgress)}</p> : null}
                 {stagedProgress?.safeError ? (
                   <p className="mt-3 rounded-xl border border-pmri-risk/35 bg-pmri-risk/10 px-3 py-2 text-xs leading-5 text-pmri-risk">
                     {stagedProgress.safeError.message}
@@ -1258,17 +1254,6 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
                 ) : null}
               </div>
             ) : null}
-            {isRunningDiagnosis ? (
-              <p className="mt-3 rounded-xl border border-pmri-blue/25 bg-pmri-blue/10 px-4 py-3 text-xs leading-5 text-pmri-blueSoft">
-                Portfolio MRI is reviewing allocation, concentration, risk drivers, and stress vulnerabilities.
-                <br />
-                <br />
-                No candidate or rebalance verdict is created at this step.
-              </p>
-            ) : null}
-            <p className="mt-3 text-sm leading-6 text-pmri-muted">
-              Next: Portfolio Diagnosis will review allocation, concentration, and stress vulnerabilities.
-            </p>
           </div>
         </div>
       </div>
