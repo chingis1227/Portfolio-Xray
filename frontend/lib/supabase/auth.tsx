@@ -2,6 +2,7 @@
 
 import type { Session, User } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { restoreOnboardingStateFromMetadata } from "@/lib/onboarding";
 import { getSupabaseBrowserClient } from "./client";
 import { getSupabaseRuntimeStatus } from "./config";
 
@@ -22,16 +23,16 @@ type SupabaseAuthContextValue = {
 
 const SupabaseAuthContext = createContext<SupabaseAuthContextValue | null>(null);
 
-function buildRedirectTo() {
-  if (typeof window === "undefined") return undefined;
-  return `${window.location.origin}/auth/callback`;
-}
-
 function humanizeError(message: string) {
   if (message.toLowerCase().includes("fetch")) {
     return "Could not reach Supabase Auth. Check the public URL/key and network connection.";
   }
   return message;
+}
+
+function syncOnboardingFromUser(user: User | null | undefined) {
+  if (!user) return;
+  restoreOnboardingStateFromMetadata(user.user_metadata);
 }
 
 export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
@@ -67,12 +68,14 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       setSession(data.session);
+      syncOnboardingFromUser(data.session?.user);
       setStatus(data.session ? "signed_in" : "signed_out");
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!isMounted) return;
       setSession(nextSession);
+      syncOnboardingFromUser(nextSession?.user);
       setStatus(nextSession ? "signed_in" : "signed_out");
       setError(null);
     });
@@ -102,7 +105,6 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: trimmedEmail,
       options: {
-        emailRedirectTo: buildRedirectTo(),
         shouldCreateUser: true
       }
     });
@@ -112,7 +114,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setMessage("Check your email for the Portfolio MRI sign-in link or OTP code.");
+    setMessage("Check your email for the Portfolio MRI one-time code.");
   }, [enabled]);
 
   const verifyEmailOtp = useCallback(async (email: string, token: string) => {
@@ -143,7 +145,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setMessage("Signed in. Optional cloud persistence is ready for later sessions.");
+    setMessage("Signed in. Your Portfolio MRI workspace is ready.");
   }, [enabled]);
 
   const signOut = useCallback(async () => {
@@ -161,7 +163,12 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
     setSession(null);
     setStatus("signed_out");
-    setMessage("Signed out. Local browser review state is still available.");
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem("pmri.auth.devBypass");
+      window.location.assign("/onboarding/sign-in");
+      return;
+    }
+    setMessage("Signed out.");
   }, [enabled]);
 
   const clearAuthNotice = useCallback(() => {

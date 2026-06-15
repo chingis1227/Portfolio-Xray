@@ -438,6 +438,7 @@ class ReviewCreatedData(StrictModel):
 class ReviewRecoveryData(ReviewCreatedData):
     downstream_artifacts_restored_as_active: bool = False
     restored_active_stages: list[Literal["diagnosis", "evidence", "hypothesis_setup"]] = Field(default_factory=list)
+    artifact_payloads: dict[str, Any] = Field(default_factory=dict)
 
 
 class BuilderOverrides(StrictModel):

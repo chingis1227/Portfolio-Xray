@@ -15,7 +15,7 @@ from typing import Any, Mapping
 
 import numpy as np
 import pandas as pd
-import yaml
+from src.yaml_cache import load_yaml_mtime_cached
 
 # Internal block ids (stable API for calibration tables)
 BLOCK_EQ = "EQ"
@@ -206,8 +206,7 @@ def _normalize_ticker(t: str) -> str:
 def _parse_universe_yaml(path: Path) -> list[dict[str, Any]]:
     if not path.is_file():
         return []
-    with path.open(encoding="utf-8") as f:
-        raw = yaml.safe_load(f)
+    raw = load_yaml_mtime_cached(path)
     if isinstance(raw, list):
         return [x for x in raw if isinstance(x, dict)]
     return []
@@ -217,6 +216,10 @@ def _parse_universe_yaml(path: Path) -> list[dict[str, Any]]:
 def _load_combined_universe(
     etf_path: str,
     stock_path: str,
+    etf_mtime_ns: int,
+    etf_size: int,
+    stock_mtime_ns: int,
+    stock_size: int,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     etf_records = _parse_universe_yaml(Path(etf_path))
     stock_records = _parse_universe_yaml(Path(stock_path))
@@ -252,7 +255,18 @@ def resolve_stress_asset_block(
     root = _project_root()
     ep = etf_path or str(root / "config" / "etf_universe.yml")
     sp = stock_path or str(root / "config" / "stock_universe.yml")
-    etf_by, stock_by = _load_combined_universe(ep, sp)
+    ep_path = Path(ep).resolve()
+    sp_path = Path(sp).resolve()
+    ep_stat = ep_path.stat() if ep_path.is_file() else None
+    sp_stat = sp_path.stat() if sp_path.is_file() else None
+    etf_by, stock_by = _load_combined_universe(
+        str(ep_path),
+        str(sp_path),
+        int(ep_stat.st_mtime_ns) if ep_stat else 0,
+        int(ep_stat.st_size) if ep_stat else 0,
+        int(sp_stat.st_mtime_ns) if sp_stat else 0,
+        int(sp_stat.st_size) if sp_stat else 0,
+    )
 
     row = etf_by.get(t_up)
     if row is not None:

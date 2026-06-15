@@ -38,7 +38,7 @@ export function AuthPanel() {
       </div>
 
       {status === "loading" ? (
-        <p className="mt-3 text-xs text-pmri-muted">Checking Supabase session…</p>
+        <p className="mt-3 text-xs text-pmri-muted">Checking Supabase session...</p>
       ) : status === "signed_in" ? (
         <div className="mt-3 space-y-3">
           <p className="truncate text-xs text-pmri-text2" title={user?.email ?? undefined}>{user?.email ?? "Signed-in user"}</p>
@@ -72,7 +72,7 @@ export function AuthPanel() {
             disabled={isSubmitting}
             className="pmri-focus w-full rounded-xl bg-pmri-blue px-3 py-2 text-xs font-semibold text-pmri-primary transition hover:bg-pmri-blue/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmitting ? "Sending…" : "Email sign-in link"}
+            {isSubmitting ? "Sending..." : "Send email code"}
           </button>
           <div className="space-y-2 border-t border-pmri-border/35 pt-3">
             <label className="block text-xs text-pmri-muted" htmlFor="supabase-auth-otp">
@@ -96,7 +96,7 @@ export function AuthPanel() {
               className="pmri-focus w-full rounded-xl border border-pmri-border/55 px-3 py-2 text-xs font-semibold text-pmri-text2 transition hover:border-pmri-border hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-60"
               onClick={() => void handleVerifyOtp()}
             >
-              {isVerifying ? "Verifying…" : "Verify OTP code"}
+              {isVerifying ? "Verifying..." : "Verify OTP code"}
             </button>
           </div>
         </form>

@@ -31,43 +31,46 @@ The shortcut is allowed only while local email sign-in is unavailable or unstabl
 
 The implemented onboarding screen asks one question at a time:
 
-1. `What is the portfolio's primary job?`
-   - Preserve capital first.
-   - Balance growth and resilience.
-   - Grow over a full cycle.
-   - Understand what I already own.
+1. `If this portfolio fell 25% in three months...`
+   - Sell all risky positions.
+   - Sell some and wait.
+   - Hold and review evidence.
+   - Buy more if fundamentals hold.
 
-2. `What is the real decision horizon?`
-   - Shorter horizon.
-   - Medium horizon.
-   - Longer horizon.
+2. `When will this money need to work for withdrawals...`
+   - Less than 3 years.
+   - 3-10 years.
+   - 10+ years.
 
-3. `How much temporary loss can the plan tolerate?`
-   - Small temporary losses.
-   - Moderate drawdowns.
-   - Larger drawdowns.
+3. `What temporary loss limit should trigger concern...`
+   - Around 10%.
+   - Around 15%.
+   - Around 25%.
+   - Around 35%+.
 
-4. `How should the system treat changes?`
-   - Be conservative about change.
-   - Test changes when evidence is clear.
-   - Look actively for improvements.
+4. `What return target would make the risk worthwhile...`
+   - 3-5% is enough.
+   - 5-8% target range.
+   - 8-12% target range.
+   - 12%+ target range.
 
-5. `What worries you most about the current portfolio?`
-   - Hidden concentration.
-   - Loss in a stress event.
-   - Rates and bond sensitivity.
-   - Inflation / real asset protection.
-   - I am not sure yet.
+5. `If the current portfolio is concentrated...`
+   - Reduce concentration first.
+   - Diagnose before changing.
+   - Hold if evidence is good.
+   - Add if upside compensates.
 
 ## Profile mapping
 
-The frontend stores onboarding state and maps it to the existing `ClientFitInput` shape through `frontend/lib/onboarding.ts`. The saved profile provides bounded display/test context for:
+The frontend stores onboarding state and maps it to the existing `ClientFitInput` shape through `frontend/lib/onboarding.ts`. The questionnaire scores stress reaction, horizon, temporary-loss limit, return need, and concentration response into one of the bounded Client Fit presets. The saved profile provides bounded display/test context for:
 
 - target return range;
 - volatility comfort range;
 - maximum temporary-loss limit;
 - horizon;
 - profile label and confidence/source-quality display.
+
+Manual target edits on Portfolio Input must reclassify the displayed preset from the edited return, volatility, drawdown, and horizon values instead of keeping a stale previous preset label.
 
 The mapping must remain conservative and explanatory. Client Fit targets may inform display and hypothesis-test criteria, but they must not become optimizer constraints or suitability approval.
 

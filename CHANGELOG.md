@@ -2,6 +2,24 @@
 
 ## 2026-06-15
 
+- Improved staged Run Diagnostics performance and perceived latency. Portfolio Input now navigates
+  to Diagnosis immediately after receiving `review_id`, Diagnosis owns staged polling/recovery, live
+  staged diagnosis reuses shared run context by default, and warm-run cache helpers plus a
+  performance smoke script cover repeated market, macro, factor, FRED, and taxonomy loads.
+- Reworked the onboarding Client Fit intake around risk-behavior questions and fixed preset
+  propagation. The loading step now waits for review-state hydration before saving the questionnaire
+  profile, and Portfolio Input `Adjust intake` reclassifies the displayed preset from edited target
+  rows instead of keeping a stale label.
+- Removed the old prefilled demo allocation from Portfolio Input. First-time sessions now show empty
+  holding fields with guided copy and require at least two valid current positions before diagnosis.
+  Empty ticker fields now use a neutral light shimmer instead of an immediate red error border.
+- Fixed Supabase sign-in workspace behavior. The frontend now routes returning users with completed
+  onboarding directly to Portfolio Input, restores compact Client Fit context, exposes a sidebar
+  sign-out control, requests email OTP codes instead of sign-in-link copy, and documents the
+  Supabase sender/template settings required for Portfolio MRI branded code emails.
+- Fixed staged review recovery hydration. FastAPI recovery now returns bounded diagnosis/evidence
+  artifact payloads and the Next.js recovery bridge maps them back into compact screen summaries, so
+  Diagnosis and Stress Lab do not fall back to unavailable compact-state cards after recovery.
 - Completed security remediation Sessions 08-09. Next.js portfolio API proxies now require a signed-in
   user or explicit non-production local dev bypass, attach signed `X-PMRI-*` internal auth headers to
   FastAPI, and regression coverage now checks invalid/expired signatures, production bypass blocking,

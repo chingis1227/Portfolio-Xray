@@ -87,7 +87,7 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 
 - Must collect friendly planning context before Portfolio Input.
 - Must ask five one-question-at-a-time intake questions on `/onboarding/investor-type`.
-- Must map answers into bounded Client Fit context.
+- Must map answers into bounded Client Fit context from stress-loss reaction, withdrawal horizon, temporary-loss limit, return target, and concentration response.
 - Must not call Client Fit suitability approval or investment advice.
 
 ## Platform screen contracts
@@ -96,6 +96,7 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 
 - Must show `Step 01 / Portfolio to diagnose` and `Define the current portfolio`.
 - Must show Client Fit profile summary, investor currency, holdings/weights table, validation/readiness, Run diagnosis CTA, and recovery panel.
+- Must let `Adjust intake` update target rows and reclassify the displayed Client Fit preset from those edited values.
 - Must block diagnosis until Client Fit context, currency, at least two valid holdings, and weights summing to 100% are valid.
 - Must not show optimizer targets, tax settings, full constraints, suitability approval, or raw backend request details.
 

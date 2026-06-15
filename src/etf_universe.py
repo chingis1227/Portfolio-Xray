@@ -7,6 +7,7 @@ from typing import Any
 
 import pandas as pd
 import yaml
+from src.yaml_cache import load_yaml_mtime_cached
 
 STATUS_PASS = "PASS"
 STATUS_PASS_WITH_WARNINGS = "PASS_WITH_WARNINGS"
@@ -225,8 +226,7 @@ def load_etf_universe(path: str | Path | None = None) -> list[dict[str, Any]]:
     """Load ETF universe YAML source as a list of mapping records."""
     universe_path = Path(path) if path is not None else DEFAULT_UNIVERSE_PATH
     try:
-        with open(universe_path, encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+        data = load_yaml_mtime_cached(universe_path)
     except yaml.YAMLError as exc:
         raise UniverseValidationError(f"Malformed ETF universe YAML: {universe_path}: {exc}") from exc
     except OSError as exc:

@@ -5,7 +5,7 @@ export const runtime = "edge";
 
 function redirectWithStatus(request: NextRequest, status: "success" | "disabled" | "error", message?: string) {
   const url = request.nextUrl.clone();
-  url.pathname = "/onboarding/name";
+  url.pathname = "/onboarding/sign-in";
   url.searchParams.set("auth", status);
   if (message) url.searchParams.set("auth_message", message);
   return NextResponse.redirect(url);

@@ -13,7 +13,9 @@ product or trading system.
   frontend path keeps the existing Next.js route URLs for compatibility, but those handlers proxy
   to the local FastAPI backend instead of launching Python scripts directly:
   - `POST /api/portfolio/diagnose` -> `POST /api/v1/reviews/staged`, returning a `review_id`
-    immediately instead of waiting for the full diagnosis run.
+    immediately instead of waiting for the full diagnosis run. Portfolio Input navigates to
+    `/diagnosis` after the staged start response; the Diagnosis route owns progress polling and
+    same-run recovery.
   - `GET /api/portfolio/review/status?reviewId=...` -> `GET /api/v1/reviews/{review_id}/status`
     for staged progress polling.
   - `GET|POST /api/portfolio/review/recover` -> `GET /api/v1/reviews/{review_id}`
@@ -78,13 +80,17 @@ product or trading system.
 
 ## Portfolio Input validation
 
-- The normal web journey starts with the public landing page, requires email sign-in, and then runs
-  a short one-question-at-a-time onboarding flow. Onboarding saves the same non-binding Client Fit
-  profile that the manual Client Profile editor saves. Portfolio Input and Run diagnosis stay gated
-  until that valid Client Fit profile exists.
+- The normal web journey starts with the public landing page and requires email sign-in. New users
+  then run a short one-question-at-a-time onboarding flow. Returning signed-in users with a completed
+  Portfolio MRI onboarding profile are sent directly to Portfolio Input, and the saved non-binding
+  Client Fit profile is restored before Run diagnosis is allowed.
+- The five-question intake maps risk behavior into a Client Fit preset using stress-loss reaction,
+  withdrawal horizon, temporary-loss limit, return target, and concentration response.
 - The Portfolio Input `Adjust intake` control edits the saved Client Fit target rows in a modal. It
-  does not send the user back through the five-question onboarding flow.
+  does not send the user back through the five-question onboarding flow, and saving manual values
+  reclassifies the displayed preset from the edited target rows.
 - Investor currency is required and currently limited in the UI to USD or EUR.
+- New Portfolio Input sessions start with empty holding fields rather than the old static demo allocation.
 - Every visible portfolio row must use a selected instrument from the local instrument list and a weight greater than 0.
 - At least 2 valid rows are required before diagnosis.
 - Portfolio weights must add up to 100%, with a 0.01 tolerance for rounding.
@@ -110,16 +116,18 @@ product or trading system.
 - The UI stores compact display state in `pmri.activeReview.v2`: the Client Fit profile, `reviewId`, portfolio input, diagnosis/stress/Client Fit evidence, launchpad/builder summaries, selected card/candidate, and stage summaries. Core screens consume these display models, not raw backend artifact trees. Candidate generation is enabled only when the active Builder setup matches the currently selected Launchpad card and says generation is allowed.
 - The staged migration adds compact `review_state_v1` progress fields to the active review state:
   overall run status, current stage, per-stage statuses, provider status, mode (`demo_qa` or `live`),
-  and safe stage errors. Portfolio Input saves `reviewId` immediately, shows progress while polling,
-  and only hydrates screen summaries through run-local recovery after the Diagnosis, Stress, Client Fit,
-  Problem Classification, and Launchpad/Builder evidence chain is available. The canonical contract
-  is `../docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`.
+  and safe stage errors. Portfolio Input saves `reviewId` immediately and moves the user to
+  `/diagnosis` without waiting for the full backend calculation. The Diagnosis route shows running
+  progress, polls staged status, and hydrates screen summaries through run-local recovery after the
+  Diagnosis, Stress, Client Fit, Problem Classification, and Launchpad/Builder evidence chain is
+  available. The canonical contract is `../docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`.
 - When Supabase is enabled and the user is signed in, the active review may also keep a compact
   link to the selected cloud portfolio so diagnosis-history rows can point back to the saved
   portfolio input without uploading generated evidence.
 - The complete `review_result.json` is not persisted in browser storage. During the current tab session compatibility routes may include bounded FastAPI-derived compatibility fields for older screen adapters, but screen rendering relies on compact display summaries, FastAPI public envelopes, explicit lineage ids, and `reviewId`; Next.js route handlers must not read run-local JSON files as part of the normal deployed path.
 - Portfolio Input includes a read-only recovery control for `frontend_review_*` IDs. It calls
-  `/api/portfolio/review/recover`, reads only run-local diagnosis/launchpad/builder artifacts, and
+  `/api/portfolio/review/recover`, reads bounded run-local diagnosis/evidence/launchpad/builder
+  artifact payloads from the FastAPI recovery envelope, and
   restores candidate/comparison/verdict/report readiness as false so stale downstream artifacts are
   not silently trusted as active state.
 - Legacy raw keys matching `pmri.reviewResult.*` are removed on hydration/write. Future raw access should go through backend artifacts addressed by `reviewId`, not permanent localStorage copies.
@@ -154,17 +162,28 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-public-publishable-key
 If the flag is not exactly `true`, or either public value is blank, the Supabase gate remains
 disabled and no Supabase browser client is created.
 
-Canonical public entry requires an email OTP or magic-link sign-in before onboarding when Supabase is available.
-The platform sidebar shows compact cloud persistence status and, after sign-in, a recent saved-review recovery panel. Configure Supabase Auth
-Email OTP in the Supabase dashboard and allow the local callback URL:
+Canonical public entry requires an email OTP before onboarding when Supabase is available. The
+platform sidebar shows the signed-in email and a `Sign out` control on authenticated workspace
+screens. Configure Supabase Auth Email OTP in the Supabase dashboard and allow the local callback URL
+for legacy magic-link compatibility:
 
 ```text
 http://localhost:3000/auth/callback
 ```
 
-The callback exchanges the public magic-link auth code for a browser session. The same panel also
-accepts an email OTP code. No service-role key, secret key, database password, Supabase Storage,
-Realtime channel, or Edge Function is used by the frontend.
+The callback exchanges a legacy public magic-link auth code for a browser session and returns to the
+sign-in gate, which then routes completed users to Portfolio Input or new users to onboarding. The
+primary UI asks for the email OTP code. No service-role key, secret key, database password, Supabase
+Storage, Realtime channel, or Edge Function is used by the frontend.
+
+For production email branding and code-only UX, update Supabase project settings outside this repo:
+
+- Authentication -> Emails / Templates: make the relevant Email OTP/Magic Link template show
+  `{{ .Token }}` as the primary login code and remove or de-emphasize `{{ .ConfirmationURL }}`.
+- Authentication -> SMTP or Email provider settings: set sender name/from name to `Portfolio MRI`
+  and use a verified product/domain sender address, for example `Portfolio MRI <no-reply@portfolio-mri.com>`.
+- Redeploy the frontend after changing Cloudflare environment variables, but note that Supabase
+  sender/template changes take effect from the Supabase project configuration, not from Next.js code.
 
 Current Supabase-backed behavior is kept as infrastructure and may be surfaced again in a dedicated account/workspace area:
 

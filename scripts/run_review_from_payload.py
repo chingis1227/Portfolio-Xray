@@ -13,12 +13,12 @@ from typing import Any
 
 import yaml
 
-from src.review_runtime.staged_diagnosis_service import run_staged_diagnosis_service
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.review_runtime.staged_diagnosis_service import run_staged_diagnosis_service
 
 from src.portfolio_alternatives_builder import (  # noqa: E402
     PORTFOLIO_ALTERNATIVES_BUILDER_FILENAME,

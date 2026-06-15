@@ -839,11 +839,13 @@ function recoveredReviewResultFromFastApi(body: unknown, reviewId: string) {
   const summary = isRecord(data.review_summary) ? data.review_summary : {};
   const launchpadOutput = recoveredLaunchpadOutput(data.launchpad);
   const builderOutput = recoveredBuilderOutput(data.launchpad);
+  const artifactPayloads = isRecord(data.artifact_payloads) ? data.artifact_payloads : {};
   const outputs = Object.fromEntries(
     Object.entries({
-      problem_classification: data.diagnosis,
-      candidate_launchpad: launchpadOutput,
-      portfolio_alternatives_builder: builderOutput
+      ...artifactPayloads,
+      problem_classification: artifactPayloads.problem_classification ?? data.diagnosis,
+      candidate_launchpad: artifactPayloads.candidate_launchpad ?? launchpadOutput,
+      portfolio_alternatives_builder: artifactPayloads.portfolio_alternatives_builder ?? builderOutput
     }).filter(([, value]) => value !== undefined && value !== null)
   );
   const paths = artifactRefsToPathMap(data.artifact_refs ?? evidence.source_artifacts);

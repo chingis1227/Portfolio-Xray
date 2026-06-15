@@ -6,6 +6,10 @@ export type OnboardingHorizon = "short" | "medium" | "long";
 export type OnboardingRiskComfort = "low" | "medium" | "high";
 export type OnboardingDecisionStyle = "evidence_first" | "preserve_unless_clear" | "improve_structure" | "test_growth";
 export type OnboardingPrimaryConcern = "concentration" | "drawdown" | "rates" | "inflation" | "unknown";
+export type OnboardingStressReaction = "sell_all" | "sell_some" | "hold" | "buy_more";
+export type OnboardingReturnNeed = "low" | "moderate" | "high" | "very_high";
+export type OnboardingStressLimit = "ten" | "fifteen" | "twenty_five" | "thirty_five";
+export type OnboardingConcentrationAction = "reduce_first" | "diagnose_then_adjust" | "hold_if_evidence_ok" | "add_if_compensated";
 export type OnboardingLiquidityNeed = "low" | "medium" | "high";
 
 export type OnboardingState = {
@@ -16,6 +20,10 @@ export type OnboardingState = {
   riskComfort: OnboardingRiskComfort;
   decisionStyle: OnboardingDecisionStyle;
   primaryConcern: OnboardingPrimaryConcern;
+  stressReaction: OnboardingStressReaction;
+  returnNeed: OnboardingReturnNeed;
+  stressLimit: OnboardingStressLimit;
+  concentrationAction: OnboardingConcentrationAction;
   liquidityNeed: OnboardingLiquidityNeed;
   updatedAt?: string;
 };
@@ -32,6 +40,7 @@ type PresetDefinition = {
 };
 
 export const ONBOARDING_STORAGE_KEY = "pmri.onboarding.v1";
+export const ONBOARDING_COMPLETED_STORAGE_KEY = "pmri.onboarding.completed.v1";
 
 export const defaultOnboardingState: OnboardingState = {
   name: "",
@@ -41,10 +50,14 @@ export const defaultOnboardingState: OnboardingState = {
   riskComfort: "medium",
   decisionStyle: "evidence_first",
   primaryConcern: "unknown",
+  stressReaction: "hold",
+  returnNeed: "moderate",
+  stressLimit: "fifteen",
+  concentrationAction: "diagnose_then_adjust",
   liquidityNeed: "medium"
 };
 
-const presets: Record<PresetId, PresetDefinition> = {
+export const clientFitPresets: Record<PresetId, PresetDefinition> = {
   ultra_conservative: {
     id: "ultra_conservative",
     label: "Ultra Conservative",
@@ -155,15 +168,114 @@ export function writeOnboardingState(next: Partial<OnboardingState>) {
   }));
 }
 
+export function isOnboardingComplete(state: Partial<OnboardingState> | null | undefined): state is OnboardingState {
+  if (!state) return false;
+  return Boolean(
+    typeof state.name === "string"
+    && state.name.trim()
+    && state.investorType
+    && state.objective
+    && state.horizon
+    && state.riskComfort
+    && state.decisionStyle
+    && state.primaryConcern
+  );
+}
+
+export function markOnboardingComplete() {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(ONBOARDING_COMPLETED_STORAGE_KEY, "true");
+}
+
+export function hasCompletedOnboarding() {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(ONBOARDING_COMPLETED_STORAGE_KEY) === "true"
+    && isOnboardingComplete(readOnboardingState());
+}
+
+export function restoreOnboardingStateFromMetadata(metadata: unknown) {
+  if (typeof window === "undefined" || !metadata || typeof metadata !== "object") return false;
+  const record = metadata as Record<string, unknown>;
+  if (record.pmri_onboarding_completed !== true || !record.pmri_onboarding || typeof record.pmri_onboarding !== "object") {
+    return false;
+  }
+  const candidate = record.pmri_onboarding as Partial<OnboardingState>;
+  if (!isOnboardingComplete(candidate)) return false;
+  writeOnboardingState(candidate);
+  markOnboardingComplete();
+  return true;
+}
+
+function presetIdFromScore(score: number): PresetId {
+  if (score <= -5) return "ultra_conservative";
+  if (score <= -2) return "conservative";
+  if (score >= 6) return "aggressive";
+  if (score >= 3) return "growth";
+  return "balanced";
+}
+
+function scoreOnboardingState(state: OnboardingState) {
+  let score = 0;
+
+  const stressReactionScore: Record<OnboardingStressReaction, number> = {
+    sell_all: -4,
+    sell_some: -2,
+    hold: 1,
+    buy_more: 3
+  };
+  const horizonScore: Record<OnboardingHorizon, number> = { short: -2, medium: 0, long: 2 };
+  const stressLimitScore: Record<OnboardingStressLimit, number> = { ten: -3, fifteen: -1, twenty_five: 2, thirty_five: 4 };
+  const returnNeedScore: Record<OnboardingReturnNeed, number> = { low: -2, moderate: 0, high: 2, very_high: 4 };
+  const concentrationScore: Record<OnboardingConcentrationAction, number> = {
+    reduce_first: -2,
+    diagnose_then_adjust: 0,
+    hold_if_evidence_ok: 1,
+    add_if_compensated: 2
+  };
+
+  score += stressReactionScore[state.stressReaction] ?? 0;
+  score += horizonScore[state.horizon] ?? 0;
+  score += stressLimitScore[state.stressLimit] ?? 0;
+  score += returnNeedScore[state.returnNeed] ?? 0;
+  score += concentrationScore[state.concentrationAction] ?? 0;
+
+  return score;
+}
+
 function presetForState(state: OnboardingState): PresetDefinition {
-  if (state.decisionStyle === "preserve_unless_clear" || state.objective === "preserve" || state.riskComfort === "low" || state.liquidityNeed === "high") {
-    return state.horizon === "short" ? presets.ultra_conservative : presets.conservative;
-  }
-  if (state.decisionStyle === "test_growth" || state.objective === "growth" || state.riskComfort === "high") {
-    return state.horizon === "short" ? presets.balanced : presets.growth;
-  }
-  if (state.horizon === "long") return presets.growth;
-  return presets.balanced;
+  return clientFitPresets[presetIdFromScore(scoreOnboardingState(state))];
+}
+
+export function inferClientFitPresetIdFromTargets(values: {
+  returnMin: number;
+  returnMax: number;
+  volMin: number;
+  volMax: number;
+  drawdown: number;
+  horizonYears: number;
+}): PresetId {
+  let score = 0;
+
+  if (values.drawdown >= -0.11) score -= 4;
+  else if (values.drawdown >= -0.17) score -= 2;
+  else if (values.drawdown <= -0.33) score += 4;
+  else if (values.drawdown <= -0.25) score += 2;
+
+  if (values.volMax <= 0.055) score -= 3;
+  else if (values.volMax <= 0.08) score -= 1;
+  else if (values.volMax >= 0.16) score += 3;
+  else if (values.volMax >= 0.12) score += 2;
+
+  if (values.returnMin >= 0.10 || values.returnMax >= 0.16) score += 3;
+  else if (values.returnMin >= 0.07 || values.returnMax >= 0.10) score += 2;
+  else if (values.returnMax <= 0.045) score -= 2;
+  else if (values.returnMax <= 0.065) score -= 1;
+
+  if (values.horizonYears <= 3) score -= 2;
+  else if (values.horizonYears >= 11) score += 2;
+  else if (values.horizonYears >= 8) score += 1;
+
+  return presetIdFromScore(score);
 }
 
 export function buildClientFitProfileFromOnboarding(state: OnboardingState): ClientFitInput {
@@ -174,8 +286,8 @@ export function buildClientFitProfileFromOnboarding(state: OnboardingState): Cli
   return {
     preset_id: preset.id,
     source: "questionnaire",
-    source_quality: "medium",
-    source_quality_reason: `${namePrefix}friendly onboarding profile captured before portfolio diagnosis.`,
+    source_quality: "high",
+    source_quality_reason: `${namePrefix}risk-behavior intake scored stress reaction, horizon, drawdown limit, return need, and concentration response before portfolio diagnosis.`,
     horizon_years: horizonYears,
     target_return_range: preset.returnRange,
     target_vol_range: preset.volRange,

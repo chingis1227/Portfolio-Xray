@@ -11,6 +11,19 @@ import pandas as pd
 import yfinance as yf
 
 _YFINANCE_CACHE_CONFIGURED = False
+_FETCH_DAILY_MEMORY_CACHE: dict[tuple[str, str, str, str | None], pd.DataFrame] = {}
+
+
+def clear_fetch_daily_memory_cache() -> None:
+    """Clear process-local yfinance result cache; primarily useful for tests."""
+
+    _FETCH_DAILY_MEMORY_CACHE.clear()
+
+
+def _copy_price_frame(df: pd.DataFrame) -> pd.DataFrame:
+    copied = df.copy(deep=True)
+    copied.attrs = dict(getattr(df, "attrs", {}) or {})
+    return copied
 
 
 def _configure_yfinance_cache() -> None:
@@ -53,6 +66,10 @@ def fetch_daily(
         .attrs may contain 'currency'.
     """
     _configure_yfinance_cache()
+    cache_key = (str(ticker), str(start), str(end), currency_override)
+    cached = _FETCH_DAILY_MEMORY_CACHE.get(cache_key)
+    if cached is not None:
+        return _copy_price_frame(cached)
     df = yf.download(
         ticker,
         start=start,
@@ -81,6 +98,7 @@ def fetch_daily(
     df = df.rename_axis("Date")
     if currency_override is not None:
         df.attrs["currency"] = currency_override
+    _FETCH_DAILY_MEMORY_CACHE[cache_key] = _copy_price_frame(df)
     return df
 
 

@@ -350,6 +350,9 @@ export interface Components {
       review_summary?: Components["schemas"]["ReviewSummary"];
     };
     "ReviewRecoveryData": {
+      artifact_payloads?: {
+      [key: string]: unknown;
+    };
       artifact_refs?: Array<Components["schemas"]["ArtifactRef"]>;
       client_fit?: Components["schemas"]["ClientFitDisplaySummary"];
       diagnosis?: Components["schemas"]["DiagnosisSummary"];

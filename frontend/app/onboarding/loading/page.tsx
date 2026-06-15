@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandMark } from "@/components/onboarding/BrandMark";
-import { buildClientFitProfileFromOnboarding, profileLabelForOnboarding, readOnboardingState } from "@/lib/onboarding";
+import { buildClientFitProfileFromOnboarding, markOnboardingComplete, profileLabelForOnboarding, readOnboardingState } from "@/lib/onboarding";
 import { useReviewState } from "@/lib/reviewState";
 import { useSupabaseAuth } from "@/lib/supabase/auth";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const setupSteps = [
   "Saving Client Fit context",
@@ -16,7 +17,7 @@ const setupSteps = [
 
 export default function OnboardingLoadingPage() {
   const router = useRouter();
-  const { saveClientFitProfile } = useReviewState();
+  const { hydrated, saveClientFitProfile } = useReviewState();
   const { status } = useSupabaseAuth();
   const [progress, setProgress] = useState(12);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -32,9 +33,21 @@ export default function OnboardingLoadingPage() {
       return;
     }
     if (status !== "signed_in" && status !== "disabled" && !devBypass) return;
+    if (!hydrated) return;
 
     const profile = buildClientFitProfileFromOnboarding(state);
     saveClientFitProfile(profile);
+    markOnboardingComplete();
+
+    if (status === "signed_in") {
+      const supabase = getSupabaseBrowserClient();
+      void supabase?.auth.updateUser({
+        data: {
+          pmri_onboarding_completed: true,
+          pmri_onboarding: state
+        }
+      });
+    }
 
     const progressTimer = window.setInterval(() => {
       setProgress((current) => Math.min(current + 13, 100));
@@ -49,7 +62,7 @@ export default function OnboardingLoadingPage() {
       window.clearInterval(progressTimer);
       window.clearTimeout(routeTimer);
     };
-  }, [router, saveClientFitProfile, state, status]);
+  }, [hydrated, router, saveClientFitProfile, state, status]);
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-pmri-bg px-5 text-pmri-text">

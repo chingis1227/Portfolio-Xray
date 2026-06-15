@@ -20,10 +20,11 @@ uses run-local CLI artifacts as the primary execution surface. The target behavi
 ```text
 User clicks Run diagnosis
 -> backend creates review_id immediately
--> frontend shows progress
+-> Portfolio Input stores the active review_id and navigates to Diagnosis without waiting for the full run
+-> Diagnosis shows progress
 -> backend runs stages
--> frontend polls compact stage state
--> frontend unlocks partial results when each stage is ready
+-> Diagnosis polls compact stage state
+-> Diagnosis recovers same-run artifacts and unlocks partial results when the diagnosis chain is ready
 ```
 
 This contract does not change formulas, stress scenarios, optimizer behavior, candidate generation
@@ -89,6 +90,8 @@ can use the `not_provided` compatibility state. Missing required artifacts produ
 `ARTIFACT_MISSING` error at the first affected stage while preserving earlier completed stages.
 Runtime failures produce safe staged errors without tracebacks or absolute paths. `candidate`,
 `comparison`, `verdict`, and `report` start as pending after diagnosis and are updated when the user explicitly runs those downstream actions. Downstream mutation is stage-gated: Candidate requires completed diagnosis/Launchpad Builder state, Comparison requires Candidate, Verdict requires Comparison, and Report requires Verdict. A later downstream blocker or failure must preserve earlier completed diagnosis evidence and leave the overall review recoverable as partial rather than erasing the run.
+
+Live staged diagnosis reuses `ReviewRunContext` by default so daily/monthly/factor/macro inputs are prepared once and shared inside the backend run. Operators may set `PMRI_STAGED_REVIEW_SHARED_CONTEXT=0` only as a diagnostic rollback switch. This is an orchestration and performance boundary: formulas, required artifacts, public response fields, and stage semantics must remain unchanged.
 
 `demo_qa` execution routes through frozen fixture materializers instead of live market-data-backed adapters. The fixture materializer writes the same run-local artifact roles needed by the
 diagnosis stages under `analysis_subject/` (`run_metadata.json`, `portfolio_xray.json`,
@@ -169,8 +172,8 @@ The web route mapping is:
 
 | Frontend route | Required staged state |
 | --- | --- |
-| `/portfolio-input` | `input`, `data_load` start the review |
-| `/diagnosis` | `xray` completed or partial |
+| `/portfolio-input` | `input`, `data_load` start the review and persist the active `review_id` |
+| `/diagnosis` | running staged progress, then `xray` completed or partial after same-run recovery |
 | `/evidence` | `stress` completed or partial |
 | `/client-fit` | `client_fit` completed or `not_provided` compatibility state |
 | `/hypothesis` | `problem_classification` and `launchpad_builder` completed or partial |
@@ -257,6 +260,7 @@ may store:
 - stage statuses;
 - compact stage summaries;
 - timestamps;
+- compact in-flight progress recorded from Portfolio Input or Diagnosis polling;
 - compact verdict/report summaries;
 - saved portfolio links and compact portfolio input records.
 

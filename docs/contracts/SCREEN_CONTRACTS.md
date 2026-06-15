@@ -60,9 +60,9 @@ There is no current `/candidate`, `/monitoring`, `/what-changed`, optimizer-aren
 | Route | Product role | Must show | Primary CTA / next step | Must not show |
 | --- | --- | --- | --- | --- |
 | `/` | Public landing and product explanation. | Header/nav, hero, problem, workflow, architecture, precision, final CTA. | `Enter Platform` -> `/onboarding/sign-in`. | Platform sidebar, top journey rail, optimizer cockpit language. |
-| `/onboarding/sign-in` | Required email-first entry. | Email step, verification step, local fallback on localhost. | Continue to onboarding after auth or local fallback. | Treat local fallback as canonical product path. |
+| `/onboarding/sign-in` | Required email-first entry. | Email step, verification step, local fallback on localhost. | Continue to onboarding for new users; return completed signed-in users directly to Portfolio Input. | Treat local fallback as canonical product path. |
 | `/onboarding/name` | Friendly personal setup. | Name input and Continue CTA. | `/onboarding/investor-type`. | Portfolio diagnostics or suitability language. |
-| `/onboarding/investor-type` | Five-question Client Fit intake. | One question at a time, progress, Back/Next/final save. | `/onboarding/loading`. | Investment advice or optimizer mandates. |
+| `/onboarding/investor-type` | Five-question Client Fit intake. | One question at a time, progress, Back/Next/final save; questions cover stress-loss reaction, withdrawal horizon, temporary-loss limit, return target, and concentration response. | `/onboarding/loading`. | Investment advice or optimizer mandates. |
 | `/onboarding/loading` | Setup transition. | Setup progress and Client Fit context save messaging. | Auto-redirect to `/portfolio-input`. | Platform sidebar. |
 | `/portfolio-input` | Step 01: define current portfolio. | Client Fit summary, currency, holdings/weights, validation, recovery. | Run diagnosis -> `/diagnosis`. | Optimizer targets, tax settings, suitability approval. |
 | `/diagnosis` | Step 02: current portfolio diagnosis. | Diagnosis summary or locked state. | Continue to Stress Lab or return to Portfolio Input. | Rebalance recommendation from diagnosis alone. |

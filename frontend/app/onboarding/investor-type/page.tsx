@@ -6,12 +6,12 @@ import { OnboardingFrame } from "@/components/onboarding/OnboardingFrame";
 import {
   readOnboardingState,
   writeOnboardingState,
-  type OnboardingDecisionStyle,
+  type OnboardingConcentrationAction,
   type OnboardingHorizon,
-  type OnboardingObjective,
-  type OnboardingPrimaryConcern,
-  type OnboardingRiskComfort,
-  type OnboardingState
+  type OnboardingReturnNeed,
+  type OnboardingState,
+  type OnboardingStressLimit,
+  type OnboardingStressReaction
 } from "@/lib/onboarding";
 
 type Option<T extends string> = {
@@ -20,38 +20,38 @@ type Option<T extends string> = {
   detail: string;
 };
 
-const objectiveOptions: Array<Option<OnboardingObjective>> = [
-  { id: "preserve", label: "Preserve capital first", detail: "The diagnosis should be strict about drawdown and stability." },
-  { id: "balanced", label: "Balance growth and resilience", detail: "The diagnosis should weigh upside against stress behavior." },
-  { id: "growth", label: "Grow over a full cycle", detail: "The diagnosis can tolerate more volatility if evidence improves." },
-  { id: "understand_risk", label: "Understand what I already own", detail: "The first job is to identify the real risk drivers." }
+const stressReactionOptions: Array<Option<OnboardingStressReaction>> = [
+  { id: "sell_all", label: "Sell all risky positions", detail: "Avoid a deeper loss even if the portfolio may rebound later." },
+  { id: "sell_some", label: "Sell some and wait", detail: "Cut risk first, then decide whether to re-enter." },
+  { id: "hold", label: "Hold and review evidence", detail: "Do not panic, but check whether the portfolio still fits the plan." },
+  { id: "buy_more", label: "Buy more if fundamentals hold", detail: "Use the drawdown as an opportunity if the evidence remains strong." }
 ];
 
 const horizonOptions: Array<Option<OnboardingHorizon>> = [
   { id: "short", label: "Less than 3 years", detail: "Capital path and temporary loss matter more." },
-  { id: "medium", label: "3–10 years", detail: "The system can test medium-term trade-offs." },
+  { id: "medium", label: "3-10 years", detail: "The system can test medium-term trade-offs." },
   { id: "long", label: "10+ years", detail: "The system can tolerate wider cycles in the evidence." }
 ];
 
-const riskOptions: Array<Option<OnboardingRiskComfort>> = [
-  { id: "low", label: "Small temporary losses", detail: "Use conservative Client Fit ranges." },
-  { id: "medium", label: "Moderate drawdowns", detail: "Use balanced ranges and stress checks." },
-  { id: "high", label: "Large swings if justified", detail: "Allow growth-oriented ranges." }
+const stressLimitOptions: Array<Option<OnboardingStressLimit>> = [
+  { id: "ten", label: "Around 10%", detail: "A low temporary-loss limit; use strict defensive ranges." },
+  { id: "fifteen", label: "Around 15%", detail: "Some temporary loss is acceptable, but preservation still matters." },
+  { id: "twenty_five", label: "Around 25%", detail: "The profile can tolerate equity-like drawdowns if evidence supports it." },
+  { id: "thirty_five", label: "Around 35%+", detail: "Large cyclical losses are acceptable for higher growth potential." }
 ];
 
-const decisionOptions: Array<Option<OnboardingDecisionStyle>> = [
-  { id: "evidence_first", label: "Do nothing unless evidence is clear", detail: "No-change remains a serious outcome." },
-  { id: "preserve_unless_clear", label: "Protect capital unless change is obvious", detail: "The system should penalize weak downside evidence." },
-  { id: "improve_structure", label: "Improve structure before chasing return", detail: "Focus on concentration, overlap, and hidden exposures." },
-  { id: "test_growth", label: "Test whether more growth is justified", detail: "Compare growth evidence against added risk." }
+const returnNeedOptions: Array<Option<OnboardingReturnNeed>> = [
+  { id: "low", label: "3-5% is enough", detail: "Capital stability matters more than higher expected return." },
+  { id: "moderate", label: "5-8% target range", detail: "Balanced growth with visible downside control." },
+  { id: "high", label: "8-12% target range", detail: "Higher return is needed, with more volatility accepted." },
+  { id: "very_high", label: "12%+ target range", detail: "Aggressive growth target; the system should flag risk conflicts clearly." }
 ];
 
-const concernOptions: Array<Option<OnboardingPrimaryConcern>> = [
-  { id: "concentration", label: "Hidden concentration", detail: "Are several tickers really the same risk..." },
-  { id: "drawdown", label: "Loss in a stress event", detail: "What happens when markets break against me..." },
-  { id: "rates", label: "Rates and bond sensitivity", detail: "How exposed is the portfolio to rate shocks..." },
-  { id: "inflation", label: "Inflation / real asset protection", detail: "Does the portfolio have any offset..." },
-  { id: "unknown", label: "I am not sure yet", detail: "Start with broad portfolio diagnosis and Stress Lab evidence." }
+const concentrationOptions: Array<Option<OnboardingConcentrationAction>> = [
+  { id: "reduce_first", label: "Reduce concentration first", detail: "Do not accept single-theme or single-name risk without strong proof." },
+  { id: "diagnose_then_adjust", label: "Diagnose before changing", detail: "Show whether concentration is actually driving the risk." },
+  { id: "hold_if_evidence_ok", label: "Hold if evidence is good", detail: "Concentration is acceptable when stress and quality checks support it." },
+  { id: "add_if_compensated", label: "Add if upside compensates", detail: "Accept more concentration only if the risk-return evidence improves." }
 ];
 
 function Question<T extends string>({
@@ -118,7 +118,13 @@ export default function InvestorTypePage() {
   function continueToLoading() {
     const next = {
       ...state,
-      investorType: state.objective === "growth" ? "growth_seeker" : state.objective === "preserve" ? "capital_guardian" : state.primaryConcern === "unknown" ? "risk_mapper" : "balanced_builder"
+      investorType: state.stressReaction === "buy_more" || state.returnNeed === "very_high"
+        ? "growth_seeker"
+        : state.stressReaction === "sell_all" || state.stressLimit === "ten"
+          ? "capital_guardian"
+          : state.primaryConcern === "unknown"
+            ? "risk_mapper"
+            : "balanced_builder"
     } satisfies OnboardingState;
     writeOnboardingState(next);
     router.push("/onboarding/loading");
@@ -126,44 +132,44 @@ export default function InvestorTypePage() {
 
   const questions = useMemo(() => [
     {
-      key: "objective",
+      key: "stressReaction",
       number: "01",
-      title: "What is the portfolio's primary job...",
-      value: state.objective,
-      options: objectiveOptions,
-      onChange: (objective: OnboardingObjective) => update({ objective })
+      title: "If this portfolio fell 25% in three months...",
+      value: state.stressReaction,
+      options: stressReactionOptions,
+      onChange: (stressReaction: OnboardingStressReaction) => update({ stressReaction })
     },
     {
       key: "horizon",
       number: "02",
-      title: "What is the real decision horizon...",
+      title: "When will this money need to work for withdrawals...",
       value: state.horizon,
       options: horizonOptions,
       onChange: (horizon: OnboardingHorizon) => update({ horizon })
     },
     {
-      key: "riskComfort",
+      key: "stressLimit",
       number: "03",
-      title: "How much temporary loss can the plan tolerate...",
-      value: state.riskComfort,
-      options: riskOptions,
-      onChange: (riskComfort: OnboardingRiskComfort) => update({ riskComfort })
+      title: "What temporary loss limit should trigger concern...",
+      value: state.stressLimit,
+      options: stressLimitOptions,
+      onChange: (stressLimit: OnboardingStressLimit) => update({ stressLimit })
     },
     {
-      key: "decisionStyle",
+      key: "returnNeed",
       number: "04",
-      title: "How should the system treat changes...",
-      value: state.decisionStyle,
-      options: decisionOptions,
-      onChange: (decisionStyle: OnboardingDecisionStyle) => update({ decisionStyle })
+      title: "What return target would make the risk worthwhile...",
+      value: state.returnNeed,
+      options: returnNeedOptions,
+      onChange: (returnNeed: OnboardingReturnNeed) => update({ returnNeed })
     },
     {
-      key: "primaryConcern",
+      key: "concentrationAction",
       number: "05",
-      title: "What worries you most about the current portfolio...",
-      value: state.primaryConcern,
-      options: concernOptions,
-      onChange: (primaryConcern: OnboardingPrimaryConcern) => update({ primaryConcern })
+      title: "If the current portfolio is concentrated...",
+      value: state.concentrationAction,
+      options: concentrationOptions,
+      onChange: (concentrationAction: OnboardingConcentrationAction) => update({ concentrationAction })
     }
   ], [state]);
 

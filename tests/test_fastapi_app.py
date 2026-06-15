@@ -611,6 +611,8 @@ def test_recover_review_restores_only_diagnosis_stages(
     assert body["review_id"] == review_id
     assert body["data"]["downstream_artifacts_restored_as_active"] is False
     assert body["data"]["restored_active_stages"] == ["diagnosis", "evidence", "hypothesis_setup"]
+    assert body["data"]["artifact_payloads"]["portfolio_xray"]["schema_version"] == "portfolio_xray_v2"
+    assert body["data"]["artifact_payloads"]["stress_report"]["schema_version"] == "stress_report_v1"
     assert body["data"]["launchpad"][0]["card_id"] == "launchpad_01_reduce_concentration"
     assert "not restored as active state" in body["warnings"][0]
 

@@ -3346,6 +3346,37 @@ def _read_recoverable_review(review_id: str) -> dict[str, Any]:
     return review_result
 
 
+RECOVERABLE_DIAGNOSIS_OUTPUT_KEYS = (
+    "portfolio_xray",
+    "stress_report",
+    "run_metadata",
+    "output_manifest",
+    "problem_classification",
+    "candidate_launchpad",
+    "portfolio_alternatives_builder",
+    "client_fit_check",
+    "ai_commentary_context",
+    "site_explanation_bundle",
+)
+
+
+def _recoverable_artifact_payloads(review_result: dict[str, Any]) -> dict[str, Any]:
+    """Return bounded run-local diagnosis payloads needed to rebuild frontend state.
+
+    Recovery intentionally does not restore candidate/comparison/verdict/report
+    stages as active state, but the diagnosis and evidence screens need the same
+    current-portfolio artifacts that were available immediately after a fresh
+    run. Keep this allowlist narrow and screen-owned.
+    """
+
+    outputs = _record(review_result.get("outputs"))
+    return {
+        key: value
+        for key, value in outputs.items()
+        if key in RECOVERABLE_DIAGNOSIS_OUTPUT_KEYS and isinstance(value, (dict, list))
+    }
+
+
 def recover_review_diagnosis(review_id: str, *, owner_id: str | None = None) -> tuple[int, ReviewRecoveryResponse]:
     """Recover diagnosis, evidence, and hypothesis setup state for a run-local review."""
 
@@ -3382,6 +3413,7 @@ def recover_review_diagnosis(review_id: str, *, owner_id: str | None = None) -> 
         **created.model_dump(),
         downstream_artifacts_restored_as_active=False,
         restored_active_stages=["diagnosis", "evidence", "hypothesis_setup"],
+        artifact_payloads=_recoverable_artifact_payloads(review_result),
     )
     return 200, ReviewRecoveryResponse(
         api_version=API_VERSION,

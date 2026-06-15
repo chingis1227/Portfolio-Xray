@@ -119,11 +119,11 @@ Main content:
 - Description: answers prepare a starting planning preset before Portfolio Input.
 - Progress: `Question X of 5` and percent.
 - Questions in order:
-  1. `What is the portfolio's primary job?`
-  2. `What is the real decision horizon?`
-  3. `How much temporary loss can the plan tolerate?`
-  4. `How should the system treat changes?`
-  5. `What worries you most about the current portfolio?`
+  1. `If this portfolio fell 25% in three months...`
+  2. `When will this money need to work for withdrawals...`
+  3. `What temporary loss limit should trigger concern...`
+  4. `What return target would make the risk worthwhile...`
+  5. `If the current portfolio is concentrated...`
 - Navigation: `Back`, `Next question`, and final `Save intake and open Portfolio Input`.
 
 ## `/onboarding/loading`
@@ -172,7 +172,7 @@ Main blocks:
 1. Client Fit profile card
    - Shows profile label such as `Balanced`.
    - Shows target return, volatility, temporary loss, horizon.
-   - CTA: `Adjust intake`.
+   - CTA: `Adjust intake`; saving manual target rows reclassifies the displayed profile label from the edited return, volatility, drawdown, and horizon.
 
 2. Current allocation only explanation
    - Explains that the diagnosis checks the current allocation before alternatives.
@@ -183,6 +183,9 @@ Main blocks:
 4. Holdings and weights table
    - Ticker / cash, instrument, weight, actions.
    - CTAs: `Add holding`, `Add cash position`, `Remove row`.
+   - First-time entry starts with empty input fields, not a prefilled demo allocation.
+   - Empty guidance tells the user to add at least two current positions and treats cash as a position.
+   - Empty ticker fields use a neutral light shimmering border; red appears only after invalid user input.
    - Cash is treated as a portfolio position.
 
 5. Validation / readiness state

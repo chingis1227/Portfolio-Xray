@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { instrumentByTicker, instrumentUniverse, type Instrument } from "@/data/instrumentUniverse";
 import { useReviewState, type ReviewHolding, type ReviewResult, type StagedReviewProgress } from "@/lib/reviewState";
 import type { ClientFitInput, StagedReviewStartedResponse, StagedReviewStatusResponse } from "@/lib/generated/api-types";
+import { inferClientFitPresetIdFromTargets } from "@/lib/onboarding";
 import { useSupabaseAuth } from "@/lib/supabase/auth";
 import { useSupabasePersistence } from "@/lib/supabase/persistence";
 
@@ -29,6 +30,7 @@ type ValidationSummary = {
 
 const currencies = ["USD", "EUR"];
 const WEIGHT_TOLERANCE = 0.01;
+const MIN_VALID_HOLDINGS = 2;
 const STAGED_POLL_INTERVAL_MS = 1200;
 const STAGED_POLL_TIMEOUT_MS = 10 * 60 * 1000;
 const STAGED_PROGRESS_STAGES = [
@@ -85,6 +87,16 @@ function toEditableHolding(holding: Holding, index: number): EditableHolding {
     instrument: knownInstrument?.instrument ?? holding.instrument,
     weightInput: String(holding.weight),
     id: `${ticker || "row"}-${index}-${Date.now()}`
+  };
+}
+
+function createBlankHolding(id = `holding-${Date.now()}`): EditableHolding {
+  return {
+    id,
+    ticker: "",
+    instrument: "",
+    weight: Number.NaN,
+    weightInput: ""
   };
 }
 
@@ -378,11 +390,13 @@ function SimilarExposureWarning({ rows }: { rows: EditableHolding[] }) {
 function InstrumentCombobox({
   row,
   duplicateTicker,
+  showValidationError,
   onSelect,
   onClearSelection
 }: {
   row: EditableHolding;
   duplicateTicker: boolean;
+  showValidationError: boolean;
   onSelect: (instrument: Instrument) => void;
   onClearSelection: () => void;
 }) {
@@ -458,12 +472,14 @@ function InstrumentCombobox({
   };
 
   const instrumentMissing = !isKnownInstrument(row);
+  const showMissingState = instrumentMissing && showValidationError;
+  const showEmptyGuidance = instrumentMissing && !showValidationError;
 
   return (
     <div className="relative">
       <input
         ref={inputRef}
-        className={`pmri-focus w-full rounded-xl border bg-pmri-secondary/80 px-3 py-2.5 text-sm font-medium text-pmri-text placeholder:text-pmri-muted/70 ${instrumentMissing ? "border-pmri-risk/55" : duplicateTicker ? "border-pmri-amber/55" : "border-pmri-border/55"}`}
+        className={`pmri-focus w-full rounded-xl border bg-pmri-secondary/80 px-3 py-2.5 text-sm font-medium text-pmri-text placeholder:text-pmri-muted/70 ${showMissingState ? "border-pmri-risk/55" : duplicateTicker ? "border-pmri-amber/55" : showEmptyGuidance ? "pmri-empty-field" : "border-pmri-border/55"}`}
         value={query}
         placeholder="Search ticker or name"
         onChange={(event) => handleQueryChange(event.target.value)}
@@ -504,7 +520,7 @@ function InstrumentCombobox({
         role="combobox"
         aria-expanded={open}
         aria-autocomplete="list"
-        aria-invalid={instrumentMissing}
+        aria-invalid={showMissingState}
       />
 
       {open && dropdownStyle ? createPortal((
@@ -548,7 +564,9 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
   const { enabled: cloudEnabled, status: authStatus } = useSupabaseAuth();
   const { savedPortfolios, portfoliosLoading, savePortfolio, deletePortfolio } = useSupabasePersistence();
   const [currency, setCurrency] = useState(investorCurrency || "");
-  const [rows, setRows] = useState<EditableHolding[]>(() => holdings.map(toEditableHolding));
+  const [rows, setRows] = useState<EditableHolding[]>(() => (
+    holdings.length ? holdings.map(toEditableHolding) : [createBlankHolding("starter-0")]
+  ));
   const [intakeModalOpen, setIntakeModalOpen] = useState(false);
   const [intakeReturnMin, setIntakeReturnMin] = useState(pctInputFromDecimal(DEFAULT_CLIENT_FIT_PROFILE.target_return_range?.min, 0.05));
   const [intakeReturnMax, setIntakeReturnMax] = useState(pctInputFromDecimal(DEFAULT_CLIENT_FIT_PROFILE.target_return_range?.max, 0.07));
@@ -620,6 +638,8 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
 
   const duplicateTickerSet = useMemo(() => duplicateTickers(rows), [rows]);
   const hasDuplicateTickers = duplicateTickerSet.size > 0;
+  const validHoldingCount = rows.filter((row) => isKnownInstrument(row) && isValidWeight(row)).length;
+  const hasStartedPortfolio = rows.some((row) => normalizeTicker(row.ticker) || row.weightInput.trim());
   const instrumentsComplete = rows.length > 0 && rows.every(isKnownInstrument);
   const weightsComplete = rows.length > 0 && rows.every(isValidWeight);
   const weightsAddTo100 = Math.abs(totalWeight - 100) <= WEIGHT_TOLERANCE;
@@ -630,6 +650,14 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
       return {
         title: "Profile required",
         text: "Complete Client Profile before running the web diagnosis.",
+        tone: "amber"
+      };
+    }
+
+    if (!hasStartedPortfolio) {
+      return {
+        title: "Add current holdings",
+        text: "Start with the assets you already hold. Select a ticker or cash position, then enter its weight.",
         tone: "amber"
       };
     }
@@ -647,6 +675,14 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
         title: "Check weights",
         text: "Each position needs a weight greater than 0.",
         tone: "red"
+      };
+    }
+
+    if (validHoldingCount < MIN_VALID_HOLDINGS) {
+      return {
+        title: "Add one more holding",
+        text: `Diagnosis needs at least ${MIN_VALID_HOLDINGS} valid portfolio positions.`,
+        tone: "amber"
       };
     }
 
@@ -668,12 +704,12 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
 
     return {
       title: "Ready for diagnosis",
-        text: `${rows.length} holdings · 100% allocated`,
+      text: `${validHoldingCount} holdings · 100% allocated`,
       tone: "green"
     };
-  }, [clientProfileReady, instrumentsComplete, rows.length, totalWeight, weightsComplete]);
+  }, [clientProfileReady, hasStartedPortfolio, instrumentsComplete, totalWeight, validHoldingCount, weightsComplete]);
 
-  const ready = instrumentsComplete && weightsComplete && weightsAddTo100 && clientProfileReady;
+  const ready = validHoldingCount >= MIN_VALID_HOLDINGS && instrumentsComplete && weightsComplete && weightsAddTo100 && clientProfileReady;
   const cloudReady = cloudEnabled && authStatus === "signed_in";
   const intakeValues = useMemo(() => {
     const returnMin = decimalFromPctInput(intakeReturnMin);
@@ -697,11 +733,12 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
 
   const saveAdjustedIntake = () => {
     if (!intakeValues.valid) return;
+    const inferredPresetId = inferClientFitPresetIdFromTargets(intakeValues);
     saveClientFitProfile({
-      preset_id: activeReview?.clientFitProfile?.preset_id ?? DEFAULT_CLIENT_FIT_PROFILE.preset_id,
+      preset_id: inferredPresetId,
       source: "manual_override",
       source_quality: "high",
-      source_quality_reason: "Manual intake targets adjusted from the Portfolio Input screen.",
+      source_quality_reason: `Manual intake targets adjusted from the Portfolio Input screen; preset reclassified as ${profileLabel(inferredPresetId)} from the saved target ranges.`,
       horizon_years: intakeValues.horizonYears,
       target_return_range: { min: intakeValues.returnMin, max: intakeValues.returnMax },
       target_vol_range: { min: intakeValues.volMin, max: intakeValues.volMax },
@@ -734,10 +771,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
 
   const addHolding = () => {
     inputEdited.current = true;
-    setRows((currentRows) => [
-      ...currentRows,
-      { id: `holding-${Date.now()}`, ticker: "", instrument: "", weight: Number.NaN, weightInput: "" }
-    ]);
+    setRows((currentRows) => [...currentRows, createBlankHolding()]);
   };
 
   const addCashPosition = () => {
@@ -896,8 +930,6 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
         holdings: reviewHoldings,
         started: result
       });
-      await pollStagedDiagnosis(result.review_id);
-      await recoverCompletedDiagnosis(result.review_id, reviewHoldings, currency || "USD");
       router.push("/diagnosis");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Portfolio diagnosis failed.";
@@ -1110,7 +1142,9 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="pmri-heading-section text-xl text-pmri-text">Holdings and weights</h2>
-            <p className="mt-1 text-sm text-pmri-muted">What portfolio are we diagnosing...</p>
+            <p className="mt-1 text-sm text-pmri-muted">
+              Add only positions the client already holds. Search by ticker or name, then enter each weight as a percent.
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -1144,9 +1178,28 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
               </tr>
             </thead>
             <tbody className="[&_tr+tr_td]:border-t [&_tr+tr_td]:border-pmri-border/35">
-              {rows.map((row) => {
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8">
+                    <div className="rounded-2xl border border-dashed border-pmri-border/60 bg-white/[0.018] p-5 text-center">
+                      <h3 className="pmri-heading-section text-base text-pmri-text">No holdings added yet</h3>
+                      <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-pmri-muted">
+                        Add at least two current positions before running the diagnosis. Cash can be entered as its own portfolio position.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={addHolding}
+                        className="pmri-focus mt-4 rounded-full border border-pmri-blue/25 bg-pmri-blue/[0.065] px-4 py-2 text-sm font-medium text-pmri-blueSoft transition hover:bg-pmri-blue/[0.095]"
+                      >
+                        Add first holding
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ) : rows.map((row) => {
                 const ticker = normalizeTicker(row.ticker);
                 const tickerMissing = ticker.length === 0;
+                const rowStarted = ticker.length > 0 || row.weightInput.trim().length > 0;
                 const instrumentMissing = !isKnownInstrument(row);
                 const duplicateTicker = ticker.length > 0 && duplicateTickerSet.has(ticker);
 
@@ -1156,10 +1209,11 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
                       <InstrumentCombobox
                         row={row}
                         duplicateTicker={duplicateTicker}
+                        showValidationError={instrumentMissing && rowStarted}
                         onSelect={(instrument) => updateInstrument(row.id, instrument)}
                         onClearSelection={() => updateInstrument(row.id, null)}
                       />
-                      {instrumentMissing ? (
+                      {instrumentMissing && rowStarted ? (
                         <p className="mt-2 text-xs leading-5 text-pmri-risk">
                           {tickerMissing ? "Select a ticker or cash position." : "Select an instrument from the list."}
                         </p>
@@ -1183,7 +1237,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
                         onChange={(event) => updateWeight(row.id, event.target.value)}
                         aria-invalid={!isValidWeight(row)}
                       />
-                      {!isValidWeight(row) ? (
+                      {!isValidWeight(row) && rowStarted ? (
                         <p className="mt-2 text-xs leading-5 text-pmri-risk">Enter a weight greater than 0.</p>
                       ) : null}
                     </td>
@@ -1236,7 +1290,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
               {isRunningDiagnosis ? (
                 <>
                   <span className="pmri-spinner" aria-hidden="true" />
-                  Analyzing current portfolio...
+                  Starting diagnosis...
                 </>
               ) : "Run diagnosis"}
             </button>

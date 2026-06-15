@@ -51,6 +51,7 @@ Current external and local source families:
 - Official CSV/API/keyed/manual macro sources where supported by the macro source resolver.
 - Local YAML config and metadata files.
 - Local cache files under `cache/` when cache is enabled.
+- Process-local read-through caches for repeated live-run loads of yfinance price frames, FRED series, factor matrices, macro panels, and YAML taxonomy/config files. These caches are performance helpers only; they must return defensive copies, avoid caching failed external calls, and use source parameters plus mtime/size keys where local files are involved.
 
 Future quote-data candidates to evaluate: EODHD as first priority, Tiingo for personal usage only, and Alpaca. These are not default project data sources yet.
 

@@ -74,7 +74,7 @@ Current MVP frontend route reality may merge or defer some backend product steps
 -> /report
 ```
 
-The public landing opens the required email sign-in step. Local development may use `/onboarding/name?dev_bypass=1` as a preview shortcut while sign-in is being stabilized; that shortcut is not the product path. Onboarding captures the planning profile and writes bounded Client Fit context before Portfolio Input. `/client-profile` remains an advanced/manual Client Fit editor, not the primary journey start.
+The public landing opens the required email sign-in step. Local development may use `/onboarding/name?dev_bypass=1` as a preview shortcut while sign-in is being stabilized; that shortcut is not the product path. New users complete onboarding, which captures the planning profile and writes bounded Client Fit context before Portfolio Input. Returning signed-in users with a completed Portfolio MRI onboarding profile may skip the repeated name/questionnaire screens and open Portfolio Input with the saved Client Fit context restored. `/client-profile` remains an advanced/manual Client Fit editor, not the primary journey start.
 
 `/client-fit` displays the bounded fit interpretation after Stress Lab and before Hypothesis. `/hypothesis` may contain Problem Classification handoff, Candidate Launchpad, Builder setup, and the explicit candidate-generation attempt for the current MVP. There is no separate current Monitoring route; Monitoring / What Changed is a light product artifact and may be surfaced later or in report/summary context. Route merges do not change the product step order or boundaries.
 

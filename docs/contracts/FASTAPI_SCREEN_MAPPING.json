@@ -125,6 +125,7 @@
       "response_schema": "ReviewRecoveryResponse",
       "data_schema": "ReviewRecoveryData",
       "public_data_fields": [
+        "artifact_payloads",
         "artifact_refs",
         "diagnosis",
         "client_fit",
@@ -143,7 +144,7 @@
       ],
       "screen_mapping_status": "current",
       "screen_contract_section": "Portfolio Input recovery and conservative downstream reset",
-      "mapping_note": "Recovery restores diagnosis/evidence/Client Fit/hypothesis setup only and must keep downstream candidate/comparison/verdict/report inactive unless regenerated. Client Fit is exposed only as a bounded display summary, not as raw client_fit_check.json."
+      "mapping_note": "Recovery restores diagnosis/evidence/Client Fit/hypothesis setup only and must keep downstream candidate/comparison/verdict/report inactive unless regenerated. It may expose bounded diagnosis/evidence artifact_payloads for compact screen hydration, but Client Fit remains a bounded display summary rather than raw client_fit_check.json."
     },
     {
       "operation_id": "prepareBuilder",

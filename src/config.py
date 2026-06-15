@@ -13,11 +13,10 @@ import logging
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 _cfg_log = logging.getLogger(__name__)
 
 from src.client_profiles import apply_profile_to_config, get_profile_defaults
+from src.yaml_cache import load_yaml_mtime_cached
 
 # Keys written back to config.yml when profile is applied (so file stays in sync with client_profile)
 _PROFILE_SYNC_KEYS = (
@@ -34,8 +33,8 @@ from src.config_schema import (
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
-    with open(path, encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+    data = load_yaml_mtime_cached(path)
+    return data if isinstance(data, dict) else {}
 
 
 def load_config(config_path: str | Path | None = None) -> dict[str, Any]:

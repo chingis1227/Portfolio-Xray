@@ -21,6 +21,19 @@ DEFAULT_FRED_RETRIES = 2
 DEFAULT_FRED_RETRY_SLEEP_SECONDS = 0.5
 FRED_API_OBSERVATIONS_URL = "https://api.stlouisfed.org/fred/series/observations"
 FRED_CSV_GRAPH_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv"
+_FRED_SERIES_MEMORY_CACHE: dict[tuple[str, str, str, bool, float, int], pd.Series] = {}
+
+
+def clear_fred_series_memory_cache() -> None:
+    """Clear process-local FRED cache; primarily useful for tests."""
+
+    _FRED_SERIES_MEMORY_CACHE.clear()
+
+
+def _copy_series(series: pd.Series) -> pd.Series:
+    copied = series.copy(deep=True)
+    copied.attrs = dict(getattr(series, "attrs", {}) or {})
+    return copied
 
 
 def _fred_api_key(api_key: str | None = None) -> str | None:
@@ -136,15 +149,21 @@ def fetch_fred_series(
     attempts = max(1, int(retries) + 1)
     last_exc: Exception | None = None
     key = _fred_api_key(api_key)
+    cache_key = (str(series_id), str(start), str(end), bool(key), float(timeout), int(retries))
+    cached = _FRED_SERIES_MEMORY_CACHE.get(cache_key)
+    if cached is not None:
+        return _copy_series(cached)
     warnings: list[str] = []
 
     if key:
         for attempt in range(attempts):
             try:
-                return _attach_source_attrs(
+                series = _attach_source_attrs(
                     _fetch_fred_series_api(series_id, start, end, api_key=key, timeout=timeout),
                     source_used="fred_api",
                 )
+                _FRED_SERIES_MEMORY_CACHE[cache_key] = _copy_series(series)
+                return series
             except Exception as exc:
                 last_exc = exc
                 if attempt < attempts - 1:
@@ -155,11 +174,13 @@ def fetch_fred_series(
 
     for attempt in range(attempts):
         try:
-            return _attach_source_attrs(
+            series = _attach_source_attrs(
                 _fetch_fred_series_csv(series_id, start, end, timeout=timeout),
                 source_used="fred_csv_fallback",
                 warnings=warnings,
             )
+            _FRED_SERIES_MEMORY_CACHE[cache_key] = _copy_series(series)
+            return series
         except Exception as exc:
             last_exc = exc
             if attempt < attempts - 1:

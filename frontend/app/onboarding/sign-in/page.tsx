@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandMark } from "@/components/onboarding/BrandMark";
+import { hasCompletedOnboarding } from "@/lib/onboarding";
 import { useSupabaseAuth } from "@/lib/supabase/auth";
 
 type Stage = "email" | "code";
@@ -22,7 +23,8 @@ export default function RequiredSignInPage() {
 
   useEffect(() => {
     if (status === "signed_in") {
-      const timer = window.setTimeout(() => router.replace("/onboarding/name"), 650);
+      const nextRoute = hasCompletedOnboarding() ? "/portfolio-input" : "/onboarding/name";
+      const timer = window.setTimeout(() => router.replace(nextRoute), 650);
       return () => window.clearTimeout(timer);
     }
   }, [router, status]);
@@ -73,7 +75,7 @@ export default function RequiredSignInPage() {
           {status === "signed_in" ? (
             <div>
               <p className="pmri-label text-pmri-positive">Signed in</p>
-              <h2 className="mt-3 text-2xl font-semibold tracking-[-0.035em] text-pmri-text">Opening onboarding…</h2>
+              <h2 className="mt-3 text-2xl font-semibold tracking-[-0.035em] text-pmri-text">Opening your workspace...</h2>
               <p className="mt-3 truncate text-sm text-pmri-muted" title={user?.email ?? undefined}>{user?.email}</p>
             </div>
           ) : !enabled ? (
@@ -104,7 +106,7 @@ export default function RequiredSignInPage() {
                 />
               </label>
               <button type="submit" disabled={submitting || !email.trim()} className="pmri-focus pmri-primary-action mt-5 w-full rounded-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60">
-                {submitting ? "Sending code…" : "Continue"}
+                {submitting ? "Sending code..." : "Continue"}
               </button>
               {isLocalhost ? (
                 <button
@@ -140,7 +142,7 @@ export default function RequiredSignInPage() {
                 />
               </label>
               <button type="submit" disabled={submitting || !code.trim()} className="pmri-focus pmri-primary-action mt-5 w-full rounded-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60">
-                {submitting ? "Verifying…" : "Verify and continue"}
+                {submitting ? "Verifying..." : "Verify and continue"}
               </button>
               <button type="button" onClick={() => { clearAuthNotice(); setStage("email"); }} className="pmri-focus mt-3 w-full rounded-full border border-pmri-border/60 px-5 py-3 text-sm font-semibold text-pmri-text2 transition hover:border-pmri-border hover:bg-white/[0.04]">
                 Change email

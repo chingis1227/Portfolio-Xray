@@ -27,6 +27,19 @@ from src.pandas_compat import MONTH_END_FREQ
 from src.real_cash import is_real_cash_ticker, partition_market_data_tickers
 
 _LOG = logging.getLogger(__name__)
+_FACTOR_MATRIX_MEMORY_CACHE: dict[tuple[str, str, bool, bool], pd.DataFrame] = {}
+
+
+def clear_factor_matrix_memory_cache() -> None:
+    """Clear process-local factor matrix cache; primarily useful for tests."""
+
+    _FACTOR_MATRIX_MEMORY_CACHE.clear()
+
+
+def _copy_factor_frame(df: pd.DataFrame) -> pd.DataFrame:
+    copied = df.copy(deep=True)
+    copied.attrs = dict(getattr(df, "attrs", {}) or {})
+    return copied
 
 # Stress report: weekly regression windows ending at analysis_end (Friday week-ends after inner join)
 FACTOR_WEEKS_3Y = 156   # ~3 calendar years (rolling diagnostics)
@@ -1247,7 +1260,13 @@ def build_factor_matrix(
     per-column episode sums (e.g. dotcom) still have data; callers that need a
     strict inner join for regressions should keep the default True.
     """
-    return _build_factor_frame(start, end, monthly=False, require_complete_rows=require_complete_rows)
+    cache_key = (str(start), str(end), False, bool(require_complete_rows))
+    cached = _FACTOR_MATRIX_MEMORY_CACHE.get(cache_key)
+    if cached is not None:
+        return _copy_factor_frame(cached)
+    df = _build_factor_frame(start, end, monthly=False, require_complete_rows=require_complete_rows)
+    _FACTOR_MATRIX_MEMORY_CACHE[cache_key] = _copy_factor_frame(df)
+    return df
 
 
 def build_factor_matrix_monthly(
@@ -1259,7 +1278,13 @@ def build_factor_matrix_monthly(
     ``build_factor_matrix``. Index: month-end timestamps. Used for
     ``regime_factor_analytics_v1`` alignment with macro_two_axis monthly labels.
     """
-    return _build_factor_frame(start, end, monthly=True)
+    cache_key = (str(start), str(end), True, True)
+    cached = _FACTOR_MATRIX_MEMORY_CACHE.get(cache_key)
+    if cached is not None:
+        return _copy_factor_frame(cached)
+    df = _build_factor_frame(start, end, monthly=True)
+    _FACTOR_MATRIX_MEMORY_CACHE[cache_key] = _copy_factor_frame(df)
+    return df
 
 
 _DAILY_FACTOR_LOADERS: dict[str, Callable[[str, str], pd.Series]] = {

@@ -590,7 +590,7 @@ test("Supabase staged persistence keeps canonical stage names and strips raw art
   assert.match(persistenceSource, /isUnsafeCloudString/);
   assert.match(persistenceSource, /persistStagedProgressForReview/);
   assert.match(persistenceSource, /compactCloudRecord\(summary\)/);
-  assert.match(callbackSource, /url\.pathname = "\/onboarding\/name"/);
+  assert.match(callbackSource, /url\.pathname = "\/onboarding\/sign-in"/);
   assert.doesNotMatch(persistenceSource, /artifactRefs:\s*reviewSummary\.rawOutputKeys/);
   assert.doesNotMatch(persistenceSource, /summary:\s*activeReview\.verdictResult/);
 });

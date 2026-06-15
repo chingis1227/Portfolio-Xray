@@ -6,6 +6,7 @@ import { useState } from "react";
 import { BrandMark } from "@/components/onboarding/BrandMark";
 import { buildJourneySteps } from "@/lib/journey";
 import { useReviewState } from "@/lib/reviewState";
+import { useSupabaseAuth } from "@/lib/supabase/auth";
 import type { JourneyStepStatus } from "@/lib/types";
 
 function statusClasses(status: JourneyStepStatus) {
@@ -37,6 +38,7 @@ function dotClasses(status: JourneyStepStatus) {
 export function Sidebar() {
   const pathname = usePathname();
   const { journeyFlags } = useReviewState();
+  const { enabled, status: authStatus, user, signOut } = useSupabaseAuth();
   const steps = buildJourneySteps(pathname, journeyFlags);
   const [lockMessage, setLockMessage] = useState<string | null>(null);
 
@@ -98,6 +100,32 @@ export function Sidebar() {
           );
         })}
       </nav>
+      {enabled ? (
+        <div className="mt-auto rounded-2xl border border-pmri-border/45 bg-white/[0.02] p-3">
+          <p className="pmri-label text-pmri-text2">Account</p>
+          {authStatus === "signed_in" ? (
+            <>
+              <p className="mt-2 truncate text-xs text-pmri-muted" title={user?.email ?? undefined}>
+                {user?.email ?? "Signed-in user"}
+              </p>
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                className="pmri-focus mt-3 w-full rounded-xl border border-pmri-border/55 px-3 py-2 text-xs font-semibold text-pmri-text2 transition hover:border-pmri-border hover:bg-white/[0.04]"
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/onboarding/sign-in"
+              className="pmri-focus mt-3 block rounded-xl border border-pmri-border/55 px-3 py-2 text-center text-xs font-semibold text-pmri-text2 transition hover:border-pmri-border hover:bg-white/[0.04]"
+            >
+              Sign in
+            </Link>
+          )}
+        </div>
+      ) : null}
     </aside>
   );
 }

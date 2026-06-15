@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -32,6 +33,12 @@ def run_staged_diagnosis_service(
     try:
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             cfg = load_validated_config(config_path)
+            use_shared_context = os.getenv("PMRI_STAGED_REVIEW_SHARED_CONTEXT", "1").strip().lower() not in {
+                "0",
+                "false",
+                "no",
+                "off",
+            }
             run_materialize_analysis_subject_report(
                 cfg,
                 run_timestamp=datetime.now(timezone.utc).isoformat(),
@@ -40,7 +47,7 @@ def run_staged_diagnosis_service(
                 output_profile="site_api",
                 review_mode="core",
                 project_root=project_root,
-                use_review_run_context=False,
+                use_review_run_context=use_shared_context,
                 core_diagnostics_only=core_diagnostics_only,
             )
             cleanup_old_cache(keep_versions=3)

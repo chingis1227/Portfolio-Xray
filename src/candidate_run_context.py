@@ -55,6 +55,20 @@ from src.windows import slice_window, truncate_to_analysis_end
 
 SCHEMA_VERSION = "candidate_run_context_v5"
 REVIEW_RUN_CONTEXT_SCHEMA = "review_run_context_v1"
+_REVIEW_MACRO_PANEL_MEMORY_CACHE: dict[tuple[str, int], tuple[pd.DataFrame, dict[str, Any]]] = {}
+
+
+def clear_review_macro_panel_memory_cache() -> None:
+    """Clear process-local review macro panel cache; primarily useful for tests."""
+
+    _REVIEW_MACRO_PANEL_MEMORY_CACHE.clear()
+
+
+def _copy_macro_panel_cache_value(value: tuple[pd.DataFrame, dict[str, Any]]) -> tuple[pd.DataFrame, dict[str, Any]]:
+    panel, meta = value
+    copied_panel = panel.copy(deep=True)
+    copied_panel.attrs = dict(getattr(panel, "attrs", {}) or {})
+    return copied_panel, dict(meta or {})
 
 # Re-export for factory/report callers
 FactoryWeeklyFactorFrames = PortfolioFactorWeeklyFrames
@@ -594,11 +608,17 @@ def load_review_macro_panel(
     """Fetch the monthly macro indicator panel once per review run."""
     from src.stress_factors_macro import fetch_macro_indicators
 
+    cache_key = (str(analysis_end_str), int(months_back))
+    cached = _REVIEW_MACRO_PANEL_MEMORY_CACHE.get(cache_key)
+    if cached is not None:
+        return _copy_macro_panel_cache_value(cached)
     panel_start, panel_end = macro_panel_fetch_window(
         analysis_end_str,
         months_back=months_back,
     )
-    return fetch_macro_indicators(panel_start, panel_end)
+    panel, meta = fetch_macro_indicators(panel_start, panel_end)
+    _REVIEW_MACRO_PANEL_MEMORY_CACHE[cache_key] = _copy_macro_panel_cache_value((panel, meta))
+    return panel, meta
 
 
 def prepare_review_run_context(

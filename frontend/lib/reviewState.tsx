@@ -23,6 +23,7 @@ import { instrumentByTicker } from "@/data/instrumentUniverse";
 import { buildStressLabModelFromOutputs } from "@/components/evidence/stressLabModel";
 import type { StressLabModel } from "@/components/evidence/stressLabTypes";
 import { stagedSafeErrorMessage } from "@/lib/review/stagedSafeError";
+import { buildClientFitProfileFromOnboarding, hasCompletedOnboarding, readOnboardingState } from "@/lib/onboarding";
 import { useSupabaseAuth } from "@/lib/supabase/auth";
 import { persistCompactStageSummariesForReview, persistDiagnosisSummaryForReview, persistStagedProgressForReview, useSupabasePersistence, type SavedReviewRecord } from "@/lib/supabase/persistence";
 
@@ -1036,6 +1037,28 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     if (!hydrated) return;
     writeStoredReview(activeReview);
   }, [activeReview, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated || activeReview?.clientFitProfile || !hasCompletedOnboarding()) return;
+    const profile = cleanClientFitProfileInput(buildClientFitProfileFromOnboarding(readOnboardingState()));
+    if (!profile) return;
+    setActiveReview((current) => ({
+      ...current,
+      investorCurrency: current?.investorCurrency || "USD",
+      holdings: current?.holdings ?? [],
+      clientFitProfile: profile,
+      runMode: current?.runMode ?? "sample_demo",
+      runStatus: current?.runStatus ?? "draft",
+      submitted: current?.submitted ?? false,
+      diagnosisReady: current?.diagnosisReady ?? false,
+      evidenceReady: current?.evidenceReady ?? false,
+      improvementPathsReady: current?.improvementPathsReady ?? false,
+      candidateReady: current?.candidateReady ?? false,
+      comparisonReady: current?.comparisonReady ?? false,
+      verdictReady: current?.verdictReady ?? false,
+      updatedAt: new Date().toISOString()
+    }));
+  }, [activeReview?.clientFitProfile, hydrated]);
 
   const saveClientFitProfile = useCallback((profile: ClientFitInput) => {
     const cleaned = cleanClientFitProfileInput(profile);
