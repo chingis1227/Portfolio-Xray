@@ -2,6 +2,21 @@
 
 ## 2026-06-15
 
+- Implemented security remediation Sessions 06-07. The local Config UI is local-only with CSRF-protected mutating routes, FastAPI docs/OpenAPI routes are opt-in, run-local review ids use higher-entropy tokens, and the Results Dashboard rejects output paths that resolve outside the project root.
+- Implemented security remediation Sessions 03-05. FastAPI staged review state now stores owner ids, protected status/recovery/downstream stage endpoints enforce owner and stage-lineage checks, and diagnosis workload controls bound holdings, request body size, and staged worker queue capacity.
+- Fixed local staged FastAPI auth/runtime drift. Local non-production API calls now fall back to a
+  dev internal user when no shared secret is configured, review service functions accept the
+  owner-id context passed by FastAPI, and a one-shot Supabase SQL patch documents how to update
+  existing `review_stage_summaries_stage_check` constraints for canonical staged names.
+- Started security remediation Sessions 00-02. Added a living security ExecPlan, upgraded the
+  frontend to the safe Next.js 15.5.x line, required authenticated users for all
+  `app/api/portfolio/*` routes, and added signed Next.js-to-FastAPI internal auth headers for
+  protected review endpoints.
+- Started Track 1 staged runtime migration. FastAPI staged diagnosis now defaults to an in-process
+  direct service boundary that reuses `run_materialize_analysis_subject_report`, with
+  `PMRI_STAGED_REVIEW_RUNTIME=subprocess` preserving the old CLI subprocess path. A live parity
+  smoke confirmed direct and subprocess paths match required staged artifact presence and schema
+  versions for the tested fixture.
 - Started the architecture debt roadmap implementation. Extracted staged review safe-error
   formatting and FastAPI legacy error scrubbing into small frontend helper modules, and documented
   the root `run_*.py` runner inventory and retirement classes in `docs/runtime_entrypoints.md`.

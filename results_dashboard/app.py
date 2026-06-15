@@ -50,7 +50,13 @@ def _output_dir() -> Path:
     raw = _read_yaml_config()
     merged = apply_profile_to_config(dict(raw))
     name = merged.get("output_dir_final") or "Main portfolio"
-    return (PROJECT_ROOT / str(name)).resolve()
+    base = PROJECT_ROOT.resolve()
+    target = (base / str(name)).resolve()
+    try:
+        target.relative_to(base)
+    except ValueError as exc:
+        raise ValueError("Configured output_dir_final must resolve inside the project root.") from exc
+    return target
 
 
 def _fmt_pct(x: Any, *, signed: bool = False, decimals: int = 2) -> str:
@@ -81,7 +87,11 @@ def build_view_model() -> dict[str, Any]:
         "error": None,
         "has_data": False,
     }
-    out_dir = _output_dir()
+    try:
+        out_dir = _output_dir()
+    except ValueError as exc:
+        out["error"] = str(exc)
+        return out
     out["output_dir"] = str(out_dir)
 
     rr_path = out_dir / "run_result.json"
@@ -200,7 +210,10 @@ def index():
 
 @app.route("/report")
 def report_html():
-    out_dir = _output_dir()
+    try:
+        out_dir = _output_dir()
+    except ValueError as exc:
+        return str(exc), 400
     p = out_dir / "report.html"
     if not p.is_file():
         return f"Not found: {p}", 404

@@ -146,7 +146,8 @@ client-safe.
 
 ### `GET /api/v1/health`
 
-Purpose: prove the FastAPI server is alive and expose API/OpenAPI readiness.
+Purpose: prove the FastAPI server is alive and expose whether API/OpenAPI documentation routes are
+enabled for the current local process.
 
 Implementation status: implemented in Session 02 by `src/api/app.py` and typed with a Pydantic
 response model in Session 03.
@@ -157,10 +158,12 @@ Response data:
       "service": "portfolio-mri-api",
       "status": "ok",
       "api_version": "v1",
-      "openapi_available": true
+      "openapi_available": false
     }
 
-This endpoint must not read portfolio artifacts or run diagnostics.
+This endpoint must not read portfolio artifacts or run diagnostics. OpenAPI JSON, Swagger UI, and
+ReDoc routes are disabled by default and are enabled only when the local operator starts FastAPI
+with `PMRI_FASTAPI_ENABLE_DOCS=1`.
 
 ### Staged web review endpoints
 
@@ -581,6 +584,10 @@ Diagnosis interpretation Session 13 adds two anti-hallucination checks to the sa
 Regenerate the file after intentional FastAPI contract changes with:
 
     .\.venv\Scripts\python.exe scripts\generate_fastapi_api_types.py
+
+Security remediation Sessions 06-07 changed the generated health type so
+`data.openapi_available` is a boolean rather than a literal `true`, because documentation routes are
+now opt-in.
 
 Focused verification:
 

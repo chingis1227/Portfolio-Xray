@@ -267,7 +267,7 @@ export interface Components {
     };
     "HealthData": {
       api_version?: "v1";
-      openapi_available?: true;
+      openapi_available?: boolean;
       service?: "portfolio-mri-api";
       status?: "ok";
     };
@@ -379,7 +379,7 @@ export interface Components {
       review_id?: string | null;
     };
     "SafeError": {
-      code: "invalid_portfolio_input" | "review_not_found" | "lineage_mismatch" | "stage_not_ready" | "backend_failed" | "artifact_missing" | "artifact_stale" | "data_quality_blocker" | "candidate_generation_blocked" | "comparison_unavailable" | "verdict_unavailable" | "report_unavailable" | "unknown_error";
+      code: "invalid_portfolio_input" | "review_forbidden" | "review_not_found" | "lineage_mismatch" | "stage_not_ready" | "backend_failed" | "artifact_missing" | "artifact_stale" | "data_quality_blocker" | "candidate_generation_blocked" | "comparison_unavailable" | "verdict_unavailable" | "report_unavailable" | "unknown_error";
       details?: Array<string>;
       message: string;
       retryable: boolean;

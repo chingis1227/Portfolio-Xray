@@ -29,7 +29,8 @@ into safe tracks that future chats can pick up independently.
 
 - [x] (2026-06-15 00:30Z) Roadmap created with three tracks: staged API/subprocess boundary, large frontend module seams, and legacy wrapper retirement criteria.
 - [x] (2026-06-15 12:00Z) Track 1 discovery refreshed: staged FastAPI still enters `scripts/run_review_from_payload.py`, which still owns the `run_report.py` subprocess boundary.
-- [ ] Track 1 implementation: replace the normal staged diagnosis subprocess with direct service calls where tests prove parity.
+- [x] (2026-06-15 13:10Z) Track 1 implementation milestone: added `src/review_runtime/staged_diagnosis_service.py` and switched `scripts/run_review_from_payload.py` to use it by default for staged diagnosis, with `PMRI_STAGED_REVIEW_RUNTIME=subprocess` as the compatibility fallback.
+- [x] (2026-06-15 13:35Z) Track 1 live parity smoke: ran one real staged diagnosis fixture through the direct service and the subprocess fallback; both completed and matched required artifact presence and schema-version checks.
 - [x] (2026-06-15 12:00Z) Track 2 discovery: selected pure low-risk seams for staged safe-error formatting and server-only FastAPI error scrubbing.
 - [x] (2026-06-15 12:00Z) Track 2 implementation slice 1: moved staged safe-error formatting to `frontend/lib/review/stagedSafeError.ts` and moved FastAPI error scrubbing/mapping to `frontend/lib/server/fastapi/errors.ts`.
 - [x] (2026-06-15 12:00Z) Track 3 discovery: classified root `run_*.py` commands in `docs/runtime_entrypoints.md` without deleting or hiding wrappers.
@@ -49,6 +50,12 @@ into safe tracks that future chats can pick up independently.
   Evidence: `frontend/lib/review/stagedSafeError.ts` and `frontend/lib/server/fastapi/errors.ts` are covered by `frontend/tests/api-route-tests.cjs`.
 - Observation: Root runner inventory has no immediate deletion candidate under this plan because each legacy wrapper still represents either documented compatibility, advanced research, export, or smoke-test surface.
   Evidence: `docs/runtime_entrypoints.md` now classifies each root `run_*.py` and requires replacement docs plus focused verification before retirement.
+- Observation: The direct staged diagnosis service can reuse an existing production materializer instead of copying formulas.
+  Evidence: `src/review_runtime/staged_diagnosis_service.py` imports `run_report.run_materialize_analysis_subject_report`, and `tests/test_frontend_review_bridge.py` verifies the service passes `output_profile="site_api"`, `review_mode="core"`, and the correct `core_diagnostics_only` flag.
+- Observation: FastAPI route tests require explicit local auth bypass in this branch's environment.
+  Evidence: without `$env:PMRI_FASTAPI_AUTH_MODE='dev_bypass'`, protected review routes return HTTP 401 before reaching review logic; with the env set, `tests/test_fastapi_app.py tests/test_staged_review_api.py` passed.
+- Observation: Direct and subprocess staged diagnosis paths produce the same required artifact surface for the smoke fixture.
+  Evidence: the temporary parity summary outside the repository recorded `same_success_status=true`, `same_artifact_presence=true`, and `same_schema_versions=true` for `portfolio_xray`, `stress_report`, `run_metadata`, `output_manifest`, `site_explanation_bundle`, `problem_classification`, `candidate_launchpad`, and `portfolio_alternatives_builder`.
 
 ## Decision Log
 
@@ -67,15 +74,21 @@ into safe tracks that future chats can pick up independently.
 - Decision: Treat Track 3 implementation as documentation/inventory only for now.
   Rationale: Removing or changing wrapper behavior without proving no docs or tests depend on those commands would violate the compatibility boundary. The inventory is the safe prerequisite for future retirement gates.
   Date/Author: 2026-06-15 / Codex.
+- Decision: Default staged payload execution to the direct service but keep an environment-variable fallback to subprocess.
+  Rationale: The plan's goal is to remove the normal FastAPI-to-CLI boundary, but a fallback keeps parity/debug workflows available while the direct path is exercised by focused tests.
+  Date/Author: 2026-06-15 / Codex.
+- Decision: Reuse `run_materialize_analysis_subject_report` as the service boundary.
+  Rationale: That function is the existing owner of analysis-subject artifact materialization. Reusing it avoids duplicating formulas, output rules, or product-bundle hygiene.
+  Date/Author: 2026-06-15 / Codex.
 
 ## Outcomes & Retrospective
 
 The roadmap exists as a separate handoff artifact and no broad behavior change has been mixed into
 the Run Diagnostics fix. The first implementation session completed two small Track 2 extractions
-and the Track 3 root runner inventory. The next contributor can continue Track 1 by adding parity
-tests for a direct staged diagnosis service, continue Track 2 by extracting another pure helper, or
-continue Track 3 by adding retirement gates for a specific wrapper only after replacement docs and
-smoke checks prove safety.
+and the Track 3 root runner inventory. Track 1 now replaces the normal staged payload subprocess
+with a direct in-process materialization service while preserving a subprocess fallback, and the
+live parity smoke confirmed the direct and fallback paths produce the same required artifact surface
+for the tested fixture.
 
 ## Context and Orientation
 
@@ -156,6 +169,15 @@ on stdout/stderr parsing for success. Run at minimum:
     .\.venv\Scripts\python.exe -m pytest tests\test_fastapi_app.py -q
     .\.venv\Scripts\python.exe -m pytest tests\test_portfolio_review_workflow.py -q
     cmd /c npm --prefix frontend run test:api
+
+When FastAPI review-route auth is enabled locally, set:
+
+    $env:PMRI_FASTAPI_AUTH_MODE='dev_bypass'
+
+The direct service is the default staged runtime. To force the older subprocess path for debugging,
+set:
+
+    $env:PMRI_STAGED_REVIEW_RUNTIME='subprocess'
 
 For Track 2 discovery, measure current module size and locate pure helper seams:
 

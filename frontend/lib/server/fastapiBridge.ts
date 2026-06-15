@@ -53,6 +53,16 @@ type FastApiCallResult = {
   body: unknown;
 };
 
+class PortfolioApiAuthError extends Error {
+  status: number;
+
+  constructor(message: string, status = 401) {
+    super(message);
+    this.name = "PortfolioApiAuthError";
+    this.status = status;
+  }
+}
+
 type ExpectedFastApiLineage = {
   reviewId?: string;
   selectedCardId?: string;
@@ -68,6 +78,83 @@ function fastApiBaseUrl() {
     || process.env.FASTAPI_BASE_URL
     || "http://127.0.0.1:8000"
   ).replace(/\/+$/, "");
+}
+
+function envText(name: string) {
+  const value = process.env[name];
+  return typeof value === "string" && value.trim() ? value.trim() : "";
+}
+
+function isProductionRuntime() {
+  return ["production"].includes(
+    (envText("NODE_ENV") || envText("ENVIRONMENT")).toLowerCase()
+  );
+}
+
+function portfolioApiDevBypassEnabled() {
+  return envText("PMRI_PORTFOLIO_API_AUTH_MODE") === "dev_bypass" && !isProductionRuntime();
+}
+
+function internalAuthSecret() {
+  return envText("PMRI_FASTAPI_INTERNAL_SECRET") || envText("PMRI_INTERNAL_AUTH_SECRET");
+}
+
+function hexFromBytes(bytes: Uint8Array) {
+  return Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function hmacSha256Hex(secret: string, message: string) {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
+  return hexFromBytes(new Uint8Array(signature));
+}
+
+async function portfolioApiUserId() {
+  if (portfolioApiDevBypassEnabled()) {
+    return envText("PMRI_PORTFOLIO_API_DEV_USER_ID") || "local-dev-user";
+  }
+
+  if (envText("NEXT_PUBLIC_PMRI_SUPABASE_ENABLED") === "true") {
+    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
+    const supabase = await createSupabaseServerClient();
+    if (!supabase) {
+      throw new PortfolioApiAuthError("Portfolio API authentication is not configured.");
+    }
+    const { data, error } = await supabase.auth.getUser();
+    const userId = data?.user?.id;
+    if (error || !userId) {
+      throw new PortfolioApiAuthError("Sign in before starting or reading a portfolio review.");
+    }
+    return userId;
+  }
+
+  throw new PortfolioApiAuthError(
+    "Portfolio API authentication is required. For local-only demos, set PMRI_PORTFOLIO_API_AUTH_MODE=dev_bypass outside production."
+  );
+}
+
+async function internalAuthHeaders() {
+  const userId = await portfolioApiUserId();
+  const secret = internalAuthSecret();
+  if (!secret) {
+    throw new PortfolioApiAuthError("FastAPI internal auth secret is not configured.", 500);
+  }
+  const timestamp = String(Date.now());
+  const signature = await hmacSha256Hex(secret, `${userId}.${timestamp}`);
+  return {
+    "X-PMRI-User-Id": userId,
+    "X-PMRI-Auth-Timestamp": timestamp,
+    "X-PMRI-Internal-Signature": signature
+  };
 }
 
 export function jsonError(message: string, status = 400, details: string[] | string = []) {
@@ -182,9 +269,13 @@ async function callFastApi(method: "GET" | "POST", apiPath: string, body?: unkno
   const timeout = setTimeout(() => controller.abort(), FASTAPI_TIMEOUT_MS);
   const url = `${fastApiBaseUrl()}${apiPath}`;
   try {
+    const authHeaders = await internalAuthHeaders();
+    const headers = body === undefined
+      ? authHeaders
+      : { ...authHeaders, "Content-Type": "application/json" };
     const response = await fetch(url, {
       method,
-      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+      headers,
       body: body === undefined ? undefined : JSON.stringify(body),
       cache: "no-store",
       signal: controller.signal
@@ -193,6 +284,18 @@ async function callFastApi(method: "GET" | "POST", apiPath: string, body?: unkno
     const parsed = responseText ? parseJsonWithNonFinite(responseText) : null;
     return { ok: response.ok, status: response.status, body: parsed };
   } catch (error) {
+    if (error instanceof PortfolioApiAuthError) {
+      return {
+        ok: false,
+        status: error.status,
+        body: {
+          safe_error: {
+            message: error.message,
+            details: []
+          }
+        }
+      };
+    }
     const unavailable = error instanceof Error && error.name === "AbortError"
       ? "FastAPI backend request timed out."
       : "FastAPI backend is unavailable. Start it with uvicorn src.api.app:app --host 127.0.0.1 --port 8000.";
@@ -210,6 +313,7 @@ async function callFastApi(method: "GET" | "POST", apiPath: string, body?: unkno
     clearTimeout(timeout);
   }
 }
+
 
 function validatePortfolioPayload(body: PortfolioPayload): { payload?: ValidatedPayload; errors: string[] } {
   const errors: string[] = [];

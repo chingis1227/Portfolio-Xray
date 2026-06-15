@@ -98,6 +98,19 @@ Commentary grounding.
 
 Direct `python run_report.py --materialize-analysis-subject` is **legacy/advanced** CLI surface.
 
+FastAPI staged diagnosis does not require operators to run a root CLI command. The normal staged
+adapter calls the in-process service `src/review_runtime/staged_diagnosis_service.py`, which reuses
+`run_report.run_materialize_analysis_subject_report` and writes the same run-local
+`analysis_subject/` artifacts. Set `PMRI_STAGED_REVIEW_RUNTIME=subprocess` only for compatibility
+debugging when the older `run_report.py` / `run_portfolio_review.py` subprocess boundary is needed.
+Portfolio review endpoints exposed by FastAPI are protected internal API surfaces as of the
+security remediation Session 02. Normal browser traffic must enter through the Next.js
+`app/api/portfolio/*` compatibility routes, which authenticate the user and then send a short-lived
+signed internal context to FastAPI. For local-only demos without Supabase, set
+`PMRI_PORTFOLIO_API_AUTH_MODE=dev_bypass` for Next.js and `PMRI_FASTAPI_AUTH_MODE=dev_bypass` for
+FastAPI in a non-production shell; production deployments must configure
+`PMRI_FASTAPI_INTERNAL_SECRET` and must not enable either bypass.
+
 ## Legacy / research / advanced (not Core MVP)
 
 Moved under [`legacy/runners/`](../legacy/runners/) with root deprecation wrappers:

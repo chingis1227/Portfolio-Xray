@@ -3,6 +3,12 @@ from __future__ import annotations
 import yaml
 
 
+def _csrf_headers(client) -> dict[str, str]:
+    client.get("/")
+    with client.session_transaction() as sess:
+        return {"X-CSRF-Token": sess["csrf_token"]}
+
+
 def test_config_ui_mvp_first_screen_structure(monkeypatch, tmp_path) -> None:
     from config_ui import app as config_app
 
@@ -39,8 +45,10 @@ def test_config_ui_generate_mvp_compact_yaml_by_default(monkeypatch, tmp_path) -
     )
     monkeypatch.setattr(config_app, "CONFIG_PATH", config_path)
 
-    response = config_app.app.test_client().post(
+    client = config_app.app.test_client()
+    response = client.post(
         "/generate",
+        headers=_csrf_headers(client),
         data={
             "investor_currency": "USD",
             "ticker[]": ["VOO", "BND"],
@@ -67,8 +75,10 @@ def test_config_ui_generate_full_yaml_for_optimize_mode(monkeypatch, tmp_path) -
     config_path.write_text("{}", encoding="utf-8")
     monkeypatch.setattr(config_app, "CONFIG_PATH", config_path)
 
-    response = config_app.app.test_client().post(
+    client = config_app.app.test_client()
+    response = client.post(
         "/generate",
+        headers=_csrf_headers(client),
         data={
             "analysis_mode": "optimize_from_universe",
             "investor_currency": "USD",
@@ -105,8 +115,10 @@ def test_config_ui_run_portfolio_review_endpoint(monkeypatch, tmp_path) -> None:
 
     monkeypatch.setattr(config_app.subprocess, "run", fake_run)
 
-    response = config_app.app.test_client().post(
+    client = config_app.app.test_client()
+    response = client.post(
         "/run-portfolio-review",
+        headers=_csrf_headers(client),
         json={"dry_run": True},
     )
     assert response.status_code == 200

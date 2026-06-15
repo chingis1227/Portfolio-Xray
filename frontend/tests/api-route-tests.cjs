@@ -1,8 +1,13 @@
 const assert = require("node:assert/strict");
+const nodeCrypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const ts = require("typescript");
+
+if (!globalThis.crypto?.subtle) {
+  globalThis.crypto = nodeCrypto.webcrypto;
+}
 
 const frontendRoot = path.resolve(__dirname, "..");
 const builderPrepareRoutePath = path.resolve(frontendRoot, "app", "api", "portfolio", "builder", "prepare", "route.ts");
@@ -103,12 +108,40 @@ async function responseJson(response) {
 
 async function withMockFetch(mockFetch, callback) {
   const original = globalThis.fetch;
+  const originalPortfolioAuthMode = process.env.PMRI_PORTFOLIO_API_AUTH_MODE;
+  const originalPortfolioDevUserId = process.env.PMRI_PORTFOLIO_API_DEV_USER_ID;
+  const originalInternalSecret = process.env.PMRI_FASTAPI_INTERNAL_SECRET;
+  process.env.PMRI_PORTFOLIO_API_AUTH_MODE = "dev_bypass";
+  process.env.PMRI_PORTFOLIO_API_DEV_USER_ID = "frontend-route-test-user";
+  process.env.PMRI_FASTAPI_INTERNAL_SECRET = "frontend-route-test-secret";
   globalThis.fetch = mockFetch;
   try {
     return await callback();
   } finally {
     globalThis.fetch = original;
+    if (originalPortfolioAuthMode === undefined) delete process.env.PMRI_PORTFOLIO_API_AUTH_MODE;
+    else process.env.PMRI_PORTFOLIO_API_AUTH_MODE = originalPortfolioAuthMode;
+    if (originalPortfolioDevUserId === undefined) delete process.env.PMRI_PORTFOLIO_API_DEV_USER_ID;
+    else process.env.PMRI_PORTFOLIO_API_DEV_USER_ID = originalPortfolioDevUserId;
+    if (originalInternalSecret === undefined) delete process.env.PMRI_FASTAPI_INTERNAL_SECRET;
+    else process.env.PMRI_FASTAPI_INTERNAL_SECRET = originalInternalSecret;
   }
+}
+
+function assertSignedFastApiHeaders(options) {
+  const userId = options.headers["X-PMRI-User-Id"];
+  const timestamp = options.headers["X-PMRI-Auth-Timestamp"];
+  const signature = options.headers["X-PMRI-Internal-Signature"];
+  assert.equal(userId, "frontend-route-test-user");
+  assert.match(timestamp, /^\d+$/);
+  assert.match(signature, /^[a-f0-9]{64}$/);
+  assert.equal(
+    signature,
+    nodeCrypto
+      .createHmac("sha256", "frontend-route-test-secret")
+      .update(`${userId}.${timestamp}`)
+      .digest("hex")
+  );
 }
 
 function fastApiEnvelope(overrides = {}) {
@@ -224,6 +257,8 @@ test("builder prepare route proxies to FastAPI and scrubs safe backend errors", 
     assert.equal(calls.length, 1);
     assert.match(calls[0].url, /\/api\/v1\/reviews\/frontend_review_123\/builder$/);
     assert.equal(calls[0].options.method, "POST");
+    assertSignedFastApiHeaders(calls[0].options);
+    assert.equal(calls[0].options.headers["Content-Type"], "application/json");
     assert.deepEqual(JSON.parse(calls[0].options.body), {
       selected_card_id: "card_equal_weight",
       overrides: {}
@@ -353,6 +388,7 @@ test("diagnosis route maps instrument and cash rows into the staged FastAPI crea
       assert.equal(result.body.schema_version, "review_started_v1");
       assert.equal(calls.length, 1);
       assert.equal(calls[0].url, "http://fastapi.test:53265/api/v1/reviews/staged");
+      assertSignedFastApiHeaders(calls[0].options);
       assert.deepEqual(JSON.parse(calls[0].options.body), {
         portfolio: {
           investor_currency: "USD",
@@ -478,7 +514,38 @@ test("staged review status route proxies to the FastAPI status endpoint", async 
     assert.equal(calls.length, 1);
     assert.match(calls[0].url, /\/api\/v1\/reviews\/frontend_review_status\/status$/);
     assert.equal(calls[0].options.method, "GET");
+    assertSignedFastApiHeaders(calls[0].options);
   });
+});
+
+test("portfolio API routes reject browser review calls without Supabase auth or explicit local dev bypass", async () => {
+  const route = loadRoute({ routePath: reviewStatusRoutePath });
+  const originalPortfolioAuthMode = process.env.PMRI_PORTFOLIO_API_AUTH_MODE;
+  const originalSupabaseEnabled = process.env.NEXT_PUBLIC_PMRI_SUPABASE_ENABLED;
+  const originalInternalSecret = process.env.PMRI_FASTAPI_INTERNAL_SECRET;
+  delete process.env.PMRI_PORTFOLIO_API_AUTH_MODE;
+  delete process.env.NEXT_PUBLIC_PMRI_SUPABASE_ENABLED;
+  process.env.PMRI_FASTAPI_INTERNAL_SECRET = "frontend-route-test-secret";
+
+  try {
+    await withMockFetch(async () => {
+      throw new Error("fetch was not expected before authentication succeeds");
+    }, async () => {
+      delete process.env.PMRI_PORTFOLIO_API_AUTH_MODE;
+      const result = await responseJson(await route.GET(new Request("http://localhost/api/portfolio/review/status?reviewId=frontend_review_status")));
+
+      assert.equal(result.status, 401);
+      assert.equal(result.body.status, "failed");
+      assert.match(result.body.error, /Portfolio API authentication is required/);
+    });
+  } finally {
+    if (originalPortfolioAuthMode === undefined) delete process.env.PMRI_PORTFOLIO_API_AUTH_MODE;
+    else process.env.PMRI_PORTFOLIO_API_AUTH_MODE = originalPortfolioAuthMode;
+    if (originalSupabaseEnabled === undefined) delete process.env.NEXT_PUBLIC_PMRI_SUPABASE_ENABLED;
+    else process.env.NEXT_PUBLIC_PMRI_SUPABASE_ENABLED = originalSupabaseEnabled;
+    if (originalInternalSecret === undefined) delete process.env.PMRI_FASTAPI_INTERNAL_SECRET;
+    else process.env.PMRI_FASTAPI_INTERNAL_SECRET = originalInternalSecret;
+  }
 });
 
 test("Portfolio Input resumes in-flight staged reviews after browser refresh", () => {

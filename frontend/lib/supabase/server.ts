@@ -3,11 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { getSupabaseRuntimeStatus } from "./config";
 
-export function createSupabaseServerClient(): SupabaseClient | null {
+export async function createSupabaseServerClient(): Promise<SupabaseClient | null> {
   const status = getSupabaseRuntimeStatus();
   if (!status.enabled || !status.url || !status.publishableKey) return null;
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   return createServerClient(status.url, status.publishableKey, {
     cookies: {

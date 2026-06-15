@@ -2,15 +2,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+import secrets
 import subprocess
 import sys
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+from src.review_runtime.staged_diagnosis_service import run_staged_diagnosis_service
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -346,7 +349,7 @@ def build_input_config(normalized: dict[str, Any], run_dir: Path) -> dict[str, A
 
 
 def create_run_dir(base_dir: Path = PROJECT_ROOT / "runs") -> tuple[str, Path]:
-    unique = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}_{uuid.uuid4().hex[:8]}"
+    unique = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}_{secrets.token_urlsafe(16)}"
     review_id = f"frontend_review_{unique}"
     run_dir = base_dir / review_id
     run_dir.mkdir(parents=True, exist_ok=False)
@@ -1143,6 +1146,33 @@ def run_backend(
     )
 
 
+def _direct_staged_backend_enabled(mode: str) -> bool:
+    runtime = os.environ.get("PMRI_STAGED_REVIEW_RUNTIME", "direct").strip().lower()
+    return runtime not in {"subprocess", "legacy"} and mode in {
+        MODE_CORE_ONLY,
+        MODE_DIAGNOSIS_PLUS_PROBLEM,
+    }
+
+
+def run_backend_for_payload(
+    config_path: Path, *, mode: str = MODE_CORE_ONLY, timeout_seconds: int
+) -> subprocess.CompletedProcess[str]:
+    if _direct_staged_backend_enabled(mode):
+        return run_staged_diagnosis_service(
+            config_path,
+            mode=mode,
+            project_root=PROJECT_ROOT,
+        )
+    return run_backend(config_path, mode=mode, timeout_seconds=timeout_seconds)
+
+
+def backend_failure_source(completed: subprocess.CompletedProcess[str], config_path: Path, *, mode: str) -> str:
+    args = list(completed.args) if isinstance(completed.args, (list, tuple)) else []
+    if args and str(args[0]) == "direct_staged_diagnosis_service":
+        return "direct staged diagnosis service"
+    return build_backend_command(config_path, mode=mode)[1]
+
+
 def build_success_result(
     *,
     review_id: str,
@@ -1212,10 +1242,10 @@ def run_from_payload(
             encoding="utf-8",
         )
 
-        completed = run_backend(input_path, mode=mode, timeout_seconds=timeout_seconds)
+        completed = run_backend_for_payload(input_path, mode=mode, timeout_seconds=timeout_seconds)
         if backend_failure_looks_like_transient_market_data_empty(completed):
             first_attempt = completed
-            completed = run_backend(input_path, mode=mode, timeout_seconds=timeout_seconds)
+            completed = run_backend_for_payload(input_path, mode=mode, timeout_seconds=timeout_seconds)
             completed.stdout = (
                 f"{first_attempt.stdout}\n\n[frontend_bridge_retry] "
                 "Retried once after transient empty market-data panel.\n"
@@ -1227,7 +1257,7 @@ def run_from_payload(
                 f"{completed.stderr}"
             )
         if completed.returncode != 0:
-            backend_script = build_backend_command(input_path, mode=mode)[1]
+            backend_script = backend_failure_source(completed, input_path, mode=mode)
             write_json(
                 result_path,
                 build_failure_result(

@@ -17,6 +17,7 @@ Same config file and validation as CLI entrypoints.
 from __future__ import annotations
 
 import os
+import secrets
 import sys
 from pathlib import Path
 
@@ -28,7 +29,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import subprocess
 
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, abort, jsonify, render_template, request, session
 import yaml
 
 from src.client_profiles import apply_profile_to_config
@@ -41,8 +42,14 @@ app = Flask(
     static_folder=str(CONFIG_UI_DIR / "static"),
     template_folder=str(CONFIG_UI_DIR / "templates"),
 )
+app.secret_key = os.environ.get("PMRI_CONFIG_UI_SECRET_KEY") or secrets.token_hex(32)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Strict",
+)
 
 CONFIG_PATH = PROJECT_ROOT / "config.yml"
+LOCAL_REMOTE_ADDRS = {"127.0.0.1", "::1", "localhost"}
 
 # Default values (aligned with config_schema; UI form uses benchmark_base_ticker, rf_source)
 # Technical keys preserved when writing compact Core MVP YAML.
@@ -88,6 +95,42 @@ DEFAULTS = {
     "weights": {},
     "current_weights": {},
 }
+
+
+def _allow_remote_config_ui() -> bool:
+    return os.environ.get("PMRI_CONFIG_UI_ALLOW_REMOTE", "").strip().lower() in {"1", "true", "yes"}
+
+
+def _is_local_request() -> bool:
+    if _allow_remote_config_ui():
+        return True
+    remote_addr = (request.remote_addr or "").strip().lower()
+    return remote_addr in LOCAL_REMOTE_ADDRS
+
+
+def _csrf_token() -> str:
+    token = session.get("csrf_token")
+    if not isinstance(token, str) or not token:
+        token = secrets.token_urlsafe(32)
+        session["csrf_token"] = token
+    return token
+
+
+def _verify_csrf_token() -> None:
+    if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        return
+    expected = session.get("csrf_token")
+    supplied = request.headers.get("X-CSRF-Token") or request.form.get("csrf_token")
+    if not isinstance(expected, str) or not supplied or not secrets.compare_digest(expected, supplied):
+        abort(403, description="Missing or invalid CSRF token.")
+
+
+@app.before_request
+def _protect_local_config_ui() -> None:
+    """Keep the local command/config UI local-only and protect mutating routes from CSRF."""
+    if not _is_local_request():
+        abort(403, description="Config UI accepts local requests only.")
+    _verify_csrf_token()
 
 CURRENCY_BENCHMARKS = {
     "USD": "SPY",
@@ -264,6 +307,7 @@ def index():
         generated_weights_path=str(generated_weights_path),
         currency_benchmarks=CURRENCY_BENCHMARKS,
         client_profiles_reminder=client_profiles_reminder,
+        csrf_token=_csrf_token(),
     )
 
 
@@ -647,4 +691,4 @@ if __name__ == "__main__":
     print("Open in browser: http://localhost:5000")
     print("Press Ctrl+C to stop")
     print("=" * 60)
-    app.run(debug=True, port=5000)
+    app.run(host="127.0.0.1", debug=os.environ.get("PMRI_CONFIG_UI_DEBUG") == "1", port=5000)
