@@ -35,7 +35,6 @@ export default function OnboardingNamePage() {
             onKeyDown={(event) => {
               if (event.key === "Enter") continueToProfile();
             }}
-            placeholder="Pavel"
             className="pmri-focus mt-3 w-full border-0 border-b border-pmri-border/80 bg-transparent px-1 py-4 text-center text-3xl font-semibold tracking-[-0.035em] text-pmri-text outline-none placeholder:text-pmri-muted/50 focus:border-pmri-blue lg:text-left"
           />
         </label>
