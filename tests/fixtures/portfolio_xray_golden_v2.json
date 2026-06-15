@@ -1705,47 +1705,6 @@
             "direction": "present",
             "source": "block_2_3",
             "interpretation": "Top factor risk ranking rows from Block 2.3 (variance contribution preferred)."
-          },
-          {
-            "metric": "legacy_pca_pc1_raw",
-            "value": {
-              "pc1_explained_variance_ratio": 0.66,
-              "legacy_section": "correlation_or_common_factor_concentration",
-              "threshold_keys": [
-                "pca_pc1_moderate",
-                "pca_pc1_high"
-              ]
-            },
-            "threshold": "pca_pc1_moderate_high_legacy",
-            "direction": "above_threshold",
-            "source": "portfolio_analytics",
-            "interpretation": "Raw covariance PCA PC1 from stress_report.portfolio_pca (legacy hidden_risk_detector cross-ref; not scored in Block 2.4)."
-          },
-          {
-            "metric": "legacy_pca_pc1_residual",
-            "value": {
-              "pc1_explained_variance_ratio": 0.52,
-              "legacy_section": "residual_pca_concentration",
-              "threshold_keys": [
-                "pca_pc1_moderate",
-                "pca_pc1_high"
-              ]
-            },
-            "threshold": "pca_pc1_moderate_high_legacy",
-            "direction": "present",
-            "source": "portfolio_analytics",
-            "interpretation": "Residual PCA PC1 after named factors (legacy hidden_risk_detector cross-ref; not scored in Block 2.4)."
-          },
-          {
-            "metric": "legacy_factor_residual_share",
-            "value": {
-              "residual_share": 0.7,
-              "legacy_section": "residual_pca_concentration"
-            },
-            "threshold": "informational_factor_variance_decomposition",
-            "direction": "present",
-            "source": "portfolio_analytics",
-            "interpretation": "Factor-adjusted residual variance share from stress_report (informational legacy cross-ref only)."
           }
         ],
         "explanation": "The detector checks whether different holdings or labels still move together.",
@@ -1758,7 +1717,7 @@
         "confidence": "medium",
         "limitations": [
           "Full FX factor decomposition is not in Core MVP; currency evidence uses Block 2.1 by_currency and concentration_flags only.",
-          "PCA common-factor cluster concentration is not scored in Block 2.4 product alerts; when portfolio_pca is available, interpret legacy sections.hidden_risk_detector categories 'correlation_or_common_factor_concentration' and 'residual_pca_concentration' (wire-time cross-ref evidence only).",
+          "Correlation Concentration is built from Block 2.1 duplicate/concentration evidence, Block 2.2 pairwise correlation evidence, and Block 2.3 factor concentration evidence; PCA is not read or scored in this product alert.",
           "Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only."
         ],
         "data_quality_warnings": [
@@ -1774,7 +1733,7 @@
           "evaluable_signal_weight=0.55",
           "cross_signal_agreement=agree",
           "correlation concentration thresholds are heuristic_v2 product diagnostics",
-          "legacy_pca_cross_ref_wire_time=sections.hidden_risk_detector"
+          "pca_not_used=correlation_concentration_v2_non_pca"
         ],
         "contributing_assets": [
           {
@@ -1800,7 +1759,7 @@
           }
         ],
         "confirmation_status": "not_applicable",
-        "confidence_reason": "Medium confidence (model v2): evaluable signal weight 0.55; cross-signal agreement=agree. Data-quality warnings: Correlation breakdown is limited because the primary-window correlation matrix is missing.. Limitations: Full FX factor decomposition is not in Core MVP; currency evidence uses Block 2.1 by_currency and concentration_flags only.; PCA common-factor cluster concentration is not scored in Block 2.4 product alerts; when portfolio_pca is available, interpret legacy sections.hidden_risk_detector categories 'correlation_or_common_factor_concentration' and 'residual_pca_concentration' (wire-time cross-ref evidence only).. Missing scored signals: highest_pair_correlation missing."
+        "confidence_reason": "Medium confidence (model v2): evaluable signal weight 0.55; cross-signal agreement=agree. Data-quality warnings: Correlation breakdown is limited because the primary-window correlation matrix is missing.. Limitations: Full FX factor decomposition is not in Core MVP; currency evidence uses Block 2.1 by_currency and concentration_flags only.; Correlation Concentration is built from Block 2.1 duplicate/concentration evidence, Block 2.2 pairwise correlation evidence, and Block 2.3 factor concentration evidence; PCA is not read or scored in this product alert.. Missing scored signals: highest_pair_correlation missing."
       },
       "weak_hedge_behavior": {
         "status": "Medium",
@@ -2511,12 +2470,9 @@
         "scenario_results_worst_loss",
         "factor_beta_shock_oos"
       ],
-      "legacy_enrichment_wire_time": true,
-      "legacy_enrichment_sources": [
-        "portfolio_pca.raw",
-        "portfolio_pca.residual",
-        "factor_variance_decomposition"
-      ]
+      "legacy_enrichment_wire_time": false,
+      "legacy_enrichment_sources": [],
+      "pca_used_for_correlation_concentration": false
     }
   },
   "block_2_5_risk_budget_view": {
@@ -3152,7 +3108,7 @@
         "limitations": [
           "liquidity is proxied by taxonomy and credit/carry indicators only (no bid/ask data)",
           "Hidden exposure (2.4) — correlation_concentration: Full FX factor decomposition is not in Core MVP; currency evidence uses Block 2.1 by_currency and concentration_flags only.",
-          "Hidden exposure (2.4) — correlation_concentration: PCA common-factor cluster concentration is not scored in Block 2.4 product alerts; when portfolio_pca is available, interpret legacy sections.hidden_risk_detector categories 'correlation_or_common_factor_concentration' and 'residual_pca_concentration' (wire-time cross-ref evidence only).",
+          "Hidden exposure (2.4) — correlation_concentration: Correlation Concentration is built from Block 2.1 duplicate/concentration evidence, Block 2.2 pairwise correlation evidence, and Block 2.3 factor concentration evidence; PCA is not read or scored in this product alert.",
           "Hidden exposure (2.4) — correlation_concentration: Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only.",
           "Hidden exposure (2.4) — credit_liquidity_risk: credit_quality and credit-sensitive subtype weights are not aggregated in Block 2.1 product output.",
           "Hidden exposure (2.4) — credit_liquidity_risk: Per-asset factor betas are not computed in Block 2.4; contributing_assets labels use Block 2.1 weights and taxonomy proxies only.",

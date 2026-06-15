@@ -629,8 +629,12 @@ def prepare_review_run_context(
     allow_risk_free_cached_fallback: bool = False,
 ) -> ReviewRunContext:
     """
-    Load shared monthly/daily panels, weekly factor frames, and macro indicator panel
-    once per review run.
+    Load shared monthly/daily panels and weekly factor frames once per review run.
+
+    Live Run Diagnostics no longer preloads the macro indicator panel because
+    macro regime diagnostics and PCA were removed from the current calculation
+    path.  The ReviewRunContext keeps macro fields for backward-compatible
+    callers, but they remain unset here.
     """
     factory_context = prepare_candidate_run_context(
         cfg,
@@ -640,20 +644,7 @@ def prepare_review_run_context(
         preload_invariant_metrics=True,
         allow_risk_free_cached_fallback=allow_risk_free_cached_fallback,
     )
-    macro_panel: pd.DataFrame | None = None
-    macro_panel_meta: dict[str, Any] | None = None
-    try:
-        macro_panel, macro_panel_meta = load_review_macro_panel(
-            factory_context.analysis_end_str,
-        )
-    except Exception as exc:
-        logger.warning("Review context: macro panel preload failed: %s", exc)
-        macro_panel_meta = {"preload_error": str(exc)}
-    return ReviewRunContext(
-        factory_context=factory_context,
-        macro_panel=macro_panel,
-        macro_panel_meta=macro_panel_meta,
-    )
+    return ReviewRunContext(factory_context=factory_context)
 
 
 def asset_betas_for_candidate_weights(

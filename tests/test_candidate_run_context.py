@@ -93,10 +93,6 @@ def _install_report_mocks(monkeypatch: pytest.MonkeyPatch, panel: MonthlyDataRes
         "run_report.build_scenario_library_normalized",
         lambda **kwargs: {"version": "test", "scenarios": [], "n_scenarios": 0},
     )
-    monkeypatch.setattr(
-        "run_report.macro_regime_diagnostics",
-        lambda **kwargs: {"labels_monthly": [{"date": "2020-01-31", "regime": "expansion"}]},
-    )
 
 
 def test_prepare_candidate_run_context_resolves_robust_mv_lambda(
@@ -362,9 +358,8 @@ def test_prepare_review_run_context_schema_and_slots(
     )
     ctx = prepare_review_run_context(cfg, project_root=Path("."))
     assert ctx.schema_version == REVIEW_RUN_CONTEXT_SCHEMA
-    assert ctx.macro_panel is not None
-    assert not ctx.macro_panel.empty
-    assert ctx.macro_panel_meta is not None
+    assert ctx.macro_panel is None
+    assert ctx.macro_panel_meta is None
     assert isinstance(ctx.factory_context, CandidateRunContext)
     assert coerce_factory_run_context(ctx) is ctx.factory_context
 
@@ -1074,7 +1069,7 @@ def test_prepare_candidate_run_context_schema_v4() -> None:
     assert SCHEMA_VERSION == "candidate_run_context_v5"
 
 
-def test_fetch_macro_indicators_called_once_for_subject_and_candidates(
+def test_live_review_context_does_not_fetch_macro_indicators(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1082,12 +1077,11 @@ def test_fetch_macro_indicators_called_once_for_subject_and_candidates(
 
     tickers = ["VOO", "BND", "GLD"]
     panel = _monthly_panel(tickers)
-    macro_panel, macro_meta = _mock_macro_panel()
     fetch_calls: list[tuple[str, str]] = []
 
     def counting_fetch(start: str, end: str, **kwargs):
         fetch_calls.append((start, end))
-        return macro_panel.copy(), dict(macro_meta)
+        raise AssertionError("macro indicators must not be fetched in live diagnostics")
 
     monkeypatch.setattr("src.stress_factors_macro.fetch_macro_indicators", counting_fetch)
     monkeypatch.setattr(
@@ -1132,10 +1126,6 @@ def test_fetch_macro_indicators_called_once_for_subject_and_candidates(
     monkeypatch.setattr("run_report.load_monthly_data_shared", lambda **kwargs: panel)
     _install_report_mocks(monkeypatch, panel)
     _install_macro_build_mocks(monkeypatch)
-    monkeypatch.setattr(
-        "run_report.macro_regime_diagnostics",
-        lambda **kwargs: pytest.fail("legacy macro_regime_diagnostics must not run"),
-    )
 
     cfg = validate_config(
         {
@@ -1148,7 +1138,7 @@ def test_fetch_macro_indicators_called_once_for_subject_and_candidates(
         }
     )
     review_ctx = prepare_review_run_context(cfg, project_root=tmp_path)
-    assert len(fetch_calls) == 1
+    assert len(fetch_calls) == 0
 
     weight_sets = [
         {"VOO": 0.40, "BND": 0.40, "GLD": 0.20},
@@ -1175,10 +1165,10 @@ def test_fetch_macro_indicators_called_once_for_subject_and_candidates(
             run_context=review_ctx,
         )
 
-    assert len(fetch_calls) == 1
+    assert len(fetch_calls) == 0
 
 
-def test_macro_cached_path_preserves_stress_and_snapshot_parity(
+def test_live_path_omits_macro_fields_and_preserves_snapshot_parity(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1188,12 +1178,11 @@ def test_macro_cached_path_preserves_stress_and_snapshot_parity(
 
     tickers = ["VOO", "BND", "GLD"]
     panel = _monthly_panel(tickers)
-    macro_panel, macro_meta = _mock_macro_panel()
     weights = {"VOO": 0.40, "BND": 0.40, "GLD": 0.20}
 
     monkeypatch.setattr(
         "src.stress_factors_macro.fetch_macro_indicators",
-        lambda *a, **k: (macro_panel.copy(), dict(macro_meta)),
+        lambda *a, **k: pytest.fail("macro indicators must not be fetched in live diagnostics"),
     )
     monkeypatch.setattr(
         "src.candidate_run_context.load_monthly_data_shared",
@@ -1227,16 +1216,6 @@ def test_macro_cached_path_preserves_stress_and_snapshot_parity(
     monkeypatch.setattr("run_report.load_monthly_data_shared", lambda **kwargs: panel)
     _install_report_mocks(monkeypatch, panel)
     _install_macro_build_mocks(monkeypatch)
-    from src.stress_factors import (
-        macro_regime_diagnostics,
-        macro_regime_diagnostics_with_panel,
-    )
-
-    monkeypatch.setattr("run_report.macro_regime_diagnostics", macro_regime_diagnostics)
-    monkeypatch.setattr(
-        "run_report.macro_regime_diagnostics_with_panel",
-        macro_regime_diagnostics_with_panel,
-    )
 
     cfg = validate_config(
         {
@@ -1287,15 +1266,32 @@ def test_macro_cached_path_preserves_stress_and_snapshot_parity(
 
     cached_stress = json.loads((cached_out / "stress_report.json").read_text(encoding="utf-8"))
     legacy_stress = json.loads((legacy_out / "stress_report.json").read_text(encoding="utf-8"))
-    cached_macro = cached_stress.get("macro_regime_diagnostics") or {}
-    legacy_macro = legacy_stress.get("macro_regime_diagnostics") or {}
-
-    assert cached_macro.get("axis_model", {}).get("version") == "macro_two_axis_v1"
-    assert legacy_macro.get("axis_model", {}).get("version") == "macro_two_axis_v1"
-    assert "macro_regime_diagnostics_error" not in cached_stress
-    assert "macro_regime_diagnostics_error" not in legacy_stress
-    for key in ("coverage_tier", "coverage_ratio", "method_disclaimer", "score_lag_months"):
-        assert cached_macro.get(key) == legacy_macro.get(key)
+    forbidden = {
+        "macro_regime_diagnostics",
+        "macro_regime_diagnostics_error",
+        "regime_factor_analytics",
+        "regime_factor_analytics_error",
+        "regime_portfolio_metrics",
+        "regime_portfolio_metrics_error",
+        "portfolio_pca",
+        "portfolio_pca_error",
+    }
+    assert forbidden.isdisjoint(cached_stress)
+    assert forbidden.isdisjoint(legacy_stress)
+    forbidden_fragments = (
+        "portfolio_pca",
+        "pc1_explained_variance_ratio",
+        "residual_pca",
+        "pca_pc1_",
+        "macro_regime_diagnostics",
+        "goldilocks",
+        "reflation",
+        "recession_disinflation",
+    )
+    for stress in (cached_stress, legacy_stress):
+        stress_text = json.dumps(stress, sort_keys=True)
+        for fragment in forbidden_fragments:
+            assert fragment not in stress_text
 
     cached_snap = json.loads((cached_out / "snapshot_10y.json").read_text(encoding="utf-8"))
     legacy_snap = json.loads((legacy_out / "snapshot_10y.json").read_text(encoding="utf-8"))
@@ -1360,7 +1356,7 @@ def test_portfolio_pca_with_weekly_frames_matches_from_weekly_returns() -> None:
             )
 
 
-def test_portfolio_pca_skips_download_all_with_shared_weekly_frames(
+def test_live_report_omits_portfolio_pca_with_shared_weekly_frames(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1436,9 +1432,19 @@ def test_portfolio_pca_skips_download_all_with_shared_weekly_frames(
 
     assert download_calls == []
     stress = json.loads((out_final / "stress_report.json").read_text(encoding="utf-8"))
-    pca = stress.get("portfolio_pca") or {}
-    assert pca.get("status") == "available"
+    assert "portfolio_pca" not in stress
     assert "portfolio_pca_error" not in stress
+    stress_text = json.dumps(stress, sort_keys=True)
+    for fragment in (
+        "pc1_explained_variance_ratio",
+        "residual_pca",
+        "pca_pc1_",
+        "macro_regime_diagnostics",
+        "goldilocks",
+        "reflation",
+        "recession_disinflation",
+    ):
+        assert fragment not in stress_text
 
 
 def test_load_review_macro_panel_uses_shared_window(monkeypatch: pytest.MonkeyPatch) -> None:

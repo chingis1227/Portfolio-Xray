@@ -35,6 +35,8 @@ def test_run_report_timing_blocks_registered_in_module() -> None:
         "report_timing blocks used in run_report.py but missing from "
         f"REPORT_TIMING_BLOCK_KEYS: {missing}"
     )
+    assert "macro_regime" not in REPORT_TIMING_BLOCK_KEYS
+    assert "portfolio_pca" not in REPORT_TIMING_BLOCK_KEYS
 
 
 def _monthly_panel(tickers: list[str], n_months: int = 130) -> MonthlyDataResult:
@@ -123,20 +125,12 @@ def _install_report_mocks(monkeypatch: pytest.MonkeyPatch, panel: MonthlyDataRes
         lambda **kwargs: {"version": "test", "scenarios": [], "n_scenarios": 0},
     )
     monkeypatch.setattr(
-        "run_report.macro_regime_diagnostics",
-        lambda **kwargs: {"labels_monthly": [{"date": "2020-01-31", "regime": "expansion"}]},
-    )
-    monkeypatch.setattr(
         "run_report.factor_covariance_analytics",
         lambda **kwargs: {"factor_order": [], "base": {"matrix": {}}},
     )
     monkeypatch.setattr(
         "run_report.factor_variance_decomposition_weekly",
         lambda **kwargs: {"status": "unavailable", "rows": []},
-    )
-    monkeypatch.setattr(
-        "run_report.portfolio_pca_diagnostics",
-        lambda **kwargs: {"raw": {"status": "unavailable"}},
     )
     monkeypatch.setattr(
         "run_report.factor_oos_beta_shock_explainability",

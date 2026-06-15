@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { BrandMark } from "@/components/onboarding/BrandMark";
 import { hasCompletedOnboarding } from "@/lib/onboarding";
 import { useSupabaseAuth } from "@/lib/supabase/auth";
+import { useSupabasePersistence } from "@/lib/supabase/persistence";
 
 type Stage = "email" | "code";
 
 export default function RequiredSignInPage() {
   const router = useRouter();
   const { enabled, status, user, message, error, sendEmailOtp, verifyEmailOtp, clearAuthNotice } = useSupabaseAuth();
+  const { savedPortfolios, savedReviews, workspaceState, portfoliosLoading, reviewsLoading, workspaceLoading } = useSupabasePersistence();
   const [stage, setStage] = useState<Stage>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -23,11 +25,17 @@ export default function RequiredSignInPage() {
 
   useEffect(() => {
     if (status === "signed_in") {
-      const nextRoute = hasCompletedOnboarding() ? "/portfolio-input" : "/onboarding/name";
+      if (!hasCompletedOnboarding()) {
+        const timer = window.setTimeout(() => router.replace("/onboarding/name"), 650);
+        return () => window.clearTimeout(timer);
+      }
+      if (portfoliosLoading || reviewsLoading || workspaceLoading) return;
+      const hasSavedWorkspace = Boolean(workspaceState?.activeReviewRowId || workspaceState?.activePortfolioId || savedReviews.length || savedPortfolios.length);
+      const nextRoute = hasSavedWorkspace ? "/workspace" : "/portfolio-input";
       const timer = window.setTimeout(() => router.replace(nextRoute), 650);
       return () => window.clearTimeout(timer);
     }
-  }, [router, status]);
+  }, [portfoliosLoading, reviewsLoading, router, savedPortfolios.length, savedReviews.length, status, workspaceLoading, workspaceState?.activePortfolioId, workspaceState?.activeReviewRowId]);
 
   async function submitEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

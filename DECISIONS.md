@@ -60,6 +60,34 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-06-15-002
+Title: Keep Correlation Concentration non-PCA in product diagnostics
+
+- Status: accepted
+- Date: 2026-06-15
+- Decision: Product Block 2.4 `correlation_concentration` must not read, score, or expose portfolio PCA evidence. It uses non-PCA evidence from duplicate exposure, pairwise correlations, dominant risk-factor allocation, currency concentration, and factor concentration.
+- Context: Live Run Diagnostics removed macro regime and portfolio PCA work for speed and memory, but the public hidden-risk alert still needed a clear evidence basis.
+- Rationale: Pairwise correlation and duplicate/factor concentration evidence preserve the user-facing diversification warning without reintroducing research-style PCA payloads into the live product path.
+- Alternatives considered: Keep legacy PCA as an optional informational cross-reference (rejected because it keeps the product contract tied to removed live diagnostics); delete low-level PCA helpers immediately (rejected because historical/advanced tests and legacy sections can be retired separately).
+- Assumptions: Legacy `sections.hidden_risk_detector` and low-level PCA functions may remain for compatibility until a separate migration, but Core MVP UI/API consumers read `block_2_4_hidden_exposure`.
+- Consequences: `build_portfolio_xray_v2` no longer wires legacy PCA enrichment, `build_block_2_4_legacy_enrichment` is a compatibility stub returning `None`, and product metadata pins `pca_used_for_correlation_concentration=false`.
+- Related documents: [Portfolio X-Ray Diagnostics Spec](docs/specs/portfolio_xray_diagnostics_spec.md), [Block 2.4 Pareto UI Spec](docs/specs/block_2_4_hidden_exposure_ui_pareto_spec.md), [Remove Macro Regime and PCA from Live Run Diagnostics](docs/exec_plans/2026-06-15_remove_macro_pca_from_live_diagnostics.md).
+- Review trigger: Revisit only if a future approved advanced diagnostics product explicitly reintroduces PCA as a separate, non-Core MVP surface.
+
+Decision ID: DEC-2026-06-15-001
+Title: Use a signed-in workspace with immutable portfolio-version review history
+
+- Status: accepted
+- Date: 2026-06-15
+- Decision: Returning signed-in users with saved Portfolio MRI workspace data should land in `/workspace`, not directly in Portfolio Input. The account model is `User -> Profile / Client Fit -> Portfolio -> Portfolio Version -> Review -> Stage Summaries`. Completed reviews are immutable snapshots tied to the portfolio version that produced them. Editing a portfolio after a completed review creates a new draft/review snapshot. Login and workspace hydration restore compact state only and must not auto-run diagnosis or refresh market data. Archive is the default UI removal behavior for portfolios and reviews.
+- Context: The frontend already supports email sign-in, compact review state, saved portfolios, Supabase compact review rows, and staged `review_state_v1`, but returning-user behavior still treated the product like a single form and could hide history or make current-vs-historical evidence ambiguous.
+- Rationale: A workspace and immutable review history preserve user trust, reduce unnecessary backend load, and prevent old verdict/report evidence from being presented as current after portfolio edits.
+- Alternatives considered: Send returning users straight to Portfolio Input (rejected because it hides history and workspace context); overwrite the current portfolio and mark old stages as current (rejected because it risks lineage confusion); hard-delete history by default (rejected because archive is safer for trust and auditability).
+- Assumptions: Supabase remains compact-only and generated artifacts stay run-local unless a separate artifact-storage plan is accepted. Hard delete can be revisited later as an explicit privacy/admin feature.
+- Consequences: Implementation must add `/workspace`, portfolio versions, workspace state, archive fields, read-only compact history semantics, and tests proving login does not recalculate automatically.
+- Related documents: [Account Workspace, Portfolio Versions, and Review History](docs/exec_plans/2026-06-15_account_workspace_review_history_plan.md), [Product Flow Contract](docs/contracts/PRODUCT_FLOW_CONTRACT.md), [Screen Contracts](docs/contracts/SCREEN_CONTRACTS.md), [Supabase README](docs/supabase/README.md).
+- Review trigger: Revisit if team workspaces, paid storage, hard-delete privacy flows, or durable generated-artifact storage are introduced.
+
 Decision ID: DEC-2026-06-14-002
 Title: Use Portfolio MRI and Portfolio Diagnosis as public product language
 

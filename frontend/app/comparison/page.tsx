@@ -154,6 +154,7 @@ export default function ComparisonPage() {
   const selectedCardId = candidateGeneration?.selectedCardId;
   const candidateId = candidateGeneration?.candidateId;
   const comparison = activeReview?.comparisonResult;
+  const hasLiveLineage = Boolean(activeReview?.lineageAvailable && !activeReview?.readOnlyHistory);
   const hasGeneratedCandidate = Boolean(candidateGeneration?.status === "completed" && candidateId && selectedCardId);
   const comparisonMatchesCandidate = Boolean(
     comparison
@@ -167,11 +168,12 @@ export default function ComparisonPage() {
     && reviewId
     && selectedCardId
     && candidateId
+    && hasLiveLineage
     && candidateGeneration?.status === "completed"
     && candidateGeneration.canCompare
   );
   const validComparisonAvailable = comparisonMatchesCandidate && comparisonIsAvailable(comparison);
-  const canGenerateEvidenceVerdict = comparisonMatchesCandidate && comparisonCanGenerateVerdict(comparison);
+  const canGenerateEvidenceVerdict = hasLiveLineage && comparisonMatchesCandidate && comparisonCanGenerateVerdict(comparison);
   const displayableMetrics = useMemo(
     () => comparison?.metrics.filter(isDisplayableMetric) ?? [],
     [comparison]
@@ -253,8 +255,8 @@ export default function ComparisonPage() {
           title="Current vs Candidate Comparison"
           description="This step compares the current portfolio with one generated diagnostic candidate. It does not make a final decision or create a rebalance instruction."
         >
-          <StatusBadge tone={validComparisonAvailable ? "green" : "amber"}>
-            {validComparisonAvailable ? "Active comparison" : "Comparison required"}
+          <StatusBadge tone={activeReview?.readOnlyHistory ? "slate" : validComparisonAvailable ? "green" : "amber"}>
+            {activeReview?.readOnlyHistory ? "Read-only compact history" : validComparisonAvailable ? "Active comparison" : "Comparison required"}
           </StatusBadge>
         </PageHeader>
         <SiteExplanationHierarchy
@@ -262,6 +264,15 @@ export default function ComparisonPage() {
           screen="comparison"
           fallbackTitle="Comparison explanation"
         />
+
+        {activeReview?.readOnlyHistory ? (
+          <section className="mb-6 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
+            <StatusBadge tone="slate">Historical</StatusBadge>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-text2">
+              This is compact review history. Run-local lineage is not recovered, so Portfolio MRI will not reuse this comparison to create a new verdict.
+            </p>
+          </section>
+        ) : null}
 
         {showCandidateMissingState ? (
           <EmptyState
@@ -383,16 +394,18 @@ export default function ComparisonPage() {
               <p className="mb-3 text-sm leading-7 text-pmri-muted">
                 Continue only after reviewing the trade-offs. The next step evaluates decision-support evidence; this page does not make the final decision.
               </p>
-              <button
-                type="button"
-                className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
-                onClick={() => {
-                  markComparisonReady();
-                  router.push("/verdict");
-                }}
-              >
-                Continue to verdict
-              </button>
+              {hasLiveLineage ? (
+                <button
+                  type="button"
+                  className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
+                  onClick={() => {
+                    markComparisonReady();
+                    router.push("/verdict");
+                  }}
+                >
+                  Continue to verdict
+                </button>
+              ) : null}
             </div>
           </div>
         ) : null}

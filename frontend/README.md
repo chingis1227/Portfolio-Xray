@@ -82,8 +82,10 @@ product or trading system.
 
 - The normal web journey starts with the public landing page and requires email sign-in. New users
   then run a short one-question-at-a-time onboarding flow. Returning signed-in users with a completed
-  Portfolio MRI onboarding profile are sent directly to Portfolio Input, and the saved non-binding
-  Client Fit profile is restored before Run diagnosis is allowed.
+  Portfolio MRI onboarding profile are routed to `/workspace` when saved workspace, portfolio, draft,
+  or review history exists. `/workspace` restores saved work and compact review history without
+  running diagnosis. Completed users without saved workspace data may continue to Portfolio Input,
+  and the saved non-binding Client Fit profile is restored before Run diagnosis is allowed.
 - The five-question intake maps risk behavior into a Client Fit preset using stress-loss reaction,
   withdrawal horizon, temporary-loss limit, return target, and concentration response.
 - The Portfolio Input `Adjust intake` control edits the saved Client Fit target rows in a modal. It
@@ -109,10 +111,10 @@ product or trading system.
 
 ## Review state and storage
 
-- The real user-facing flow is Landing -> required email sign-in -> Onboarding -> Portfolio Input ->
+- The real user-facing flow is Landing -> required email sign-in -> Onboarding -> Workspace for returning users -> Portfolio Input ->
   Diagnosis -> Stress Test Lab -> Client Fit
   -> Hypothesis / Builder prepare and Candidate Generation -> Current vs Candidate -> Decision Verdict -> Report / grounded
-  explanation preview. If comparison evidence is current but metrics are unavailable, the UI may still
+  explanation preview. `/workspace` is an account home and history hub, not a calculation stage. If comparison evidence is current but metrics are unavailable, the UI may still
   continue to Verdict so the system can show an evidence-insufficient decision-support outcome
   instead of silently blocking the journey.
 - The UI stores compact display state in `pmri.activeReview.v2`: the Client Fit profile, `reviewId`, portfolio input, diagnosis/stress/Client Fit evidence, launchpad/builder summaries, selected card/candidate, and stage summaries. Core screens consume these display models, not raw backend artifact trees. Candidate generation is enabled only when the active Builder setup matches the currently selected Launchpad card and says generation is allowed.
@@ -176,7 +178,8 @@ http://localhost:3000/auth/callback
 ```
 
 The callback exchanges a legacy public magic-link auth code for a browser session and returns to the
-sign-in gate, which then routes completed users to Portfolio Input or new users to onboarding. The
+sign-in gate, which then routes completed users to `/workspace` when saved workspace/history exists
+or to Portfolio Input when no saved workspace exists yet. New users continue to onboarding. The
 primary UI asks for the email OTP code. No service-role key, secret key, database password, Supabase
 Storage, Realtime channel, or Edge Function is used by the frontend.
 
@@ -191,7 +194,7 @@ For production email branding and code-only UX, update Supabase project settings
 - Redeploy the frontend after changing Cloudflare environment variables, but note that Supabase
   sender/template changes take effect from the Supabase project configuration, not from Next.js code.
 
-Current Supabase-backed behavior is kept as infrastructure and may be surfaced again in a dedicated account/workspace area:
+Current Supabase-backed behavior is now the foundation for the dedicated `/workspace` account area:
 
 - signed-in users can save, list, load, update, and delete compact portfolio inputs through the
   existing persistence layer when that UI is intentionally exposed;
@@ -203,9 +206,9 @@ Current Supabase-backed behavior is kept as infrastructure and may be surfaced a
   and `report` rows in `review_stage_summaries`; before each stage write the app measures the
   serialized JSON payload and skips the cloud write with a warning when it exceeds the 55 KB soft
   limit;
-- signed-in users can use the sidebar Saved cloud reviews panel to list recent compact reviews and
-  recover the current browser state from Supabase summaries; run-local recovery by `reviewId` on
-  Portfolio Input remains the advanced fallback for local generated artifacts;
+- signed-in users use `/workspace` to list recent compact reviews, open read-only compact history, and recover the current browser state from Supabase summaries when live same-owner lineage is available; run-local recovery by `reviewId` on Portfolio Input remains the advanced fallback for local generated artifacts;
+- login and workspace hydration never run diagnosis, refresh market data, generate candidates, compare portfolios, or regenerate verdict/report artifacts automatically;
+- completed reviews are immutable compact history tied to the portfolio snapshot/version used at run time; editing a portfolio starts a new draft and keeps old completed reviews visible in history;
 - cloud failures stay non-blocking: the local browser journey and local diagnosis/stage completion
   still succeed;
 - Supabase remains an app-data layer only. The frontend does **not** upload `runs/`,
@@ -245,7 +248,7 @@ when the route chain and stale-card 409 proof pass. If live market data is
 unavailable, treat the failure as a data-provider blocker and inspect the report/logs before making
 frontend or product conclusions.
 
-Open `http://localhost:3000` to start at the landing page. Click `Enter Platform`, sign in with email when auth is available, complete the short onboarding, and the app will open Portfolio Input with Client Fit context already saved. For local preview while email sign-in is unavailable, open `http://localhost:3000/onboarding/name?dev_bypass=1`; this is a development shortcut, not the canonical product path.
+Open `http://localhost:3000` to start at the landing page. Click `Enter Platform`, sign in with email when auth is available, complete the short onboarding, and the app will open the signed-in workspace when saved workspace/history exists or Portfolio Input when no saved workspace exists yet. For local preview while email sign-in is unavailable, open `http://localhost:3000/onboarding/name?dev_bypass=1`; this is a development shortcut, not the canonical product path.
 Override the FastAPI URL for the Next.js proxy with `PMRI_FASTAPI_BASE_URL` only when intentionally
 using a separately managed backend. `FASTAPI_BASE_URL` is also accepted as a compatibility alias for
 manual local launches.

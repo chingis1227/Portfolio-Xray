@@ -126,6 +126,7 @@ export default function ReportPage() {
   const candidateGeneration = activeReview?.candidateGeneration;
   const comparison = activeReview?.comparisonResult;
   const verdict = activeReview?.verdictResult;
+  const hasLiveLineage = Boolean(activeReview?.lineageAvailable && !activeReview?.readOnlyHistory);
   const selectedCardId = candidateGeneration?.selectedCardId;
   const candidateId = candidateGeneration?.candidateId;
   const candidateDisplayName = displayTitleLabel(comparison?.candidateName ?? candidateId, "Selected Test Candidate");
@@ -144,10 +145,18 @@ export default function ReportPage() {
     && verdict.selectedCardId === selectedCardId
     && verdict.candidateId === candidateId
   );
+  const reportMatchesCandidate = Boolean(
+    activeReview?.reportResult
+    && selectedCardId
+    && candidateId
+    && activeReview.reportResult.selectedCardId === selectedCardId
+    && activeReview.reportResult.candidateId === candidateId
+  );
   const canGenerateReport = Boolean(
     hydrated
     && reviewId
     && selectedCardId
+    && hasLiveLineage
     && candidateGeneration?.status === "completed"
     && activeReview?.comparisonReady
     && comparisonMatchesCandidate
@@ -206,15 +215,21 @@ export default function ReportPage() {
   ]);
 
   useEffect(() => {
-    setReport(activeReview?.reportResult ?? null);
+    const canDisplayReport = Boolean(
+      activeReview?.reportResult
+      && reportMatchesCandidate
+      && (hasLiveLineage || activeReview?.readOnlyHistory)
+    );
+    setReport(canDisplayReport ? activeReview?.reportResult ?? null : null);
     setReportError(undefined);
-  }, [activeReview?.reportResult, reviewId, selectedCardId, candidateId, verdict?.generatedAt]);
+  }, [activeReview?.readOnlyHistory, activeReview?.reportResult, candidateId, hasLiveLineage, reportMatchesCandidate, reviewId, selectedCardId, verdict?.generatedAt]);
 
-  const statusTone = useMemo<"green" | "gold" | "amber">(() => {
+  const statusTone = useMemo<"green" | "gold" | "amber" | "slate">(() => {
+    if (activeReview?.readOnlyHistory) return "slate";
     if (report) return "green";
     if (canGenerateReport) return "gold";
     return "amber";
-  }, [canGenerateReport, report]);
+  }, [activeReview?.readOnlyHistory, canGenerateReport, report]);
 
   async function handleGenerateReport() {
     if (!reviewId || !selectedCardId) return;
@@ -261,7 +276,7 @@ export default function ReportPage() {
         description="A concise narrative grounded in the active review: diagnosis, candidate test, comparison, verdict, limitations, and next observation points."
       >
         <StatusBadge tone={statusTone}>
-          {report ? "Grounded preview" : canGenerateReport ? "Ready to preview" : "Evidence required"}
+          {activeReview?.readOnlyHistory ? "Read-only compact history" : report ? "Grounded preview" : canGenerateReport ? "Ready to preview" : "Evidence required"}
         </StatusBadge>
       </PageHeader>
       <SiteExplanationHierarchy
@@ -269,6 +284,15 @@ export default function ReportPage() {
         screen="report"
         fallbackTitle="Report explanation"
       />
+
+      {activeReview?.readOnlyHistory ? (
+        <section className="mb-6 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
+          <StatusBadge tone="slate">Historical</StatusBadge>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-text2">
+            This report preview is compact history. It can be read, but it does not prove the current portfolio input is unchanged and cannot unlock new actions.
+          </p>
+        </section>
+      ) : null}
 
       {!canGenerateReport ? <EmptyState blocker={blocker} /> : null}
 

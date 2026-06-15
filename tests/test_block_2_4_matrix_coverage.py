@@ -14,10 +14,8 @@ from test_block_2_4_hidden_exposure import (
     _block_2_2,
     _block_2_3_rich,
     _stress_report_with_hedge_gap,
-    _stress_report_with_portfolio_pca,
     _taxonomy,
     build_block_2_4_hidden_exposure,
-    build_block_2_4_legacy_enrichment,
     build_block_2_4_stress_enrichment,
 )
 
@@ -159,14 +157,12 @@ def _build_v2_matrix_block() -> dict:
         block_2_1=block_21,
         taxonomy_rows=taxonomy,
     )
-    legacy_enrichment = build_block_2_4_legacy_enrichment(_stress_report_with_portfolio_pca())
     return build_block_2_4_hidden_exposure(
         block_21,
         _rich_block_22(),
         _block_2_3_rich(),
         taxonomy_rows=taxonomy,
         stress_enrichment=stress_enrichment,
-        legacy_enrichment=legacy_enrichment,
     )
 
 
@@ -196,13 +192,15 @@ def test_matrix_d2_rates_next_tests(v2_matrix_block: dict) -> None:
     assert "inflation_stagflation" in next_tests
 
 
-def test_matrix_d4_pca_legacy_cross_ref(v2_matrix_block: dict) -> None:
+def test_matrix_d4_correlation_concentration_is_non_pca(v2_matrix_block: dict) -> None:
     metrics = {
         row["metric"] for row in v2_matrix_block["alerts"]["correlation_concentration"]["evidence"]
     }
-    assert "legacy_pca_pc1_raw" in metrics
-    assert "legacy_pca_pc1_residual" in metrics
-    assert any("PCA common-factor" in lim for lim in v2_matrix_block["alerts"]["correlation_concentration"]["limitations"])
+    assert "legacy_pca_pc1_raw" not in metrics
+    assert "legacy_pca_pc1_residual" not in metrics
+    assert "highest_pair_correlation" in metrics
+    assert "avg_pairwise_correlation" in metrics
+    assert any("PCA is not read or scored" in lim for lim in v2_matrix_block["alerts"]["correlation_concentration"]["limitations"])
 
 
 def test_matrix_d9_confirmation_status_with_stress(v2_matrix_block: dict) -> None:
@@ -236,7 +234,9 @@ def test_matrix_d13_heuristic_v2_metadata(v2_matrix_block: dict) -> None:
     assert meta["ruleset"] == "heuristic_v2"
     assert meta["confidence_model"] == "v2"
     assert meta["stress_enrichment_wire_time"] is True
-    assert meta["legacy_enrichment_wire_time"] is True
+    assert meta["legacy_enrichment_wire_time"] is False
+    assert meta["legacy_enrichment_sources"] == []
+    assert meta["pca_used_for_correlation_concentration"] is False
 
 
 @pytest.mark.parametrize("field", DEFERRED_REGISTRY_FIELDS)

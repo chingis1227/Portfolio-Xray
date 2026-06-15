@@ -144,6 +144,7 @@ export default function VerdictPage() {
   const candidateGeneration = activeReview?.candidateGeneration;
   const comparison = activeReview?.comparisonResult;
   const verdict = activeReview?.verdictResult;
+  const hasLiveLineage = Boolean(activeReview?.lineageAvailable && !activeReview?.readOnlyHistory);
   const selectedCardId = candidateGeneration?.selectedCardId;
   const candidateId = candidateGeneration?.candidateId;
   const candidateDisplayName = formatUnknownValue(comparison?.candidateName ?? candidateId, "generated diagnostic candidate");
@@ -165,6 +166,7 @@ export default function VerdictPage() {
     hydrated
     && reviewId
     && selectedCardId
+    && hasLiveLineage
     && candidateGeneration?.status === "completed"
     && comparisonMatchesCandidate
     && activeReview?.comparisonReady
@@ -235,8 +237,8 @@ export default function VerdictPage() {
           title="Decision verdict"
           description="The verdict evaluates one generated diagnostic candidate against the active comparison evidence. No-trade and evidence-insufficient are normal outcomes."
         >
-          <StatusBadge tone={verdictMatchesCandidate ? (evidenceInsufficient ? "amber" : "green") : "amber"}>
-            {verdictMatchesCandidate ? (evidenceInsufficient ? "Evidence insufficient" : "Active verdict") : "Verdict required"}
+          <StatusBadge tone={activeReview?.readOnlyHistory ? "slate" : verdictMatchesCandidate ? (evidenceInsufficient ? "amber" : "green") : "amber"}>
+            {activeReview?.readOnlyHistory ? "Read-only compact history" : verdictMatchesCandidate ? (evidenceInsufficient ? "Evidence insufficient" : "Active verdict") : "Verdict required"}
           </StatusBadge>
         </PageHeader>
         <SiteExplanationHierarchy
@@ -244,6 +246,15 @@ export default function VerdictPage() {
           screen="verdict"
           fallbackTitle="Verdict explanation"
         />
+
+        {activeReview?.readOnlyHistory ? (
+          <section className="mb-6 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
+            <StatusBadge tone="slate">Historical</StatusBadge>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-text2">
+              This verdict belongs to a saved compact snapshot. It is visible for review, but it cannot unlock new report or downstream actions without live same-run lineage.
+            </p>
+          </section>
+        ) : null}
 
         {staleVerdictIgnored ? (
           <section className="mb-6 rounded-2xl border border-pmri-amber/35 bg-pmri-amber/10 p-4">
@@ -400,16 +411,18 @@ export default function VerdictPage() {
               <p className="mb-3 text-sm leading-7 text-pmri-muted">
                 Continue to Report only after reviewing the verdict framing. The next page should summarize the evidence; this is still not a trade order.
               </p>
-              <button
-                type="button"
-                className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
-                onClick={() => {
-                  markVerdictReady();
-                  router.push("/report");
-                }}
-              >
-                Open report
-              </button>
+              {hasLiveLineage ? (
+                <button
+                  type="button"
+                  className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
+                  onClick={() => {
+                    markVerdictReady();
+                    router.push("/report");
+                  }}
+                >
+                  Open report
+                </button>
+              ) : null}
             </div>
           </div>
         ) : null}

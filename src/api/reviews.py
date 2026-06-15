@@ -1183,6 +1183,79 @@ def _is_demo_qa_staged_review(review_id: str) -> bool:
     return state.get("mode") == "demo_qa"
 
 
+def _demo_qa_candidate_generation_doc(selected_card_id: str) -> dict[str, Any]:
+    candidate_id = "equal_weight"
+    return {
+        "schema_version": "candidate_generation_v1",
+        "mode": "demo_qa",
+        "selected_card_id": selected_card_id,
+        "generation_status": "generated",
+        "candidate": {
+            "candidate_id": candidate_id,
+            "candidate_name": "Equal Weight diagnostic candidate",
+            "method": "equal_weight",
+            "method_label": "Equal Weight",
+            "source_card_id": selected_card_id,
+            "source_diagnosis_id": "high_concentration",
+            "hypothesis_to_test": "Test whether an Equal Weight candidate reduces concentration.",
+            "success_criteria": ["Reduce reliance on the largest exposure."],
+            "tradeoff_to_watch": "Potential return drag versus the current allocation.",
+            "decision_boundary": "This candidate is a diagnostic test, not a recommendation.",
+            "weights": {"fixture_equal_weight": 1.0},
+            "weight_summary": {"fixture_equal_weight": 1.0},
+        },
+        "handoff_to_comparison": {
+            "can_compare": True,
+            "candidate_id": candidate_id,
+            "next_stage": "current_vs_candidate",
+            "blocked_reason": None,
+        },
+        "source_artifacts": [
+            "analysis_subject/portfolio_alternatives_builder.json",
+            "analysis_subject/candidate_launchpad.json",
+        ],
+        "warnings": [
+            "Demo / QA candidate uses deterministic fixture evidence and is not a live optimized portfolio."
+        ],
+    }
+
+
+def _write_demo_qa_candidate(review_id: str, selected_card_id: str) -> dict[str, Any]:
+    run_dir = safe_review_run_dir(review_id)
+    candidate_generation = _demo_qa_candidate_generation_doc(selected_card_id)
+    candidate_id = _text(_record(candidate_generation.get("candidate")).get("candidate_id"))
+    factory_run = {
+        "schema_version": "candidate_factory_run_v1",
+        "mode": "demo_qa",
+        "factory_profile_id": "demo_qa_fixture",
+        "review_id": review_id,
+        "steps": [
+            {
+                "candidate_id": candidate_id,
+                "method": "equal_weight",
+                "status": "generated",
+                "source": "frozen_fixture",
+            }
+        ],
+        "warnings": [
+            "Demo / QA factory run is a deterministic fixture for local browser QA."
+        ],
+    }
+    write_json(run_dir / "candidate_generation.json", candidate_generation)
+    write_json(run_dir / "candidate_factory_run.json", factory_run)
+    return {
+        "review_id": review_id,
+        "status": "completed",
+        "stage": "candidate_generation",
+        "selected_card_id": selected_card_id,
+        "candidate_id": candidate_id,
+        "generation_status": "generated",
+        "can_compare": True,
+        "path": f"runs/{review_id}/candidate_generation.json",
+        "candidate_generation": candidate_generation,
+    }
+
+
 def _demo_qa_current_vs_candidate_doc(candidate_generation: dict[str, Any], candidate_id: str) -> dict[str, Any]:
     candidate = _record(candidate_generation.get("candidate"))
     return {
@@ -2431,12 +2504,15 @@ def generate_candidate_from_builder(
         _run_dir, state = _read_authorized_staged_state(review_id, owner_id)
         _assert_downstream_stage_ready(state, "candidate")
         _builder_doc, selected_card_id = _builder_doc_for_setup(review_id, request.builder_setup_id)
-        result = generate_selected_candidate(
-            review_id=review_id,
-            selected_card_id=selected_card_id,
-            force=False,
-            factory_execution_mode="fast",
-        )
+        if _is_demo_qa_staged_review(review_id):
+            result = _write_demo_qa_candidate(review_id, selected_card_id)
+        else:
+            result = generate_selected_candidate(
+                review_id=review_id,
+                selected_card_id=selected_card_id,
+                force=False,
+                factory_execution_mode="fast",
+            )
     except ReviewAccessError as exc:
         return exc.status_code, _failed_candidate_envelope(
             review_id=review_id,

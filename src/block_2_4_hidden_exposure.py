@@ -59,8 +59,6 @@ HEDGE_LABELED_RISK_ROLES = frozenset({"defensive", "crisis_hedge", "inflation_he
 WEAK_HEDGE_OOS_MAE_MODERATE = 0.05
 WEAK_HEDGE_OOS_MAE_HIGH = 0.10
 WEAK_HEDGE_OFFSET_COVERAGE_WEAK = 0.25
-PCA_PC1_MODERATE = 0.40
-PCA_PC1_HIGH = 0.60
 LEGACY_PCA_RAW_SECTION = "correlation_or_common_factor_concentration"
 LEGACY_PCA_RESIDUAL_SECTION = "residual_pca_concentration"
 
@@ -151,10 +149,9 @@ _ALERT_LIMITATIONS: dict[str, list[str]] = {
     "correlation_concentration": [
         "Full FX factor decomposition is not in Core MVP; currency evidence uses Block 2.1 "
         "by_currency and concentration_flags only.",
-        "PCA common-factor cluster concentration is not scored in Block 2.4 product alerts; "
-        "when portfolio_pca is available, interpret legacy sections.hidden_risk_detector "
-        f"categories {LEGACY_PCA_RAW_SECTION!r} and {LEGACY_PCA_RESIDUAL_SECTION!r} "
-        "(wire-time cross-ref evidence only).",
+        "Correlation Concentration is built from Block 2.1 duplicate/concentration evidence, "
+        "Block 2.2 pairwise correlation evidence, and Block 2.3 factor concentration evidence; "
+        "PCA is not read or scored in this product alert.",
     ],
     "weak_hedge_behavior": [
         "Hedge effectiveness is preliminary without Stress Lab confirmation; this alert "
@@ -1962,148 +1959,14 @@ def _worst_scenario_hedge_check(
     }
 
 
-def _pca_layer_from_stress_report(
-    stress_report: dict[str, Any] | None,
-    *,
-    layer: str,
-) -> dict[str, Any]:
-    if not isinstance(stress_report, dict):
-        return {}
-    pca = stress_report.get("portfolio_pca")
-    if not isinstance(pca, dict):
-        return {}
-    block = pca.get(layer)
-    if not isinstance(block, dict):
-        return {}
-    cov = block.get("covariance_pca")
-    return cov if isinstance(cov, dict) else {}
-
-
 def build_block_2_4_legacy_enrichment(stress_report: dict[str, Any] | None) -> dict[str, Any] | None:
-    """Build a compact legacy X-Ray wire-time summary for Block 2.4 (does not run Stress Lab).
+    """Deprecated compatibility stub; product Block 2.4 no longer consumes PCA.
 
-    Surfaces portfolio PCA PC1 shares for cross-reference on ``correlation_concentration``
-    only; scores remain heuristic_v2 over Blocks 2.1–2.3.
+    Live Run Diagnostics no longer emits ``stress_report.portfolio_pca``.  To keep older
+    callers import-compatible without reintroducing PCA into Correlation Concentration,
+    this helper always returns ``None`` and performs no inspection work.
     """
-    if not isinstance(stress_report, dict):
-        return None
-
-    sources: list[str] = []
-    raw_pca = _pca_layer_from_stress_report(stress_report, layer="raw")
-    residual_pca = _pca_layer_from_stress_report(stress_report, layer="residual")
-    raw_pc1 = _as_float(raw_pca.get("pc1_explained_variance_ratio"))
-    residual_pc1 = _as_float(residual_pca.get("pc1_explained_variance_ratio"))
-
-    if raw_pc1 is not None:
-        sources.append("portfolio_pca.raw")
-    if residual_pc1 is not None:
-        sources.append("portfolio_pca.residual")
-
-    factor_residual_share: float | None = None
-    decomp = stress_report.get("factor_variance_decomposition")
-    if isinstance(decomp, dict):
-        factor_residual_share = _as_float(decomp.get("residual_share"))
-        if factor_residual_share is not None:
-            sources.append("factor_variance_decomposition")
-
-    if not sources:
-        return None
-
-    return {
-        "available": True,
-        "sources": list(dict.fromkeys(sources)),
-        "raw_pc1_explained_variance_ratio": raw_pc1,
-        "residual_pc1_explained_variance_ratio": residual_pc1,
-        "factor_residual_share": factor_residual_share,
-        "legacy_section_refs": {
-            "raw_pca": LEGACY_PCA_RAW_SECTION,
-            "residual_pca": LEGACY_PCA_RESIDUAL_SECTION,
-        },
-        "threshold_keys": ["pca_pc1_moderate", "pca_pc1_high"],
-    }
-
-
-def _pca_pc1_direction(pc1: float | None) -> str:
-    if pc1 is None:
-        return "missing"
-    if pc1 >= PCA_PC1_HIGH:
-        return "above_threshold"
-    if pc1 >= PCA_PC1_MODERATE:
-        return "present"
-    return "below_threshold"
-
-
-def _legacy_pca_cross_ref_evidence(legacy_enrichment: dict[str, Any] | None) -> list[dict[str, Any]]:
-    if not isinstance(legacy_enrichment, dict) or not legacy_enrichment.get("available"):
-        return []
-
-    refs = legacy_enrichment.get("legacy_section_refs")
-    if not isinstance(refs, dict):
-        refs = {}
-    extra: list[dict[str, Any]] = []
-
-    raw_pc1 = _as_float(legacy_enrichment.get("raw_pc1_explained_variance_ratio"))
-    if raw_pc1 is not None:
-        extra.append(
-            _evidence(
-                metric="legacy_pca_pc1_raw",
-                value={
-                    "pc1_explained_variance_ratio": raw_pc1,
-                    "legacy_section": refs.get("raw_pca", LEGACY_PCA_RAW_SECTION),
-                    "threshold_keys": legacy_enrichment.get("threshold_keys")
-                    or ["pca_pc1_moderate", "pca_pc1_high"],
-                },
-                threshold="pca_pc1_moderate_high_legacy",
-                direction=_pca_pc1_direction(raw_pc1),
-                source="portfolio_analytics",
-                interpretation=(
-                    "Raw covariance PCA PC1 from stress_report.portfolio_pca (legacy "
-                    "hidden_risk_detector cross-ref; not scored in Block 2.4)."
-                ),
-            )
-        )
-
-    residual_pc1 = _as_float(legacy_enrichment.get("residual_pc1_explained_variance_ratio"))
-    if residual_pc1 is not None:
-        extra.append(
-            _evidence(
-                metric="legacy_pca_pc1_residual",
-                value={
-                    "pc1_explained_variance_ratio": residual_pc1,
-                    "legacy_section": refs.get("residual_pca", LEGACY_PCA_RESIDUAL_SECTION),
-                    "threshold_keys": legacy_enrichment.get("threshold_keys")
-                    or ["pca_pc1_moderate", "pca_pc1_high"],
-                },
-                threshold="pca_pc1_moderate_high_legacy",
-                direction=_pca_pc1_direction(residual_pc1),
-                source="portfolio_analytics",
-                interpretation=(
-                    "Residual PCA PC1 after named factors (legacy hidden_risk_detector "
-                    "cross-ref; not scored in Block 2.4)."
-                ),
-            )
-        )
-
-    factor_residual = _as_float(legacy_enrichment.get("factor_residual_share"))
-    if factor_residual is not None:
-        extra.append(
-            _evidence(
-                metric="legacy_factor_residual_share",
-                value={
-                    "residual_share": factor_residual,
-                    "legacy_section": LEGACY_PCA_RESIDUAL_SECTION,
-                },
-                threshold="informational_factor_variance_decomposition",
-                direction="present",
-                source="portfolio_analytics",
-                interpretation=(
-                    "Factor-adjusted residual variance share from stress_report "
-                    "(informational legacy cross-ref only)."
-                ),
-            )
-        )
-
-    return extra
+    return None
 
 
 def build_block_2_4_stress_enrichment(
@@ -2492,10 +2355,10 @@ def _correlation_concentration(
             include_ranking=True,
         )
     )
-    extra.extend(_legacy_pca_cross_ref_evidence(legacy_enrichment))
-    calculation_extra = ["correlation concentration thresholds are heuristic_v2 product diagnostics"]
-    if isinstance(legacy_enrichment, dict) and legacy_enrichment.get("available"):
-        calculation_extra.append("legacy_pca_cross_ref_wire_time=sections.hidden_risk_detector")
+    calculation_extra = [
+        "correlation concentration thresholds are heuristic_v2 product diagnostics",
+        "pca_not_used=correlation_concentration_v2_non_pca",
+    ]
     return _weighted_alert(
         "correlation_concentration",
         block_2_1=block_2_1,
@@ -2777,8 +2640,8 @@ def build_block_2_4_hidden_exposure(
     """Build product-facing Hidden Exposure diagnostics from Blocks 2.1–2.3 only.
 
     Optional ``stress_enrichment`` is a compact Block 3 wire-time summary built by
-    ``build_block_2_4_stress_enrichment``; optional ``legacy_enrichment`` is a compact
-    PCA summary from ``build_block_2_4_legacy_enrichment``. Block 2.4 does not run Stress Lab.
+    ``build_block_2_4_stress_enrichment``. The deprecated ``legacy_enrichment`` argument is
+    accepted for caller compatibility but ignored; Block 2.4 does not read PCA.
     """
     inputs = [isinstance(block_2_1, dict), isinstance(block_2_2, dict), isinstance(block_2_3, dict)]
     data_quality_warnings: list[str] = []
@@ -2875,14 +2738,9 @@ def build_block_2_4_hidden_exposure(
                 if isinstance(stress_enrichment, dict)
                 else []
             ),
-            "legacy_enrichment_wire_time": bool(
-                isinstance(legacy_enrichment, dict) and legacy_enrichment.get("available")
-            ),
-            "legacy_enrichment_sources": (
-                list(legacy_enrichment.get("sources") or [])
-                if isinstance(legacy_enrichment, dict)
-                else []
-            ),
+            "legacy_enrichment_wire_time": False,
+            "legacy_enrichment_sources": [],
+            "pca_used_for_correlation_concentration": False,
         },
     }
 
@@ -2907,8 +2765,6 @@ __all__ = [
     "STATUS_BANDS",
     "LEGACY_PCA_RAW_SECTION",
     "LEGACY_PCA_RESIDUAL_SECTION",
-    "PCA_PC1_HIGH",
-    "PCA_PC1_MODERATE",
     "build_block_2_4_hidden_exposure",
     "build_block_2_4_legacy_enrichment",
     "build_block_2_4_stress_enrichment",

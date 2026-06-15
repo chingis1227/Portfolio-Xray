@@ -203,7 +203,7 @@ def contract_fingerprint(doc: dict[str, Any]) -> dict[str, Any]:
             .get("evidence", [])
         }
         fp["block_2_4_has_avg_pairwise_correlation"] = "avg_pairwise_correlation" in corr_metrics
-        fp["block_2_4_has_legacy_pca_cross_ref"] = "legacy_pca_pc1_raw" in corr_metrics
+        fp["block_2_4_uses_non_pca_correlation"] = "legacy_pca_pc1_raw" not in corr_metrics
     block_25 = doc.get("block_2_5_risk_budget_view")
     if isinstance(block_25, dict):
         fp["block_2_5_present"] = True
@@ -282,7 +282,8 @@ def test_golden_block_2_4_hidden_exposure_surface(golden_fixture: dict[str, Any]
     )
     if b22_avg is not None:
         assert "avg_pairwise_correlation" in corr_metrics
-    assert "legacy_pca_pc1_raw" in corr_metrics
+    assert "legacy_pca_pc1_raw" not in corr_metrics
+    assert "highest_pair_correlation" in corr_metrics or "avg_pairwise_correlation" in corr_metrics
     tail_metrics = {row["metric"] for row in block["alerts"]["tail_risk"]["evidence"]}
     assert "var_95" in tail_metrics
     assert "pct_time_underwater" in tail_metrics

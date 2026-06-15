@@ -15,7 +15,6 @@ from src.block_2_2_portfolio_metrics import build_block_2_2_portfolio_metrics
 from src.block_2_3_factor_exposure import build_block_2_3_factor_exposure
 from src.block_2_4_hidden_exposure import (
     build_block_2_4_hidden_exposure,
-    build_block_2_4_legacy_enrichment,
     build_block_2_4_stress_enrichment,
 )
 from src.hedge_gap_analysis_block import (
@@ -3491,7 +3490,6 @@ def build_portfolio_xray_v2(
             block_2_1=block_2_1_asset_allocation,
             taxonomy_rows=tax_rows,
         ),
-        legacy_enrichment=build_block_2_4_legacy_enrichment(stress_report),
     )
     if isinstance(stress_report, dict):
         apply_hidden_exposure_confirmation_bridge(stress_report, block_2_4_hidden_exposure)

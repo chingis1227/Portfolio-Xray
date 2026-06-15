@@ -714,6 +714,7 @@ function BuilderSetupPanel({
   candidateGeneration,
   isGenerating,
   generationError,
+  hasLiveLineage = true,
   onGenerate,
   comparisonHref
 }: {
@@ -723,6 +724,7 @@ function BuilderSetupPanel({
   candidateGeneration?: CandidateGenerationSummary;
   isGenerating: boolean;
   generationError?: string;
+  hasLiveLineage?: boolean;
   onGenerate: () => void;
   comparisonHref: string;
 }) {
@@ -760,7 +762,7 @@ function BuilderSetupPanel({
   const isReferenceMethod = selectedMethodId === "equal_weight" || selectedMethodId === "risk_parity";
   const showConstraintPreset = Boolean(constraintPreset && !(isReferenceMethod && constraintPreset === "basic_reference"));
   const showMode = Boolean(mode && !(isReferenceMethod && mode === "capped"));
-  const canGenerate = Boolean(reviewId && selectedCardId && selectedMethodId && MVP_METHOD_IDS.has(selectedMethodId) && !isDataQualityCard(selectedCard) && !isMonitoringCard(selectedCard));
+  const canGenerate = Boolean(hasLiveLineage && reviewId && selectedCardId && selectedMethodId && MVP_METHOD_IDS.has(selectedMethodId) && !isDataQualityCard(selectedCard) && !isMonitoringCard(selectedCard));
   const status = candidateStatusLabel(candidateForSelectedCard);
 
   return (
@@ -817,7 +819,7 @@ function BuilderSetupPanel({
             <p className="text-sm leading-6 text-pmri-text2">
               Next step: compare the current portfolio with {candidateDisplayName(candidateForSelectedCard, selectedMethod)}.
             </p>
-            {candidateForSelectedCard.canCompare ? (
+            {candidateForSelectedCard.canCompare && hasLiveLineage ? (
               <Link
                 href={comparisonHref}
                 className="pmri-focus pmri-primary-action flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition"
@@ -850,7 +852,7 @@ function BuilderSetupPanel({
             </button>
             {!canGenerate ? (
               <p className="rounded-xl border border-pmri-amber/35 bg-pmri-amber/10 p-3 text-sm leading-6 text-pmri-amber">
-                Resolve data quality first.
+                {hasLiveLineage ? "Resolve data quality first." : "Needs new diagnosis before generating a candidate."}
               </p>
             ) : null}
           </>
@@ -925,6 +927,7 @@ export default function HypothesisPage() {
   const realCards = useMemo(() => candidateRawCards.map((card) => launchpadCardToHypothesis(card, diagnosisText)), [candidateRawCards, diagnosisText]);
   const monitoringCards = useMemo(() => monitoringRawCards.map((card) => launchpadCardToHypothesis(card, diagnosisText)), [monitoringRawCards, diagnosisText]);
   const completedRealReview = activeReview?.runMode === "real_run" && activeReview.runStatus === "completed";
+  const hasLiveLineage = Boolean(activeReview?.lineageAvailable && !activeReview?.readOnlyHistory);
   const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
 
   const launchpadRecordView = launchpadRecord as JsonRecord | undefined;
@@ -953,7 +956,7 @@ export default function HypothesisPage() {
 
   async function handleGenerateCandidate() {
     const reviewId = activeReview?.reviewId ?? activeReview?.reviewSummary?.reviewId ?? activeReview?.reviewResult?.review_id;
-    if (!reviewId || !selectedCardId) return;
+    if (!hasLiveLineage || !reviewId || !selectedCardId) return;
     setIsGeneratingCandidate(true);
     setGenerationError(undefined);
 
@@ -1144,8 +1147,18 @@ export default function HypothesisPage() {
         description="Turn the current diagnosis into one clear candidate test before comparison."
         boundaryNote="Candidates are test portfolios for comparison. They are not recommendations."
       >
-        <StatusBadge tone="slate">Not a recommendation</StatusBadge>
+        <StatusBadge tone={activeReview?.readOnlyHistory ? "slate" : "blue"}>
+          {activeReview?.readOnlyHistory ? "Read-only compact history" : "Not a recommendation"}
+        </StatusBadge>
       </PageHeader>
+      {activeReview?.readOnlyHistory ? (
+        <section className="mb-6 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
+          <StatusBadge tone="slate">Needs new diagnosis</StatusBadge>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-text2">
+            This saved review is compact history. Generate a new diagnosis for the loaded portfolio before creating or comparing a new candidate.
+          </p>
+        </section>
+      ) : null}
       <SiteExplanationHierarchy
         bundle={siteExplanation}
         screen={activeReview?.candidateGeneration ? "candidate" : "hypothesis"}
@@ -1171,16 +1184,17 @@ export default function HypothesisPage() {
           selectedCardId={selectedCardId}
           onSelect={setSelectedCardId}
         />
-        <BuilderSetupPanel
-          selectedCard={selectedRawCard}
-          builderDocument={builderRecord}
-          reviewId={reviewId}
-          candidateGeneration={activeReview?.candidateGeneration}
-          isGenerating={isGeneratingCandidate}
-          generationError={generationError}
-          onGenerate={handleGenerateCandidate}
-          comparisonHref="/comparison"
-        />
+          <BuilderSetupPanel
+            selectedCard={selectedRawCard}
+            builderDocument={builderRecord}
+            reviewId={reviewId}
+            candidateGeneration={activeReview?.candidateGeneration}
+            isGenerating={isGeneratingCandidate}
+            generationError={generationError}
+            hasLiveLineage={hasLiveLineage}
+            onGenerate={handleGenerateCandidate}
+            comparisonHref="/comparison"
+          />
       </div>
     </div>
   );

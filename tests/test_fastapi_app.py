@@ -1241,6 +1241,36 @@ def test_staged_review_status_rejects_different_owner(
 
 
 @pytest.mark.parametrize(
+    ("path", "body"),
+    [
+        ("/api/v1/reviews/frontend_review_fastapi_owner_mutation/builder", {"selected_card_id": "card_1"}),
+        ("/api/v1/reviews/frontend_review_fastapi_owner_mutation/candidate", {"builder_setup_id": "setup_1"}),
+        ("/api/v1/reviews/frontend_review_fastapi_owner_mutation/comparison", {"candidate_id": "candidate_1"}),
+        ("/api/v1/reviews/frontend_review_fastapi_owner_mutation/verdict", {"comparison_id": "comparison_1"}),
+        ("/api/v1/reviews/frontend_review_fastapi_owner_mutation/report", {"verdict_id": "verdict_1"}),
+    ],
+)
+def test_downstream_review_mutations_reject_different_owner(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    body: dict,
+) -> None:
+    review_id = "frontend_review_fastapi_owner_mutation"
+    run_dir = tmp_path / review_id
+    run_dir.mkdir()
+    _write_staged_state_for_test(run_dir, review_id, current_stage="report", owner_id=TEST_USER_ID)
+    monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
+
+    response = _request("POST", path, json_body=body, user_id=OTHER_USER_ID)
+
+    assert response.status_code == 403
+    response_body = response.json()
+    assert response_body["status"] == "failed"
+    assert response_body["safe_error"]["message"] == "Review belongs to a different authenticated user."
+
+
+@pytest.mark.parametrize(
     ("method", "path"),
     [
         ("GET", "/api/v1/reviews/frontend_review_ownerless/status"),
@@ -1263,6 +1293,39 @@ def test_ownerless_review_state_cannot_be_read_or_recovered(
 
     assert response.status_code == 403
     assert response.json()["safe_error"]["message"] == "Review owner is missing; restart the review."
+
+
+@pytest.mark.parametrize(
+    ("path", "body"),
+    [
+        ("/api/v1/reviews/frontend_review_ownerless_mutation/builder", {"selected_card_id": "card_1"}),
+        ("/api/v1/reviews/frontend_review_ownerless_mutation/candidate", {"builder_setup_id": "setup_1"}),
+        ("/api/v1/reviews/frontend_review_ownerless_mutation/comparison", {"candidate_id": "candidate_1"}),
+        ("/api/v1/reviews/frontend_review_ownerless_mutation/verdict", {"comparison_id": "comparison_1"}),
+        ("/api/v1/reviews/frontend_review_ownerless_mutation/report", {"verdict_id": "verdict_1"}),
+    ],
+)
+def test_ownerless_review_state_cannot_be_mutated(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    body: dict,
+) -> None:
+    review_id = "frontend_review_ownerless_mutation"
+    run_dir = tmp_path / review_id
+    run_dir.mkdir()
+    _write_staged_state_for_test(run_dir, review_id, current_stage="report", owner_id=TEST_USER_ID)
+    state = json.loads((run_dir / "review_state.json").read_text(encoding="utf-8"))
+    state.pop("owner_id", None)
+    review_service._write_staged_state(run_dir, state)
+    monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
+
+    response = _request("POST", path, json_body=body)
+
+    assert response.status_code == 403
+    response_body = response.json()
+    assert response_body["status"] == "failed"
+    assert response_body["safe_error"]["message"] == "Review owner is missing; restart the review."
 
 
 def test_downstream_stage_rejects_before_previous_stage_is_complete(

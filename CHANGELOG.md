@@ -2,6 +2,17 @@
 
 ## 2026-06-15
 
+- Rebuilt the `Correlation Concentration` hidden-risk alert as a non-PCA product diagnostic. Block 2.4 now ignores legacy PCA enrichment, keeps PCA-use metadata false, and documents/tests the pairwise-correlation, duplicate-exposure, and factor-concentration evidence boundary.
+- Implemented account workspace UI Session 04. Added `/workspace` as the signed-in account home with
+  current workspace context, portfolio library, compact review history, archive controls, sidebar
+  navigation, and returning-user sign-in routing to workspace when saved cloud work exists.
+- Implemented account workspace persistence Session 03. The frontend Supabase layer now reads and
+  writes compact workspace state, immutable portfolio versions, review-to-version lineage,
+  compact draft review rows after portfolio edits, archive-first portfolio removal, read-only compact
+  review history flags, and cloud-preferred active review hydration without triggering recalculation
+  on login.
+- Added the account workspace Supabase schema foundation. New and existing Supabase setups now have compact Client Fit profile fields, immutable portfolio versions, workspace state pointers, archive markers, and review-to-version links while preserving the compact-only no-artifacts boundary.
+- Planned the production account workspace foundation. Added an ExecPlan and synced contracts/docs for `/workspace`, immutable portfolio-version review history, archive-first portfolio/review removal, compact-only Supabase workspace state, read-only compact history, and the rule that login restores saved work without recalculating.
 - Removed technical staged diagnosis progress panels from Portfolio Input and Diagnosis. Running
   diagnosis now shows a simple product-facing preparation message while backend stage details remain
   internal, and legacy unsubmitted demo draft portfolios are cleared on hydration so old

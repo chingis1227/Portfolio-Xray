@@ -73,6 +73,7 @@ export type ReviewErrorState = {
 };
 
 export type CandidateGenerationSummary = {
+  reviewId?: string;
   status: string;
   stage: "candidate_generation";
   selectedCardId: string;
@@ -103,6 +104,7 @@ export type EvidenceChainContextSummary = {
 };
 
 export type ComparisonResultSummary = {
+  reviewId?: string;
   status: string;
   stage: "current_vs_candidate";
   selectedCardId: string;
@@ -129,6 +131,7 @@ export type ComparisonResultSummary = {
 };
 
 export type VerdictResultSummary = {
+  reviewId?: string;
   status: string;
   stage: "decision_verdict";
   selectedCardId: string;
@@ -155,6 +158,7 @@ export type VerdictResultSummary = {
 };
 
 export type ReportResultSummary = {
+  reviewId?: string;
   status: string;
   stage: "report";
   selectedCardId: string;
@@ -366,7 +370,13 @@ export type ActiveReviewState = {
   cloudPortfolio?: {
     id: string;
     name: string;
+    versionId?: string;
+    versionNumber?: number;
   };
+  portfolioVersionId?: string;
+  portfolioVersionNumber?: number;
+  readOnlyHistory?: boolean;
+  lineageAvailable?: boolean;
   reviewId?: string;
   reviewResult?: ReviewResult;
   reviewSummary?: ReviewSummary;
@@ -413,7 +423,7 @@ type ReviewStateContextValue = {
   recordStagedProgress: (progress: StagedReviewStatusResponse) => void;
   recordReviewError: (input: Pick<ActiveReviewState, "investorCurrency" | "holdings"> & { message: string; details?: string }) => void;
   linkCloudPortfolio: (portfolio: ActiveReviewState["cloudPortfolio"]) => void;
-  loadCloudPortfolioInput: (input: { portfolioId: string; name: string; investorCurrency: string; holdings: ReviewHolding[] }) => void;
+  loadCloudPortfolioInput: (input: { portfolioId: string; name: string; investorCurrency: string; holdings: ReviewHolding[]; versionId?: string; versionNumber?: number }) => void;
   recordBuilderSetup: (result: unknown) => void;
   recordCandidateGeneration: (result: unknown) => void;
   recordComparisonResult: (result: unknown) => void;
@@ -550,6 +560,7 @@ function cleanCandidateGenerationSummary(value: unknown): CandidateGenerationSum
       .filter((item) => item.ticker && Number.isFinite(item.weight))
     : [];
   return {
+    reviewId: typeof value.reviewId === "string" ? value.reviewId : undefined,
     status: typeof value.status === "string" ? value.status : "unknown",
     stage: "candidate_generation",
     selectedCardId: typeof value.selectedCardId === "string" ? value.selectedCardId : "",
@@ -680,6 +691,7 @@ function cleanComparisonResultSummary(value: unknown): ComparisonResultSummary |
     }))
     : [];
   return {
+    reviewId: typeof value.reviewId === "string" ? value.reviewId : undefined,
     status: textValue(value.status, "unknown"),
     stage: "current_vs_candidate",
     selectedCardId: textValue(value.selectedCardId, ""),
@@ -719,6 +731,7 @@ function cleanVerdictResultSummary(value: unknown): VerdictResultSummary | undef
     }))
     : [];
   return {
+    reviewId: typeof value.reviewId === "string" ? value.reviewId : undefined,
     status: textValue(value.status, "unknown"),
     stage: "decision_verdict",
     selectedCardId: textValue(value.selectedCardId, ""),
@@ -755,6 +768,7 @@ function cleanReportResultSummary(value: unknown): ReportResultSummary | undefin
     })).filter((section) => section.body)
     : [];
   return {
+    reviewId: typeof value.reviewId === "string" ? value.reviewId : undefined,
     status: textValue(value.status, "unknown"),
     stage: "report",
     selectedCardId: textValue(value.selectedCardId, ""),
@@ -927,25 +941,38 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
   const comparisonResult = cleanComparisonResultSummary(value.comparisonResult);
   const verdictResult = cleanVerdictResultSummary(value.verdictResult);
   const reportResult = cleanReportResultSummary(value.reportResult);
+  const effectiveReviewId = typeof value.reviewId === "string" ? value.reviewId : reviewSummary?.reviewId ?? reviewResult?.review_id;
+  const hasCompletedReviewResult = runStatus === "completed" && Boolean(reviewResult || reviewSummary);
+  const readOnlyHistory = Boolean(value.readOnlyHistory || (hasCompletedReviewResult && !value.lineageAvailable));
+  const hasLiveLineage = Boolean(value.lineageAvailable && !readOnlyHistory);
+  const candidateMatchesReview = Boolean(
+    candidateGeneration
+    && (!hasLiveLineage || (candidateGeneration.reviewId && effectiveReviewId && candidateGeneration.reviewId === effectiveReviewId))
+  );
   const comparisonMatchesCandidate = Boolean(
     comparisonResult
     && candidateGeneration
+    && candidateMatchesReview
+    && (!hasLiveLineage || (comparisonResult.reviewId && effectiveReviewId && comparisonResult.reviewId === effectiveReviewId))
     && comparisonResult.selectedCardId === candidateGeneration.selectedCardId
     && comparisonResult.candidateId === candidateGeneration.candidateId
   );
   const verdictMatchesCandidate = Boolean(
     verdictResult
     && candidateGeneration
+    && comparisonMatchesCandidate
+    && (!hasLiveLineage || (verdictResult.reviewId && effectiveReviewId && verdictResult.reviewId === effectiveReviewId))
     && verdictResult.selectedCardId === candidateGeneration.selectedCardId
     && verdictResult.candidateId === candidateGeneration.candidateId
   );
   const reportMatchesCandidate = Boolean(
     reportResult
     && candidateGeneration
+    && verdictMatchesCandidate
+    && (!hasLiveLineage || (reportResult.reviewId && effectiveReviewId && reportResult.reviewId === effectiveReviewId))
     && reportResult.selectedCardId === candidateGeneration.selectedCardId
     && reportResult.candidateId === candidateGeneration.candidateId
   );
-  const hasCompletedReviewResult = runStatus === "completed" && Boolean(reviewResult || reviewSummary);
 
   return {
     investorCurrency: value.investorCurrency || "USD",
@@ -966,16 +993,30 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
     cloudPortfolio: value.cloudPortfolio?.id && value.cloudPortfolio?.name
       ? {
         id: value.cloudPortfolio.id,
-        name: value.cloudPortfolio.name
+        name: value.cloudPortfolio.name,
+        versionId: typeof value.cloudPortfolio.versionId === "string" ? value.cloudPortfolio.versionId : undefined,
+        versionNumber: typeof value.cloudPortfolio.versionNumber === "number" ? value.cloudPortfolio.versionNumber : undefined
       }
       : undefined,
+    portfolioVersionId: typeof value.portfolioVersionId === "string"
+      ? value.portfolioVersionId
+      : typeof value.cloudPortfolio?.versionId === "string"
+        ? value.cloudPortfolio.versionId
+        : undefined,
+    portfolioVersionNumber: typeof value.portfolioVersionNumber === "number"
+      ? value.portfolioVersionNumber
+      : typeof value.cloudPortfolio?.versionNumber === "number"
+        ? value.cloudPortfolio.versionNumber
+        : undefined,
+    readOnlyHistory,
+    lineageAvailable: Boolean(value.lineageAvailable && !readOnlyHistory),
     submitted: Boolean(value.submitted),
-    reviewId: typeof value.reviewId === "string" ? value.reviewId : reviewSummary?.reviewId ?? reviewResult?.review_id,
+    reviewId: effectiveReviewId,
     reviewResult,
     reviewSummary,
     stagedProgress,
     builderSetup,
-    candidateGeneration,
+    candidateGeneration: candidateMatchesReview ? candidateGeneration : undefined,
     comparisonResult: comparisonMatchesCandidate ? comparisonResult : undefined,
     verdictResult: verdictMatchesCandidate ? verdictResult : undefined,
     reportResult: reportMatchesCandidate ? reportResult : undefined,
@@ -985,9 +1026,9 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
     diagnosisReady: Boolean(value.diagnosisReady && (hasCompletedReviewResult || isStagedStageReady(stagedProgress, "xray"))),
     evidenceReady: Boolean((value.evidenceReady ?? value.diagnosisReady) && (hasCompletedReviewResult || isStagedStageReady(stagedProgress, "stress"))),
     improvementPathsReady: Boolean((value.improvementPathsReady ?? value.diagnosisReady) && (hasCompletedReviewResult || isStagedStageReady(stagedProgress, "launchpad_builder"))),
-    candidateReady: Boolean(value.candidateReady && candidateGeneration),
-    comparisonReady: Boolean(value.comparisonReady && comparisonMatchesCandidate && comparisonResultCanGenerateVerdict(comparisonResult)),
-    verdictReady: Boolean(value.verdictReady && verdictMatchesCandidate),
+    candidateReady: Boolean(hasLiveLineage && value.candidateReady && candidateMatchesReview),
+    comparisonReady: Boolean(hasLiveLineage && value.comparisonReady && comparisonMatchesCandidate && comparisonResultCanGenerateVerdict(comparisonResult)),
+    verdictReady: Boolean(hasLiveLineage && value.verdictReady && verdictMatchesCandidate),
     updatedAt: value.updatedAt || nowIso()
   };
 }
@@ -1054,9 +1095,18 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   const [activeReview, setActiveReview] = useState<ActiveReviewState | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const { enabled: cloudEnabled, status: authStatus, user } = useSupabaseAuth();
-  const { setNotice: setCloudNotice } = useSupabasePersistence();
+  const {
+    setNotice: setCloudNotice,
+    savedReviews,
+    workspaceState,
+    workspaceLoading,
+    reviewsLoading,
+    ensurePortfolioVersion
+  } = useSupabasePersistence();
   const lastPersistedDiagnosisKeyRef = useRef<string | null>(null);
   const lastPersistedStagedKeyRef = useRef<string | null>(null);
+  const lastHydratedWorkspaceKeyRef = useRef<string | null>(null);
+  const lastEnsuredDraftVersionKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     setActiveReview(readStoredReview());
@@ -1098,6 +1148,10 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       holdings: current?.holdings ?? [],
       clientFitProfile: cleaned,
       cloudPortfolio: current?.cloudPortfolio,
+      portfolioVersionId: current?.portfolioVersionId,
+      portfolioVersionNumber: current?.portfolioVersionNumber,
+      readOnlyHistory: false,
+      lineageAvailable: false,
       reviewId: undefined,
       reviewResult: undefined,
       reviewSummary: undefined,
@@ -1125,7 +1179,16 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       investorCurrency: input.investorCurrency || "USD",
       holdings: input.holdings,
       clientFitProfile: current?.clientFitProfile,
-      cloudPortfolio: undefined,
+      cloudPortfolio: current?.cloudPortfolio
+        ? {
+          id: current.cloudPortfolio.id,
+          name: current.cloudPortfolio.name
+        }
+        : undefined,
+      portfolioVersionId: undefined,
+      portfolioVersionNumber: undefined,
+      readOnlyHistory: false,
+      lineageAvailable: false,
       reviewId: undefined,
       reviewResult: undefined,
       reviewSummary: undefined,
@@ -1167,6 +1230,10 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       holdings: input.holdings,
       clientFitProfile: current?.clientFitProfile,
       cloudPortfolio: current?.cloudPortfolio,
+      portfolioVersionId: current?.portfolioVersionId ?? current?.cloudPortfolio?.versionId,
+      portfolioVersionNumber: current?.portfolioVersionNumber ?? current?.cloudPortfolio?.versionNumber,
+      readOnlyHistory: false,
+      lineageAvailable: hasCompletedReviewResult,
       reviewId,
       reviewResult,
       reviewSummary,
@@ -1201,6 +1268,10 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       holdings: input.holdings,
       clientFitProfile: current?.clientFitProfile,
       cloudPortfolio: current?.cloudPortfolio,
+      portfolioVersionId: current?.portfolioVersionId ?? current?.cloudPortfolio?.versionId,
+      portfolioVersionNumber: current?.portfolioVersionNumber ?? current?.cloudPortfolio?.versionNumber,
+      readOnlyHistory: false,
+      lineageAvailable: true,
       reviewId: progress.reviewId,
       reviewResult: undefined,
       reviewSummary: undefined,
@@ -1233,6 +1304,8 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       ...current,
       reviewId: progress.reviewId,
       stagedProgress: progress,
+      readOnlyHistory: false,
+      lineageAvailable: true,
       runMode: "real_run",
       runStatus: progress.status === "failed" ? "failed" : current.runStatus === "completed" ? "completed" : "running",
       reviewError: progress.safeError ? {
@@ -1250,6 +1323,8 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     } : {
       investorCurrency: "USD",
       holdings: [],
+      readOnlyHistory: false,
+      lineageAvailable: true,
       reviewId: progress.reviewId,
       stagedProgress: progress,
       runMode: "real_run",
@@ -1275,6 +1350,10 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       holdings: input.holdings,
       clientFitProfile: current?.clientFitProfile,
       cloudPortfolio: current?.cloudPortfolio,
+      portfolioVersionId: current?.portfolioVersionId ?? current?.cloudPortfolio?.versionId,
+      portfolioVersionNumber: current?.portfolioVersionNumber ?? current?.cloudPortfolio?.versionNumber,
+      readOnlyHistory: false,
+      lineageAvailable: false,
       reviewId: undefined,
       reviewResult: undefined,
       reviewSummary: undefined,
@@ -1305,19 +1384,27 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     setActiveReview((current) => current ? {
       ...current,
       cloudPortfolio: portfolio ?? undefined,
+      portfolioVersionId: portfolio?.versionId ?? current.portfolioVersionId,
+      portfolioVersionNumber: portfolio?.versionNumber ?? current.portfolioVersionNumber,
       updatedAt: nowIso()
     } : current);
   }, []);
 
-  const loadCloudPortfolioInput = useCallback((input: { portfolioId: string; name: string; investorCurrency: string; holdings: ReviewHolding[] }) => {
+  const loadCloudPortfolioInput = useCallback((input: { portfolioId: string; name: string; investorCurrency: string; holdings: ReviewHolding[]; versionId?: string; versionNumber?: number }) => {
     setActiveReview((current) => ({
       investorCurrency: input.investorCurrency || "USD",
       holdings: input.holdings,
       clientFitProfile: current?.clientFitProfile,
       cloudPortfolio: {
         id: input.portfolioId,
-        name: input.name
+        name: input.name,
+        versionId: input.versionId,
+        versionNumber: input.versionNumber
       },
+      portfolioVersionId: input.versionId,
+      portfolioVersionNumber: input.versionNumber,
+      readOnlyHistory: false,
+      lineageAvailable: false,
       reviewId: undefined,
       reviewResult: undefined,
       reviewSummary: undefined,
@@ -1351,6 +1438,44 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const portfolio = savedReview.portfolioSnapshot;
     const compact = savedReview.compactSummary;
     const stagedProgress = cleanStagedReviewProgress(compact.stagedProgress);
+    if (savedReview.status === "draft" || savedReview.mode === "draft" || compact.reviewKind === "draft") {
+      setActiveReview(cleanReviewState({
+        investorCurrency: portfolio.investorCurrency ?? (typeof compact.investorCurrency === "string" ? compact.investorCurrency : "USD"),
+        holdings: portfolio.holdings ?? [],
+        clientFitProfile: undefined,
+        cloudPortfolio: savedReview.portfolioId && typeof compact.activeCloudPortfolioName === "string" ? {
+          id: savedReview.portfolioId,
+          name: compact.activeCloudPortfolioName,
+          versionId: savedReview.portfolioVersionId,
+          versionNumber: typeof compact.activeCloudPortfolioVersionNumber === "number" ? compact.activeCloudPortfolioVersionNumber : undefined
+        } : undefined,
+        portfolioVersionId: savedReview.portfolioVersionId,
+        portfolioVersionNumber: typeof compact.activeCloudPortfolioVersionNumber === "number" ? compact.activeCloudPortfolioVersionNumber : undefined,
+        readOnlyHistory: false,
+        lineageAvailable: false,
+        reviewId: undefined,
+        reviewResult: undefined,
+        reviewSummary: undefined,
+        stagedProgress: undefined,
+        builderSetup: undefined,
+        candidateGeneration: undefined,
+        comparisonResult: undefined,
+        verdictResult: undefined,
+        reportResult: undefined,
+        runMode: "sample_demo",
+        runStatus: "draft",
+        reviewError: undefined,
+        submitted: false,
+        diagnosisReady: false,
+        evidenceReady: false,
+        improvementPathsReady: false,
+        candidateReady: false,
+        comparisonReady: false,
+        verdictReady: false,
+        updatedAt: savedReview.updatedAt ?? nowIso()
+      }));
+      return;
+    }
     if (!isRecord(diagnosisStage.diagnosis) && stagedProgress) {
       setActiveReview(cleanReviewState({
         investorCurrency: portfolio.investorCurrency ?? (typeof compact.investorCurrency === "string" ? compact.investorCurrency : "USD"),
@@ -1358,8 +1483,14 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
         clientFitProfile: undefined,
         cloudPortfolio: savedReview.portfolioId && typeof compact.activeCloudPortfolioName === "string" ? {
           id: savedReview.portfolioId,
-          name: compact.activeCloudPortfolioName
+          name: compact.activeCloudPortfolioName,
+          versionId: savedReview.portfolioVersionId,
+          versionNumber: typeof compact.activeCloudPortfolioVersionNumber === "number" ? compact.activeCloudPortfolioVersionNumber : undefined
         } : undefined,
+        portfolioVersionId: savedReview.portfolioVersionId,
+        portfolioVersionNumber: typeof compact.activeCloudPortfolioVersionNumber === "number" ? compact.activeCloudPortfolioVersionNumber : undefined,
+        readOnlyHistory: savedReview.readOnlyHistory,
+        lineageAvailable: savedReview.lineageAvailable,
         reviewId: savedReview.reviewId,
         reviewResult: undefined,
         reviewSummary: undefined,
@@ -1437,18 +1568,36 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
         rawAccessStrategy: "Recovered from compact Supabase app-data summaries; full generated artifacts remain local/run-scoped."
       }
     };
-    const candidateGeneration = cleanCandidateGenerationSummary(getRecord(candidateStage.candidate));
-    const comparisonResult = cleanComparisonResultSummary(getRecord(comparisonStage.comparison));
-    const verdictResult = cleanVerdictResultSummary(getRecord(verdictStage.verdict));
-    const reportResult = cleanReportResultSummary(getRecord(reportStage.report));
+    const candidateGeneration = cleanCandidateGenerationSummary({
+      ...getRecord(candidateStage.candidate),
+      reviewId: savedReview.reviewId
+    });
+    const comparisonResult = cleanComparisonResultSummary({
+      ...getRecord(comparisonStage.comparison),
+      reviewId: savedReview.reviewId
+    });
+    const verdictResult = cleanVerdictResultSummary({
+      ...getRecord(verdictStage.verdict),
+      reviewId: savedReview.reviewId
+    });
+    const reportResult = cleanReportResultSummary({
+      ...getRecord(reportStage.report),
+      reviewId: savedReview.reviewId
+    });
     setActiveReview(cleanReviewState({
       investorCurrency: reviewSummary.investorCurrency,
       holdings: portfolio.holdings ?? [],
       clientFitProfile: undefined,
       cloudPortfolio: savedReview.portfolioId && typeof compact.activeCloudPortfolioName === "string" ? {
         id: savedReview.portfolioId,
-        name: compact.activeCloudPortfolioName
+        name: compact.activeCloudPortfolioName,
+        versionId: savedReview.portfolioVersionId,
+        versionNumber: typeof compact.activeCloudPortfolioVersionNumber === "number" ? compact.activeCloudPortfolioVersionNumber : undefined
       } : undefined,
+      portfolioVersionId: savedReview.portfolioVersionId,
+      portfolioVersionNumber: typeof compact.activeCloudPortfolioVersionNumber === "number" ? compact.activeCloudPortfolioVersionNumber : undefined,
+      readOnlyHistory: savedReview.readOnlyHistory,
+      lineageAvailable: savedReview.lineageAvailable,
       reviewId: savedReview.reviewId,
       reviewResult: undefined,
       reviewSummary,
@@ -1465,12 +1614,42 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       diagnosisReady: true,
       evidenceReady: true,
       improvementPathsReady: true,
-      candidateReady: Boolean(candidateGeneration),
-      comparisonReady: Boolean(comparisonResult),
-      verdictReady: Boolean(verdictResult),
+      candidateReady: !savedReview.readOnlyHistory && Boolean(candidateGeneration),
+      comparisonReady: !savedReview.readOnlyHistory && Boolean(comparisonResult),
+      verdictReady: !savedReview.readOnlyHistory && Boolean(verdictResult),
       updatedAt: savedReview.updatedAt ?? nowIso()
     }));
   }, []);
+
+  useEffect(() => {
+    if (!hydrated || !cloudEnabled || authStatus !== "signed_in" || !user?.id) return;
+    if (workspaceLoading || reviewsLoading) return;
+    if (!workspaceState?.activeReviewRowId && !workspaceState?.lastOpenedReviewRowId) return;
+
+    const reviewRowId = workspaceState.activeReviewRowId ?? workspaceState.lastOpenedReviewRowId;
+    const savedReview = savedReviews.find((review) => review.id === reviewRowId);
+    if (!savedReview) return;
+
+    const workspaceKey = [
+      user.id,
+      reviewRowId,
+      workspaceState.activePortfolioId ?? "no_portfolio",
+      workspaceState.activePortfolioVersionId ?? "no_version",
+      savedReview.updatedAt ?? "no_review_update",
+      workspaceState.updatedAt ?? "no_workspace_update"
+    ].join(":");
+    if (lastHydratedWorkspaceKeyRef.current === workspaceKey) return;
+
+    const localUpdatedAt = activeReview?.updatedAt ? Date.parse(activeReview.updatedAt) : 0;
+    const cloudUpdatedAt = Date.parse(savedReview.updatedAt ?? workspaceState.updatedAt ?? "0");
+    const cloudHasActiveWorkspace = Boolean(workspaceState.activeReviewRowId || workspaceState.activePortfolioVersionId);
+    if (activeReview?.reviewId && activeReview.reviewId !== savedReview.reviewId && !cloudHasActiveWorkspace && localUpdatedAt > cloudUpdatedAt) {
+      return;
+    }
+
+    lastHydratedWorkspaceKeyRef.current = workspaceKey;
+    hydrateCloudReview(savedReview);
+  }, [activeReview?.reviewId, activeReview?.updatedAt, authStatus, cloudEnabled, hydrateCloudReview, hydrated, reviewsLoading, savedReviews, user?.id, workspaceLoading, workspaceState]);
 
 
   const recordBuilderSetup = useCallback((result: unknown) => {
@@ -1515,7 +1694,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   const markCandidateReady = useCallback(() => {
     setActiveReview((current) => current ? {
       ...current,
-      candidateReady: true,
+      candidateReady: Boolean(current.lineageAvailable && !current.readOnlyHistory && current.candidateGeneration),
       comparisonReady: false,
       verdictReady: false,
       updatedAt: nowIso()
@@ -1538,6 +1717,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const nextAllowedActions = stringArray(apiData.next_allowed_actions);
     const generationStatus = textValue(apiCandidate.generation_status, textValue(resultRecord.generation_status, textValue(candidateGeneration.generation_status, "unknown")));
     const summary: CandidateGenerationSummary = {
+      reviewId: firstText(resultRecord.review_id),
       status,
       stage: "candidate_generation",
       selectedCardId: textValue(resultRecord.selected_card_id, ""),
@@ -1556,7 +1736,12 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
 
     setActiveReview((current) => current ? {
       ...current,
-      candidateGeneration: summary,
+      readOnlyHistory: false,
+      lineageAvailable: true,
+      candidateGeneration: {
+        ...summary,
+        reviewId: summary.reviewId ?? current.reviewId
+      },
       candidateReady: status === "completed",
       stagedProgress: summary.canCompare && status === "completed"
         ? advanceStagedProgress(current.stagedProgress, "candidate", "comparison")
@@ -1593,6 +1778,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const successCriteriaStatus = formatUnknownValue(apiComparison.success_criteria_result, "Unknown");
     const materialityStatus = formatUnknownValue(apiComparison.materiality, "Unknown");
     const summary: ComparisonResultSummary = {
+      reviewId: firstText(resultRecord.review_id),
       status,
       stage: "current_vs_candidate",
       selectedCardId: textValue(resultRecord.selected_card_id, ""),
@@ -1638,7 +1824,12 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
         ...current.reviewSummary,
         siteExplanation
       } : current.reviewSummary,
-      comparisonResult: summary,
+      readOnlyHistory: false,
+      lineageAvailable: true,
+      comparisonResult: {
+        ...summary,
+        reviewId: summary.reviewId ?? current.reviewId
+      },
       stagedProgress: status === "completed" && comparisonResultCanGenerateVerdict(summary)
         ? advanceStagedProgress(current.stagedProgress, "comparison", "verdict")
         : current.stagedProgress,
@@ -1654,8 +1845,8 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   const markComparisonReady = useCallback(() => {
     setActiveReview((current) => current ? {
       ...current,
-      candidateReady: true,
-      comparisonReady: true,
+      candidateReady: Boolean(current.lineageAvailable && !current.readOnlyHistory && current.candidateGeneration),
+      comparisonReady: Boolean(current.lineageAvailable && !current.readOnlyHistory && current.comparisonResult),
       verdictReady: false,
       updatedAt: nowIso()
     } : current);
@@ -1664,9 +1855,9 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   const markVerdictReady = useCallback(() => {
     setActiveReview((current) => current ? {
       ...current,
-      candidateReady: true,
-      comparisonReady: true,
-      verdictReady: true,
+      candidateReady: Boolean(current.lineageAvailable && !current.readOnlyHistory && current.candidateGeneration),
+      comparisonReady: Boolean(current.lineageAvailable && !current.readOnlyHistory && current.comparisonResult),
+      verdictReady: Boolean(current.lineageAvailable && !current.readOnlyHistory && current.verdictResult),
       updatedAt: nowIso()
     } : current);
   }, []);
@@ -1696,6 +1887,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const whatWouldChange = stringArray(apiVerdict.what_would_change_verdict).map((item) => normalizeDisplaySentence(item));
 
     const summary: VerdictResultSummary = {
+      reviewId: firstText(resultRecord.review_id),
       status,
       stage: "decision_verdict",
       selectedCardId: textValue(resultRecord.selected_card_id, ""),
@@ -1759,7 +1951,12 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
         ...current.reviewSummary,
         siteExplanation
       } : current.reviewSummary,
-      verdictResult: summary,
+      readOnlyHistory: false,
+      lineageAvailable: true,
+      verdictResult: {
+        ...summary,
+        reviewId: summary.reviewId ?? current.reviewId
+      },
       stagedProgress: status === "completed"
         ? advanceStagedProgress(current.stagedProgress, "verdict", "report")
         : current.stagedProgress,
@@ -1778,6 +1975,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     const selectedCardId = currentReview?.candidateGeneration?.selectedCardId ?? textValue(resultRecord.selected_card_id, "");
     const candidateId = currentReview?.candidateGeneration?.candidateId ?? textValue(resultRecord.candidate_id, "");
     const summary = cleanReportResultSummary({
+      reviewId: textValue(resultRecord.review_id, currentReview?.reviewId ?? ""),
       status: textValue(resultRecord.status, "unknown"),
       stage: "report",
       selectedCardId,
@@ -1796,7 +1994,12 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     if (!summary) return;
     setActiveReview((current) => current ? {
       ...current,
-      reportResult: summary,
+      readOnlyHistory: false,
+      lineageAvailable: true,
+      reportResult: {
+        ...summary,
+        reviewId: summary.reviewId ?? current.reviewId
+      },
       stagedProgress: summary.status === "completed"
         ? advanceStagedProgress(current.stagedProgress, "report", "report", "completed")
         : current.stagedProgress,
@@ -1805,6 +2008,55 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   }, [activeReview]);
 
   const clearActiveReview = useCallback(() => setActiveReview(null), []);
+
+  useEffect(() => {
+    if (!hydrated || !cloudEnabled || authStatus !== "signed_in" || !user?.id) return;
+    if (!activeReview?.cloudPortfolio?.id || activeReview.portfolioVersionId || !activeReview.holdings.length) return;
+    if (activeReview.reviewId || activeReview.runStatus !== "draft") return;
+    const portfolioId = activeReview.cloudPortfolio.id;
+    const portfolioName = activeReview.cloudPortfolio.name;
+
+    const draftKey = [
+      user.id,
+      portfolioId,
+      activeReview.investorCurrency,
+      holdingsSignature(activeReview.holdings)
+    ].join(":");
+    if (lastEnsuredDraftVersionKeyRef.current === draftKey) return;
+    lastEnsuredDraftVersionKeyRef.current = draftKey;
+
+    let cancelled = false;
+    void (async () => {
+      const version = await ensurePortfolioVersion({
+        portfolioId,
+        portfolioName,
+        investorCurrency: activeReview.investorCurrency,
+        holdings: activeReview.holdings,
+        sourceKind: "draft"
+      });
+      if (cancelled || !version) return;
+      setActiveReview((current) => {
+        if (!current?.cloudPortfolio || current.reviewId || current.portfolioVersionId) return current;
+        if (current.cloudPortfolio.id !== portfolioId) return current;
+        return {
+          ...current,
+          cloudPortfolio: {
+            ...current.cloudPortfolio,
+            versionId: version.id,
+            versionNumber: version.versionNumber
+          },
+          portfolioVersionId: version.id,
+          portfolioVersionNumber: version.versionNumber,
+          readOnlyHistory: false,
+          lineageAvailable: false,
+          updatedAt: nowIso()
+        };
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeReview, authStatus, cloudEnabled, ensurePortfolioVersion, hydrated, user?.id]);
 
   useEffect(() => {
     if (!hydrated || !cloudEnabled || authStatus !== "signed_in" || !user?.id) return;

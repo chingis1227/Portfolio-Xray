@@ -11,7 +11,6 @@ from src.block_2_4_hidden_exposure import (
     EVIDENCE_DIRECTIONS,
     EVIDENCE_SOURCES,
     MAX_CONTRIBUTING_ASSETS,
-    LEGACY_PCA_RAW_SECTION,
     build_block_2_4_hidden_exposure,
     build_block_2_4_legacy_enrichment,
     build_block_2_4_stress_enrichment,
@@ -952,54 +951,52 @@ def _stress_report_with_portfolio_pca() -> dict:
     }
 
 
-def test_block_2_4_session_09_legacy_enrichment_builder() -> None:
+def test_block_2_4_legacy_enrichment_builder_is_disabled_for_non_pca_correlation() -> None:
     enrichment = build_block_2_4_legacy_enrichment(_stress_report_with_portfolio_pca())
-    assert enrichment is not None
-    assert enrichment["available"] is True
-    assert enrichment["raw_pc1_explained_variance_ratio"] == 0.65
-    assert enrichment["residual_pc1_explained_variance_ratio"] == 0.48
-    assert enrichment["factor_residual_share"] == 0.35
-    assert "portfolio_pca.raw" in enrichment["sources"]
-    assert enrichment["legacy_section_refs"]["raw_pca"] == LEGACY_PCA_RAW_SECTION
+    assert enrichment is None
 
 
-def test_block_2_4_session_09_correlation_pca_cross_ref_evidence() -> None:
-    enrichment = build_block_2_4_legacy_enrichment(_stress_report_with_portfolio_pca())
+def test_block_2_4_correlation_concentration_ignores_legacy_pca_enrichment() -> None:
+    legacy_enrichment = {
+        "available": True,
+        "sources": ["portfolio_pca.raw", "portfolio_pca.residual"],
+        "raw_pc1_explained_variance_ratio": 0.65,
+        "residual_pc1_explained_variance_ratio": 0.48,
+        "factor_residual_share": 0.35,
+    }
     alert = build_block_2_4_hidden_exposure(
         _block_2_1(),
         _block_2_2(),
         _block_2_3(),
-        legacy_enrichment=enrichment,
+        legacy_enrichment=legacy_enrichment,
     )["alerts"]["correlation_concentration"]
+    assert alert["status"] != "Unavailable"
+    assert alert["score"] is not None
     metrics = {row["metric"] for row in alert["evidence"]}
-    assert "legacy_pca_pc1_raw" in metrics
-    assert "legacy_pca_pc1_residual" in metrics
-    assert "legacy_factor_residual_share" in metrics
-    raw_row = next(row for row in alert["evidence"] if row["metric"] == "legacy_pca_pc1_raw")
-    assert raw_row["source"] == "portfolio_analytics"
-    assert raw_row["value"]["legacy_section"] == LEGACY_PCA_RAW_SECTION
-    assert raw_row["direction"] == "above_threshold"
-    assert any("PCA common-factor" in lim for lim in alert["limitations"])
-    assert any(
-        "legacy_pca_cross_ref" in note for note in alert["calculation_notes"]
-    )
+    assert "legacy_pca_pc1_raw" not in metrics
+    assert "legacy_pca_pc1_residual" not in metrics
+    assert "legacy_factor_residual_share" not in metrics
+    assert "highest_pair_correlation" in metrics
+    assert "duplicate_exposure_weight" in metrics
+    assert "dominant_main_risk_factor_weight" in metrics
+    assert any("PCA is not read or scored" in lim for lim in alert["limitations"])
+    assert any("pca_not_used" in note for note in alert["calculation_notes"])
 
 
-def test_block_2_4_session_09_scores_unchanged_with_legacy_enrichment() -> None:
+def test_block_2_4_scores_unchanged_when_legacy_enrichment_argument_is_passed() -> None:
     base = build_block_2_4_hidden_exposure(_block_2_1(), _block_2_2(), _block_2_3())["alerts"]
-    enrichment = build_block_2_4_legacy_enrichment(_stress_report_with_portfolio_pca())
     enriched = build_block_2_4_hidden_exposure(
         _block_2_1(),
         _block_2_2(),
         _block_2_3(),
-        legacy_enrichment=enrichment,
+        legacy_enrichment={"available": True, "sources": ["portfolio_pca.raw"]},
     )["alerts"]
     for alert_id in ALERT_IDS:
         assert base[alert_id]["score"] == enriched[alert_id]["score"]
         assert base[alert_id]["status"] == enriched[alert_id]["status"]
 
 
-def test_block_2_4_session_09_xray_wires_legacy_enrichment_meta() -> None:
+def test_block_2_4_xray_does_not_wire_legacy_pca_enrichment_meta() -> None:
     xray = build_portfolio_xray_v2(
         analysis_setup={"analysis_portfolio": {"portfolio_role": "test"}},
         weights={"SPY": 0.45, "BND": 0.4, "HYG": 0.15},
@@ -1010,14 +1007,14 @@ def test_block_2_4_session_09_xray_wires_legacy_enrichment_meta() -> None:
         taxonomy_rows=_taxonomy(),
     )
     meta = xray["block_2_4_hidden_exposure"]["diagnostics_meta"]
-    assert meta["legacy_enrichment_wire_time"] is True
-    assert "portfolio_pca.raw" in meta["legacy_enrichment_sources"]
+    assert meta["legacy_enrichment_wire_time"] is False
+    assert meta["legacy_enrichment_sources"] == []
+    assert meta["pca_used_for_correlation_concentration"] is False
     metrics = {
         row["metric"]
         for row in xray["block_2_4_hidden_exposure"]["alerts"]["correlation_concentration"]["evidence"]
     }
-    assert "legacy_pca_pc1_raw" in metrics
-
+    assert "legacy_pca_pc1_raw" not in metrics
 
 def test_block_2_4_session_08_xray_wires_stress_enrichment_meta() -> None:
     stress_report = _stress_report_with_hedge_gap()

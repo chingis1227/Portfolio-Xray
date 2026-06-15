@@ -53,6 +53,14 @@ in-flight review after browser refresh. The source of truth for that wrapper is
 `docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`. The existing synchronous FastAPI and
 CLI/file-driven compatibility behavior remains valid for compatibility callers.
 
+Current live Run Diagnostics boundary: the staged diagnosis path does not compute or emit macro
+regime diagnostics, regime factor analytics, regime portfolio metrics, or portfolio PCA in new
+`analysis_subject/stress_report.json` artifacts. Low-level macro/PCA helpers and historical
+technical sections may remain for advanced or legacy compatibility, but they are not live product
+diagnosis evidence. The user-facing `Correlation Concentration` alert remains active and is based on
+non-PCA diversification evidence from duplicate exposure, pairwise correlation, concentration flags,
+and factor/risk concentration.
+
 ## Implementation Scope
 
 The canonical portfolio-first workflow contract is [Portfolio Review Workflow
@@ -106,7 +114,9 @@ Implemented backend / advanced / legacy support:
 - market data loading, FX conversion, and return panel construction
 - legacy policy optimization and weight release checks
 - portfolio metrics, dynamic backtesting, risk contribution diagnostics, and stress diagnostics
-- factor, macro/regime, PCA, scenario-library, and robustness diagnostics
+- factor, scenario-library, and robustness diagnostics; macro/regime and PCA helpers may remain as
+  advanced or legacy compatibility infrastructure, but they are not emitted by current live Run
+  Diagnostics
 - benchmark and candidate portfolio reports
 - canonical candidate comparison and V1 decision-support artifacts: robustness scorecard, Portfolio Health Score, Selection/No-Trade decision, trade-off and model-risk diagnostics, Assumption Sensitivity, Action Plan, technical Monitoring, generated Decision Journal, current-vs-policy status, and candidate factory run summary. These are not current Core MVP product flow; they are advanced/backend/technical/generated support unless explicitly requested.
 - decision package report summary (`decision_package_summary.txt` / `.json`, optional `report.txt` append, decision-package PDF after comparison)

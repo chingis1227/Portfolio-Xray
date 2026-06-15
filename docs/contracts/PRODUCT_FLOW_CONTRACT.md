@@ -64,6 +64,7 @@ Current MVP frontend route reality may merge or defer some backend product steps
 -> /onboarding/name
 -> /onboarding/investor-type
 -> /onboarding/loading
+-> /workspace (returning signed-in account home)
 -> /portfolio-input
 -> /diagnosis
 -> /evidence
@@ -74,7 +75,7 @@ Current MVP frontend route reality may merge or defer some backend product steps
 -> /report
 ```
 
-The public landing opens the required email sign-in step. Local development may use `/onboarding/name?dev_bypass=1` as a preview shortcut while sign-in is being stabilized; that shortcut is not the product path. New users complete onboarding, which captures the planning profile and writes bounded Client Fit context before Portfolio Input. Returning signed-in users with a completed Portfolio MRI onboarding profile may skip the repeated name/questionnaire screens and open Portfolio Input with the saved Client Fit context restored. `/client-profile` remains an advanced/manual Client Fit editor, not the primary journey start.
+The public landing opens the required email sign-in step. Local development may use `/onboarding/name?dev_bypass=1` as a preview shortcut while sign-in is being stabilized; that shortcut is not the product path. New users complete onboarding, which captures the planning profile and writes bounded Client Fit context before Portfolio Input. Returning signed-in users with a completed Portfolio MRI onboarding profile may skip the repeated name/questionnaire screens and open `/workspace` when saved workspace, portfolio, draft, or review history exists. `/workspace` is the account home: it restores saved work, shows the latest active review and compact history, and does not run calculations on login. Users without saved workspace data may continue to Portfolio Input with saved Client Fit context restored. `/client-profile` remains an advanced/manual Client Fit editor, not the primary journey start.
 
 `/client-fit` displays the bounded fit interpretation after Stress Lab and before Hypothesis. `/hypothesis` may contain Problem Classification handoff, Candidate Launchpad, Builder setup, and the explicit candidate-generation attempt for the current MVP. There is no separate current Monitoring route; Monitoring / What Changed is a light product artifact and may be surfaced later or in report/summary context. Route merges do not change the product step order or boundaries.
 
@@ -104,9 +105,9 @@ migration work. The existing synchronous FastAPI and
 CLI/file-driven compatibility paths remain valid current behavior until the frontend is explicitly
 migrated.
 
-Supabase remains compact-only in this target model. It may store review status, current stage, stage
-statuses, compact summaries, timestamps, and saved portfolio links. It must not store raw generated
-artifacts, raw diagnosis or stress JSON, price history, PDFs, full run folders, or local artifact paths.
+Supabase remains compact-only in this target model. It may store account workspace state, saved portfolio inputs, immutable portfolio-version snapshots, review status, current stage, stage statuses, compact summaries, timestamps, archive markers, and saved portfolio links. It must not store raw generated artifacts, raw diagnosis or stress JSON, price history, PDFs, full run folders, or local artifact paths.
+
+Completed reviews are immutable user-history snapshots. Editing a portfolio after a completed review creates a new draft/review snapshot tied to a new portfolio version; it must not mutate the old completed review or make old downstream verdict/report evidence look current. Login and workspace hydration restore compact state only and must not automatically rerun diagnosis, refresh market data, generate candidates, compare portfolios, or regenerate verdict/report artifacts. Recalculation is always an explicit user action.
 
 The target first-run/demo path must support deterministic Demo / QA mode. Demo / QA mode uses frozen
 fixture evidence and fixed data-freshness disclosure so the first product experience does not depend

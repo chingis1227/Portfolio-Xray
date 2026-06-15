@@ -62,7 +62,21 @@ export function Sidebar() {
         </div>
       ) : null}
 
-      <nav className="mt-8 space-y-1.5" aria-label="Portfolio MRI gated journey rail">
+      <nav className="mt-8 space-y-1.5" aria-label="Portfolio MRI account navigation">
+        <Link
+          href="/workspace"
+          className={`pmri-focus pmri-nav-text group flex w-full items-center justify-between rounded-2xl border px-3.5 py-3 text-left transition ${pathname.startsWith("/workspace") ? "border-pmri-blue/22 bg-pmri-blue/[0.055] text-pmri-text shadow-[inset_2px_0_0_rgba(168,189,211,0.42)]" : "border-transparent text-pmri-text2 hover:border-pmri-border/70 hover:bg-white/[0.035]"}`}
+          onClick={() => setLockMessage(null)}
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <span className={`h-2 w-2 rounded-full ${pathname.startsWith("/workspace") ? "bg-pmri-blue" : "bg-pmri-border"}`} />
+            <span className="truncate">Workspace</span>
+          </span>
+          <span className="data-figure text-[11px] text-pmri-muted/75">Home</span>
+        </Link>
+      </nav>
+
+      <nav className="mt-3 space-y-1.5" aria-label="Portfolio MRI gated journey rail">
         {steps.map((step) => {
           const content = (
             <>

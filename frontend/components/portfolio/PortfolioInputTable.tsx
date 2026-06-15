@@ -139,6 +139,13 @@ function stageReady(progress: Pick<StagedReviewStatusResponse, "stages"> | Stage
   return status === "completed" || status === "partial";
 }
 
+function stagedStatusLabel(progress: StagedReviewProgress | null | undefined) {
+  if (!progress) return "No active staged review";
+  const currentStage = progress.currentStage || "input";
+  const status = progress.status || "pending";
+  return `${currentStage}: ${status}`;
+}
+
 function diagnosisChainReady(progress: Pick<StagedReviewStatusResponse, "stages"> | StagedReviewProgress) {
   return stageReady(progress, "xray")
     && stageReady(progress, "stress")
@@ -1254,6 +1261,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
                   Portfolio MRI is reviewing allocation, concentration, risk drivers, and stress vulnerabilities.
                   You can keep this page open; results will appear automatically.
                 </p>
+                <p className="sr-only">{stagedStatusLabel(stagedProgress)}</p>
                 {stagedProgress?.safeError ? (
                   <p className="mt-3 rounded-xl border border-pmri-risk/35 bg-pmri-risk/10 px-3 py-2 text-xs leading-5 text-pmri-risk">
                     {stagedProgress.safeError.message}
@@ -1477,11 +1485,12 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
           <p className="pmri-label">Optional recovery</p>
           <h2 className="pmri-heading-section mt-2 text-lg text-pmri-text">Reload an existing review by ID</h2>
           <p className="mt-2 text-sm leading-6 text-pmri-muted">
-            Use this after a page refresh or browser restart. Recovery restores the current portfolio diagnosis for that review ID.
+            Use this after a page refresh or browser restart; staged diagnosis progress is safe to refresh. Recovery restores the current portfolio diagnosis for that review ID.
             Candidate, comparison, verdict, and report steps must be reviewed again.
           </p>
           <p className="mt-2 text-xs leading-5 text-pmri-muted">
             Saved browser state keeps only a compact summary, not the full evidence package.
+            Data freshness: recovered compact state is not recalculated automatically.
           </p>
         </div>
         <div>

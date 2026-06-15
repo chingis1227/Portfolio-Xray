@@ -734,7 +734,7 @@ Each alert contains `status`, `score`, `evidence`, `explanation`, `why_it_matter
 
 Informational evidence only: `eee_10`, `skewness`, `kurtosis`, `count_drawdowns_gt_20`, `recovery_months`, `drawdown_recovered`, `vol_of_vol`, `rel_vol_of_vol` (`metadata`), `rolling_volatility_12m_latest` (`rolling_diagnostics.core_view`). `limitations[]` documents missing rolling Sharpe instability export and vol-of-vol as proxy only.
 
-`correlation_concentration` documents FX decomposition limits in `limitations[]`.
+`correlation_concentration` documents FX decomposition limits and its non-PCA evidence boundary in `limitations[]`. It must not read, score, or expose `stress_report.portfolio_pca` in the product block.
 
 **Contributing assets (Session 03+):** each alert includes mandatory `contributing_assets[]` (max 3). Built from Block 2.1 `capital_allocation_breakdown.by_asset` and `taxonomy_rows` passed at wire time from `build_portfolio_xray_v2` (empty array when none qualify). Schema per row: `ticker`, `weight_pct` (fraction 0–1), `expected_role`, `behavior_flag`, `source` (`block_2_1`). Per-alert selection uses taxonomy-aware filters (equity-like labels, rates/FI, credit/carry, duplicate/correlation tickers, hedge roles, largest weights for tail). All alerts document that per-asset factor betas are not computed in Block 2.4.
 
@@ -765,14 +765,7 @@ Each evidence item is structured:
 
 Each alert includes mandatory `confirmation_status` (Session 08+).
 
-**Legacy PCA cross-ref (Session 09+):** optional wire-time summary via `build_block_2_4_legacy_enrichment(stress_report)` passed into `build_block_2_4_hidden_exposure` from `build_portfolio_xray_v2`. Block 2.4 still does **not** run Stress Lab or score PCA in product alerts. When enrichment is available:
-
-| Field / behavior | Rule |
-| --- | --- |
-| `correlation_concentration` evidence | Informational `legacy_pca_pc1_raw`, `legacy_pca_pc1_residual`, `legacy_factor_residual_share` with `source=portfolio_analytics` |
-| `correlation_concentration` limitations | Documents that PCA cluster concentration is scored in legacy `sections.hidden_risk_detector` (`correlation_or_common_factor_concentration`, `residual_pca_concentration`), not in Block 2.4 |
-| Scores | Unchanged under `heuristic_v2` (evidence-only wiring) |
-| `diagnostics_meta` | `legacy_enrichment_wire_time`, `legacy_enrichment_sources[]` |
+**Correlation Concentration non-PCA contract (2026-06-15):** live Portfolio Diagnosis no longer wires PCA into Block 2.4. The deprecated `legacy_enrichment` argument on `build_block_2_4_hidden_exposure` is accepted only for caller compatibility and must not add `legacy_pca_pc1_raw`, `legacy_pca_pc1_residual`, or `legacy_factor_residual_share` evidence. `diagnostics_meta.legacy_enrichment_wire_time` remains `false`, `diagnostics_meta.legacy_enrichment_sources` remains `[]`, and `diagnostics_meta.pca_used_for_correlation_concentration` is `false` for product Block 2.4. The alert is supported by non-PCA evidence: scored signals `highest_pair_correlation`, `duplicate_exposure_weight`, and `dominant_main_risk_factor_weight`; informational pairwise breadth evidence `top3_lowest_correlation_pairs`, `lowest_pair_correlation`, `avg_pairwise_correlation`, and `lack_of_diversifying_pairs`; currency evidence; and Block 2.3 factor concentration evidence.
 
 Target categories:
 

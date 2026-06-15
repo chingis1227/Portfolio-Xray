@@ -243,7 +243,7 @@ Apply in order; stop at 5 rows:
 1. **Scored signals first** — metrics that participate in `heuristic_v2` score for that alert (see per-alert priority lists below).
 2. **Severity** — prefer `direction` = `above_threshold` or `conflicting` over `present` over `below_threshold`; skip `missing` in Pareto.
 3. **Magnitude** — among numeric values, prefer larger deviation vs threshold when encoded in `interpretation`.
-4. **Informational tie-break** — factor variance, PCA cross-ref, stress cross-ref only after scored rows exhausted.
+4. **Informational tie-break** - factor variance, currency breadth, and stress cross-ref only after scored rows exhausted. Do not show PCA rows for `correlation_concentration`; the product alert is non-PCA.
 
 **Per-alert scored-metric priority (first pass):**
 
@@ -256,7 +256,7 @@ Apply in order; stop at 5 rows:
 | `weak_hedge_behavior` | `hedge_labeled_weight`, `equity_or_credit_beta`, `downside_beta`, `rolling_correlation` |
 | `tail_risk` | `es_95`, `es_99`, `max_drawdown`, `var_95`, `var_99`, `downside_deviation`, `pct_time_underwater`, `downside_beta` |
 
-Second pass (informational, max 2 rows): dominant factor share, hedge gap summary, PCA cross-ref, currency flags — only if fewer than 3 scored rows available.
+Second pass (informational, max 2 rows): dominant factor share, hedge gap summary, pairwise breadth, or currency flags - only if fewer than 3 scored rows available. PCA rows are not part of the product Pareto view.
 
 ### 5.3 Metric → label (examples)
 

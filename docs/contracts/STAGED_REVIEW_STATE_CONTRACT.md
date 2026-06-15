@@ -6,7 +6,7 @@ This document is the source of truth for the implemented web execution contract 
 `Run diagnosis`, receives a `review_id` immediately, sees stage progress, and then receives partial
 results as backend stages complete. Sessions 2-7 implement the additive backend start/status
 endpoints, run-local `review_state.json`, diagnosis-stage synchronization, deterministic Demo / QA
-execution, frontend polling, optional compact Supabase persistence, refresh recovery, and explicit
+execution, frontend polling, optional compact Supabase persistence, account workspace recovery, refresh recovery, and explicit
 downstream stage synchronization for candidate, comparison, verdict, and report. The current
 synchronous FastAPI endpoint remains available as backend compatibility until a later retirement plan
 explicitly removes it.
@@ -250,15 +250,17 @@ actions. Live mode remains on the normal adapter path.
 
 ## Supabase compact-only boundary
 
-Supabase remains optional compact persistence. As of Session 6, the frontend may write compact
-staged progress while polling and compact completed stage summaries after local stage success. It
-may store:
+Supabase remains optional compact persistence. As of the workspace/history plan, the frontend may write compact staged progress while polling, compact completed stage summaries after local stage success, and compact account workspace records. It may store:
 
 - `review_id`;
+- authenticated user workspace pointers;
+- active portfolio and active portfolio-version links;
+- immutable compact portfolio-version snapshots;
 - overall review status;
 - current stage;
 - stage statuses;
 - compact stage summaries;
+- archive timestamps for portfolios and reviews;
 - timestamps;
 - compact in-flight progress recorded from Portfolio Input or Diagnosis polling;
 - compact verdict/report summaries;
@@ -279,6 +281,8 @@ Before each cloud write, the frontend must strip local paths, artifact reference
 artifact filenames, raw artifact maps, and other generated-output references. If a compact stage
 summary exceeds the configured soft limit, the cloud write should be skipped and the local staged
 review should continue.
+
+Login, `/workspace` hydration, and compact history recovery must not trigger backend execution. They load compact state only. A completed review is treated as immutable history for its portfolio version. If the user edits the portfolio, the UI creates a new draft/review snapshot and clears downstream readiness instead of reusing old candidate, comparison, verdict, or report evidence as current.
 
 ## Validation for this contract
 

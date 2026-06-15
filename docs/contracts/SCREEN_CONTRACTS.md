@@ -22,6 +22,7 @@ Canonical visible user path:
 -> /onboarding/name
 -> /onboarding/investor-type
 -> /onboarding/loading
+-> /workspace (returning signed-in account home)
 -> /portfolio-input
 -> /diagnosis
 -> /evidence
@@ -61,12 +62,13 @@ There is no current `/candidate`, `/monitoring`, `/what-changed`, optimizer-aren
 | Route | Product role | Must show | Primary CTA / next step | Must not show |
 | --- | --- | --- | --- | --- |
 | `/` | Public landing and product explanation. | Header/nav, hero, problem, workflow, architecture, precision, final CTA. | `Enter Platform` -> `/onboarding/sign-in`. | Platform sidebar, top journey rail, optimizer cockpit language. |
-| `/onboarding/sign-in` | Required email-first entry. | Email step, verification step, local fallback on localhost. | Continue to onboarding for new users; return completed signed-in users directly to Portfolio Input. | Treat local fallback as canonical product path. |
+| `/onboarding/sign-in` | Required email-first entry. | Email step, verification step, local fallback on localhost. | Continue to onboarding for new users; route completed signed-in users with saved workspace/history to `/workspace`; route completed users without saved workspace data to Portfolio Input. | Treat local fallback as canonical product path; do not run diagnosis or refresh market data during login. |
 | `/onboarding/name` | Friendly personal setup. | Name input and Continue CTA. | `/onboarding/investor-type`. | Portfolio diagnostics or suitability language. |
 | `/onboarding/investor-type` | Five-question Client Fit intake. | One question at a time, progress, Back/Next/final save; questions cover stress-loss reaction, withdrawal horizon, temporary-loss limit, return target, and concentration response. | `/onboarding/loading`. | Investment advice or optimizer mandates. |
-| `/onboarding/loading` | Setup transition. | Setup progress and Client Fit context save messaging. | Auto-redirect to `/portfolio-input`. | Platform sidebar. |
-| `/portfolio-input` | Step 01: define current portfolio. | Client Fit summary, empty-by-default holdings/weights input, validation, recovery. | Run diagnosis -> `/diagnosis`. | Prefilled demo allocation, optimizer targets, tax settings, suitability approval, technical staged-progress table. |
-| `/diagnosis` | Step 02: current portfolio diagnosis. | Diagnosis summary, locked state, or simple product-facing running state. | Continue to Stress Lab or return to Portfolio Input. | Rebalance recommendation from diagnosis alone, technical staged-progress table. |
+| `/onboarding/loading` | Setup transition. | Setup progress and Client Fit context save messaging. | Auto-redirect to `/workspace` when saved workspace/history exists for a returning user; otherwise `/portfolio-input`. | Platform sidebar. |
+| `/workspace` | Signed-in account home and review-history hub. | Latest active review, active portfolio/version, compact stage readiness, portfolio library, review history, archive states, and clear no-auto-recalculation copy. | Continue latest review, edit as new draft, start new review, open compact history, or load a saved portfolio. | Act as a calculation step, auto-run diagnosis on login, imply a historical verdict applies to edited input, expose raw artifact paths, or replace the 8-step review rail. |
+| `/portfolio-input` | Step 01: define current portfolio. | Client Fit summary, empty-by-default holdings/weights input, validation, recovery, and clear draft/new-review semantics when loaded from workspace. | Run diagnosis -> `/diagnosis`. | Prefilled demo allocation, optimizer targets, tax settings, suitability approval, technical staged-progress table, silent overwrite of completed review evidence. |
+| `/diagnosis` | Step 02: current portfolio diagnosis. | Diagnosis summary, hidden-risk alerts such as non-PCA `Correlation Concentration`, locked state, or simple product-facing running state. | Continue to Stress Lab or return to Portfolio Input. | Rebalance recommendation from diagnosis alone, Macro Dashboard/PCA diagnostics, technical staged-progress table. |
 | `/evidence` | Step 03: Stress Test Lab. | Stress evidence, helped/hurt, hedge gaps, limitations, or locked state. | Continue to Client Fit. | Candidate/comparison/verdict language. |
 | `/client-fit` | Step 04: profile-fit interpretation. | Fit status, source quality, target rows, explanations, or locked state. | Continue to Hypothesis. | Suitability approval or hiding diagnostic issues. |
 | `/hypothesis` | Step 05: one diagnostic test path. | Diagnosis recap, Launchpad, Builder setup, candidate generation state. | Generate one test candidate / continue to Comparison. | Candidate as recommendation or auto-generated action. |
@@ -81,6 +83,9 @@ There is no current `/candidate`, `/monitoring`, `/what-changed`, optimizer-aren
 - [ ] Platform routes show the 8-step journey rail.
 - [ ] Page-header step labels match the rail.
 - [ ] Locked states show the current route step and the missing prerequisite.
+- [ ] `/workspace` restores saved work without running diagnosis or market refresh automatically.
+- [ ] Historical compact reviews are clearly read-only unless live same-owner run-local lineage is recovered.
+- [ ] Editing a completed review portfolio creates a new draft and does not mutate the old completed review.
 - [ ] `/client-profile` stays advanced/manual.
 - [ ] `/hypothesis` remains the merged Launchpad/Builder/Candidate screen unless a route split is intentionally approved.
 - [ ] Monitoring / What Changed remains deferred unless a route decision promotes it.

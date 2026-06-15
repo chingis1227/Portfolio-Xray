@@ -200,9 +200,15 @@ function startFastApi(port) {
     ? ['-3', '-m', 'uvicorn', 'src.api.app:app', '--host', host, '--port', String(port)]
     : ['-m', 'uvicorn', 'src.api.app:app', '--host', host, '--port', String(port)];
   const lines = [];
+  const internalSecret = process.env.PMRI_FASTAPI_INTERNAL_SECRET || process.env.PMRI_INTERNAL_AUTH_SECRET || 'vertical-qa-internal-secret';
   const child = spawn(python, args, {
     cwd: repoRoot,
-    env: { ...process.env, PYTHONUTF8: '1' },
+    env: {
+      ...process.env,
+      PYTHONUTF8: '1',
+      PMRI_FASTAPI_INTERNAL_SECRET: internalSecret,
+      PMRI_INTERNAL_AUTH_SECRET: internalSecret
+    },
     stdio: ['ignore', 'pipe', 'pipe']
   });
   child.stdout.on('data', (chunk) => lines.push(chunk.toString()));
@@ -214,12 +220,17 @@ function startNext(frontendPort, fastapiPort) {
   const nextCli = path.join(frontendRoot, 'node_modules', 'next', 'dist', 'bin', 'next');
   assert.ok(fs.existsSync(nextCli), `Next CLI not found at ${nextCli}; run npm install in frontend first.`);
   const lines = [];
+  const internalSecret = process.env.PMRI_FASTAPI_INTERNAL_SECRET || process.env.PMRI_INTERNAL_AUTH_SECRET || 'vertical-qa-internal-secret';
   const child = spawn(process.execPath, [nextCli, 'dev', '--hostname', host, '--port', String(frontendPort)], {
     cwd: frontendRoot,
     env: {
       ...process.env,
       BROWSER: 'none',
-      PMRI_FASTAPI_BASE_URL: `http://${host}:${fastapiPort}`
+      PMRI_FASTAPI_BASE_URL: `http://${host}:${fastapiPort}`,
+      PMRI_FASTAPI_INTERNAL_SECRET: internalSecret,
+      PMRI_INTERNAL_AUTH_SECRET: internalSecret,
+      PMRI_PORTFOLIO_API_AUTH_MODE: process.env.PMRI_PORTFOLIO_API_AUTH_MODE || 'dev_bypass',
+      PMRI_PORTFOLIO_API_DEV_USER_ID: process.env.PMRI_PORTFOLIO_API_DEV_USER_ID || 'vertical-qa-user'
     },
     stdio: ['ignore', 'pipe', 'pipe']
   });
@@ -669,6 +680,22 @@ async function pollStagedDiagnosisReady(page, baseUrl, reviewId) {
   throw new Error(`Timed out waiting for staged diagnosis chain for ${reviewId}. Last status: ${JSON.stringify(latest).slice(0, 1000)}`);
 }
 
+async function pollStageReady(page, baseUrl, reviewId, stage) {
+  const deadline = Date.now() + requestTimeoutMs;
+  let latest = null;
+  while (Date.now() < deadline) {
+    const status = await browserJson(page, 'GET', `${baseUrl}/api/portfolio/review/status?reviewId=${encodeURIComponent(reviewId)}`);
+    assertOk(status, `staged status ${reviewId}`);
+    latest = status.body;
+    if (latest.safe_error || latest.status === 'failed') {
+      throw new Error(`Staged review failed while waiting for ${stage} on ${reviewId}: ${JSON.stringify(latest.safe_error || latest).slice(0, 1000)}`);
+    }
+    if (stageReady(latest, stage)) return latest;
+    await sleep(1000);
+  }
+  throw new Error(`Timed out waiting for staged ${stage} on ${reviewId}. Last status: ${JSON.stringify(latest).slice(0, 1000)}`);
+}
+
 async function recoverStagedDiagnosis(page, baseUrl, reviewId) {
   const recovery = await browserJson(page, 'POST', `${baseUrl}/api/portfolio/review/recover`, {
     review_id: reviewId
@@ -766,6 +793,7 @@ async function runScenario(page, baseUrl, scenario, index) {
   const candidateId = text(candidate.body.candidate_id) || text(lineage(candidate.body).candidate_id);
   assert.ok(candidateId, `${scenario.id} returned no candidate id.`);
   assertLineage(candidate.body, { review_id: reviewId, selected_card_id: selectedCardId, candidate_id: candidateId }, `${scenario.id} candidate`);
+  await pollStageReady(page, baseUrl, reviewId, 'candidate');
 
   const comparison = await browserJson(page, 'POST', `${baseUrl}/api/portfolio/comparison/generate`, {
     review_id: reviewId,

@@ -150,10 +150,6 @@ def _install_report_mocks(monkeypatch: pytest.MonkeyPatch, panel: MonthlyDataRes
         "run_report.build_scenario_library_normalized",
         lambda **kwargs: {"version": "test", "scenarios": [], "n_scenarios": 0},
     )
-    monkeypatch.setattr(
-        "run_report.macro_regime_diagnostics",
-        lambda **kwargs: {"labels_monthly": [{"date": "2020-01-31", "regime": "expansion"}]},
-    )
 
 
 def test_snapshot_metrics_match_full_and_lightweight_profiles(

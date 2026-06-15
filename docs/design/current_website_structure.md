@@ -9,8 +9,10 @@ This document describes what the current site shows: route order, page blocks, v
 Canonical product entry:
 
 ```text
-/ -> /onboarding/sign-in -> /onboarding/name -> /onboarding/investor-type -> /onboarding/loading -> /portfolio-input
+/ -> /onboarding/sign-in -> /onboarding/name -> /onboarding/investor-type -> /onboarding/loading -> /workspace -> /portfolio-input
 ```
+
+`/workspace` is the signed-in account home for returning users with saved workspace, portfolio, draft, or review history. First-time users without saved workspace data may continue directly from onboarding to Portfolio Input.
 
 Local testing shortcut:
 
@@ -27,6 +29,7 @@ Public routes (`/` and `/onboarding/*`) do not show the platform sidebar or top 
 Platform routes show:
 
 - left sidebar brand block: `Portfolio MRI` / `Investment Decision Room`;
+- account navigation entry for `Workspace` outside the 8-step review rail;
 - gated journey rail with 8 steps: Portfolio, Diagnosis, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report;
 - sticky top progress rail with the current route step;
 - large page header card;
@@ -140,7 +143,7 @@ Main content:
   - preparing portfolio input workspace;
   - keeping diagnostics current-portfolio-first;
   - opening the decision room.
-- Redirects to `/portfolio-input`.
+- Redirects to `/workspace` when saved workspace/history exists for a returning signed-in user; otherwise redirects to `/portfolio-input` for a first portfolio input.
 
 ## Platform route shell
 
@@ -156,6 +159,27 @@ The shell begins after onboarding. The journey labels and step numbers are:
 | 06 | `/comparison` | Comparison | Compare current vs one generated candidate. |
 | 07 | `/verdict` | Verdict | Show non-binding decision-support outcome. |
 | 08 | `/report` | Report | Produce a grounded client-ready preview. |
+
+## `/workspace`
+
+Role: signed-in account home and compact review-history hub. This route restores saved work and lets the user choose what to continue. It is not a calculation stage and must not start diagnosis, refresh market data, generate candidates, compare portfolios, or regenerate verdict/report artifacts on load.
+
+Main blocks:
+
+1. Current workspace card
+   - Shows active portfolio name, latest review status, latest `reviewId`, and stage readiness.
+   - CTAs: `Continue review`, `Edit as new draft`, and `Start new review`.
+   - Copy states that logging in restores saved work and does not recalculate automatically.
+
+2. Portfolio library
+   - Shows active saved portfolios by default.
+   - Archived portfolios are hidden unless the user opens the archive view.
+   - Loading a saved portfolio prepares a new or existing draft; it does not mutate completed review evidence.
+
+3. Review history
+   - Shows compact reviews for the signed-in user with portfolio snapshot summary, status, stage chips, and archived state.
+   - `Open compact summary` is read-only when live run-local lineage is unavailable.
+   - `Recover live review` is available only when same-owner backend lineage can be verified.
 
 ## `/portfolio-input`
 

@@ -12,6 +12,9 @@ export type SavedPortfolioRecord = {
   baseCurrency: string;
   riskProfile?: string;
   holdings: ReviewHolding[];
+  archivedAt?: string;
+  latestVersionId?: string;
+  versionNumber?: number;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -37,6 +40,10 @@ export type SavedReviewRecord = {
   mode?: string;
   status: string;
   portfolioId?: string;
+  portfolioVersionId?: string;
+  archivedAt?: string;
+  readOnlyHistory: boolean;
+  lineageAvailable: boolean;
   portfolioSnapshot: { investorCurrency?: string; holdings?: ReviewHolding[] };
   compactSummary: Record<string, unknown>;
   clientFit?: NonNullable<ReviewSummary["clientFit"]>;
@@ -44,6 +51,31 @@ export type SavedReviewRecord = {
   stageStatuses: Partial<Record<ReviewStageName, string>>;
   startedAt?: string;
   completedAt?: string;
+  updatedAt?: string;
+};
+
+export type WorkspaceStateRecord = {
+  userId: string;
+  activePortfolioId?: string;
+  activePortfolioVersionId?: string;
+  activeReviewRowId?: string;
+  lastOpenedReviewRowId?: string;
+  metadata: Record<string, unknown>;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type PortfolioVersionRecord = {
+  id: string;
+  portfolioId: string;
+  userId: string;
+  versionNumber: number;
+  baseCurrency: string;
+  holdingsSnapshot: ReviewHolding[];
+  inputFingerprint?: string;
+  sourceKind: string;
+  sourceReviewId?: string;
+  createdAt?: string;
   updatedAt?: string;
 };
 
@@ -73,15 +105,20 @@ type SupabasePersistenceContextValue = {
   userId: string | null;
   savedPortfolios: SavedPortfolioRecord[];
   savedReviews: SavedReviewRecord[];
+  workspaceState: WorkspaceStateRecord | null;
   portfoliosLoading: boolean;
   reviewsLoading: boolean;
+  workspaceLoading: boolean;
   notice: CloudNotice | null;
   clearNotice: () => void;
   setNotice: (tone: CloudNotice["tone"], message: string) => void;
   refreshSavedPortfolios: () => Promise<void>;
   refreshSavedReviews: () => Promise<void>;
+  refreshWorkspaceState: () => Promise<void>;
   savePortfolio: (input: SavePortfolioInput) => Promise<SavedPortfolioRecord | null>;
+  ensurePortfolioVersion: (input: { portfolioId: string; portfolioName?: string; investorCurrency: string; holdings: ReviewHolding[]; sourceKind?: string; sourceReviewId?: string }) => Promise<PortfolioVersionRecord | null>;
   deletePortfolio: (portfolioId: string) => Promise<boolean>;
+  archiveReview: (reviewRowId: string) => Promise<boolean>;
 };
 
 type PortfolioRow = {
@@ -90,6 +127,21 @@ type PortfolioRow = {
   description: string | null;
   base_currency: string;
   risk_profile: string | null;
+  archived_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type PortfolioVersionRow = {
+  id: string;
+  portfolio_id: string;
+  user_id: string;
+  version_number: number;
+  base_currency: string;
+  holdings_snapshot: unknown;
+  input_fingerprint: string | null;
+  source_kind: string | null;
+  source_review_id: string | null;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -112,10 +164,23 @@ type ReviewRow = {
   title: string | null;
   mode: string | null;
   status: string | null;
+  portfolio_version_id: string | null;
+  archived_at: string | null;
   portfolio_snapshot: Record<string, unknown> | null;
   compact_summary: Record<string, unknown> | null;
   started_at: string | null;
   completed_at: string | null;
+  updated_at: string | null;
+};
+
+type WorkspaceStateRow = {
+  user_id: string;
+  active_portfolio_id: string | null;
+  active_portfolio_version_id: string | null;
+  active_review_row_id: string | null;
+  last_opened_review_row_id: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string | null;
   updated_at: string | null;
 };
 
@@ -209,9 +274,52 @@ function compactCloudRecord(value: Record<string, unknown>) {
   return isRecord(compact) ? compact : {};
 }
 
+function normalizedHoldingsSnapshot(holdings: ReviewHolding[]) {
+  return holdings
+    .map((holding) => ({
+      ticker: holding.ticker.trim().toUpperCase(),
+      label: holding.label,
+      instrument: holding.instrument,
+      weight: Number.isFinite(holding.weight) ? Number(holding.weight.toFixed(6)) : 0,
+      type: holding.type,
+      currency: holding.currency
+    }))
+    .filter((holding) => holding.ticker)
+    .sort((a, b) => a.ticker.localeCompare(b.ticker) || a.weight - b.weight);
+}
+
+function portfolioInputFingerprint(investorCurrency: string, holdings: ReviewHolding[]) {
+  return JSON.stringify({
+    schema: "pmri_portfolio_input_fingerprint_v1",
+    investorCurrency: (investorCurrency || "USD").trim().toUpperCase(),
+    holdings: normalizedHoldingsSnapshot(holdings).map((holding) => ({
+      ticker: holding.ticker,
+      weight: holding.weight,
+      type: holding.type,
+      currency: holding.currency ?? null
+    }))
+  });
+}
+
 function reviewHoldingsFromSnapshot(value: unknown): ReviewHolding[] {
   if (!isRecord(value) || !Array.isArray(value.holdings)) return [];
   return value.holdings
+    .filter(isRecord)
+    .map((holding, index) => ({
+      id: typeof holding.id === "string" ? holding.id : safeHoldingId(typeof holding.ticker === "string" ? holding.ticker : "holding", index),
+      label: typeof holding.label === "string" ? holding.label : typeof holding.ticker === "string" ? holding.ticker : "Holding",
+      ticker: typeof holding.ticker === "string" ? holding.ticker : "",
+      instrument: typeof holding.instrument === "string" ? holding.instrument : typeof holding.ticker === "string" ? holding.ticker : "Holding",
+      weight: typeof holding.weight === "number" && Number.isFinite(holding.weight) ? holding.weight : 0,
+      type: holding.type === "cash" ? "cash" : "instrument",
+      currency: typeof holding.currency === "string" ? holding.currency : undefined
+    } satisfies ReviewHolding))
+    .filter((holding) => holding.ticker);
+}
+
+function holdingsFromVersionSnapshot(value: unknown): ReviewHolding[] {
+  if (!Array.isArray(value)) return [];
+  return value
     .filter(isRecord)
     .map((holding, index) => ({
       id: typeof holding.id === "string" ? holding.id : safeHoldingId(typeof holding.ticker === "string" ? holding.ticker : "holding", index),
@@ -253,7 +361,7 @@ function sortHoldings(a: ReviewHolding, b: ReviewHolding) {
   return a.ticker.localeCompare(b.ticker);
 }
 
-function buildSavedPortfolioRecord(row: PortfolioRow, holdings: PortfolioHoldingRow[]): SavedPortfolioRecord {
+function buildSavedPortfolioRecord(row: PortfolioRow, holdings: PortfolioHoldingRow[], latestVersion?: PortfolioVersionRow): SavedPortfolioRecord {
   const normalizedHoldings = holdings
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
     .map((holding, index) => {
@@ -279,6 +387,9 @@ function buildSavedPortfolioRecord(row: PortfolioRow, holdings: PortfolioHolding
     baseCurrency: row.base_currency || "USD",
     riskProfile: row.risk_profile ?? undefined,
     holdings: normalizedHoldings,
+    archivedAt: row.archived_at ?? undefined,
+    latestVersionId: latestVersion?.id,
+    versionNumber: latestVersion?.version_number,
     createdAt: row.created_at ?? undefined,
     updatedAt: row.updated_at ?? undefined
   };
@@ -290,8 +401,9 @@ async function fetchSavedPortfoliosForUser(userId: string): Promise<SavedPortfol
 
   const { data: portfolioRows, error: portfolioError } = await supabase
     .from("portfolios")
-    .select("id, name, description, base_currency, risk_profile, created_at, updated_at")
+    .select("id, name, description, base_currency, risk_profile, archived_at, created_at, updated_at")
     .eq("user_id", userId)
+    .is("archived_at", null)
     .order("updated_at", { ascending: false });
 
   if (portfolioError) throw portfolioError;
@@ -316,7 +428,23 @@ async function fetchSavedPortfoliosForUser(userId: string): Promise<SavedPortfol
     holdingsByPortfolioId.set(row.portfolio_id, existing);
   });
 
-  return rows.map((row) => buildSavedPortfolioRecord(row, holdingsByPortfolioId.get(row.id) ?? []));
+  const { data: versionRows, error: versionError } = await supabase
+    .from("portfolio_versions")
+    .select("id, portfolio_id, user_id, version_number, base_currency, holdings_snapshot, input_fingerprint, source_kind, source_review_id, created_at, updated_at")
+    .eq("user_id", userId)
+    .in("portfolio_id", portfolioIds)
+    .order("version_number", { ascending: false });
+
+  if (versionError) throw versionError;
+
+  const latestVersionByPortfolioId = new Map<string, PortfolioVersionRow>();
+  ((versionRows ?? []) as PortfolioVersionRow[]).forEach((row) => {
+    if (!latestVersionByPortfolioId.has(row.portfolio_id)) {
+      latestVersionByPortfolioId.set(row.portfolio_id, row);
+    }
+  });
+
+  return rows.map((row) => buildSavedPortfolioRecord(row, holdingsByPortfolioId.get(row.id) ?? [], latestVersionByPortfolioId.get(row.id)));
 }
 
 
@@ -327,8 +455,9 @@ async function fetchSavedReviewsForUser(userId: string): Promise<SavedReviewReco
 
   const { data: reviewRows, error: reviewError } = await supabase
     .from("reviews")
-    .select("id, portfolio_id, review_id, title, mode, status, portfolio_snapshot, compact_summary, started_at, completed_at, updated_at")
+    .select("id, portfolio_id, portfolio_version_id, archived_at, review_id, title, mode, status, portfolio_snapshot, compact_summary, started_at, completed_at, updated_at")
     .eq("user_id", userId)
+    .is("archived_at", null)
     .order("updated_at", { ascending: false })
     .limit(12);
 
@@ -364,6 +493,8 @@ async function fetchSavedReviewsForUser(userId: string): Promise<SavedReviewReco
     const snapshot = row.portfolio_snapshot ?? {};
     const compactSummary = row.compact_summary ?? {};
     const diagnosisStage = stages.diagnosis ?? {};
+    const recoverableActions = compactSummary.recoverableActions ?? compactSummary.recoverable_actions;
+    const lineageAvailable = Array.isArray(recoverableActions) && recoverableActions.length > 0;
     return {
       id: row.id,
       reviewId: row.review_id,
@@ -371,6 +502,10 @@ async function fetchSavedReviewsForUser(userId: string): Promise<SavedReviewReco
       mode: row.mode ?? undefined,
       status: row.status ?? "saved",
       portfolioId: row.portfolio_id ?? undefined,
+      portfolioVersionId: row.portfolio_version_id ?? undefined,
+      archivedAt: row.archived_at ?? undefined,
+      readOnlyHistory: !lineageAvailable,
+      lineageAvailable,
       portfolioSnapshot: {
         investorCurrency: typeof snapshot.investorCurrency === "string" ? snapshot.investorCurrency : undefined,
         holdings: reviewHoldingsFromSnapshot(snapshot)
@@ -410,7 +545,7 @@ async function savePortfolioRecordForUser(userId: string, input: SavePortfolioIn
   const { data: portfolioRow, error: portfolioError } = await supabase
     .from("portfolios")
     .upsert(portfolioPayload)
-    .select("id, name, description, base_currency, risk_profile, created_at, updated_at")
+    .select("id, name, description, base_currency, risk_profile, archived_at, created_at, updated_at")
     .single();
 
   if (portfolioError) throw portfolioError;
@@ -449,6 +584,13 @@ async function savePortfolioRecordForUser(userId: string, input: SavePortfolioIn
     if (insertHoldingsError) throw insertHoldingsError;
   }
 
+  const version = await ensurePortfolioVersionForUser(userId, {
+    portfolioId,
+    investorCurrency: input.investorCurrency,
+    holdings: input.holdings,
+    sourceKind: "manual"
+  });
+
   return buildSavedPortfolioRecord(portfolioRow as PortfolioRow, input.holdings.map((holding, index) => ({
     portfolio_id: portfolioId,
     ticker: holding.ticker,
@@ -462,7 +604,19 @@ async function savePortfolioRecordForUser(userId: string, input: SavePortfolioIn
       label: holding.label,
       holding_type: holding.type
     }
-  })));
+  })), {
+    id: version.id,
+    portfolio_id: version.portfolioId,
+    user_id: version.userId,
+    version_number: version.versionNumber,
+    base_currency: version.baseCurrency,
+    holdings_snapshot: version.holdingsSnapshot,
+    input_fingerprint: version.inputFingerprint ?? null,
+    source_kind: version.sourceKind,
+    source_review_id: version.sourceReviewId ?? null,
+    created_at: version.createdAt ?? null,
+    updated_at: version.updatedAt ?? null
+  });
 }
 
 async function deletePortfolioForUser(userId: string, portfolioId: string) {
@@ -471,11 +625,188 @@ async function deletePortfolioForUser(userId: string, portfolioId: string) {
 
   const { error } = await supabase
     .from("portfolios")
-    .delete()
+    .update({ archived_at: nowIso() })
     .eq("user_id", userId)
     .eq("id", portfolioId);
 
   if (error) throw error;
+}
+
+async function archiveReviewForUser(userId: string, reviewRowId: string) {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) throw new Error("Cloud persistence is disabled.");
+
+  const { error } = await supabase
+    .from("reviews")
+    .update({ archived_at: nowIso() })
+    .eq("user_id", userId)
+    .eq("id", reviewRowId);
+
+  if (error) throw error;
+}
+
+function buildPortfolioVersionRecord(row: PortfolioVersionRow): PortfolioVersionRecord {
+  return {
+    id: row.id,
+    portfolioId: row.portfolio_id,
+    userId: row.user_id,
+    versionNumber: row.version_number,
+    baseCurrency: row.base_currency || "USD",
+    holdingsSnapshot: holdingsFromVersionSnapshot(row.holdings_snapshot),
+    inputFingerprint: row.input_fingerprint ?? undefined,
+    sourceKind: row.source_kind || "manual",
+    sourceReviewId: row.source_review_id ?? undefined,
+    createdAt: row.created_at ?? undefined,
+    updatedAt: row.updated_at ?? undefined
+  };
+}
+
+async function ensurePortfolioVersionForUser(
+  userId: string,
+  input: { portfolioId: string; investorCurrency: string; holdings: ReviewHolding[]; sourceKind?: string; sourceReviewId?: string }
+): Promise<PortfolioVersionRecord> {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) throw new Error("Cloud persistence is disabled.");
+
+  const fingerprint = portfolioInputFingerprint(input.investorCurrency, input.holdings);
+  const { data: existingRows, error: existingError } = await supabase
+    .from("portfolio_versions")
+    .select("id, portfolio_id, user_id, version_number, base_currency, holdings_snapshot, input_fingerprint, source_kind, source_review_id, created_at, updated_at")
+    .eq("user_id", userId)
+    .eq("portfolio_id", input.portfolioId)
+    .eq("input_fingerprint", fingerprint)
+    .limit(1);
+
+  if (existingError) throw existingError;
+  const existing = ((existingRows ?? []) as PortfolioVersionRow[])[0];
+  if (existing) return buildPortfolioVersionRecord(existing);
+
+  const { data: latestRows, error: latestError } = await supabase
+    .from("portfolio_versions")
+    .select("version_number")
+    .eq("user_id", userId)
+    .eq("portfolio_id", input.portfolioId)
+    .order("version_number", { ascending: false })
+    .limit(1);
+
+  if (latestError) throw latestError;
+  const latestNumber = ((latestRows ?? []) as Array<{ version_number: number }>)[0]?.version_number ?? 0;
+
+  const { data: insertedRow, error: insertError } = await supabase
+    .from("portfolio_versions")
+    .insert({
+      user_id: userId,
+      portfolio_id: input.portfolioId,
+      version_number: latestNumber + 1,
+      base_currency: input.investorCurrency || "USD",
+      holdings_snapshot: normalizedHoldingsSnapshot(input.holdings),
+      input_fingerprint: fingerprint,
+      source_kind: input.sourceKind || "manual",
+      source_review_id: input.sourceReviewId ?? null
+    })
+    .select("id, portfolio_id, user_id, version_number, base_currency, holdings_snapshot, input_fingerprint, source_kind, source_review_id, created_at, updated_at")
+    .single();
+
+  if (insertError) throw insertError;
+  return buildPortfolioVersionRecord(insertedRow as PortfolioVersionRow);
+}
+
+function buildWorkspaceStateRecord(row: WorkspaceStateRow): WorkspaceStateRecord {
+  return {
+    userId: row.user_id,
+    activePortfolioId: row.active_portfolio_id ?? undefined,
+    activePortfolioVersionId: row.active_portfolio_version_id ?? undefined,
+    activeReviewRowId: row.active_review_row_id ?? undefined,
+    lastOpenedReviewRowId: row.last_opened_review_row_id ?? undefined,
+    metadata: row.metadata ?? {},
+    createdAt: row.created_at ?? undefined,
+    updatedAt: row.updated_at ?? undefined
+  };
+}
+
+async function fetchWorkspaceStateForUser(userId: string): Promise<WorkspaceStateRecord | null> {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("workspace_state")
+    .select("user_id, active_portfolio_id, active_portfolio_version_id, active_review_row_id, last_opened_review_row_id, metadata, created_at, updated_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ? buildWorkspaceStateRecord(data as WorkspaceStateRow) : null;
+}
+
+async function upsertWorkspaceStateForUser(userId: string, patch: Partial<WorkspaceStateRecord>): Promise<WorkspaceStateRecord> {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) throw new Error("Cloud persistence is disabled.");
+
+  const payload = {
+    user_id: userId,
+    active_portfolio_id: patch.activePortfolioId ?? null,
+    active_portfolio_version_id: patch.activePortfolioVersionId ?? null,
+    active_review_row_id: patch.activeReviewRowId ?? null,
+    last_opened_review_row_id: patch.lastOpenedReviewRowId ?? patch.activeReviewRowId ?? null,
+    metadata: compactCloudRecord(patch.metadata ?? {})
+  };
+
+  const { data, error } = await supabase
+    .from("workspace_state")
+    .upsert(payload, { onConflict: "user_id" })
+    .select("user_id, active_portfolio_id, active_portfolio_version_id, active_review_row_id, last_opened_review_row_id, metadata, created_at, updated_at")
+    .single();
+
+  if (error) throw error;
+  return buildWorkspaceStateRecord(data as WorkspaceStateRow);
+}
+
+async function upsertDraftReviewForPortfolioVersion(
+  userId: string,
+  input: { portfolioId: string; portfolioName?: string; investorCurrency: string; holdings: ReviewHolding[] },
+  version: PortfolioVersionRecord
+) {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) throw new Error("Cloud persistence is disabled.");
+
+  const draftReviewId = `draft_${version.id.replace(/-/g, "")}`;
+  const compactSummary = compactCloudRecord({
+    reviewKind: "draft",
+    status: "draft",
+    investorCurrency: input.investorCurrency,
+    holdingsCount: input.holdings.length,
+    activeCloudPortfolioId: input.portfolioId,
+    activeCloudPortfolioName: input.portfolioName,
+    activeCloudPortfolioVersionId: version.id,
+    activeCloudPortfolioVersionNumber: version.versionNumber,
+    readOnlyHistory: false,
+    lineageAvailable: false,
+    note: "Draft review created from changed portfolio input. Diagnosis is not run automatically."
+  });
+
+  const { data: reviewRow, error } = await supabase
+    .from("reviews")
+    .upsert({
+      user_id: userId,
+      portfolio_id: input.portfolioId,
+      portfolio_version_id: version.id,
+      review_id: draftReviewId,
+      title: input.portfolioName ? `${input.portfolioName} draft` : "Portfolio MRI draft review",
+      mode: "draft",
+      status: "draft",
+      portfolio_snapshot: compactPortfolioSnapshot(input.investorCurrency, input.holdings),
+      compact_summary: compactSummary,
+      started_at: null,
+      completed_at: null
+    }, { onConflict: "user_id,review_id" })
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  return {
+    reviewRowId: (reviewRow as { id: string }).id,
+    draftReviewId
+  };
 }
 
 function compactPortfolioSnapshot(investorCurrency: string, holdings: ReviewHolding[]) {
@@ -515,7 +846,11 @@ function compactReviewSummaryForCloud(reviewSummary: ReviewSummary, activeReview
     candidateLaunchpadAvailable: reviewSummary.candidateLaunchpadAvailable,
     problemClassificationAvailable: reviewSummary.problemClassificationAvailable,
     activeCloudPortfolioId: activeReview.cloudPortfolio?.id,
-    activeCloudPortfolioName: activeReview.cloudPortfolio?.name
+    activeCloudPortfolioName: activeReview.cloudPortfolio?.name,
+    activeCloudPortfolioVersionId: activeReview.portfolioVersionId ?? activeReview.cloudPortfolio?.versionId,
+    activeCloudPortfolioVersionNumber: activeReview.portfolioVersionNumber ?? activeReview.cloudPortfolio?.versionNumber,
+    lineageAvailable: Boolean(activeReview.lineageAvailable),
+    readOnlyHistory: Boolean(activeReview.readOnlyHistory)
   };
 }
 
@@ -664,9 +999,19 @@ async function upsertReviewRowForUser(userId: string, activeReview: ActiveReview
   const reviewSummary = activeReview.reviewSummary;
   const compactSummary = compactCloudRecord(compactReviewSummaryForCloud(reviewSummary, activeReview));
   const portfolioSnapshot = compactPortfolioSnapshot(activeReview.investorCurrency, activeReview.holdings);
+  const portfolioVersion = activeReview.cloudPortfolio?.id
+    ? await ensurePortfolioVersionForUser(userId, {
+      portfolioId: activeReview.cloudPortfolio.id,
+      investorCurrency: activeReview.investorCurrency,
+      holdings: activeReview.holdings,
+      sourceKind: "review",
+      sourceReviewId: activeReview.reviewId
+    })
+    : null;
   const reviewPayload = {
     user_id: userId,
     portfolio_id: activeReview.cloudPortfolio?.id ?? null,
+    portfolio_version_id: portfolioVersion?.id ?? activeReview.cloudPortfolio?.versionId ?? null,
     review_id: activeReview.reviewId,
     title: activeReview.cloudPortfolio?.name
       ? `${activeReview.cloudPortfolio.name} diagnosis`
@@ -686,7 +1031,21 @@ async function upsertReviewRowForUser(userId: string, activeReview: ActiveReview
     .single();
 
   if (reviewError) throw reviewError;
-  return (reviewRow as { id: string }).id;
+  const reviewRowId = (reviewRow as { id: string }).id;
+  if (activeReview.cloudPortfolio?.id) {
+    await upsertWorkspaceStateForUser(userId, {
+      activePortfolioId: activeReview.cloudPortfolio.id,
+      activePortfolioVersionId: portfolioVersion?.id ?? activeReview.cloudPortfolio.versionId,
+      activeReviewRowId: reviewRowId,
+      lastOpenedReviewRowId: reviewRowId,
+      metadata: {
+        source: "diagnosis_sync",
+        reviewId: activeReview.reviewId,
+        updatedAt: nowIso()
+      }
+    });
+  }
+  return reviewRowId;
 }
 
 function stagedStageStatusesForCloud(activeReview: ActiveReviewState) {
@@ -741,6 +1100,10 @@ function buildStagedReviewCompactSummary(activeReview: ActiveReviewState) {
     problemClassificationAvailable: reviewSummary?.problemClassificationAvailable,
     activeCloudPortfolioId: activeReview.cloudPortfolio?.id,
     activeCloudPortfolioName: activeReview.cloudPortfolio?.name,
+    activeCloudPortfolioVersionId: activeReview.portfolioVersionId ?? activeReview.cloudPortfolio?.versionId,
+    activeCloudPortfolioVersionNumber: activeReview.portfolioVersionNumber ?? activeReview.cloudPortfolio?.versionNumber,
+    lineageAvailable: Boolean(activeReview.lineageAvailable),
+    readOnlyHistory: Boolean(activeReview.readOnlyHistory),
     stagedProgress
   });
 }
@@ -755,12 +1118,22 @@ async function upsertStagedReviewRowForUser(userId: string, activeReview: Active
   const progress = activeReview.stagedProgress;
   const compactSummary = buildStagedReviewCompactSummary(activeReview);
   const portfolioSnapshot = compactPortfolioSnapshot(activeReview.investorCurrency, activeReview.holdings);
+  const portfolioVersion = activeReview.cloudPortfolio?.id
+    ? await ensurePortfolioVersionForUser(userId, {
+      portfolioId: activeReview.cloudPortfolio.id,
+      investorCurrency: activeReview.investorCurrency,
+      holdings: activeReview.holdings,
+      sourceKind: "draft",
+      sourceReviewId: activeReview.reviewId
+    })
+    : null;
   const completedAt = progress.status === "completed" || progress.status === "failed"
     ? progress.updatedAt ?? nowIso()
     : null;
   const reviewPayload = {
     user_id: userId,
     portfolio_id: activeReview.cloudPortfolio?.id ?? null,
+    portfolio_version_id: portfolioVersion?.id ?? activeReview.cloudPortfolio?.versionId ?? null,
     review_id: activeReview.reviewId,
     title: activeReview.cloudPortfolio?.name
       ? `${activeReview.cloudPortfolio.name} staged review`
@@ -780,7 +1153,21 @@ async function upsertStagedReviewRowForUser(userId: string, activeReview: Active
     .single();
 
   if (reviewError) throw reviewError;
-  return (reviewRow as { id: string }).id;
+  const reviewRowId = (reviewRow as { id: string }).id;
+  if (activeReview.cloudPortfolio?.id) {
+    await upsertWorkspaceStateForUser(userId, {
+      activePortfolioId: activeReview.cloudPortfolio.id,
+      activePortfolioVersionId: portfolioVersion?.id ?? activeReview.cloudPortfolio.versionId,
+      activeReviewRowId: reviewRowId,
+      lastOpenedReviewRowId: reviewRowId,
+      metadata: {
+        source: "staged_progress_sync",
+        reviewId: activeReview.reviewId,
+        updatedAt: nowIso()
+      }
+    });
+  }
+  return reviewRowId;
 }
 
 async function upsertStageSummaryForReview({
@@ -1014,8 +1401,10 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
   const { enabled, status, user } = useSupabaseAuth();
   const [savedPortfolios, setSavedPortfolios] = useState<SavedPortfolioRecord[]>([]);
   const [savedReviews, setSavedReviews] = useState<SavedReviewRecord[]>([]);
+  const [workspaceState, setWorkspaceState] = useState<WorkspaceStateRecord | null>(null);
   const [portfoliosLoading, setPortfoliosLoading] = useState(false);
   const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [workspaceLoading, setWorkspaceLoading] = useState(false);
   const [notice, setNoticeState] = useState<CloudNotice | null>(null);
   const signedIn = enabled && status === "signed_in" && Boolean(user?.id);
 
@@ -1065,6 +1454,23 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
     }
   }, [setNotice, signedIn, user?.id]);
 
+  const refreshWorkspaceState = useCallback(async () => {
+    if (!signedIn || !user?.id) {
+      setWorkspaceState(null);
+      return;
+    }
+
+    setWorkspaceLoading(true);
+    try {
+      const workspace = await fetchWorkspaceStateForUser(user.id);
+      setWorkspaceState(workspace);
+    } catch (error) {
+      setNotice("warning", `Could not load workspace state. ${humanizePersistenceError(error)}`);
+    } finally {
+      setWorkspaceLoading(false);
+    }
+  }, [setNotice, signedIn, user?.id]);
+
   const savePortfolio = useCallback(async (input: SavePortfolioInput) => {
     if (!signedIn || !user?.id) {
       setNotice("warning", "Sign in first to save portfolios to cloud.");
@@ -1075,13 +1481,60 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
       const saved = await savePortfolioRecordForUser(user.id, input);
       const portfolios = await fetchSavedPortfoliosForUser(user.id);
       setSavedPortfolios(portfolios);
+      const workspace = await upsertWorkspaceStateForUser(user.id, {
+        activePortfolioId: saved.id,
+        activePortfolioVersionId: saved.latestVersionId,
+        activeReviewRowId: workspaceState?.activeReviewRowId,
+        lastOpenedReviewRowId: workspaceState?.lastOpenedReviewRowId,
+        metadata: {
+          source: "portfolio_save",
+          updatedAt: nowIso()
+        }
+      });
+      setWorkspaceState(workspace);
       setNotice("success", `Saved "${saved.name}" to optional cloud storage.`);
       return saved;
     } catch (error) {
       setNotice("warning", `Cloud portfolio save failed. ${humanizePersistenceError(error)}`);
       return null;
     }
-  }, [setNotice, signedIn, user?.id]);
+  }, [setNotice, signedIn, user?.id, workspaceState?.activeReviewRowId, workspaceState?.lastOpenedReviewRowId]);
+
+  const ensurePortfolioVersion = useCallback(async (input: { portfolioId: string; portfolioName?: string; investorCurrency: string; holdings: ReviewHolding[]; sourceKind?: string; sourceReviewId?: string }) => {
+    if (!signedIn || !user?.id) {
+      setNotice("warning", "Sign in first to version portfolios in cloud.");
+      return null;
+    }
+
+    try {
+      const version = await ensurePortfolioVersionForUser(user.id, input);
+      const draftReview = input.sourceKind === "draft"
+        ? await upsertDraftReviewForPortfolioVersion(user.id, input, version)
+        : null;
+      const workspace = await upsertWorkspaceStateForUser(user.id, {
+        activePortfolioId: input.portfolioId,
+        activePortfolioVersionId: version.id,
+        activeReviewRowId: draftReview?.reviewRowId ?? workspaceState?.activeReviewRowId,
+        lastOpenedReviewRowId: draftReview?.reviewRowId ?? workspaceState?.lastOpenedReviewRowId,
+        metadata: {
+          source: input.sourceKind || "manual",
+          draftReviewId: draftReview?.draftReviewId,
+          updatedAt: nowIso()
+        }
+      });
+      setWorkspaceState(workspace);
+      const portfolios = await fetchSavedPortfoliosForUser(user.id);
+      setSavedPortfolios(portfolios);
+      if (draftReview) {
+        const reviews = await fetchSavedReviewsForUser(user.id);
+        setSavedReviews(reviews);
+      }
+      return version;
+    } catch (error) {
+      setNotice("warning", `Cloud portfolio version save failed. ${humanizePersistenceError(error)}`);
+      return null;
+    }
+  }, [setNotice, signedIn, user?.id, workspaceState?.activeReviewRowId, workspaceState?.lastOpenedReviewRowId]);
 
   const deletePortfolio = useCallback(async (portfolioId: string) => {
     if (!signedIn || !user?.id) {
@@ -1094,25 +1547,73 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
       await deletePortfolioForUser(user.id, portfolioId);
       const portfolios = await fetchSavedPortfoliosForUser(user.id);
       setSavedPortfolios(portfolios);
-      setNotice("success", portfolioName ? `Deleted "${portfolioName}" from cloud storage.` : "Deleted saved cloud portfolio.");
+      if (workspaceState?.activePortfolioId === portfolioId) {
+        const workspace = await upsertWorkspaceStateForUser(user.id, {
+          activePortfolioId: undefined,
+          activePortfolioVersionId: undefined,
+          activeReviewRowId: workspaceState.activeReviewRowId,
+          lastOpenedReviewRowId: workspaceState.lastOpenedReviewRowId,
+          metadata: {
+            source: "portfolio_archive",
+            updatedAt: nowIso()
+          }
+        });
+        setWorkspaceState(workspace);
+      }
+      setNotice("success", portfolioName ? `Archived "${portfolioName}" in cloud storage.` : "Archived saved cloud portfolio.");
       return true;
     } catch (error) {
       setNotice("warning", `Cloud portfolio delete failed. ${humanizePersistenceError(error)}`);
       return false;
     }
-  }, [savedPortfolios, setNotice, signedIn, user?.id]);
+  }, [savedPortfolios, setNotice, signedIn, user?.id, workspaceState?.activePortfolioId, workspaceState?.activeReviewRowId, workspaceState?.lastOpenedReviewRowId]);
+
+  const archiveReview = useCallback(async (reviewRowId: string) => {
+    if (!signedIn || !user?.id) {
+      setNotice("warning", "Sign in first to archive saved cloud reviews.");
+      return false;
+    }
+
+    try {
+      const review = savedReviews.find((item) => item.id === reviewRowId);
+      await archiveReviewForUser(user.id, reviewRowId);
+      const reviews = await fetchSavedReviewsForUser(user.id);
+      setSavedReviews(reviews);
+      if (workspaceState?.activeReviewRowId === reviewRowId || workspaceState?.lastOpenedReviewRowId === reviewRowId) {
+        const workspace = await upsertWorkspaceStateForUser(user.id, {
+          activePortfolioId: workspaceState.activePortfolioId,
+          activePortfolioVersionId: workspaceState.activePortfolioVersionId,
+          activeReviewRowId: workspaceState.activeReviewRowId === reviewRowId ? undefined : workspaceState.activeReviewRowId,
+          lastOpenedReviewRowId: workspaceState.lastOpenedReviewRowId === reviewRowId ? undefined : workspaceState.lastOpenedReviewRowId,
+          metadata: {
+            source: "review_archive",
+            updatedAt: nowIso()
+          }
+        });
+        setWorkspaceState(workspace);
+      }
+      setNotice("success", review?.title ? `Archived "${review.title}" in cloud history.` : "Archived saved cloud review.");
+      return true;
+    } catch (error) {
+      setNotice("warning", `Cloud review archive failed. ${humanizePersistenceError(error)}`);
+      return false;
+    }
+  }, [savedReviews, setNotice, signedIn, user?.id, workspaceState]);
 
   useEffect(() => {
     if (!signedIn || !user?.id) {
       setSavedPortfolios([]);
       setSavedReviews([]);
+      setWorkspaceState(null);
       setPortfoliosLoading(false);
       setReviewsLoading(false);
+      setWorkspaceLoading(false);
       return;
     }
     void refreshSavedPortfolios();
     void refreshSavedReviews();
-  }, [refreshSavedPortfolios, refreshSavedReviews, signedIn, user?.id]);
+    void refreshWorkspaceState();
+  }, [refreshSavedPortfolios, refreshSavedReviews, refreshWorkspaceState, signedIn, user?.id]);
 
   const value = useMemo<SupabasePersistenceContextValue>(() => ({
     enabled,
@@ -1120,16 +1621,21 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
     userId: user?.id ?? null,
     savedPortfolios,
     savedReviews,
+    workspaceState,
     portfoliosLoading,
     reviewsLoading,
+    workspaceLoading,
     notice,
     clearNotice,
     setNotice,
     refreshSavedPortfolios,
     refreshSavedReviews,
+    refreshWorkspaceState,
     savePortfolio,
-    deletePortfolio
-  }), [clearNotice, deletePortfolio, enabled, notice, portfoliosLoading, refreshSavedPortfolios, refreshSavedReviews, reviewsLoading, savePortfolio, savedPortfolios, savedReviews, setNotice, signedIn, user?.id]);
+    ensurePortfolioVersion,
+    deletePortfolio,
+    archiveReview
+  }), [archiveReview, clearNotice, deletePortfolio, enabled, ensurePortfolioVersion, notice, portfoliosLoading, refreshSavedPortfolios, refreshSavedReviews, refreshWorkspaceState, reviewsLoading, savePortfolio, savedPortfolios, savedReviews, setNotice, signedIn, user?.id, workspaceLoading, workspaceState]);
 
   return <SupabasePersistenceContext.Provider value={value}>{children}</SupabasePersistenceContext.Provider>;
 }

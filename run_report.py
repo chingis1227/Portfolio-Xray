@@ -111,7 +111,6 @@ from src.core_mvp_historical_stress_replay import attach_core_mvp_historical_str
 from src.stress_results_block import attach_stress_results_v1
 from src.stress_factors import (
     FACTOR_COLUMN_ORDER,
-    FACTOR_TRADING_DAYS_10Y,
     FACTOR_WEEKS_10Y,
     FACTOR_WEEKS_3Y,
     FACTOR_WEEKS_5Y,
@@ -125,20 +124,12 @@ from src.stress_factors import (
     compute_asset_factor_betas_weekly,
     compute_asset_factor_betas_from_daily_returns,
     build_factor_matrix,
-    build_factor_matrix_daily,
-    build_factor_matrix_monthly,
     attach_kalman_factor_betas_to_stress_report,
     build_diagnostic_oil_beta,
     build_factor_beta_diagnostic_overlay,
     enrich_historical_results_with_factor_attribution,
     factor_covariance_analytics,
     factor_variance_decomposition_weekly,
-    macro_regime_csv_frames,
-    macro_regime_diagnostics,
-    macro_regime_diagnostics_with_panel,
-    portfolio_pca_diagnostics,
-    portfolio_pca_diagnostics_with_weekly_frames,
-    weekly_factor_frames_cover_tickers,
     factor_beta_oos_stability_diagnostics,
     factor_beta_stability_diagnostics,
     factor_beta_stability_rows,
@@ -149,8 +140,6 @@ from src.stress_factors import (
     rolling_beta_summary,
     write_rolling_betas_plot_html,
     write_rolling_betas_plot_pngs,
-    asset_weekly_returns_from_daily,
-    asset_daily_returns_from_daily,
 )
 from src.utils import setup_logging, warn_skipped_asset, info_data_summary, logger, coverage_ratio
 from src.report_timing import ReportTimingCollector
@@ -187,19 +176,6 @@ from src.product_bundle_scope import (
     DEFAULT_PRODUCT_BUNDLE_SCOPE,
     is_core_blocks_1_3_only,
     normalize_product_bundle_scope,
-)
-from src.regime_factor_analytics import (
-    regime_factor_analytics,
-    regime_factor_analytics_csv_frames,
-    regime_factor_analytics_for_stress_report,
-    regime_factor_analytics_summary,
-)
-from src.regime_portfolio_metrics import (
-    build_regime_portfolio_metrics,
-    expand_rf_monthly_to_daily,
-    regime_portfolio_metrics_csv_frames,
-    regime_portfolio_metrics_for_stress_report,
-    regime_portfolio_metrics_summary,
 )
 from src.stress_scenario_analytics import build_stress_scenario_analytics
 from src.scenario_library import build_scenario_library, summarize_scenario_classifications
@@ -278,7 +254,7 @@ def parse_args() -> argparse.Namespace:
         "--use-review-run-context",
         action="store_true",
         help=(
-            "Opt in to preloading ReviewRunContext (shared monthly/macro/PCA) before "
+            "Opt in to preloading ReviewRunContext (shared monthly/factor data) before "
             "analysis_subject report."
         ),
     )
@@ -452,7 +428,6 @@ def run_portfolio_report_for_weights(
     ``enable_report_timing``: when ``True``, record per-block seconds in ``meta["report_timing"]``
     (also enabled by env ``PORTFOLIO_REPORT_TIMING=1``). Default off for non-factory runs.
     """
-    review_run_context = run_context if isinstance(run_context, ReviewRunContext) else None
     run_context = coerce_factory_run_context(run_context)
     bundle_scope = normalize_product_bundle_scope(product_bundle_scope)
     core_blocks_only = is_core_blocks_1_3_only(bundle_scope)
@@ -1606,228 +1581,12 @@ def run_portfolio_report_for_weights(
         logger.warning(f"Factor covariance analytics failed: {e}")
     report_timing.end_block("factor_covariance")
 
-    report_timing.start_block("macro_regime")
-    try:
-        cached_macro_panel = (
-            review_run_context.macro_panel
-            if review_run_context is not None
-            and review_run_context.macro_panel is not None
-            and not review_run_context.macro_panel.empty
-            else None
-        )
-        if cached_macro_panel is not None:
-            macro_regimes = macro_regime_diagnostics_with_panel(
-                weights=weights,
-                tickers=tickers,
-                analysis_end_str=analysis_end_str,
-                indicator_panel=cached_macro_panel,
-                indicator_meta=review_run_context.macro_panel_meta or {},
-                factor_returns=recession_factor_returns if not recession_factor_returns.empty else None,
-            )
-        else:
-            macro_regimes = macro_regime_diagnostics(
-                weights=weights,
-                tickers=tickers,
-                analysis_end_str=analysis_end_str,
-                factor_returns=recession_factor_returns if not recession_factor_returns.empty else None,
-            )
-        stress_report["macro_regime_diagnostics"] = macro_regimes
-        if not lightweight:
-            for fname, df in macro_regime_csv_frames(macro_regimes).items():
-                if output_policy.write_csv and not df.empty:
-                    df.round(6).to_csv(output_dir_csv / fname, index=False)
-            quality_summary = (macro_regimes or {}).get("regime_label_quality_check")
-            if isinstance(quality_summary, dict) and quality_summary:
-                (output_dir_final / "regime_label_quality_summary.json").write_text(
-                    json.dumps(quality_summary, ensure_ascii=False, indent=2),
-                    encoding="utf-8",
-                )
-    except Exception as e:
-        stress_report["macro_regime_diagnostics_error"] = str(e)
-        logger.warning(f"Macro regime diagnostics failed: {e}")
-    report_timing.end_block("macro_regime")
-
+    # Macro regime diagnostics, regime-specific analytics, and portfolio PCA were
+    # removed from the live Run Diagnostics calculation path.  The product-facing
+    # diagnosis keeps ordinary stress scenarios, factor diagnostics, risk budget,
+    # tail risk, scenario library, and Portfolio X-Ray outputs while avoiding
+    # these research-heavy runtime blocks.
     regime_factor_analytics_full = None
-    if lightweight:
-        stress_report["regime_factor_analytics_skip_reason"] = "lightweight_comparison_profile"
-    try:
-        if lightweight:
-            raise RuntimeError("skip_regime_factor_analytics_lightweight_profile")
-        mr = stress_report.get("macro_regime_diagnostics") or {}
-        lm = mr.get("labels_monthly") or []
-        if not isinstance(mr, dict) or mr.get("error") or not lm:
-            stress_report["regime_factor_analytics_skip_reason"] = (
-                "macro_regime_diagnostics unavailable or empty labels_monthly"
-            )
-        else:
-            idx = pd.to_datetime([row["date"] for row in lm])
-            regime_ser = pd.Series([str(row.get("regime", "")) for row in lm], index=idx)
-            trans_ser = pd.Series([bool(row.get("transition_flag", False)) for row in lm], index=idx)
-            regime_label_history_span = {
-                "start": idx.min().strftime("%Y-%m-%d"),
-                "end": idx.max().strftime("%Y-%m-%d"),
-                "n_months": int(len(idx)),
-            }
-            portfolio_regime_analytics_window = {
-                "label": "10Y",
-                "target_months": int(FACTOR_MONTHS_10Y),
-                "target_weeks": int(FACTOR_WEEKS_10Y),
-                "target_trading_days": int(FACTOR_TRADING_DAYS_10Y),
-                "analysis_end": str(analysis_end_str),
-                "disclaimer": (
-                    "regime_label_history_span may be longer than the portfolio analytics slice; "
-                    "portfolio_regime_analytics_window is fixed to 10Y (~2520 trading days for daily "
-                    "regime_factor_analytics, or ~520 weeks / 120 months in legacy modes) ending at "
-                    "analysis_end."
-                ),
-            }
-            asset_cols = [t for t in tickers if t in monthly_returns.columns]
-            monthly_asset = monthly_returns[asset_cols].copy()
-            monthly_asset.index = (
-                pd.to_datetime(monthly_asset.index).tz_localize(None).normalize()
-            )
-            start_m = monthly_asset.index.min().strftime("%Y-%m-%d")
-            end_ts = pd.Timestamp(analysis_end_str).normalize()
-            end_dl = (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
-
-            extra_lb: list[str] = []
-            for t in asset_cols:
-                p = local_benchmark_map.get(t)
-                if p and p not in asset_cols and p != benchmark_base_ticker:
-                    extra_lb.append(p)
-            dl_tickers = list(dict.fromkeys(list(asset_cols) + [benchmark_base_ticker] + extra_lb))
-            daily = download_all(dl_tickers, start_m, end_dl)
-            daily_prices: dict[str, pd.Series] = {}
-            for ticker in asset_cols:
-                df = daily.get(ticker)
-                if df is None or df.empty or "Close" not in df.columns:
-                    continue
-                daily_prices[ticker] = df["Close"].copy()
-
-            daily_asset = asset_daily_returns_from_daily(daily_prices, start_m, end_dl)
-            daily_factors = build_factor_matrix_daily(start_m, analysis_end_str)
-            use_daily = (
-                daily_asset is not None
-                and not daily_asset.empty
-                and daily_factors is not None
-                and not daily_factors.empty
-            )
-            if use_daily:
-                daily_asset = daily_asset.copy()
-                daily_asset.index = (
-                    pd.to_datetime(daily_asset.index).tz_localize(None).normalize()
-                )
-                daily_factors = daily_factors.copy()
-                daily_factors.index = (
-                    pd.to_datetime(daily_factors.index).tz_localize(None).normalize()
-                )
-                common_d = daily_asset.index.intersection(daily_factors.index).sort_values()
-                common_d = common_d[common_d <= end_ts]
-                if len(common_d) > FACTOR_TRADING_DAYS_10Y:
-                    common_d = common_d[-FACTOR_TRADING_DAYS_10Y:]
-                daily_asset = daily_asset.loc[common_d]
-                daily_factors = daily_factors.loc[common_d]
-                rfa_payload = regime_factor_analytics(
-                    monthly_returns=daily_asset,
-                    monthly_factor_returns=daily_factors,
-                    regime_labels=regime_ser,
-                    transition_flag=trans_ser,
-                    confidence_level=None,
-                    weights=weights,
-                    enable_transition_split=False,
-                    enable_confidence_split=False,
-                    frequency="daily",
-                    daily_label_alignment="daily_returns_inherit_latest_monthly_regime",
-                    regime_label_history_span=regime_label_history_span,
-                    portfolio_regime_analytics_window=portfolio_regime_analytics_window,
-                )
-                regime_factor_analytics_full = rfa_payload
-                stress_report["regime_factor_analytics"] = regime_factor_analytics_for_stress_report(
-                    rfa_payload
-                )
-                rfa_summary = regime_factor_analytics_summary(rfa_payload)
-                (output_dir_final / "regime_factor_analytics_summary.json").write_text(
-                    json.dumps(rfa_summary, ensure_ascii=False, indent=2),
-                    encoding="utf-8",
-                )
-                for fname, df in regime_factor_analytics_csv_frames(rfa_payload).items():
-                    if output_policy.write_csv and df is not None and not df.empty:
-                        num_cols = df.select_dtypes(include=[np.number]).columns
-                        if len(num_cols):
-                            df = df.copy()
-                            df[num_cols] = df[num_cols].round(6)
-                        df.to_csv(output_dir_csv / fname, index=False)
-                try:
-                    labels_ff = (
-                        pd.Series(
-                            regime_ser.values,
-                            index=pd.to_datetime(regime_ser.index).tz_localize(None).normalize(),
-                            name="regime",
-                        )
-                        .dropna()
-                        .astype(str)
-                        .sort_index()
-                        .reindex(common_d, method="ffill")
-                    )
-                    rf_d = expand_rf_monthly_to_daily(rf_monthly, common_d)
-                    bench_d = pd.Series(dtype=float, index=common_d)
-                    bdf_b = daily.get(benchmark_base_ticker)
-                    if bdf_b is not None and not bdf_b.empty and "Close" in bdf_b.columns:
-                        br = bdf_b["Close"].pct_change()
-                        br.index = pd.to_datetime(br.index).tz_localize(None).normalize()
-                        bench_d = br.reindex(common_d)
-
-                    local_bench_daily: dict[str, pd.Series] = {}
-                    for tcol in asset_cols:
-                        prox = local_benchmark_map.get(tcol)
-                        if not prox:
-                            continue
-                        bdf_lb = daily.get(prox)
-                        if bdf_lb is None or bdf_lb.empty or "Close" not in bdf_lb.columns:
-                            continue
-                        lr_lb = bdf_lb["Close"].pct_change()
-                        lr_lb.index = pd.to_datetime(lr_lb.index).tz_localize(None).normalize()
-                        local_bench_daily[str(tcol)] = lr_lb.reindex(common_d)
-
-                    rpm_full = build_regime_portfolio_metrics(
-                        daily_asset_returns=daily_asset,
-                        daily_regime_labels_ffill=labels_ff,
-                        weights=weights,
-                        rf_daily=rf_d,
-                        benchmark_daily_returns=bench_d,
-                        mar_daily=regime_mar_daily,
-                        local_benchmark_daily_by_ticker=local_bench_daily,
-                        regime_factor_analytics_payload=rfa_payload,
-                    )
-                    stress_report["regime_portfolio_metrics"] = regime_portfolio_metrics_for_stress_report(
-                        rpm_full
-                    )
-                    rpm_sum = regime_portfolio_metrics_summary(rpm_full)
-                    (output_dir_final / "regime_portfolio_metrics_summary.json").write_text(
-                        json.dumps(rpm_sum, ensure_ascii=False, indent=2),
-                        encoding="utf-8",
-                    )
-                    for fname, df in regime_portfolio_metrics_csv_frames(rpm_full).items():
-                        if output_policy.write_csv and df is not None and not df.empty:
-                            num_cols = df.select_dtypes(include=[np.number]).columns
-                            if len(num_cols):
-                                df = df.copy()
-                                df[num_cols] = df[num_cols].round(6)
-                            df.to_csv(output_dir_csv / fname, index=False)
-                except Exception as exc:
-                    stress_report["regime_portfolio_metrics_error"] = str(exc)
-                    logger.warning(f"Regime portfolio metrics failed: {exc}")
-            else:
-                logger.warning(
-                    "Regime factor analytics: daily asset/factor history unavailable; skipping block."
-                )
-                stress_report["regime_factor_analytics_skip_reason"] = (
-                    "regime_factor_analytics_daily_series_unavailable"
-                )
-    except Exception as e:
-        if not lightweight or str(e) != "skip_regime_factor_analytics_lightweight_profile":
-            stress_report["regime_factor_analytics_error"] = str(e)
-            logger.warning(f"Regime factor analytics failed: {e}")
 
     try:
         stress_report["diagnostic_oil_beta"] = build_diagnostic_oil_beta(
@@ -1883,120 +1642,6 @@ def run_portfolio_report_for_weights(
         stress_report["factor_variance_decomposition_error"] = str(e)
         logger.warning(f"Factor variance decomposition failed: {e}")
     report_timing.end_block("factor_decomposition")
-
-    # Portfolio PCA diagnostics: hidden statistical risk concentration, diagnostic only.
-    report_timing.start_block("portfolio_pca")
-    try:
-        pca_use_tickers = [
-            str(t).strip()
-            for t in tickers
-            if str(t).strip() and float(weights.get(t, 0.0)) > 0.0
-        ]
-        if len(pca_use_tickers) < 2:
-            pca_use_tickers = [str(t).strip() for t in tickers if str(t).strip()]
-        if (
-            shared_weekly_frames is not None
-            and weekly_factor_frames_cover_tickers(shared_weekly_frames, pca_use_tickers)
-        ):
-            pca = portfolio_pca_diagnostics_with_weekly_frames(
-                weights=weights,
-                tickers=tickers,
-                shared_frames=shared_weekly_frames,
-                window_weeks=FACTOR_WEEKS_5Y,
-                factor_returns=recession_factor_returns if not recession_factor_returns.empty else None,
-            )
-        else:
-            pca = portfolio_pca_diagnostics(
-                weights=weights,
-                tickers=tickers,
-                analysis_end_str=analysis_end_str,
-                window_weeks=FACTOR_WEEKS_5Y,
-                factor_returns=recession_factor_returns if not recession_factor_returns.empty else None,
-            )
-        stress_report["portfolio_pca"] = pca
-
-        summary_rows = []
-        component_rows = []
-        rolling_rows = []
-        corr_rows = []
-        for layer_name in ("raw", "residual"):
-            layer = pca.get(layer_name) if isinstance(pca, dict) else None
-            if not isinstance(layer, dict) or layer.get("status") != "available":
-                continue
-            for pca_key in ("covariance_pca", "correlation_pca"):
-                block = layer.get(pca_key)
-                if not isinstance(block, dict) or block.get("status") != "available":
-                    continue
-                rolling = block.get("rolling_pc1") or {}
-                rolling_pc1_summary = rolling.get("summary") if isinstance(rolling, dict) else {}
-                summary_rows.append(
-                    {
-                        "layer": layer_name,
-                        "pca_type": pca_key,
-                        "interpretation": block.get("interpretation"),
-                        "n_obs": block.get("n_obs"),
-                        "n_assets": block.get("n_assets"),
-                        "pc1_explained_variance_ratio": block.get("pc1_explained_variance_ratio"),
-                        "pc1_concentration_ratio": block.get("pc1_concentration_ratio"),
-                        "pc1_severity": block.get("pc1_severity"),
-                        "effective_number_of_bets": block.get("effective_number_of_bets"),
-                        "effective_number_of_bets_ratio": block.get("effective_number_of_bets_ratio"),
-                        "enb_severity": block.get("enb_severity"),
-                        "rolling_stability_severity": (rolling_pc1_summary or {}).get("stability_severity") if isinstance(rolling_pc1_summary, dict) else None,
-                        "rolling_trend_slope_per_year": (rolling_pc1_summary or {}).get("trend_slope_per_year") if isinstance(rolling_pc1_summary, dict) else None,
-                        "rolling_latest_minus_mean": (rolling_pc1_summary or {}).get("latest_minus_mean") if isinstance(rolling_pc1_summary, dict) else None,
-                    }
-                )
-                for comp in block.get("components") or []:
-                    if not isinstance(comp, dict):
-                        continue
-                    loadings = comp.get("loadings") or {}
-                    if not isinstance(loadings, dict):
-                        continue
-                    for asset, loading in loadings.items():
-                        component_rows.append(
-                            {
-                                "layer": layer_name,
-                                "pca_type": pca_key,
-                                "interpretation": block.get("interpretation"),
-                                "component": comp.get("component"),
-                                "asset": asset,
-                                "loading": loading,
-                                "eigenvalue": comp.get("eigenvalue"),
-                                "explained_variance_ratio": comp.get("explained_variance_ratio"),
-                                "cumulative_explained_variance_ratio": comp.get("cumulative_explained_variance_ratio"),
-                            }
-                        )
-                if isinstance(rolling, dict):
-                    for row in rolling.get("rows") or []:
-                        if isinstance(row, dict):
-                            rolling_rows.append({"layer": layer_name, "pca_type": pca_key, **row})
-                fc = block.get("pc1_factor_correlations") or {}
-                correlations = fc.get("correlations") if isinstance(fc, dict) else {}
-                if isinstance(correlations, dict):
-                    for factor, corr in correlations.items():
-                        corr_rows.append(
-                            {
-                                "layer": layer_name,
-                                "pca_type": pca_key,
-                                "factor": factor,
-                                "correlation": corr,
-                                "abs_correlation": abs(float(corr)) if corr is not None else None,
-                            }
-                        )
-
-        if output_policy.write_csv and summary_rows:
-            pd.DataFrame(summary_rows).round(8).to_csv(output_dir_csv / "portfolio_pca_summary_5y.csv", index=False)
-        if output_policy.write_csv and component_rows:
-            pd.DataFrame(component_rows).round(8).to_csv(output_dir_csv / "portfolio_pca_components_5y.csv", index=False)
-        if output_policy.write_csv and rolling_rows:
-            pd.DataFrame(rolling_rows).round(8).to_csv(output_dir_csv / "portfolio_pca_rolling_pc1.csv", index=False)
-        if output_policy.write_csv and corr_rows:
-            pd.DataFrame(corr_rows).round(8).to_csv(output_dir_csv / "portfolio_pca_pc1_factor_correlations.csv", index=False)
-    except Exception as e:
-        stress_report["portfolio_pca_error"] = str(e)
-        logger.warning(f"Portfolio PCA diagnostics failed: {e}")
-    report_timing.end_block("portfolio_pca")
 
     # Out-of-sample explainability in historical episodes: beta * realized factor shocks.
     try:
@@ -2187,11 +1832,14 @@ def run_portfolio_report_for_weights(
         stress_report["scenario_library_error"] = str(e)
         logger.warning(f"Scenario library v1 failed: {e}")
     report_timing.end_block("scenario_library")
-    stress_report["frequency_disclosure"] = frequency_disclosure_from_resolution(
+    frequency_disclosure = frequency_disclosure_from_resolution(
         freq_res,
         factor_stress_frequency=FACTOR_STRESS_FREQUENCY_DEFAULT,
         macro_regime_frequency=MACRO_REGIME_FREQUENCY_DEFAULT,
     )
+    frequency_disclosure.pop("macro_regime_frequency", None)
+    frequency_disclosure.pop("macro_regime_frequency_notes", None)
+    stress_report["frequency_disclosure"] = frequency_disclosure
     stress_report["periods_per_year"] = ppy
 
     with report_timing.block("export_stress"):

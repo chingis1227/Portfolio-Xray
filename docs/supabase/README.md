@@ -2,7 +2,7 @@
 
 Portfolio MRI can optionally use Supabase Free as a compact app-data layer for signed-in browser users. It is disabled unless `NEXT_PUBLIC_PMRI_SUPABASE_ENABLED=true` and both public Supabase values are present in the frontend environment.
 
-Supabase stores only lightweight records: profile metadata, saved portfolio inputs, saved holdings, compact review rows, compact per-stage summaries, and compact verdict summaries. The application measures every `review_stage_summaries.summary` payload before writing; payloads above the 55 KB soft limit are skipped, a warning is shown, and local browser state remains active.
+Supabase stores only lightweight records: profile metadata, compact Client Fit profile fields, saved portfolio inputs, saved holdings, immutable portfolio-version snapshots, workspace pointers, compact review rows, compact per-stage summaries, archive markers, and compact verdict summaries. The application measures every `review_stage_summaries.summary` payload before writing; payloads above the 55 KB soft limit are skipped, a warning is shown, and local browser state remains active.
 
 Supabase is not an analytics engine and not a generated-artifact store. Do not upload `runs/`, `Main portfolio/`, `cache/`, `pdf files/`, generated candidate folders, full `portfolio_xray.json`, full `stress_report.json`, price history, parquet, CSV exports, PDFs, or raw backend artifact bundles. Those remain local/generated evidence governed by `OUTPUTS.md`.
 
@@ -20,13 +20,29 @@ next-test text inside `reviews.compact_summary` and `review_stage_summaries.summ
 store raw `client_fit_check.json`, generated artifact paths, schema versions, source-artifact maps,
 field paths, raw Diagnosis/Stress evidence, or raw Client Fit artifact JSON in Supabase.
 
-Setup starts with `docs/supabase/supabase_free_schema.sql` in the Supabase SQL Editor. If an existing
-Supabase database rejects staged rows with `review_stage_summaries_stage_check` for `input`,
-`data_load`, `xray`, `stress`, `client_fit`, `problem_classification`, or `launchpad_builder`, run
+Setup starts with `docs/supabase/supabase_free_schema.sql` in the Supabase SQL Editor. New
+projects get the account workspace schema from that base file. Existing Supabase projects that
+already ran an older schema should run `docs/supabase/2026-06-15_account_workspace_schema.sql` once
+in the SQL Editor to add compact Client Fit profile fields, immutable portfolio versions, workspace
+state pointers, archive markers, and review-to-version links. If an existing Supabase database
+rejects staged rows with `review_stage_summaries_stage_check` for `input`, `data_load`, `xray`,
+`stress`, `client_fit`, `problem_classification`, or `launchpad_builder`, run
 `docs/supabase/2026-06-15_review_stage_summaries_stage_constraint_patch.sql` once in the SQL Editor
 to align the live check constraint with `review_state_v1`.
 
 The frontend uses public browser-safe Supabase clients plus Row Level Security; it must not use service-role keys, secret keys, database passwords, Supabase Storage, Realtime, Edge Functions, or privileged frontend credentials for this optional persistence layer.
+
+## Account workspace model
+
+The production account workspace model is compact and versioned:
+
+```text
+User -> Profile / Client Fit -> Portfolio -> Portfolio Version -> Review -> Stage Summaries
+```
+
+A portfolio is editable user input. A portfolio version is an immutable compact snapshot of holdings and currency used by a draft or completed review. A review is a calculation record tied to that snapshot. Completed reviews are immutable history; editing a portfolio creates a new draft/review snapshot instead of mutating the old result. `/workspace` may show active portfolios, archived portfolios, latest review state, and compact review history. Login and workspace hydration restore compact state only and must not run diagnosis or refresh market data automatically.
+
+Archive is the normal UI removal behavior for portfolios and reviews. Hard delete is deferred to a separate privacy/admin design and is not the default workspace action.
 
 ## Auth email setup
 
