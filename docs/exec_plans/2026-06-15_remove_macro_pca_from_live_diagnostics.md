@@ -28,6 +28,8 @@ The work is organized in four parts:
 - [x] (2026-06-15 20:05Z) Part 2: updated current docs, contracts, golden fixture, and focused tests for the non-PCA alert boundary.
 - [x] (2026-06-15 20:30Z) Part 3: removed retired `macro_regime` and `portfolio_pca` names from the report timing block registry and added a regression assertion that they stay out of the live timing contract.
 - [x] (2026-06-15 20:45Z) Part 3: synced `SPEC.md`, `TESTING.md`, and `SCREEN_CONTRACTS.md`; strengthened live-output negative assertions for macro/PCA fragments and the non-PCA `Correlation Concentration` alert.
+- [x] (2026-06-15 20:49Z) Part 4: ran the same-payload staged diagnosis performance smoke after Parts 1-3; final run returned cold 43.025 seconds, warm 12.439 seconds, status passed.
+- [x] (2026-06-15 20:50Z) Part 4: inspected final warm artifacts; `stress_report.json` contains no forbidden macro/regime/PCA fields or PCA fragments, and `portfolio_xray.json` keeps non-PCA `Correlation Concentration` with `pca_used_for_correlation_concentration=false`.
 
 ## Surprises & Discoveries
 
@@ -37,6 +39,8 @@ The work is organized in four parts:
   Evidence: `frontend/lib/reviewState.tsx` maps `correlation_concentration` to the alert title, while `src/portfolio_xray.py` reads `stress_report.portfolio_pca` for legacy hidden-risk evidence.
 - Observation: Part 1 reduces the cold staged diagnosis smoke on the selected payload, but the warm result was slightly slower than the baseline run.
   Evidence: after-change smoke returned cold 60.695 seconds and warm 17.517 seconds, versus baseline cold 58.390 seconds and warm 13.018 seconds, after preserving factor variance decomposition and diagnostic oil beta.
+- Observation: Part 4 initially found one stale legacy string in `scenario_library_meta.warnings_global`, not a live analytics block.
+  Evidence: the first Part 4 warm `stress_report.json` had no forbidden top-level fields and no PCA fragments, but contained `regime_factor_analytics_full_unavailable_covariance_matrices_stripped_in_stress_report`; `src/scenario_library.py` now emits `macro_regime_covariance_payload_unavailable_for_scenario_library` instead.
 
 ## Decision Log
 
@@ -53,6 +57,8 @@ The work is organized in four parts:
 ## Outcomes & Retrospective
 
 Part 1 is complete. Live Run Diagnostics no longer runs or outputs macro regime diagnostics, regime factor analytics, regime portfolio metrics, or portfolio PCA. The staged diagnosis smoke passed, and the generated warm `analysis_subject/stress_report.json` contained no forbidden macro/PCA fields or macro frequency disclosure keys. Part 2 is also complete. `Correlation Concentration` now relies on non-PCA evidence and product Block 2.4 no longer surfaces legacy PCA cross-reference evidence, even if an older caller passes a legacy enrichment argument. The public product block keeps compatibility metadata fields but pins them to `legacy_enrichment_wire_time=false`, `legacy_enrichment_sources=[]`, and `pca_used_for_correlation_concentration=false`. Part 3 is complete. Report timing no longer advertises retired live-runtime blocks for macro regime or portfolio PCA, current contracts document the live no-macro/no-PCA boundary, and focused tests assert that non-PCA `Correlation Concentration` still appears while PCA/regime fragments stay out of live outputs.
+
+Part 4 is complete for backend/artifact QA. The same payload performance smoke passed with cold 43.025 seconds and warm 12.439 seconds, improving versus the pre-change baseline of cold 58.390 seconds and warm 13.018 seconds. The final warm `analysis_subject/stress_report.json` is 453,881 bytes, has 50 top-level keys, preserves the allowed `inflation_stagflation` Stress Lab scenario string, and contains none of `macro_regime_diagnostics`, `macro_regime_diagnostics_error`, `regime_factor_analytics`, `regime_factor_analytics_error`, `regime_portfolio_metrics`, `regime_portfolio_metrics_error`, `portfolio_pca`, `portfolio_pca_error`, `pc1_explained_variance_ratio`, `residual_pca`, or `pca_pc1_`. The final warm `analysis_subject/portfolio_xray.json` contains `block_2_4_hidden_exposure.alerts.correlation_concentration`, no legacy PCA evidence keys, and `diagnostics_meta.pca_used_for_correlation_concentration=false`. Minimal same-run artifact lineage was verified by confirming the review result and expected `analysis_subject` artifacts all exist under the final warm run directory. Frontend/browser route QA was not run in Part 4 to avoid a longer visual QA cycle; routes `/portfolio-input`, `/diagnosis`, `/evidence`, `/client-fit`, and `/hypothesis` remain unverified in this pass.
 
 ## Context and Orientation
 
@@ -126,7 +132,25 @@ Additional Part 3 validation after contract/test sync:
     .\.venv\Scripts\python.exe -m py_compile src\report_timing.py tests\test_report_timing.py tests\test_candidate_run_context.py tests\test_block_2_4_hidden_exposure.py
     .\.venv\Scripts\python.exe -m pytest tests\test_report_timing.py tests\test_candidate_run_context.py tests\test_block_2_4_hidden_exposure.py tests\test_block_2_4_matrix_coverage.py tests\test_portfolio_xray_contract.py -q
 
-The observed Part 3 focused result was initially 5 passed for timing only; after the broader contract/test sync, rerun the broader focused bundle and record the result here.
+The observed Part 3 focused result was 160 passed for the broader report timing, review context,
+Block 2.4, matrix coverage, and Portfolio X-Ray contract bundle.
+
+Validation actually run for Part 4:
+
+    $env:PMRI_STAGED_REVIEW_RUNTIME='direct'
+    $env:PMRI_STAGED_REVIEW_MAX_WORKERS='1'
+    $env:PMRI_YF_MAX_WORKERS='1'
+    .\.venv\Scripts\python.exe scripts\diagnosis_performance_smoke.py --payload runs\frontend_review_20260615T140943Z_ytGU3_jYfgvwel1Iy1VX4w\payload.json --timeout-seconds 900 --warm-threshold-seconds 9999
+    .\.venv\Scripts\python.exe -m py_compile src\scenario_library.py tests\test_scenario_library.py
+    .\.venv\Scripts\python.exe -m pytest tests\test_scenario_library.py -q
+    .\.venv\Scripts\python.exe scripts\verify_docs.py
+    .\.venv\Scripts\python.exe -m pytest tests\test_report_timing.py tests\test_candidate_run_context.py tests\test_block_2_4_hidden_exposure.py tests\test_block_2_4_matrix_coverage.py tests\test_portfolio_xray_contract.py -q
+
+The first Part 4 smoke returned cold 40.744 seconds, warm 10.685 seconds, and status passed, but artifact inspection found the stale warning string `regime_factor_analytics_full_unavailable_covariance_matrices_stripped_in_stress_report` inside `scenario_library_meta.warnings_global`. After renaming that warning and adding a regression assertion, the final same-payload smoke returned cold 43.025 seconds, warm 12.439 seconds, and status passed. The final warm `stress_report.json` was 453,881 bytes, had no forbidden macro/regime/PCA fields, no `pc1_explained_variance_ratio`, no `residual_pca`, and no `pca_pc1_` fragments. `inflation_stagflation` remained present as an allowed Stress Lab scenario. The final warm `portfolio_xray.json` contained `block_2_4_hidden_exposure.alerts.correlation_concentration` with status `Medium`, score 44, 15 evidence rows, no legacy PCA evidence keys, and `diagnostics_meta.pca_used_for_correlation_concentration=false`.
+
+The observed Part 4 focused results were 2 passed for `tests/test_scenario_library.py`, docs verification OK, and 160 passed for the report timing, review context, Block 2.4, matrix coverage, and Portfolio X-Ray contract bundle.
+
+Minimal backend/artifact same-run lineage QA was run for Part 4: `review_result.json`, `analysis_subject/stress_report.json`, `analysis_subject/portfolio_xray.json`, `analysis_subject/client_fit_check.json`, `analysis_subject/problem_classification.json`, and `analysis_subject/candidate_launchpad.json` all existed under the final warm run directory `runs/frontend_review_20260615T194836Z_phWLfxQbNaL3aTRLrKnZTg`. Frontend/browser QA was not run in Part 4 because the requested acceptance can be verified from the same-run backend artifacts and performance smoke without starting a fresh local frontend target; route click-through remains unverified.
 
 Validation actually run for Part 1:
 
@@ -152,6 +176,16 @@ After-change artifact paths from the Part 1 validation run:
     cold_result=<repo root>\runs\frontend_review_20260615T190638Z__ZMV4j1FuTTvJ-mAOmeFRw\review_result.json
     warm_result=<repo root>\runs\frontend_review_20260615T190739Z_eXlYr9jhOFOqJd9EQkHO0w\review_result.json
 
+Initial Part 4 artifact paths before stale warning cleanup:
+
+    cold_result=<repo root>\runs\frontend_review_20260615T194514Z_JlSW6OAHf8xF2UcycFvhjA\review_result.json
+    warm_result=<repo root>\runs\frontend_review_20260615T194555Z_d1osd818arT_y77lBNm4rQ\review_result.json
+
+Final Part 4 artifact paths after stale warning cleanup:
+
+    cold_result=<repo root>\runs\frontend_review_20260615T194753Z_4jAEMkGg1nniPSQXwjbaiw\review_result.json
+    warm_result=<repo root>\runs\frontend_review_20260615T194836Z_phWLfxQbNaL3aTRLrKnZTg\review_result.json
+
 ## Interfaces and Dependencies
 
 No public API route is added or removed in Part 1. The staged review API still returns a review id and status progress. The `stress_report.json` contract changes by removing macro regime and PCA fields from newly generated live Run Diagnostics artifacts. Later work will update the `Correlation Concentration` semantics to use non-PCA evidence.
@@ -162,3 +196,4 @@ No public API route is added or removed in Part 1. The staged review API still r
 2026-06-15 / Codex: Updated after Part 2 implementation to record the non-PCA `Correlation Concentration` contract, tests, documentation sync, and verification evidence.
 2026-06-15 / Codex: Updated after Part 3 implementation to remove retired macro/PCA timing block names from the live report timing contract and record focused verification.
 2026-06-15 / Codex: Expanded Part 3 to match the four-part plan: current contracts now document the live no-macro/no-PCA boundary, screen contracts keep `Correlation Concentration` as non-PCA, and focused tests include stronger negative assertions.
+2026-06-15 / Codex: Updated after Part 4 QA and performance measurement; recorded final same-payload smoke metrics, artifact inspection results, same-run backend lineage, and the unverified frontend route-click-through scope.

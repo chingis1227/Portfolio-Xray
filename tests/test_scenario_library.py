@@ -125,6 +125,7 @@ def test_build_scenario_library_smoke(tmp_path: Path):
     assert sl_path.exists()
     raw = json.loads(sl_path.read_text(encoding="utf-8"))
     assert raw["n_scenarios"] == out["n_scenarios"]
+    assert "regime_factor_analytics" not in json.dumps(raw)
     counts = summarize_scenario_classifications(raw["scenarios"])
     assert sum(counts.values()) == raw["n_scenarios"]
 

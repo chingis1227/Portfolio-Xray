@@ -278,7 +278,7 @@ def build_scenario_library(
     # --- Macro regimes (require full payload for matrices) ---
     rfa = regime_factor_analytics_full if isinstance(regime_factor_analytics_full, dict) else None
     if rfa is None:
-        warnings_global.append("regime_factor_analytics_full_unavailable_covariance_matrices_stripped_in_stress_report")
+        warnings_global.append("macro_regime_covariance_payload_unavailable_for_scenario_library")
     regimes_payload = (rfa or {}).get("regimes") or {}
     rfa_freq = str((rfa or {}).get("frequency") or "unknown")
 
@@ -398,7 +398,7 @@ def build_scenario_library(
             "raw_vs_shrinkage": None,
         }
         if rfa is None:
-            missing_rows.append({"scenario_id": regime, "missing_field": "regime_factor_analytics_full_payload"})
+            missing_rows.append({"scenario_id": regime, "missing_field": "macro_regime_covariance_payload"})
         if not asset_nested_raw:
             missing_rows.append({"scenario_id": regime, "missing_field": "asset_covariance.matrix"})
         if not factor_nested_raw:
