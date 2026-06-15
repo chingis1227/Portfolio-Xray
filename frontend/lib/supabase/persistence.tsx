@@ -335,7 +335,19 @@ function holdingsFromVersionSnapshot(value: unknown): ReviewHolding[] {
 
 
 function humanizePersistenceError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error || "Unknown save error.");
+  const rawMessage = error instanceof Error
+    ? error.message
+    : isRecord(error) && typeof error.message === "string"
+      ? error.message
+      : isRecord(error) && typeof error.details === "string"
+        ? error.details
+        : typeof error === "string"
+          ? error
+          : "";
+  const message = rawMessage.trim();
+  if (!message || message === "[object Object]") {
+    return "Saved workspace data is temporarily unavailable. You can continue locally or try again.";
+  }
   if (message.toLowerCase().includes("fetch")) {
     return "Could not reach the saved workspace service. Check your connection and try again.";
   }
@@ -1433,7 +1445,7 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
       const portfolios = await fetchSavedPortfoliosForUser(user.id);
       setSavedPortfolios(portfolios);
     } catch (error) {
-      setNotice("warning", `Could not load saved portfolios. ${humanizePersistenceError(error)}`);
+      console.warn("Could not load saved portfolios.", humanizePersistenceError(error));
     } finally {
       setPortfoliosLoading(false);
     }
@@ -1450,7 +1462,7 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
       const reviews = await fetchSavedReviewsForUser(user.id);
       setSavedReviews(reviews);
     } catch (error) {
-      setNotice("warning", `Could not load saved reviews. ${humanizePersistenceError(error)}`);
+      console.warn("Could not load saved reviews.", humanizePersistenceError(error));
     } finally {
       setReviewsLoading(false);
     }
@@ -1467,7 +1479,7 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
       const workspace = await fetchWorkspaceStateForUser(user.id);
       setWorkspaceState(workspace);
     } catch (error) {
-      setNotice("warning", `We could not load your latest workspace. ${humanizePersistenceError(error)}`);
+      console.warn("Could not load the latest workspace.", humanizePersistenceError(error));
     } finally {
       setWorkspaceLoading(false);
     }

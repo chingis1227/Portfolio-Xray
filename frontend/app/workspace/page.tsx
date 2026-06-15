@@ -180,8 +180,6 @@ export default function WorkspacePage() {
     portfoliosLoading,
     reviewsLoading,
     workspaceLoading,
-    notice,
-    clearNotice,
     refreshSavedPortfolios,
     refreshSavedReviews,
     refreshWorkspaceState,
@@ -252,22 +250,6 @@ export default function WorkspacePage() {
       >
         <StatusBadge tone="green">Signed in</StatusBadge>
       </PageHeader>
-
-      {notice ? (
-        <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-pmri-border/45 bg-white/[0.025] px-4 py-3 text-sm leading-6 text-pmri-text2 md:flex-row md:items-center md:justify-between" role="status">
-          <p>{notice.message}</p>
-          {notice.tone === "warning" ? (
-            <div className="flex shrink-0 flex-wrap gap-2">
-              <button type="button" onClick={refreshWorkspace} className="pmri-focus rounded-full border border-pmri-blue/40 bg-pmri-blue/[0.08] px-3 py-1.5 text-xs font-semibold text-pmri-blueSoft transition hover:bg-pmri-blue/[0.13]">
-                Try again
-              </button>
-              <button type="button" onClick={clearNotice} className="pmri-focus rounded-full border border-pmri-border/55 px-3 py-1.5 text-xs font-semibold text-pmri-muted transition hover:border-pmri-border hover:text-pmri-text2">
-                Continue locally
-              </button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">

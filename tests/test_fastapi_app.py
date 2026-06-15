@@ -262,6 +262,23 @@ def test_staged_failure_classifier_uses_stderr_tail_for_fred_http_failure() -> N
     assert not re.search(r"[A-Z]:[\\/]", json.dumps(safe_error))
 
 
+def test_staged_failure_classifier_uses_loading_tail_for_fred_failure() -> None:
+    result = {
+        "status": "failed",
+        "error": "Backend run failed.",
+        "details": "run_portfolio_review.py exited with code 1.",
+        "stderr_tail": "INFO: Loading risk-free rate from FRED:DTB3...\nBackend failure details were captured safely.",
+    }
+
+    code, message, user_action, retryable, stage = review_service._classify_staged_failure(result, 1)
+
+    assert code == "DATA_PROVIDER_FAILED"
+    assert message.startswith("Market data provider failed during data loading.")
+    assert user_action == "retry"
+    assert retryable is True
+    assert stage == "data_load"
+
+
 def test_staged_failure_classifier_timeout_stays_timeout_from_tail() -> None:
     result = {
         "status": "failed",
@@ -1369,6 +1386,9 @@ def test_create_review_rejects_excessive_holding_count() -> None:
 
 
 def test_staged_review_queue_limit_returns_429(monkeypatch: pytest.MonkeyPatch) -> None:
+    with review_service._staged_worker_condition:
+        review_service._staged_worker_active = 0
+        review_service._staged_worker_queued = 0
     monkeypatch.setenv("PMRI_STAGED_REVIEW_MAX_WORKERS", "0")
 
     response = _request(
@@ -1386,6 +1406,37 @@ def test_staged_review_queue_limit_returns_429(monkeypatch: pytest.MonkeyPatch) 
     body = response.json()
     assert body["status"] == "failed"
     assert "worker queue is full" in body["safe_error"]["message"]
+
+
+def test_staged_worker_reservation_allows_bounded_waiting_queue(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PMRI_STAGED_REVIEW_MAX_WORKERS", "1")
+    monkeypatch.setenv("PMRI_STAGED_REVIEW_MAX_QUEUED", "2")
+    with review_service._staged_worker_condition:
+        review_service._staged_worker_active = 0
+        review_service._staged_worker_queued = 0
+
+    try:
+        assert review_service._try_reserve_staged_worker_slot() is True
+        assert review_service._try_reserve_staged_worker_slot() is True
+        assert review_service._try_reserve_staged_worker_slot() is True
+        assert review_service._try_reserve_staged_worker_slot() is False
+
+        review_service._mark_staged_worker_started()
+        with review_service._staged_worker_condition:
+            assert review_service._staged_worker_active == 1
+            assert review_service._staged_worker_queued == 2
+        assert review_service._try_reserve_staged_worker_slot() is False
+
+        review_service._release_staged_worker_slot()
+        review_service._mark_staged_worker_started()
+        with review_service._staged_worker_condition:
+            assert review_service._staged_worker_active == 1
+            assert review_service._staged_worker_queued == 1
+    finally:
+        with review_service._staged_worker_condition:
+            review_service._staged_worker_active = 0
+            review_service._staged_worker_queued = 0
+            review_service._staged_worker_condition.notify_all()
 
 def test_generated_frontend_api_types_match_openapi_schema() -> None:
     schema = app.openapi()

@@ -229,6 +229,14 @@ The public error shape is:
 The backend may log richer internal exceptions, but public staged errors must remain bounded and
 safe for UI display.
 
+## Worker admission and bounded queue
+
+The live staged review endpoint returns before Python diagnosis finishes. Backend execution is
+bounded by `PMRI_STAGED_REVIEW_MAX_WORKERS` active diagnosis workers and
+`PMRI_STAGED_REVIEW_MAX_QUEUED` additional accepted reviews waiting for an active slot. A review
+that is accepted into the bounded waiting queue remains `running` until a worker slot is available;
+only requests beyond active plus queued capacity may return HTTP 429 with a retryable safe error.
+
 ## Demo / QA mode and live mode
 
 The staged web path has two modes:

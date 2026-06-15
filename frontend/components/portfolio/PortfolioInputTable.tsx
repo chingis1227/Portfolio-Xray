@@ -852,7 +852,15 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
           : typeof result.details === "string"
             ? result.details
             : "";
-        const message = [result.error || "Portfolio diagnosis failed.", detailText].filter(Boolean).join(" ");
+        const safeError = result.safe_error;
+        const safeErrorMessage = safeError
+          ? [
+            safeError.message,
+            safeError.code ? `Code: ${safeError.code}` : "",
+            safeError.stage ? `Stage: ${safeError.stage}` : ""
+          ].filter(Boolean).join(" ")
+          : "";
+        const message = [safeErrorMessage || result.error || "Portfolio diagnosis failed.", detailText].filter(Boolean).join(" ");
         recordReviewError({
           investorCurrency: currency || "USD",
           holdings: reviewHoldings,

@@ -217,6 +217,7 @@ STAGED_NEXT_STAGE: dict[StagedStageName, StagedStageName] = {
 DEFAULT_MAX_STAGED_WORKERS = 2
 DEFAULT_MAX_STAGED_QUEUED = 8
 _staged_worker_lock = threading.Lock()
+_staged_worker_condition = threading.Condition(_staged_worker_lock)
 _staged_worker_active = 0
 _staged_worker_queued = 0
 
@@ -570,23 +571,31 @@ def _try_reserve_staged_worker_slot() -> bool:
     with _staged_worker_lock:
         limit = _worker_limit("PMRI_STAGED_REVIEW_MAX_WORKERS", DEFAULT_MAX_STAGED_WORKERS)
         queued_limit = _worker_limit("PMRI_STAGED_REVIEW_MAX_QUEUED", DEFAULT_MAX_STAGED_QUEUED)
-        if _staged_worker_active >= limit or _staged_worker_queued >= queued_limit:
+        if limit <= 0:
             return False
-        _staged_worker_active += 1
+        if _staged_worker_active + _staged_worker_queued >= limit + queued_limit:
+            return False
         _staged_worker_queued += 1
         return True
 
 
 def _mark_staged_worker_started() -> None:
-    global _staged_worker_queued
-    with _staged_worker_lock:
+    global _staged_worker_active, _staged_worker_queued
+    with _staged_worker_condition:
+        while _staged_worker_active >= max(
+            1,
+            _worker_limit("PMRI_STAGED_REVIEW_MAX_WORKERS", DEFAULT_MAX_STAGED_WORKERS),
+        ):
+            _staged_worker_condition.wait(timeout=1.0)
         _staged_worker_queued = max(0, _staged_worker_queued - 1)
+        _staged_worker_active += 1
 
 
 def _release_staged_worker_slot() -> None:
     global _staged_worker_active
-    with _staged_worker_lock:
+    with _staged_worker_condition:
         _staged_worker_active = max(0, _staged_worker_active - 1)
+        _staged_worker_condition.notify()
 
 
 def _set_stage_status(
