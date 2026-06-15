@@ -9,6 +9,7 @@ frontend routing behavior.
 
 from __future__ import annotations
 
+import gc
 import json
 import logging
 import os
@@ -214,8 +215,8 @@ STAGED_NEXT_STAGE: dict[StagedStageName, StagedStageName] = {
     "verdict": "report",
     "report": "report",
 }
-DEFAULT_MAX_STAGED_WORKERS = 2
-DEFAULT_MAX_STAGED_QUEUED = 8
+DEFAULT_MAX_STAGED_WORKERS = 1
+DEFAULT_MAX_STAGED_QUEUED = 3
 _staged_worker_lock = threading.Lock()
 _staged_worker_condition = threading.Condition(_staged_worker_lock)
 _staged_worker_active = 0
@@ -564,6 +565,31 @@ def _worker_limit(name: str, default: int) -> int:
         return max(0, int(raw))
     except ValueError:
         return default
+
+
+def _release_memory_pressure() -> None:
+    """Best-effort cleanup after memory-heavy review stages.
+
+    FastAPI keeps the Python interpreter alive between requests. Diagnosis and
+    candidate stages load pandas/numpy/yfinance data and may launch a candidate
+    factory child process; on small Render instances, retaining freed arenas can
+    push the service over its memory limit on the next stage. This helper does
+    not change calculations or outputs; it only asks Python and, on glibc Linux,
+    the allocator to return free memory sooner.
+    """
+
+    gc.collect()
+    if os.name != "posix":
+        return
+    try:
+        import ctypes
+
+        libc = ctypes.CDLL("libc.so.6")
+        trim = getattr(libc, "malloc_trim", None)
+        if trim is not None:
+            trim(0)
+    except Exception:
+        return
 
 
 def _try_reserve_staged_worker_slot() -> bool:
@@ -1622,6 +1648,7 @@ def _run_staged_review_background(
         state["warnings"] = [scrub_failure_text(str(exc))]
         _write_staged_state(run_dir, state)
     finally:
+        _release_memory_pressure()
         _release_staged_worker_slot()
 
 def _start_staged_background_worker(
@@ -2568,6 +2595,8 @@ def generate_candidate_from_builder(
             retryable=True,
             details=[str(exc)],
         )
+    finally:
+        _release_memory_pressure()
 
     candidate_generation = _record(result.get("candidate_generation"))
     data = _candidate_data(candidate_generation)

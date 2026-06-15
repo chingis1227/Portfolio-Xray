@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -182,9 +183,19 @@ def _run_one_candidate_factory(
         command.extend(["--config", str(config_path)])
     if force:
         command.append("--force")
+    env = os.environ.copy()
+    for name in (
+        "OMP_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
+        "VECLIB_MAXIMUM_THREADS",
+    ):
+        env.setdefault(name, "1")
     return runner(
         command,
         cwd=str(project_root),
+        env=env,
         capture_output=True,
         text=True,
         encoding="utf-8",

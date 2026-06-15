@@ -129,6 +129,7 @@ Candidate and robust portfolio commands are indexed in `docs/specs/candidate_por
 - Shared internal API auth: set the same `PMRI_FASTAPI_INTERNAL_SECRET` in Cloudflare Pages and Render.
 - Website link: https://portfolio-mri.com/
 - Render runtime defaults: start FastAPI with `uvicorn src.api.app:app --host 0.0.0.0 --port $PORT`; set `PMRI_STAGED_REVIEW_RUNTIME=direct`.
+- Render memory guardrail: keep `PMRI_STAGED_REVIEW_MAX_WORKERS=1` unless the instance has been load-tested with staged diagnosis plus candidate generation.
 - Market data dependencies: Yahoo/yfinance for prices and FRED `DTB3` for USD risk-free data; production Render should set `FRED_API_KEY` to reduce FRED timeout failures.
 - After changing Cloudflare env vars, redeploy Cloudflare Pages. After changing Render env vars or backend code, redeploy the Render service.
 

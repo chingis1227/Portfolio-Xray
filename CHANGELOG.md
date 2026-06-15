@@ -2,6 +2,11 @@
 
 ## 2026-06-15
 
+- Added production memory guardrails for staged FastAPI reviews. Hosted staged diagnosis now defaults
+  to one active worker, releases allocator pressure after heavy review/candidate stages, and constrains
+  common numeric thread pools in the candidate factory child process to reduce Render memory-limit
+  restarts. Production frontend errors now show a retry/restarting message instead of local `uvicorn`
+  setup instructions.
 - Rebuilt the `Correlation Concentration` hidden-risk alert as a non-PCA product diagnostic. Block 2.4 now ignores legacy PCA enrichment, keeps PCA-use metadata false, and documents/tests the pairwise-correlation, duplicate-exposure, and factor-concentration evidence boundary.
 - Implemented account workspace UI Session 04. Added `/workspace` as the signed-in account home with
   current workspace context, portfolio library, compact review history, archive controls, sidebar

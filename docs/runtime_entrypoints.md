@@ -103,6 +103,11 @@ adapter calls the in-process service `src/review_runtime/staged_diagnosis_servic
 `run_report.run_materialize_analysis_subject_report` and writes the same run-local
 `analysis_subject/` artifacts. Set `PMRI_STAGED_REVIEW_RUNTIME=subprocess` only for compatibility
 debugging when the older `run_report.py` / `run_portfolio_review.py` subprocess boundary is needed.
+The hosted FastAPI default allows one staged diagnosis worker at a time
+(`PMRI_STAGED_REVIEW_MAX_WORKERS=1`) to avoid overlapping memory-heavy market-data and artifact
+materialization work on small Render instances. Candidate generation also constrains common numeric
+thread pools in its factory child process. Increase these limits only after checking service memory
+metrics under live staged-review and candidate-generation load.
 Portfolio review endpoints exposed by FastAPI are protected internal API surfaces as of the
 security remediation Session 02. Normal browser traffic must enter through the Next.js
 `app/api/portfolio/*` compatibility routes, which authenticate the user and then send a short-lived

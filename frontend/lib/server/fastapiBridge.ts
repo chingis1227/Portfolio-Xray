@@ -298,7 +298,9 @@ async function callFastApi(method: "GET" | "POST", apiPath: string, body?: unkno
     }
     const unavailable = error instanceof Error && error.name === "AbortError"
       ? "FastAPI backend request timed out."
-      : "FastAPI backend is unavailable. Start it with uvicorn src.api.app:app --host 127.0.0.1 --port 8000.";
+      : isProductionRuntime()
+        ? "Portfolio MRI supporting data is temporarily unavailable. Please retry in a minute; the analysis backend may be restarting."
+        : "FastAPI backend is unavailable. Start it with uvicorn src.api.app:app --host 127.0.0.1 --port 8000.";
     return {
       ok: false,
       status: error instanceof Error && error.name === "AbortError" ? 504 : 503,
