@@ -81,6 +81,14 @@ retired the old Next.js-to-Python script bridge from the normal frontend path: t
 `/api/portfolio/*` route handlers are now thin compatibility proxies to FastAPI and no longer
 spawn `scripts/run_review_from_payload.py`.
 
+Security remediation Sessions 08-09 close the proxy authentication loop. The normal Next.js
+portfolio route handlers must resolve an authenticated browser user through Supabase when Supabase
+is enabled, or require `PMRI_PORTFOLIO_API_AUTH_MODE=dev_bypass` for non-production local demos.
+Every FastAPI call from those route handlers carries `X-PMRI-User-Id`,
+`X-PMRI-Auth-Timestamp`, and `X-PMRI-Internal-Signature`; FastAPI validates that short-lived HMAC
+before creating, reading, or mutating reviews. Production must set `PMRI_FASTAPI_INTERNAL_SECRET`
+and must not enable the bypass modes.
+
 API versioning rule:
 
 - additive response fields are allowed inside `data`, `warnings`, `evidence`, and `debug` sections;
@@ -132,7 +140,7 @@ Important rules:
 Errors should use this public shape:
 
     {
-      "code": "invalid_portfolio_input|review_not_found|lineage_mismatch|stage_not_ready|backend_failed|artifact_missing|artifact_stale|data_quality_blocker|candidate_generation_blocked|comparison_unavailable|verdict_unavailable|report_unavailable|unknown_error",
+      "code": "invalid_portfolio_input|review_forbidden|review_not_found|lineage_mismatch|stage_not_ready|backend_failed|artifact_missing|artifact_stale|data_quality_blocker|candidate_generation_blocked|comparison_unavailable|verdict_unavailable|report_unavailable|unknown_error",
       "message": "Plain-language explanation safe for the UI.",
       "user_action": "fix_input|retry|return_to_hypothesis|rerun_comparison|rerun_verdict|contact_operator|none",
       "retryable": true,
@@ -142,11 +150,16 @@ Errors should use this public shape:
 The API may log richer internal exceptions server-side, but the public error should stay bounded and
 client-safe.
 
+`review_forbidden` is used when a protected review exists but the signed internal caller is not
+allowed to read or mutate it. This includes different-owner access and ownerless legacy state that
+cannot be safely attributed to the current authenticated user.
+
 ## Endpoint list
 
 ### `GET /api/v1/health`
 
-Purpose: prove the FastAPI server is alive and expose API/OpenAPI readiness.
+Purpose: prove the FastAPI server is alive and expose whether API/OpenAPI documentation routes are
+enabled for the current local process.
 
 Implementation status: implemented in Session 02 by `src/api/app.py` and typed with a Pydantic
 response model in Session 03.
@@ -157,10 +170,12 @@ Response data:
       "service": "portfolio-mri-api",
       "status": "ok",
       "api_version": "v1",
-      "openapi_available": true
+      "openapi_available": false
     }
 
-This endpoint must not read portfolio artifacts or run diagnostics.
+This endpoint must not read portfolio artifacts or run diagnostics. OpenAPI JSON, Swagger UI, and
+ReDoc routes are disabled by default and are enabled only when the local operator starts FastAPI
+with `PMRI_FASTAPI_ENABLE_DOCS=1`.
 
 ### Staged web review endpoints
 
@@ -581,6 +596,10 @@ Diagnosis interpretation Session 13 adds two anti-hallucination checks to the sa
 Regenerate the file after intentional FastAPI contract changes with:
 
     .\.venv\Scripts\python.exe scripts\generate_fastapi_api_types.py
+
+Security remediation Sessions 06-07 changed the generated health type so
+`data.openapi_available` is a boolean rather than a literal `true`, because documentation routes are
+now opt-in.
 
 Focused verification:
 

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portfolio Config — Core MVP</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='design.css') }}">
+    <meta name="csrf-token" content="{{ csrf_token }}">
 </head>
 <body>
     <div class="container">
@@ -303,6 +304,11 @@
     <script>
         let currentYaml = '';
 
+        function csrfHeaders(extraHeaders) {
+            const token = document.querySelector('meta[name="csrf-token"]').content;
+            return Object.assign({'X-CSRF-Token': token}, extraHeaders || {});
+        }
+
         function toggleOption(elem) {
             const group = elem.parentElement;
             group.querySelectorAll('.toggle').forEach(t => t.classList.remove('active'));
@@ -337,7 +343,7 @@
                     sum += parseFloat(val) || 0;
                 } else if (val) {
                     const n = parseFloat(val);
-                    sum += n <= 1 ... n * 100 : n;
+                    sum += n <= 1 ? n * 100 : n;
                 }
             });
             document.getElementById('weightSum').textContent = `Total: ${sum.toFixed(1)}%`;
@@ -349,7 +355,7 @@
 
         function getAnalysisMode() {
             const modeEl = document.getElementById('analysisMode');
-            return modeEl ... modeEl.value : 'analyze_current_weights';
+            return modeEl ? modeEl.value : 'analyze_current_weights';
         }
 
         function updateAnalysisModeUI() {
@@ -359,7 +365,7 @@
             const btnSaveRun = document.getElementById('btnSaveRun');
             if (helpEl) {
                 helpEl.textContent = isOptimize
-                    ... 'Legacy policy path: ticker rows are the investable universe; optimizer writes portfolio_weights.yml.'
+                    ? 'Legacy policy path: ticker rows are the investable universe; optimizer writes portfolio_weights.yml.'
                     : 'Core MVP: weights are saved as current_weights for run_portfolio_review.py diagnosis.';
             }
             if (btnRun) btnRun.disabled = !isOptimize;
@@ -375,7 +381,7 @@
 
         async function previewConfig() {
             const formData = new FormData(document.getElementById('configForm'));
-            const response = await fetch('/generate', { method: 'POST', body: formData });
+            const response = await fetch('/generate', { method: 'POST', headers: csrfHeaders(), body: formData });
             const result = await response.json();
             if (result.success) {
                 currentYaml = result.yaml;
@@ -400,7 +406,7 @@
 
         async function generateAndSave() {
             const formData = new FormData(document.getElementById('configForm'));
-            const response = await fetch('/generate', { method: 'POST', body: formData });
+            const response = await fetch('/generate', { method: 'POST', headers: csrfHeaders(), body: formData });
             const result = await response.json();
             if (result.success) await saveConfig(result.yaml);
         }
@@ -408,7 +414,7 @@
         async function saveConfig(yaml) {
             const response = await fetch('/save', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: csrfHeaders({'Content-Type': 'application/json'}),
                 body: JSON.stringify({yaml: yaml})
             });
             const result = await response.json();
@@ -443,9 +449,9 @@
                 titleEl.textContent = failTitle;
                 statusEl.textContent = result.error;
             } else {
-                titleEl.textContent = result.success ... successTitle : failTitle;
+                titleEl.textContent = result.success ? successTitle : failTitle;
                 statusEl.textContent = result.success
-                    ... (result.dry_run ... 'Dry-run completed.' : 'Exit code: ' + result.exit_code)
+                    ? (result.dry_run ? 'Dry-run completed.' : 'Exit code: ' + result.exit_code)
                     : 'Exit code: ' + result.exit_code;
             }
             outputEl.textContent = result.stdout || '(no output)';
@@ -467,7 +473,7 @@
             if (btnRun) btnRun.disabled = true;
             if (btnSaveRun) btnSaveRun.disabled = true;
             try {
-                const response = await fetch('/run-optimization', { method: 'POST' });
+                const response = await fetch('/run-optimization', { method: 'POST', headers: csrfHeaders() });
                 const result = await response.json();
                 renderCommandResult(result, 'Optimization completed', 'Optimization failed');
                 if (result.success) showToast('Optimization finished.');
@@ -483,7 +489,7 @@
                 return;
             }
             const formData = new FormData(document.getElementById('configForm'));
-            const response = await fetch('/generate', { method: 'POST', body: formData });
+            const response = await fetch('/generate', { method: 'POST', headers: csrfHeaders(), body: formData });
             const result = await response.json();
             if (!result.success) {
                 showToast('Failed to generate config', true);
@@ -496,7 +502,7 @@
 
         async function saveAndRunPortfolioReview(dryRun) {
             const formData = new FormData(document.getElementById('configForm'));
-            const gen = await fetch('/generate', { method: 'POST', body: formData });
+            const gen = await fetch('/generate', { method: 'POST', headers: csrfHeaders(), body: formData });
             const genResult = await gen.json();
             if (!genResult.success) {
                 showToast('Failed to generate config', true);
@@ -505,8 +511,8 @@
             const saved = await saveConfig(genResult.yaml);
             if (!saved) return;
 
-            const label = dryRun ... 'Portfolio review (dry-run)…' : 'Portfolio review…';
-            showCommandModal(label, dryRun ... 'Running run_portfolio_review.py --dry-run' : 'Running run_portfolio_review.py');
+            const label = dryRun ? 'Portfolio review (dry-run)…' : 'Portfolio review…';
+            showCommandModal(label, dryRun ? 'Running run_portfolio_review.py --dry-run' : 'Running run_portfolio_review.py');
             const btnDry = document.getElementById('btnReviewDry');
             const btnFull = document.getElementById('btnReviewFull');
             if (btnDry) btnDry.disabled = true;
@@ -514,16 +520,16 @@
             try {
                 const response = await fetch('/run-portfolio-review', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: csrfHeaders({'Content-Type': 'application/json'}),
                     body: JSON.stringify({ dry_run: dryRun })
                 });
                 const result = await response.json();
                 renderCommandResult(
                     result,
-                    dryRun ... 'Dry-run completed' : 'Portfolio review completed',
-                    dryRun ... 'Dry-run failed' : 'Portfolio review failed'
+                    dryRun ? 'Dry-run completed' : 'Portfolio review completed',
+                    dryRun ? 'Dry-run failed' : 'Portfolio review failed'
                 );
-                if (result.success) showToast(dryRun ... 'Dry-run finished.' : 'Review finished.');
+                if (result.success) showToast(dryRun ? 'Dry-run finished.' : 'Review finished.');
             } catch (err) {
                 renderCommandResult({ success: false, error: err.message, stdout: String(err), stderr: '' }, '', 'Request failed');
             }
@@ -539,7 +545,7 @@
             setTimeout(() => {
                 toast.classList.remove('show');
                 toast.classList.remove('error');
-            }, isError ... 6000 : 3000);
+            }, isError ? 6000 : 3000);
         }
 
         const analysisModeEl = document.getElementById('analysisMode');

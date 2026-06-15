@@ -59,7 +59,7 @@ GET /api/v1/reviews/{review_id}/status
 
 `POST /api/v1/reviews/staged` starts a web review and returns without waiting for the full Python
 diagnosis. It creates the run folder, writes the initial payload and `review_state.json`, starts
-background execution, and returns a compact response:
+background execution, and returns a compact response. Protected review API calls require a signed internal Next.js-to-FastAPI auth context. Staged creation stores that authenticated user id as `owner_id` in `review_state.json`; status, recovery, and downstream mutation endpoints must reject ownerless or different-owner state instead of recovering or mutating another user's run-local review.
 
 ```json
 {
@@ -75,7 +75,8 @@ background execution, and returns a compact response:
 
 `GET /api/v1/reviews/{review_id}/status` returns the current `review_state_v1` document mapped into
 a public, safe response. The status endpoint is the backend source of truth for staged progress and
-recovery. It must not scan random run folders or expose raw generated artifact dumps.
+recovery. It must not scan random run folders, expose raw generated artifact dumps, or return a
+review whose stored `owner_id` differs from the signed internal caller.
 
 The existing `POST /api/v1/reviews` synchronous diagnosis endpoint remains a compatibility path until
 the staged path is fully adopted and tested.
@@ -87,7 +88,7 @@ present. Missing Client Fit context is non-blocking and records `client_fit` as 
 can use the `not_provided` compatibility state. Missing required artifacts produce a safe
 `ARTIFACT_MISSING` error at the first affected stage while preserving earlier completed stages.
 Runtime failures produce safe staged errors without tracebacks or absolute paths. `candidate`,
-`comparison`, `verdict`, and `report` start as pending after diagnosis and are updated when the user explicitly runs those downstream actions. A later downstream blocker or failure must preserve earlier completed diagnosis evidence and leave the overall review recoverable as partial rather than erasing the run.
+`comparison`, `verdict`, and `report` start as pending after diagnosis and are updated when the user explicitly runs those downstream actions. Downstream mutation is stage-gated: Candidate requires completed diagnosis/Launchpad Builder state, Comparison requires Candidate, Verdict requires Comparison, and Report requires Verdict. A later downstream blocker or failure must preserve earlier completed diagnosis evidence and leave the overall review recoverable as partial rather than erasing the run.
 
 `demo_qa` execution routes through frozen fixture materializers instead of live market-data-backed adapters. The fixture materializer writes the same run-local artifact roles needed by the
 diagnosis stages under `analysis_subject/` (`run_metadata.json`, `portfolio_xray.json`,
@@ -107,6 +108,7 @@ active `runs/frontend_review_*` folder. It uses this target shape:
   "status": "running",
   "current_stage": "xray",
   "mode": "demo_qa",
+  "owner_id": "authenticated-user-id",
   "created_at": "2026-06-14T08:00:00Z",
   "updated_at": "2026-06-14T08:00:03Z",
   "stages": {

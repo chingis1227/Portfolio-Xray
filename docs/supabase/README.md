@@ -20,4 +20,10 @@ next-test text inside `reviews.compact_summary` and `review_stage_summaries.summ
 store raw `client_fit_check.json`, generated artifact paths, schema versions, source-artifact maps,
 field paths, raw Diagnosis/Stress evidence, or raw Client Fit artifact JSON in Supabase.
 
-Setup starts with `docs/supabase/supabase_free_schema.sql` in the Supabase SQL Editor. The frontend uses public browser-safe Supabase clients plus Row Level Security; it must not use service-role keys, secret keys, database passwords, Supabase Storage, Realtime, Edge Functions, or privileged frontend credentials for this optional persistence layer.
+Setup starts with `docs/supabase/supabase_free_schema.sql` in the Supabase SQL Editor. If an existing
+Supabase database rejects staged rows with `review_stage_summaries_stage_check` for `input`,
+`data_load`, `xray`, `stress`, `client_fit`, `problem_classification`, or `launchpad_builder`, run
+`docs/supabase/2026-06-15_review_stage_summaries_stage_constraint_patch.sql` once in the SQL Editor
+to align the live check constraint with `review_state_v1`.
+
+The frontend uses public browser-safe Supabase clients plus Row Level Security; it must not use service-role keys, secret keys, database passwords, Supabase Storage, Realtime, Edge Functions, or privileged frontend credentials for this optional persistence layer.

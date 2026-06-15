@@ -47,6 +47,7 @@ StagedSafeErrorCode = Literal[
 StagedUserAction = Literal["fix_input", "retry", "return_to_portfolio_input", "contact_operator", "none"]
 SafeErrorCode = Literal[
     "invalid_portfolio_input",
+    "review_forbidden",
     "review_not_found",
     "lineage_mismatch",
     "stage_not_ready",
@@ -212,7 +213,7 @@ class HealthData(StrictModel):
     service: Literal["portfolio-mri-api"] = "portfolio-mri-api"
     status: Literal["ok"] = "ok"
     api_version: Literal["v1"] = API_VERSION
-    openapi_available: Literal[True] = True
+    openapi_available: bool = False
 
 
 class HoldingInput(StrictModel):
@@ -238,7 +239,7 @@ class HoldingInput(StrictModel):
 
 class PortfolioInput(StrictModel):
     investor_currency: Literal["USD", "EUR"] = "USD"
-    holdings: list[HoldingInput] = Field(min_length=1)
+    holdings: list[HoldingInput] = Field(min_length=1, max_length=50)
 
 
 class ClientFitRangeInput(StrictModel):

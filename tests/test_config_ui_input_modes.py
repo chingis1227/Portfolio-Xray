@@ -3,6 +3,12 @@ from __future__ import annotations
 import yaml
 
 
+def _csrf_headers(client) -> dict[str, str]:
+    client.get("/")
+    with client.session_transaction() as sess:
+        return {"X-CSRF-Token": sess["csrf_token"]}
+
+
 def test_config_ui_renders_analysis_mode_and_read_only_generated_weights(monkeypatch, tmp_path) -> None:
     from config_ui import app as config_app
 
@@ -44,8 +50,10 @@ def test_config_ui_generate_optimize_mode_does_not_write_manual_weights(monkeypa
     config_path.write_text("{}", encoding="utf-8")
     monkeypatch.setattr(config_app, "CONFIG_PATH", config_path)
 
-    response = config_app.app.test_client().post(
+    client = config_app.app.test_client()
+    response = client.post(
         "/generate",
+        headers=_csrf_headers(client),
         data={
             "analysis_mode": "optimize_from_universe",
             "investor_currency": "USD",
@@ -71,8 +79,10 @@ def test_config_ui_generate_analyze_mode_writes_current_weights_only(monkeypatch
     config_path.write_text("{}", encoding="utf-8")
     monkeypatch.setattr(config_app, "CONFIG_PATH", config_path)
 
-    response = config_app.app.test_client().post(
+    client = config_app.app.test_client()
+    response = client.post(
         "/generate",
+        headers=_csrf_headers(client),
         data={
             "analysis_mode": "analyze_current_weights",
             "investor_currency": "USD",

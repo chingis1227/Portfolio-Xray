@@ -13,7 +13,7 @@ function redirectWithStatus(request: NextRequest, status: "success" | "disabled"
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   if (!supabase) {
     return redirectWithStatus(request, "disabled", "Supabase is not configured.");

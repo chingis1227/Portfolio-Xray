@@ -1,29 +1,87 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
 import json
 import re
+import time
 from pathlib import Path
 
 import httpx
 import pytest
 
 from scripts.generate_fastapi_api_types import OUTPUT_PATH, render_types
-from src.api.app import app
+from src.api.app import app, create_app
 import src.api.reviews as review_service
 
 
-def _request(method: str, path: str, *, json_body: dict | None = None) -> httpx.Response:
+TEST_INTERNAL_SECRET = "test-fastapi-internal-secret"
+TEST_USER_ID = "test-user"
+OTHER_USER_ID = "other-user"
+
+
+def _auth_headers(user_id: str = TEST_USER_ID) -> dict[str, str]:
+    timestamp = str(int(time.time() * 1000))
+    signature = hmac.new(
+        TEST_INTERNAL_SECRET.encode("utf-8"),
+        f"{user_id}.{timestamp}".encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return {
+        "X-PMRI-User-Id": user_id,
+        "X-PMRI-Auth-Timestamp": timestamp,
+        "X-PMRI-Internal-Signature": signature,
+    }
+
+
+def _signed_headers_with_timestamp(user_id: str, timestamp: str, secret: str = TEST_INTERNAL_SECRET) -> dict[str, str]:
+    signature = hmac.new(
+        secret.encode("utf-8"),
+        f"{user_id}.{timestamp}".encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return {
+        "X-PMRI-User-Id": user_id,
+        "X-PMRI-Auth-Timestamp": timestamp,
+        "X-PMRI-Internal-Signature": signature,
+    }
+
+
+def _request(
+    method: str,
+    path: str,
+    *,
+    json_body: dict | None = None,
+    auth: bool = True,
+    user_id: str = TEST_USER_ID,
+    headers: dict[str, str] | None = None,
+) -> httpx.Response:
     async def _send() -> httpx.Response:
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-            return await client.request(method, path, json=json_body)
+            request_headers = headers if headers is not None else (_auth_headers(user_id) if auth else None)
+            return await client.request(method, path, json=json_body, headers=request_headers)
 
     return asyncio.run(_send())
 
 
-def _write_staged_state_for_test(run_dir: Path, review_id: str, *, current_stage: str = "candidate") -> None:
-    state = review_service._initial_staged_state(review_id, mode="live")
+@pytest.fixture(autouse=True)
+def _fastapi_internal_auth_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PMRI_FASTAPI_INTERNAL_SECRET", TEST_INTERNAL_SECRET)
+    monkeypatch.delenv("PMRI_FASTAPI_AUTH_MODE", raising=False)
+    monkeypatch.delenv("NODE_ENV", raising=False)
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+
+
+def _write_staged_state_for_test(
+    run_dir: Path,
+    review_id: str,
+    *,
+    current_stage: str = "candidate",
+    owner_id: str = TEST_USER_ID,
+) -> None:
+    state = review_service._initial_staged_state(review_id, mode="live", owner_id=owner_id)
     state["status"] = "partial"
     state["current_stage"] = current_stage
     for stage in [
@@ -36,6 +94,12 @@ def _write_staged_state_for_test(run_dir: Path, review_id: str, *, current_stage
         "launchpad_builder",
     ]:
         state["stages"][stage]["status"] = "completed"
+    if current_stage in {"comparison", "verdict", "report"}:
+        state["stages"]["candidate"]["status"] = "completed"
+    if current_stage in {"verdict", "report"}:
+        state["stages"]["comparison"]["status"] = "completed"
+    if current_stage == "report":
+        state["stages"]["verdict"]["status"] = "completed"
     review_service._write_staged_state(run_dir, state)
 
 
@@ -69,15 +133,12 @@ def test_health_endpoint_returns_public_envelope() -> None:
         "service": "portfolio-mri-api",
         "status": "ok",
         "api_version": "v1",
-        "openapi_available": True,
+        "openapi_available": False,
     }
 
 
 def test_openapi_includes_session_03_typed_mvp_surface() -> None:
-    response = _request("GET", "/openapi.json")
-
-    assert response.status_code == 200
-    schema = response.json()
+    schema = app.openapi()
     assert schema["info"]["title"] == "Portfolio MRI Local API"
     assert schema["info"]["version"] == "0.1.0"
     expected_paths = {
@@ -148,6 +209,27 @@ def test_openapi_includes_session_03_typed_mvp_surface() -> None:
     staged_status = schema["paths"]["/api/v1/reviews/{review_id}/status"]["get"]
     staged_status_ref = staged_status["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
     assert staged_status_ref.endswith("/StagedReviewStatusResponse")
+
+
+def test_fastapi_openapi_route_is_disabled_by_default() -> None:
+    response = _request("GET", "/openapi.json")
+
+    assert response.status_code == 404
+
+
+def test_fastapi_openapi_route_is_opt_in(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PMRI_FASTAPI_ENABLE_DOCS", "1")
+    docs_app = create_app()
+
+    async def _send() -> httpx.Response:
+        transport = httpx.ASGITransport(app=docs_app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            return await client.get("/openapi.json")
+
+    response = asyncio.run(_send())
+
+    assert response.status_code == 200
+    assert response.json()["info"]["title"] == "Portfolio MRI Local API"
 
 
 def test_staged_failure_classifier_uses_stderr_tail_for_fred_http_failure() -> None:
@@ -516,6 +598,7 @@ def test_recover_review_restores_only_diagnosis_stages(
         json.dumps(_fake_review_result(review_id)),
         encoding="utf-8",
     )
+    _write_staged_state_for_test(run_dir, review_id, current_stage="candidate")
 
     monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
 
@@ -567,10 +650,15 @@ def _fake_builder_document() -> dict:
 
 
 def test_prepare_builder_runs_adapter_and_returns_public_envelope(
-    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    review_id = "frontend_review_fastapi_unit"
+    run_dir = tmp_path / review_id
+    run_dir.mkdir()
+    _write_staged_state_for_test(run_dir, review_id, current_stage="candidate")
+    monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
     def fake_prepare_selected_builder_setup(**kwargs):
-        assert kwargs["review_id"] == "frontend_review_fastapi_unit"
+        assert kwargs["review_id"] == review_id
         assert kwargs["selected_card_id"] == "launchpad_01_reduce_concentration"
         assert kwargs["method"] == "equal_weight"
         return {
@@ -579,7 +667,7 @@ def test_prepare_builder_runs_adapter_and_returns_public_envelope(
             "stage": "builder_setup",
             "selected_card_id": kwargs["selected_card_id"],
             "can_generate_candidate": True,
-            "path": "runs/frontend_review_fastapi_unit/analysis_subject/portfolio_alternatives_builder.json",
+            "path": f"runs/{review_id}/analysis_subject/portfolio_alternatives_builder.json",
             "portfolio_alternatives_builder": _fake_builder_document(),
         }
 
@@ -1072,6 +1160,167 @@ def test_generate_report_runs_adapter_and_returns_grounded_preview(
     assert staged_state["stages"]["report"]["status"] == "completed"
     assert staged_state["stages"]["report"]["artifact_refs"] == ["ai_commentary_context.json"]
 
+
+
+def test_review_routes_reject_missing_internal_auth_context() -> None:
+    response = _request("GET", "/api/v1/reviews/frontend_review_missing/status", auth=False)
+
+    assert response.status_code == 401
+    assert "trusted internal auth context" in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "body"),
+    [
+        ("POST", "/api/v1/reviews", {"portfolio": {"investor_currency": "USD", "holdings": [{"type": "instrument", "ticker": "VOO", "weight_pct": 100.0}]}}),
+        ("POST", "/api/v1/reviews/staged", {"portfolio": {"investor_currency": "USD", "holdings": [{"type": "instrument", "ticker": "VOO", "weight_pct": 100.0}]}}),
+        ("GET", "/api/v1/reviews/frontend_review_auth/status", None),
+        ("GET", "/api/v1/reviews/frontend_review_auth", None),
+        ("POST", "/api/v1/reviews/frontend_review_auth/builder", {"selected_card_id": "card_1"}),
+        ("POST", "/api/v1/reviews/frontend_review_auth/candidate", {"builder_setup_id": "setup_1"}),
+        ("POST", "/api/v1/reviews/frontend_review_auth/comparison", {"candidate_id": "candidate_1"}),
+        ("POST", "/api/v1/reviews/frontend_review_auth/verdict", {"comparison_id": "comparison_1"}),
+        ("POST", "/api/v1/reviews/frontend_review_auth/report", {"verdict_id": "verdict_1"}),
+    ],
+)
+def test_all_review_routes_require_internal_auth_context(method: str, path: str, body: dict | None) -> None:
+    response = _request(method, path, json_body=body, auth=False)
+
+    assert response.status_code == 401
+    assert "trusted internal auth context" in response.json()["detail"]
+
+
+def test_review_routes_reject_invalid_internal_signature() -> None:
+    headers = _auth_headers(TEST_USER_ID)
+    headers["X-PMRI-Internal-Signature"] = "0" * 64
+
+    response = _request("GET", "/api/v1/reviews/frontend_review_bad_sig/status", headers=headers)
+
+    assert response.status_code == 401
+    assert "Invalid trusted internal auth context" in response.json()["detail"]
+
+
+def test_review_routes_reject_expired_internal_signature() -> None:
+    expired_timestamp = str(int((time.time() - 10 * 60) * 1000))
+    headers = _signed_headers_with_timestamp(TEST_USER_ID, expired_timestamp)
+
+    response = _request("GET", "/api/v1/reviews/frontend_review_expired/status", headers=headers)
+
+    assert response.status_code == 401
+    assert "Expired trusted internal auth context" in response.json()["detail"]
+
+
+def test_fastapi_dev_bypass_is_disabled_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("PMRI_FASTAPI_INTERNAL_SECRET", raising=False)
+    monkeypatch.setenv("PMRI_FASTAPI_AUTH_MODE", "dev_bypass")
+    monkeypatch.setenv("NODE_ENV", "production")
+
+    response = _request("GET", "/api/v1/reviews/frontend_review_prod/status", auth=False)
+
+    assert response.status_code == 401
+    assert "trusted internal auth context" in response.json()["detail"]
+
+
+def test_staged_review_status_rejects_different_owner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    review_id = "frontend_review_fastapi_owner"
+    run_dir = tmp_path / review_id
+    run_dir.mkdir()
+    _write_staged_state_for_test(run_dir, review_id, current_stage="candidate", owner_id=TEST_USER_ID)
+    monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
+
+    response = _request("GET", f"/api/v1/reviews/{review_id}/status", user_id=OTHER_USER_ID)
+
+    assert response.status_code == 403
+    body = response.json()
+    assert body["status"] == "failed"
+    assert body["safe_error"]["message"] == "Review belongs to a different authenticated user."
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("GET", "/api/v1/reviews/frontend_review_ownerless/status"),
+        ("GET", "/api/v1/reviews/frontend_review_ownerless"),
+    ],
+)
+def test_ownerless_review_state_cannot_be_read_or_recovered(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, method: str, path: str
+) -> None:
+    review_id = "frontend_review_ownerless"
+    run_dir = tmp_path / review_id
+    run_dir.mkdir()
+    _write_staged_state_for_test(run_dir, review_id, current_stage="candidate", owner_id=TEST_USER_ID)
+    state = json.loads((run_dir / "review_state.json").read_text(encoding="utf-8"))
+    state.pop("owner_id", None)
+    review_service._write_staged_state(run_dir, state)
+    monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
+
+    response = _request(method, path)
+
+    assert response.status_code == 403
+    assert response.json()["safe_error"]["message"] == "Review owner is missing; restart the review."
+
+
+def test_downstream_stage_rejects_before_previous_stage_is_complete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    review_id = "frontend_review_fastapi_stage_gate"
+    run_dir = tmp_path / review_id
+    run_dir.mkdir()
+    _write_candidate_generation(run_dir)
+    _write_staged_state_for_test(run_dir, review_id, current_stage="comparison")
+    state = json.loads((run_dir / "review_state.json").read_text(encoding="utf-8"))
+    state["stages"]["candidate"]["status"] = "pending"
+    review_service._write_staged_state(run_dir, state)
+    monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
+
+    response = _request(
+        "POST",
+        f"/api/v1/reviews/{review_id}/comparison",
+        json_body={"candidate_id": "equal_weight"},
+    )
+
+    assert response.status_code == 409
+    body = response.json()
+    assert body["safe_error"]["code"] == "stage_not_ready"
+    assert "candidate has not completed" in body["safe_error"]["message"]
+
+
+def test_create_review_rejects_excessive_holding_count() -> None:
+    holdings = [
+        {"type": "instrument", "ticker": f"T{i:02d}", "weight_pct": 1.0}
+        for i in range(51)
+    ]
+
+    response = _request(
+        "POST",
+        "/api/v1/reviews",
+        json_body={"portfolio": {"investor_currency": "USD", "holdings": holdings}},
+    )
+
+    assert response.status_code == 422
+
+
+def test_staged_review_queue_limit_returns_429(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PMRI_STAGED_REVIEW_MAX_WORKERS", "0")
+
+    response = _request(
+        "POST",
+        "/api/v1/reviews/staged",
+        json_body={
+            "portfolio": {
+                "investor_currency": "USD",
+                "holdings": [{"type": "instrument", "ticker": "VOO", "weight_pct": 100.0}],
+            }
+        },
+    )
+
+    assert response.status_code == 429
+    body = response.json()
+    assert body["status"] == "failed"
+    assert "worker queue is full" in body["safe_error"]["message"]
 
 def test_generated_frontend_api_types_match_openapi_schema() -> None:
     schema = app.openapi()

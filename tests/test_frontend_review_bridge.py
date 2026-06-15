@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
+import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
 import pytest
 import yaml
+
+from src.review_runtime import staged_diagnosis_service
 
 
 def load_bridge_module() -> ModuleType:
@@ -137,6 +141,10 @@ def test_create_run_dir_creates_unique_frontend_review_dirs_for_100_users(tmp_pa
     assert len(set(review_ids)) == 100
     assert len(set(run_dirs)) == 100
     assert all(review_id.startswith("frontend_review_") for review_id in review_ids)
+    assert all(
+        re.match(r"^frontend_review_\d{8}T\d{6}Z_[A-Za-z0-9_-]{22}$", review_id)
+        for review_id in review_ids
+    )
     assert all(run_dir.parent == tmp_path for run_dir in run_dirs)
     assert all(run_dir.is_dir() for run_dir in run_dirs)
 
@@ -319,6 +327,134 @@ def test_diagnosis_plus_problem_backend_command_skips_candidates(
     assert "--then-compare" not in cmd
 
 
+def test_payload_backend_uses_direct_service_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[dict] = []
+
+    def fake_direct(config_path: Path, *, mode: str, project_root: Path):
+        calls.append({"config_path": config_path, "mode": mode, "project_root": project_root})
+
+        class Completed:
+            args = ["direct_staged_diagnosis_service", mode, "--config", str(config_path)]
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        return Completed()
+
+    monkeypatch.delenv("PMRI_STAGED_REVIEW_RUNTIME", raising=False)
+    monkeypatch.setattr(bridge, "run_staged_diagnosis_service", fake_direct)
+
+    completed = bridge.run_backend_for_payload(
+        Path("runs/frontend_review_test/input.yml"),
+        mode=bridge.MODE_DIAGNOSIS_PLUS_PROBLEM,
+        timeout_seconds=123,
+    )
+
+    assert completed.returncode == 0
+    assert calls == [
+        {
+            "config_path": Path("runs/frontend_review_test/input.yml"),
+            "mode": bridge.MODE_DIAGNOSIS_PLUS_PROBLEM,
+            "project_root": bridge.PROJECT_ROOT,
+        }
+    ]
+
+
+def test_payload_backend_can_fall_back_to_subprocess(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[dict] = []
+
+    def fake_run_backend(config_path: Path, *, mode: str, timeout_seconds: int):
+        calls.append({"config_path": config_path, "mode": mode, "timeout_seconds": timeout_seconds})
+
+        class Completed:
+            args = ["subprocess"]
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        return Completed()
+
+    monkeypatch.setenv("PMRI_STAGED_REVIEW_RUNTIME", "subprocess")
+    monkeypatch.setattr(bridge, "run_backend", fake_run_backend)
+
+    completed = bridge.run_backend_for_payload(
+        Path("runs/frontend_review_test/input.yml"),
+        mode=bridge.MODE_DIAGNOSIS_PLUS_PROBLEM,
+        timeout_seconds=123,
+    )
+
+    assert completed.returncode == 0
+    assert calls == [
+        {
+            "config_path": Path("runs/frontend_review_test/input.yml"),
+            "mode": bridge.MODE_DIAGNOSIS_PLUS_PROBLEM,
+            "timeout_seconds": 123,
+        }
+    ]
+
+
+def test_direct_staged_diagnosis_service_calls_materializer_without_subprocess(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict] = []
+    fake_cfg = SimpleNamespace(output_dir_final=str(tmp_path / "run"))
+
+    def fake_materializer(cfg, **kwargs):
+        calls.append({"cfg": cfg, **kwargs})
+        print("materialized directly")
+
+    monkeypatch.setattr(staged_diagnosis_service, "load_validated_config", lambda path: fake_cfg)
+    monkeypatch.setattr(staged_diagnosis_service, "cleanup_old_cache", lambda keep_versions: None)
+    monkeypatch.setitem(
+        sys.modules,
+        "run_report",
+        SimpleNamespace(run_materialize_analysis_subject_report=fake_materializer),
+    )
+
+    completed = staged_diagnosis_service.run_staged_diagnosis_service(
+        tmp_path / "input.yml",
+        mode=bridge.MODE_DIAGNOSIS_PLUS_PROBLEM,
+        project_root=bridge.PROJECT_ROOT,
+    )
+
+    assert completed.returncode == 0
+    assert "materialized directly" in completed.stdout
+    assert calls
+    assert calls[0]["cfg"] is fake_cfg
+    assert calls[0]["output_profile"] == "site_api"
+    assert calls[0]["review_mode"] == "core"
+    assert calls[0]["use_review_run_context"] is False
+    assert calls[0]["core_diagnostics_only"] is False
+
+
+def test_direct_staged_diagnosis_service_maps_core_mode(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict] = []
+
+    def fake_materializer(_cfg, **kwargs):
+        calls.append(kwargs)
+
+    monkeypatch.setattr(staged_diagnosis_service, "load_validated_config", lambda path: SimpleNamespace())
+    monkeypatch.setattr(staged_diagnosis_service, "cleanup_old_cache", lambda keep_versions: None)
+    monkeypatch.setitem(
+        sys.modules,
+        "run_report",
+        SimpleNamespace(run_materialize_analysis_subject_report=fake_materializer),
+    )
+
+    completed = staged_diagnosis_service.run_staged_diagnosis_service(
+        tmp_path / "input.yml",
+        mode=bridge.MODE_CORE_ONLY,
+        project_root=bridge.PROJECT_ROOT,
+    )
+
+    assert completed.returncode == 0
+    assert calls[0]["core_diagnostics_only"] is True
+
+
 def test_diagnosis_plus_problem_expected_outputs_extend_problem_bundle() -> None:
     paths = bridge.expected_output_paths(
         bridge.PROJECT_ROOT / "runs" / "frontend_review_test",
@@ -405,7 +541,7 @@ def test_run_from_payload_missing_outputs_writes_safe_failure(
         stderr = ""
 
     monkeypatch.setattr(bridge, "create_run_dir", lambda: ("frontend_review_missing_outputs", run_dir))
-    monkeypatch.setattr(bridge, "run_backend", lambda *args, **kwargs: Completed())
+    monkeypatch.setattr(bridge, "run_backend_for_payload", lambda *args, **kwargs: Completed())
 
     code, result_path = bridge.run_from_payload(
         payload_path,
@@ -436,7 +572,7 @@ def test_run_from_payload_retries_once_after_transient_empty_market_data(
             self.stdout = stdout
             self.stderr = stderr
 
-    def fake_run_backend(*_args, **_kwargs):
+    def fake_run_backend_for_payload(*_args, **_kwargs):
         nonlocal calls
         calls += 1
         if calls == 1:
@@ -461,7 +597,7 @@ def test_run_from_payload_retries_once_after_transient_empty_market_data(
         return Completed(0)
 
     monkeypatch.setattr(bridge, "create_run_dir", lambda: ("frontend_review_retry_market_data", run_dir))
-    monkeypatch.setattr(bridge, "run_backend", fake_run_backend)
+    monkeypatch.setattr(bridge, "run_backend_for_payload", fake_run_backend_for_payload)
 
     code, result_path = bridge.run_from_payload(
         payload_path,

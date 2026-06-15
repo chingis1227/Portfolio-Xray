@@ -1,6 +1,12 @@
 from __future__ import annotations
 
 
+def _csrf_headers(client) -> dict[str, str]:
+    client.get("/")
+    with client.session_transaction() as sess:
+        return {"X-CSRF-Token": sess["csrf_token"]}
+
+
 def test_config_ui_does_not_render_removed_rc_cap_field(monkeypatch, tmp_path) -> None:
     from config_ui import app as config_app
 
@@ -30,8 +36,10 @@ def test_config_ui_generate_does_not_write_removed_rc_cap_field(monkeypatch, tmp
     config_path.write_text("{}", encoding="utf-8")
     monkeypatch.setattr(config_app, "CONFIG_PATH", config_path)
 
-    response = config_app.app.test_client().post(
+    client = config_app.app.test_client()
+    response = client.post(
         "/generate",
+        headers=_csrf_headers(client),
         data={
             "investor_currency": "USD",
             "initial_investable_amount": "1000",

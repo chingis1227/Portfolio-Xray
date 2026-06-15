@@ -10,9 +10,11 @@ frontend routing behavior.
 from __future__ import annotations
 
 import json
+import os
 import re
 import threading
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -209,6 +211,20 @@ STAGED_NEXT_STAGE: dict[StagedStageName, StagedStageName] = {
     "verdict": "report",
     "report": "report",
 }
+DEFAULT_MAX_STAGED_WORKERS = 2
+DEFAULT_MAX_STAGED_QUEUED = 8
+_staged_worker_lock = threading.Lock()
+_staged_worker_active = 0
+_staged_worker_queued = 0
+
+
+@dataclass(frozen=True)
+class ReviewAccessError(Exception):
+    """Public-safe authorization or lineage failure for a run-local review."""
+
+    status_code: int
+    code: str
+    message: str
 
 
 def _record(value: Any) -> dict[str, Any]:
@@ -426,7 +442,12 @@ def _safe_staged_ref(value: Any, *, fallback: str) -> str:
     return normalized
 
 
-def _initial_staged_state(review_id: str, *, mode: StagedReviewMode) -> dict[str, Any]:
+def _initial_staged_state(
+    review_id: str,
+    *,
+    mode: StagedReviewMode,
+    owner_id: str | None = None,
+) -> dict[str, Any]:
     now = _utc_now_iso()
     stages = {
         stage: {"status": "pending", "started_at": None, "completed_at": None, "artifact_refs": []}
@@ -444,6 +465,7 @@ def _initial_staged_state(review_id: str, *, mode: StagedReviewMode) -> dict[str
         "status": "running",
         "current_stage": "input",
         "mode": mode,
+        "owner_id": owner_id or "local-dev-user",
         "created_at": now,
         "updated_at": now,
         "stages": stages,
@@ -466,6 +488,102 @@ def _read_staged_state(run_dir: Path) -> dict[str, Any]:
     if state.get("schema_version") != STAGED_REVIEW_STATE_SCHEMA_VERSION:
         raise ValueError("Run-local review_state.json is not review_state_v1.")
     return state
+
+
+def _read_optional_staged_state(run_dir: Path) -> dict[str, Any] | None:
+    try:
+        if not _staged_state_path(run_dir).is_file():
+            return None
+        return _read_staged_state(run_dir)
+    except (FileNotFoundError, ValueError):
+        return None
+
+
+def _assert_review_owner(state: dict[str, Any] | None, owner_id: str | None) -> None:
+    stored_owner = _text(_record(state or {}).get("owner_id"))
+    if not stored_owner:
+        raise ReviewAccessError(
+            403,
+            "review_forbidden",
+            "Review owner is missing; restart the review.",
+        )
+    if not owner_id or stored_owner != owner_id:
+        raise ReviewAccessError(
+            403,
+            "review_forbidden",
+            "Review belongs to a different authenticated user.",
+        )
+
+
+def _read_authorized_staged_state(review_id: str, owner_id: str | None) -> tuple[Path, dict[str, Any]]:
+    run_dir = safe_review_run_dir(review_id)
+    state = _read_staged_state(run_dir)
+    _assert_review_owner(state, owner_id)
+    return run_dir, state
+
+
+def _authorize_review_owner(review_id: str, owner_id: str | None) -> None:
+    run_dir = safe_review_run_dir(review_id)
+    state = _read_optional_staged_state(run_dir)
+    _assert_review_owner(state, owner_id)
+
+
+def _is_stage_completed(state: dict[str, Any], stage: StagedStageName) -> bool:
+    return _text(_record(_record(state.get("stages")).get(stage)).get("status")) == "completed"
+
+
+def _assert_downstream_stage_ready(
+    state: dict[str, Any],
+    stage: StagedStageName,
+    *,
+    required_previous: StagedStageName | None = None,
+) -> None:
+    if required_previous and not _is_stage_completed(state, required_previous):
+        raise ReviewAccessError(
+            409,
+            "stage_not_ready",
+            f"{stage} is not ready because {required_previous} has not completed for this review.",
+        )
+    if stage == "candidate" and not _is_stage_completed(state, "launchpad_builder"):
+        raise ReviewAccessError(
+            409,
+            "stage_not_ready",
+            "Candidate generation is not ready until diagnosis and Builder setup are complete.",
+        )
+
+
+def _worker_limit(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return default
+
+
+def _try_reserve_staged_worker_slot() -> bool:
+    global _staged_worker_active, _staged_worker_queued
+    with _staged_worker_lock:
+        limit = _worker_limit("PMRI_STAGED_REVIEW_MAX_WORKERS", DEFAULT_MAX_STAGED_WORKERS)
+        queued_limit = _worker_limit("PMRI_STAGED_REVIEW_MAX_QUEUED", DEFAULT_MAX_STAGED_QUEUED)
+        if _staged_worker_active >= limit or _staged_worker_queued >= queued_limit:
+            return False
+        _staged_worker_active += 1
+        _staged_worker_queued += 1
+        return True
+
+
+def _mark_staged_worker_started() -> None:
+    global _staged_worker_queued
+    with _staged_worker_lock:
+        _staged_worker_queued = max(0, _staged_worker_queued - 1)
+
+
+def _release_staged_worker_slot() -> None:
+    global _staged_worker_active
+    with _staged_worker_lock:
+        _staged_worker_active = max(0, _staged_worker_active - 1)
 
 
 def _set_stage_status(
@@ -1323,6 +1441,7 @@ def _run_staged_review_background(
 ) -> None:
     """Run the diagnosis adapter and keep run-local staged state synchronized."""
 
+    _mark_staged_worker_started()
     run_dir = safe_review_run_dir(review_id)
     try:
         state = _read_staged_state(run_dir)
@@ -1336,9 +1455,7 @@ def _run_staged_review_background(
 
         if mode == "demo_qa":
             code, result_path = _materialize_demo_qa_review(review_id, payload_path, run_dir)
-            state["provider_status"] = STAGED_INITIAL_PROVIDER_STATUS["demo_qa"].model_dump(
-                mode="json"
-            )
+            state["provider_status"] = STAGED_INITIAL_PROVIDER_STATUS["demo_qa"].model_dump(mode="json")
         else:
             code, result_path = run_from_payload(
                 payload_path,
@@ -1349,10 +1466,7 @@ def _run_staged_review_background(
             )
         review_result = _read_json_file(result_path)
         if code != 0 or review_result.get("status") != "completed":
-            error_code, message, user_action, retryable, failed_stage = _classify_staged_failure(
-                review_result,
-                code,
-            )
+            error_code, message, user_action, retryable, failed_stage = _classify_staged_failure(review_result, code)
             artifact_failed_stage, missing_refs, warnings = _sync_diagnosis_stage_artifacts(
                 state,
                 run_dir,
@@ -1386,10 +1500,7 @@ def _run_staged_review_background(
             state["status"] = "failed"
             state["safe_error"] = _staged_safe_error(
                 code="ARTIFACT_MISSING",
-                message=(
-                    "Portfolio diagnosis completed but a required staged artifact "
-                    "was not found."
-                ),
+                message="Portfolio diagnosis completed but a required staged artifact was not found.",
                 user_action="retry",
                 retryable=True,
                 stage=missing_stage,
@@ -1416,14 +1527,17 @@ def _run_staged_review_background(
         ).model_dump(mode="json")
         state["warnings"] = [scrub_failure_text(str(exc))]
         _write_staged_state(run_dir, state)
-
+    finally:
+        _release_staged_worker_slot()
 
 def _start_staged_background_worker(
     review_id: str,
     payload_path: Path,
     *,
     mode: StagedReviewMode,
-) -> None:
+) -> bool:
+    if not _try_reserve_staged_worker_slot():
+        return False
     worker = threading.Thread(
         target=_run_staged_review_background,
         kwargs={"review_id": review_id, "payload_path": payload_path, "mode": mode},
@@ -1431,6 +1545,7 @@ def _start_staged_background_worker(
         daemon=True,
     )
     worker.start()
+    return True
 
 
 def _request_to_bridge_payload(request: CreateReviewRequest) -> dict[str, Any]:
@@ -1808,7 +1923,7 @@ def _failed_create_envelope(
     )
 
 
-def create_staged_review(request: CreateReviewRequest) -> tuple[int, StagedReviewStartedResponse]:
+def create_staged_review(request: CreateReviewRequest, *, owner_id: str | None = None) -> tuple[int, StagedReviewStartedResponse]:
     """Create a staged web review and return before diagnosis execution completes."""
 
     mode: StagedReviewMode = "demo_qa" if request.options.sample_mode else "live"
@@ -1817,9 +1932,36 @@ def create_staged_review(request: CreateReviewRequest) -> tuple[int, StagedRevie
     payload = _request_to_bridge_payload(request)
     payload_path = run_dir / "payload.json"
     write_json(payload_path, payload)
-    state = _initial_staged_state(review_id, mode=mode)
+    state = _initial_staged_state(review_id, mode=mode, owner_id=owner_id)
     _write_staged_state(run_dir, state)
-    _start_staged_background_worker(review_id, payload_path, mode=mode)
+    if _start_staged_background_worker(review_id, payload_path, mode=mode) is False:
+        state["status"] = "failed"
+        state["warnings"] = ["Staged review worker queue is full; retry shortly."]
+        state["safe_error"] = _staged_safe_error(
+            code="PYTHON_STAGE_FAILED",
+            message="Staged review worker queue is full; retry shortly.",
+            user_action="retry",
+            retryable=True,
+            stage="input",
+        ).model_dump(mode="json")
+        _write_staged_state(run_dir, state)
+        return 429, StagedReviewStartedResponse(
+            api_version=API_VERSION,
+            schema_version=STAGED_REVIEW_STARTED_SCHEMA_VERSION,
+            review_id=review_id,
+            stage="diagnosis",
+            status="failed",
+            current_stage="input",
+            mode=mode,
+            warnings=state["warnings"],
+            safe_error=_staged_safe_error(
+                code="PYTHON_STAGE_FAILED",
+                message="Staged review worker queue is full; retry shortly.",
+                user_action="retry",
+                retryable=True,
+                stage="input",
+            ),
+        )
     return 200, StagedReviewStartedResponse(
         api_version=API_VERSION,
         schema_version=STAGED_REVIEW_STARTED_SCHEMA_VERSION,
@@ -1833,12 +1975,13 @@ def create_staged_review(request: CreateReviewRequest) -> tuple[int, StagedRevie
     )
 
 
-def get_staged_review_status(review_id: str) -> tuple[int, StagedReviewStatusResponse]:
+def get_staged_review_status(review_id: str, *, owner_id: str | None = None) -> tuple[int, StagedReviewStatusResponse]:
     """Return the public safe staged-review status for one run-local review."""
 
     try:
-        run_dir = safe_review_run_dir(review_id)
-        state = _read_staged_state(run_dir)
+        _run_dir, state = _read_authorized_staged_state(review_id, owner_id)
+    except ReviewAccessError as exc:
+        return exc.status_code, _staged_status_not_found(review_id, exc.message)
     except FileNotFoundError:
         return 404, _staged_status_not_found(review_id, "Staged review state was not found.")
     except (PayloadValidationError, ValueError):
@@ -2022,7 +2165,7 @@ def _failed_report_envelope(
     )
 
 
-def create_review_diagnosis(request: CreateReviewRequest) -> tuple[int, CreateReviewResponse]:
+def create_review_diagnosis(request: CreateReviewRequest, *, owner_id: str | None = None) -> tuple[int, CreateReviewResponse]:
     """Create a diagnosis review and return an HTTP status plus public envelope."""
 
     payload = _request_to_bridge_payload(request)
@@ -2120,10 +2263,12 @@ def _builder_data(builder_doc: dict[str, Any]) -> BuilderData:
     )
 
 
-def prepare_builder_setup(review_id: str, request: BuilderRequest) -> tuple[int, BuilderResponse]:
+def prepare_builder_setup(review_id: str, request: BuilderRequest, *, owner_id: str | None = None) -> tuple[int, BuilderResponse]:
     """Prepare Block 6 Builder setup through FastAPI without generating a candidate."""
 
     try:
+        _run_dir, state = _read_authorized_staged_state(review_id, owner_id)
+        _assert_downstream_stage_ready(state, "candidate")
         result = prepare_selected_builder_setup(
             review_id=review_id,
             selected_card_id=request.selected_card_id,
@@ -2131,6 +2276,15 @@ def prepare_builder_setup(review_id: str, request: BuilderRequest) -> tuple[int,
             mode=request.overrides.mode,
             min_asset_weight=request.overrides.min_asset_weight,
             max_asset_weight=request.overrides.max_asset_weight,
+        )
+    except ReviewAccessError as exc:
+        return exc.status_code, _failed_builder_envelope(
+            review_id=review_id,
+            selected_card_id=request.selected_card_id,
+            code=exc.code,
+            message=exc.message,
+            user_action="return_to_hypothesis" if exc.status_code == 409 else "none",
+            retryable=False,
         )
     except BuilderSelectionError as exc:
         status_code, code, user_action, retryable = _error_code_for_stage_exception(exc, stage="builder")
@@ -2253,18 +2407,33 @@ def _candidate_data(candidate_generation: dict[str, Any]) -> CandidateData:
 
 
 def generate_candidate_from_builder(
-    review_id: str, request: BuilderSetupIdRequest
+    review_id: str,
+    request: BuilderSetupIdRequest,
+    *,
+    owner_id: str | None = None,
 ) -> tuple[int, CandidateResponse]:
     """Generate one Block 7 diagnostic candidate through FastAPI."""
 
     selected_card_id: str | None = None
     try:
+        _run_dir, state = _read_authorized_staged_state(review_id, owner_id)
+        _assert_downstream_stage_ready(state, "candidate")
         _builder_doc, selected_card_id = _builder_doc_for_setup(review_id, request.builder_setup_id)
         result = generate_selected_candidate(
             review_id=review_id,
             selected_card_id=selected_card_id,
             force=False,
             factory_execution_mode="fast",
+        )
+    except ReviewAccessError as exc:
+        return exc.status_code, _failed_candidate_envelope(
+            review_id=review_id,
+            builder_setup_id=request.builder_setup_id,
+            selected_card_id=selected_card_id,
+            code=exc.code,
+            message=exc.message,
+            user_action="return_to_hypothesis" if exc.status_code == 409 else "none",
+            retryable=False,
         )
     except (BuilderSelectionError, CandidateBridgeError, ValueError, FileNotFoundError) as exc:
         status_code, code, user_action, retryable = _error_code_for_stage_exception(exc, stage="candidate")
@@ -2613,12 +2782,17 @@ def _comparison_data(
 
 
 def run_current_vs_candidate(
-    review_id: str, request: CandidateIdRequest
+    review_id: str,
+    request: CandidateIdRequest,
+    *,
+    owner_id: str | None = None,
 ) -> tuple[int, ComparisonResponse]:
     """Run Block 8 current-vs-candidate comparison through FastAPI."""
 
     selected_card_id: str | None = None
     try:
+        _run_dir, state = _read_authorized_staged_state(review_id, owner_id)
+        _assert_downstream_stage_ready(state, "comparison", required_previous="candidate")
         selected_card_id, _candidate_id = _candidate_lineage(review_id, request.candidate_id)
         if _is_demo_qa_staged_review(review_id):
             result = _write_demo_qa_comparison(review_id, request.candidate_id)
@@ -2627,6 +2801,16 @@ def run_current_vs_candidate(
                 review_id=review_id,
                 selected_card_id=selected_card_id,
             )
+    except ReviewAccessError as exc:
+        return exc.status_code, _failed_comparison_envelope(
+            review_id=review_id,
+            candidate_id=request.candidate_id,
+            selected_card_id=selected_card_id,
+            code=exc.code,
+            message=exc.message,
+            user_action="return_to_hypothesis" if exc.status_code == 409 else "none",
+            retryable=False,
+        )
     except (CandidateBridgeError, ComparisonBridgeError, FileNotFoundError, ValueError) as exc:
         status_code, code, user_action, retryable = _error_code_for_stage_exception(exc, stage="comparison")
         if code == "backend_failed":
@@ -2802,7 +2986,10 @@ def _verdict_data(
 
 
 def generate_decision_verdict(
-    review_id: str, request: ComparisonIdRequest
+    review_id: str,
+    request: ComparisonIdRequest,
+    *,
+    owner_id: str | None = None,
 ) -> tuple[int, VerdictResponse]:
     """Run Block 9 non-binding Decision Verdict through FastAPI."""
 
@@ -2810,6 +2997,8 @@ def generate_decision_verdict(
     candidate_id: str | None = None
     comparison_id = request.comparison_id
     try:
+        _run_dir, state = _read_authorized_staged_state(review_id, owner_id)
+        _assert_downstream_stage_ready(state, "verdict", required_previous="comparison")
         selected_card_id, candidate_id, comparison_id = _active_comparison_lineage(
             review_id,
             request.comparison_id,
@@ -2821,6 +3010,17 @@ def generate_decision_verdict(
                 review_id=review_id,
                 selected_card_id=selected_card_id,
             )
+    except ReviewAccessError as exc:
+        return exc.status_code, _failed_verdict_envelope(
+            review_id=review_id,
+            comparison_id=comparison_id,
+            candidate_id=candidate_id,
+            selected_card_id=selected_card_id,
+            code=exc.code,
+            message=exc.message,
+            user_action="rerun_comparison" if exc.status_code == 409 else "none",
+            retryable=False,
+        )
     except (CandidateBridgeError, ComparisonBridgeError, VerdictBridgeError, FileNotFoundError, ValueError) as exc:
         status_code, code, user_action, retryable = _error_code_for_stage_exception(exc, stage="verdict")
         if code == "backend_failed":
@@ -2997,7 +3197,10 @@ def _report_data(
 
 
 def generate_report_grounding(
-    review_id: str, request: VerdictIdRequest
+    review_id: str,
+    request: VerdictIdRequest,
+    *,
+    owner_id: str | None = None,
 ) -> tuple[int, ReportResponse]:
     """Run grounded report/AI Commentary context through FastAPI."""
 
@@ -3006,6 +3209,8 @@ def generate_report_grounding(
     comparison_id: str | None = None
     verdict_id = request.verdict_id
     try:
+        _run_dir, state = _read_authorized_staged_state(review_id, owner_id)
+        _assert_downstream_stage_ready(state, "report", required_previous="verdict")
         selected_card_id, candidate_id, comparison_id, verdict_id = _active_verdict_lineage(
             review_id,
             request.verdict_id,
@@ -3017,6 +3222,18 @@ def generate_report_grounding(
                 review_id=review_id,
                 selected_card_id=selected_card_id,
             )
+    except ReviewAccessError as exc:
+        return exc.status_code, _failed_report_envelope(
+            review_id=review_id,
+            verdict_id=verdict_id,
+            candidate_id=candidate_id,
+            selected_card_id=selected_card_id,
+            comparison_id=comparison_id,
+            code=exc.code,
+            message=exc.message,
+            user_action="rerun_verdict" if exc.status_code == 409 else "none",
+            retryable=False,
+        )
     except (CandidateBridgeError, ComparisonBridgeError, VerdictBridgeError, ReportBridgeError, FileNotFoundError, ValueError) as exc:
         status_code, code, user_action, retryable = _error_code_for_stage_exception(exc, stage="report")
         if code == "backend_failed":
@@ -3117,11 +3334,20 @@ def _read_recoverable_review(review_id: str) -> dict[str, Any]:
     return review_result
 
 
-def recover_review_diagnosis(review_id: str) -> tuple[int, ReviewRecoveryResponse]:
+def recover_review_diagnosis(review_id: str, *, owner_id: str | None = None) -> tuple[int, ReviewRecoveryResponse]:
     """Recover diagnosis, evidence, and hypothesis setup state for a run-local review."""
 
     try:
+        _authorize_review_owner(review_id, owner_id)
         review_result = _read_recoverable_review(review_id)
+    except ReviewAccessError as exc:
+        return exc.status_code, _failed_recovery_envelope(
+            review_id=review_id,
+            code=exc.code,
+            message=exc.message,
+            user_action="none",
+            retryable=False,
+        )
     except FileNotFoundError as exc:
         return 404, _failed_recovery_envelope(
             review_id=review_id,
