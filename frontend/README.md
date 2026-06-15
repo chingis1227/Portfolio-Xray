@@ -117,7 +117,7 @@ product or trading system.
   explanation preview. `/workspace` is an account home and history hub, not a calculation stage. If comparison evidence is current but metrics are unavailable, the UI may still
   continue to Verdict so the system can show an evidence-insufficient decision-support outcome
   instead of silently blocking the journey.
-- The UI stores compact display state in `pmri.activeReview.v2`: the Client Fit profile, `reviewId`, portfolio input, diagnosis/stress/Client Fit evidence, launchpad/builder summaries, selected card/candidate, and stage summaries. Core screens consume these display models, not raw backend artifact trees. Candidate generation is enabled only when the active Builder setup matches the currently selected Launchpad card and says generation is allowed.
+- The UI stores compact display state in `pmri.activeReview.v2`: the Client Fit profile, `reviewId`, portfolio input, diagnosis/stress/Client Fit evidence, launchpad/builder summaries, selected card/candidate, and stage summaries. Core screens consume these display models, not raw backend artifact trees. Candidate generation is enabled only when the active Builder setup matches the currently selected Launchpad card, says generation is allowed, and the current FastAPI backend confirms that the run-local `reviewId` still exists.
 - The staged migration adds compact `review_state_v1` progress fields to the active review state:
   overall run status, current stage, per-stage statuses, provider status, mode (`demo_qa` or `live`),
   and safe stage errors. Portfolio Input saves `reviewId` immediately and moves the user to
@@ -206,7 +206,7 @@ Current Supabase-backed behavior is now the foundation for the dedicated `/works
   and `report` rows in `review_stage_summaries`; before each stage write the app measures the
   serialized JSON payload and skips the cloud write with a warning when it exceeds the 55 KB soft
   limit;
-- signed-in users use `/workspace` to list recent compact reviews, open read-only compact history, and recover the current browser state from Supabase summaries when live same-owner lineage is available; run-local recovery by `reviewId` on Portfolio Input remains the advanced fallback for local generated artifacts;
+- signed-in users use `/workspace` to list recent compact reviews and open read-only compact history. Compact Supabase summaries do not by themselves prove live run-local lineage; downstream actions require the current FastAPI backend to confirm the same `reviewId` before Builder, Candidate, Comparison, Verdict, or Report actions are treated as live. Run-local recovery by `reviewId` on Portfolio Input remains the advanced fallback for local generated artifacts;
 - login and workspace hydration never run diagnosis, refresh market data, generate candidates, compare portfolios, or regenerate verdict/report artifacts automatically;
 - completed reviews are immutable compact history tied to the portfolio snapshot/version used at run time; editing a portfolio starts a new draft and keeps old completed reviews visible in history;
 - cloud failures stay non-blocking: the local browser journey and local diagnosis/stage completion

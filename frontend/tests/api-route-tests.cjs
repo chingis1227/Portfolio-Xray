@@ -561,6 +561,14 @@ test("Portfolio Input resumes in-flight staged reviews after browser refresh", (
   assert.doesNotMatch(source, /Demo \/ QA/);
 });
 
+test("Portfolio Input does not keep showing diagnosis loading after the diagnosis chain is ready", () => {
+  const source = fs.readFileSync(portfolioInputTablePath, "utf8");
+
+  assert.match(source, /diagnosisStageChainReady\(stagedProgress\)/);
+  assert.match(source, /isRunningDiagnosis\s*&&\s*!diagnosisChainIsReady/);
+  assert.doesNotMatch(source, /\|\|\s*stagedProgress\.status\s*===\s*"partial"\s*\)\s*\)\s*;/);
+});
+
 test("active review state advances downstream staged progress after explicit stage actions", () => {
   const source = fs.readFileSync(reviewStatePath, "utf8");
 
@@ -572,6 +580,19 @@ test("active review state advances downstream staged progress after explicit sta
   assert.match(source, /candidateReady: current\.candidateReady \|\| isStagedStageReady\(progress, "candidate"\)/);
   assert.match(source, /comparisonReady: current\.comparisonReady \|\| isStagedStageReady\(progress, "comparison"\)/);
   assert.match(source, /verdictReady: current\.verdictReady \|\| isStagedStageReady\(progress, "verdict"\)/);
+});
+
+test("active review state exposes a shared diagnosis chain helper and can downgrade stale live lineage", () => {
+  const source = fs.readFileSync(reviewStatePath, "utf8");
+
+  assert.match(source, /export function diagnosisStageChainReady/);
+  assert.match(source, /stageReady\("xray"\)/);
+  assert.match(source, /stageReady\("stress"\)/);
+  assert.match(source, /stageReady\("problem_classification"\)/);
+  assert.match(source, /stageReady\("launchpad_builder"\)/);
+  assert.match(source, /markLiveLineageUnavailable/);
+  assert.match(source, /readOnlyHistory:\s*true/);
+  assert.match(source, /lineageAvailable:\s*false/);
 });
 
 test("Supabase staged persistence keeps canonical stage names and strips raw artifact references", () => {
@@ -602,11 +623,21 @@ test("Supabase staged persistence keeps canonical stage names and strips raw art
   assert.match(persistenceSource, /\.update\(\{ archived_at: nowIso\(\) \}\)/);
   assert.match(fs.readFileSync(reviewStatePath, "utf8"), /lastHydratedWorkspaceKeyRef/);
   assert.match(fs.readFileSync(reviewStatePath, "utf8"), /lastEnsuredDraftVersionKeyRef/);
-  assert.match(fs.readFileSync(reviewStatePath, "utf8"), /readOnlyHistory: savedReview\.readOnlyHistory/);
+  assert.match(fs.readFileSync(reviewStatePath, "utf8"), /readOnlyHistory:\s*true/);
+  assert.match(fs.readFileSync(reviewStatePath, "utf8"), /lineageAvailable:\s*false/);
   assert.match(fs.readFileSync(reviewStatePath, "utf8"), /portfolioVersionId: savedReview\.portfolioVersionId/);
   assert.match(callbackSource, /url\.pathname = "\/onboarding\/sign-in"/);
   assert.doesNotMatch(persistenceSource, /artifactRefs:\s*reviewSummary\.rawOutputKeys/);
   assert.doesNotMatch(persistenceSource, /summary:\s*activeReview\.verdictResult/);
+});
+
+test("Supabase compact reviews do not claim live run-local lineage without a backend probe", () => {
+  const persistenceSource = fs.readFileSync(supabasePersistencePath, "utf8");
+  const reviewStateSource = fs.readFileSync(reviewStatePath, "utf8");
+
+  assert.match(persistenceSource, /const lineageAvailable = false/);
+  assert.match(reviewStateSource, /readOnlyHistory:\s*true/);
+  assert.match(reviewStateSource, /lineageAvailable:\s*false/);
 });
 
 test("journey route order requires Client Fit before Hypothesis", () => {
@@ -891,6 +922,19 @@ test("candidate route rejects FastAPI lineage from a different active review bef
     assert.match(result.body.error, /lineage did not match/);
     assert.match(result.body.details.join(" "), /review_id mismatch/);
   });
+});
+
+test("Hypothesis probes backend review status before Builder and Candidate generation", () => {
+  const source = fs.readFileSync(hypothesisPagePath, "utf8");
+  const probeIndex = source.indexOf("probeLiveReviewLineage(reviewId)");
+  const builderIndex = source.indexOf('fetch("/api/portfolio/builder/prepare"');
+  const candidateIndex = source.indexOf('fetch("/api/portfolio/candidate/generate"');
+
+  assert.ok(probeIndex > 0, "Hypothesis should probe live backend lineage before downstream actions.");
+  assert.ok(builderIndex > probeIndex, "Builder prepare must happen after the status probe.");
+  assert.ok(candidateIndex > builderIndex, "Candidate generation must happen after Builder prepare.");
+  assert.match(source, /Run a new diagnosis before generating a candidate/);
+  assert.match(source, /markLiveLineageUnavailable\(message\)/);
 });
 
 test("report route returns a display model from the FastAPI public envelope", async () => {

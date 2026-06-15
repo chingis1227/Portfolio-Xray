@@ -282,7 +282,7 @@ artifact filenames, raw artifact maps, and other generated-output references. If
 summary exceeds the configured soft limit, the cloud write should be skipped and the local staged
 review should continue.
 
-Login, `/workspace` hydration, and compact history recovery must not trigger backend execution. They load compact state only. A completed review is treated as immutable history for its portfolio version. If the user edits the portfolio, the UI creates a new draft/review snapshot and clears downstream readiness instead of reusing old candidate, comparison, verdict, or report evidence as current.
+Login, `/workspace` hydration, and compact history recovery must not trigger backend execution. They load compact state only. Compact cloud state is read-only unless the current FastAPI backend confirms same-owner run-local lineage for the active `review_id`; compact summaries alone must not unlock Builder, Candidate, Comparison, Verdict, or Report mutation actions. A completed review is treated as immutable history for its portfolio version. If the user edits the portfolio, the UI creates a new draft/review snapshot and clears downstream readiness instead of reusing old candidate, comparison, verdict, or report evidence as current.
 
 ## Validation for this contract
 

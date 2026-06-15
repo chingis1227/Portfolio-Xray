@@ -162,14 +162,14 @@ The shell begins after onboarding. The journey labels and step numbers are:
 
 ## `/workspace`
 
-Role: signed-in account home and compact review-history hub. This route restores saved work and lets the user choose what to continue. It is not a calculation stage and must not start diagnosis, refresh market data, generate candidates, compare portfolios, or regenerate verdict/report artifacts on load.
+Role: signed-in account home and review-history hub. This route restores saved work and lets the user choose what to continue. It is not a calculation stage and must not start diagnosis, refresh market data, generate candidates, compare portfolios, or regenerate verdict/report artifacts on load.
 
 Main blocks:
 
 1. Current workspace card
-   - Shows active portfolio name, latest review status, latest `reviewId`, and stage readiness.
-   - CTAs: `Continue review`, `Edit as new draft`, and `Start new review`.
-   - Copy states that logging in restores saved work and does not recalculate automatically.
+   - Shows active portfolio name, latest review status, and saved review count.
+   - CTAs: `Continue review`, `Start new review`, and `Refresh workspace`.
+   - Copy states that opening a saved portfolio starts a new review and completed reviews remain unchanged.
 
 2. Portfolio library
    - Shows active saved portfolios by default.
@@ -177,9 +177,8 @@ Main blocks:
    - Loading a saved portfolio prepares a new or existing draft; it does not mutate completed review evidence.
 
 3. Review history
-   - Shows compact reviews for the signed-in user with portfolio snapshot summary, status, stage chips, and archived state.
-   - `Open compact summary` is read-only when live run-local lineage is unavailable.
-   - `Recover live review` is available only when same-owner backend lineage can be verified.
+   - Shows past reviews for the signed-in user with portfolio snapshot summary, status, stage chips, and archived state.
+   - Past reviews are clearly labeled read-only when full local evidence cannot be restored.
 
 ## `/portfolio-input`
 

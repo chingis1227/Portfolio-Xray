@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { Holding } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { instrumentByTicker, instrumentUniverse, type Instrument } from "@/data/instrumentUniverse";
-import { useReviewState, type ReviewHolding, type ReviewResult, type StagedReviewProgress } from "@/lib/reviewState";
+import { diagnosisStageChainReady, useReviewState, type ReviewHolding, type ReviewResult, type StagedReviewProgress } from "@/lib/reviewState";
 import type { ClientFitInput, StagedReviewStartedResponse, StagedReviewStatusResponse } from "@/lib/generated/api-types";
 import { inferClientFitPresetIdFromTargets } from "@/lib/onboarding";
 import { useSupabaseAuth } from "@/lib/supabase/auth";
@@ -134,23 +134,11 @@ function sleep(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-function stageReady(progress: Pick<StagedReviewStatusResponse, "stages"> | StagedReviewProgress | null | undefined, stage: string) {
-  const status = progress?.stages?.[stage]?.status;
-  return status === "completed" || status === "partial";
-}
-
 function stagedStatusLabel(progress: StagedReviewProgress | null | undefined) {
   if (!progress) return "No active staged review";
   const currentStage = progress.currentStage || "input";
   const status = progress.status || "pending";
   return `${currentStage}: ${status}`;
-}
-
-function diagnosisChainReady(progress: Pick<StagedReviewStatusResponse, "stages"> | StagedReviewProgress) {
-  return stageReady(progress, "xray")
-    && stageReady(progress, "stress")
-    && stageReady(progress, "problem_classification")
-    && stageReady(progress, "launchpad_builder");
 }
 
 function pctRangeLabel(range: { min: number; max: number } | null | undefined) {
@@ -777,7 +765,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
         throw new Error(safeErrorMessage);
       }
 
-      if (diagnosisChainReady(status)) {
+      if (diagnosisStageChainReady(status)) {
         return status;
       }
 
@@ -1016,11 +1004,12 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
   }, [activeReview, currency, hydrated, isRecoveringReview, isRunningDiagnosis, router]);
 
   const stagedProgress = activeReview?.stagedProgress;
+  const diagnosisChainIsReady = diagnosisStageChainReady(stagedProgress);
   const showStagedProgress = Boolean(stagedProgress && (
-    isRunningDiagnosis
-    || !activeReview?.reviewSummary
-    || stagedProgress.status === "running"
-    || stagedProgress.status === "partial"
+    (isRunningDiagnosis && !diagnosisChainIsReady)
+    || (!activeReview?.reviewSummary && !diagnosisChainIsReady && (
+      stagedProgress.status === "running" || stagedProgress.status === "partial"
+    ))
   ));
 
   return (

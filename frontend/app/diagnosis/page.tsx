@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { DiagnosisSummaryPanel } from "@/components/diagnosis/DiagnosisSummaryPanel";
 import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { buildDiagnosisFromReview, useReviewState, type ReviewHolding, type ReviewResult, type StagedReviewProgress } from "@/lib/reviewState";
+import { buildDiagnosisFromReview, diagnosisStageChainReady, useReviewState, type ReviewHolding, type ReviewResult, type StagedReviewProgress } from "@/lib/reviewState";
 import type { StagedReviewStatusResponse } from "@/lib/generated/api-types";
 
 const STAGED_POLL_INTERVAL_MS = 2000;
@@ -14,18 +14,6 @@ const STAGED_RECOVERY_TIMEOUT_MS = 15 * 60 * 1000;
 
 function sleep(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
-function stageReady(progress: Pick<StagedReviewStatusResponse, "stages"> | StagedReviewProgress | null | undefined, stage: string) {
-  const status = progress?.stages?.[stage]?.status;
-  return status === "completed" || status === "partial";
-}
-
-function diagnosisChainReady(progress: Pick<StagedReviewStatusResponse, "stages"> | StagedReviewProgress) {
-  return stageReady(progress, "xray")
-    && stageReady(progress, "stress")
-    && stageReady(progress, "problem_classification")
-    && stageReady(progress, "launchpad_builder");
 }
 
 function holdingsFromRecoveredReview(result: ReviewResult | undefined) {
@@ -218,7 +206,7 @@ export default function DiagnosisPage() {
             const safeError = status.safe_error;
             throw new Error(safeError?.message || "Portfolio diagnosis failed during staged execution.");
           }
-          if (diagnosisChainReady(status)) {
+          if (diagnosisStageChainReady(status)) {
             await recoverCompletedDiagnosis();
             return;
           }

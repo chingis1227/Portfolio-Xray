@@ -430,6 +430,7 @@ type ReviewStateContextValue = {
   recordVerdictResult: (result: unknown) => void;
   recordReportResult: (result: unknown) => void;
   hydrateCloudReview: (savedReview: SavedReviewRecord) => void;
+  markLiveLineageUnavailable: (message?: string) => void;
   markCandidateReady: () => void;
   markComparisonReady: () => void;
   markVerdictReady: () => void;
@@ -810,6 +811,17 @@ const STAGED_STAGE_NAMES = [
 function isStagedStageReady(progress: StagedReviewProgress | undefined, stage: string) {
   const status = progress?.stages?.[stage]?.status;
   return status === "completed" || status === "partial";
+}
+
+export function diagnosisStageChainReady(progress: Pick<StagedReviewStatusResponse, "stages"> | StagedReviewProgress | null | undefined) {
+  const stageReady = (stage: string) => {
+    const status = progress?.stages?.[stage]?.status;
+    return status === "completed" || status === "partial";
+  };
+  return stageReady("xray")
+    && stageReady("stress")
+    && stageReady("problem_classification")
+    && stageReady("launchpad_builder");
 }
 
 function cleanStageRow(value: unknown): StagedStageState {
@@ -1489,8 +1501,8 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
         } : undefined,
         portfolioVersionId: savedReview.portfolioVersionId,
         portfolioVersionNumber: typeof compact.activeCloudPortfolioVersionNumber === "number" ? compact.activeCloudPortfolioVersionNumber : undefined,
-        readOnlyHistory: savedReview.readOnlyHistory,
-        lineageAvailable: savedReview.lineageAvailable,
+        readOnlyHistory: true,
+        lineageAvailable: false,
         reviewId: savedReview.reviewId,
         reviewResult: undefined,
         reviewSummary: undefined,
@@ -1596,8 +1608,8 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       } : undefined,
       portfolioVersionId: savedReview.portfolioVersionId,
       portfolioVersionNumber: typeof compact.activeCloudPortfolioVersionNumber === "number" ? compact.activeCloudPortfolioVersionNumber : undefined,
-      readOnlyHistory: savedReview.readOnlyHistory,
-      lineageAvailable: savedReview.lineageAvailable,
+      readOnlyHistory: true,
+      lineageAvailable: false,
       reviewId: savedReview.reviewId,
       reviewResult: undefined,
       reviewSummary,
@@ -1614,11 +1626,31 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       diagnosisReady: true,
       evidenceReady: true,
       improvementPathsReady: true,
-      candidateReady: !savedReview.readOnlyHistory && Boolean(candidateGeneration),
-      comparisonReady: !savedReview.readOnlyHistory && Boolean(comparisonResult),
-      verdictReady: !savedReview.readOnlyHistory && Boolean(verdictResult),
+      candidateReady: false,
+      comparisonReady: false,
+      verdictReady: false,
       updatedAt: savedReview.updatedAt ?? nowIso()
     }));
+  }, []);
+
+  const markLiveLineageUnavailable = useCallback((message?: string) => {
+    setActiveReview((current) => current ? {
+      ...current,
+      readOnlyHistory: true,
+      lineageAvailable: false,
+      candidateGeneration: undefined,
+      comparisonResult: undefined,
+      verdictResult: undefined,
+      reportResult: undefined,
+      candidateReady: false,
+      comparisonReady: false,
+      verdictReady: false,
+      reviewError: message ? {
+        message,
+        occurredAt: nowIso()
+      } : current.reviewError,
+      updatedAt: nowIso()
+    } : current);
   }, []);
 
   useEffect(() => {
@@ -2154,8 +2186,8 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         if (!cancelled) {
           lastPersistedStagesKeyRef.current = null;
-          const message = error instanceof Error ? error.message : "Unknown cloud persistence error.";
-          setCloudNotice("warning", `Cloud stage sync failed, but the local review stayed usable. ${message}`);
+          const detail = error instanceof Error ? ` ${error.message}` : "";
+          setCloudNotice("warning", `We could not save your latest workspace update. Your current review is still available on this device.${detail}`);
         }
       }
     })();
@@ -2193,12 +2225,13 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     recordVerdictResult,
     recordReportResult,
     hydrateCloudReview,
+    markLiveLineageUnavailable,
     markCandidateReady,
     markComparisonReady,
     markVerdictReady,
     clearActiveReview,
     journeyFlags
-  }), [activeReview, clearActiveReview, hydrated, journeyFlags, linkCloudPortfolio, loadCloudPortfolioInput, markCandidateReady, markComparisonReady, markVerdictReady, recordBuilderSetup, recordCandidateGeneration, recordComparisonResult, recordReportResult, recordReviewError, recordStagedProgress, recordVerdictResult, saveClientFitProfile, savePortfolioInput, startStagedReview, submitPortfolioInput]);
+  }), [activeReview, clearActiveReview, hydrated, journeyFlags, linkCloudPortfolio, loadCloudPortfolioInput, markCandidateReady, markComparisonReady, markLiveLineageUnavailable, markVerdictReady, recordBuilderSetup, recordCandidateGeneration, recordComparisonResult, recordReportResult, recordReviewError, recordStagedProgress, recordVerdictResult, saveClientFitProfile, savePortfolioInput, startStagedReview, submitPortfolioInput]);
 
   return <ReviewStateContext.Provider value={value}>{children}</ReviewStateContext.Provider>;
 }

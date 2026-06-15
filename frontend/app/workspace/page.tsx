@@ -47,10 +47,10 @@ function topHoldings(holdings: ReviewHolding[]) {
 }
 
 function reviewTitle(review?: SavedReviewRecord | null) {
-  if (!review) return "No active saved review";
+  if (!review) return "No active review yet";
   if (review.title) return review.title;
   if (typeof review.compactSummary.diagnosisHeadline === "string") return review.compactSummary.diagnosisHeadline;
-  return `Review ${review.reviewId}`;
+  return "Saved review";
 }
 
 function reviewStatusTone(review?: SavedReviewRecord | null): Tone {
@@ -62,10 +62,10 @@ function reviewStatusTone(review?: SavedReviewRecord | null): Tone {
 }
 
 function reviewStatusLabel(review?: SavedReviewRecord | null) {
-  if (!review) return "No review selected";
-  if (review.status === "draft") return "Draft changed";
-  if (review.readOnlyHistory) return "Read-only compact history";
-  if (review.status === "completed") return review.lineageAvailable ? "Current" : "Historical";
+  if (!review) return "No active review";
+  if (review.status === "draft") return "Draft";
+  if (review.readOnlyHistory) return "Read-only history";
+  if (review.status === "completed") return review.lineageAvailable ? "Current review" : "Saved history";
   return review.status;
 }
 
@@ -112,13 +112,13 @@ function PortfolioCard({ portfolio, isActive, onLoad, onArchive }: { portfolio: 
             {portfolio.versionNumber ? <StatusBadge tone="slate">Version {portfolio.versionNumber}</StatusBadge> : null}
           </div>
           <p className="mt-2 text-sm leading-6 text-pmri-muted">
-            {portfolio.holdings.length} holdings, {formatPercent(totalWeight(portfolio.holdings))} total weight, base currency {portfolio.baseCurrency}.
+            {portfolio.holdings.length} holdings, {formatPercent(totalWeight(portfolio.holdings))} total allocation, base currency {portfolio.baseCurrency}.
           </p>
           <p className="mt-1 text-xs text-pmri-muted">Updated {formatDate(portfolio.updatedAt)}</p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
           <button type="button" onClick={onLoad} className="pmri-focus rounded-full border border-pmri-blue/45 bg-pmri-blue/[0.08] px-4 py-2 text-xs font-semibold text-pmri-blueSoft transition hover:bg-pmri-blue/[0.13]">
-            Load input
+            Use for new review
           </button>
           <button type="button" onClick={onArchive} className="pmri-focus rounded-full border border-pmri-border/55 px-4 py-2 text-xs font-semibold text-pmri-muted transition hover:border-pmri-amber/45 hover:text-pmri-text2">
             Archive
@@ -143,13 +143,12 @@ function ReviewCard({ review, isActive, onOpen, onArchive }: { review: SavedRevi
             <StatusBadge tone={reviewStatusTone(review)}>{reviewStatusLabel(review)}</StatusBadge>
           </div>
           <p className="mt-2 text-sm leading-6 text-pmri-muted">
-            Review ID {review.reviewId}. {holdings.length} holdings snapshot. Updated {formatDate(review.updatedAt ?? review.completedAt)}.
+            {holdings.length} holdings saved from this review. Updated {formatDate(review.updatedAt ?? review.completedAt)}.
           </p>
-          {review.portfolioVersionId ? <p className="mt-1 text-xs text-pmri-muted">Portfolio version: {review.portfolioVersionId}</p> : null}
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
           <button type="button" onClick={onOpen} className="pmri-focus rounded-full border border-pmri-blue/45 bg-pmri-blue/[0.08] px-4 py-2 text-xs font-semibold text-pmri-blueSoft transition hover:bg-pmri-blue/[0.13]">
-            Open
+            Open review
           </button>
           <button type="button" onClick={onArchive} className="pmri-focus rounded-full border border-pmri-border/55 px-4 py-2 text-xs font-semibold text-pmri-muted transition hover:border-pmri-amber/45 hover:text-pmri-text2">
             Archive
@@ -182,6 +181,7 @@ export default function WorkspacePage() {
     reviewsLoading,
     workspaceLoading,
     notice,
+    clearNotice,
     refreshSavedPortfolios,
     refreshSavedReviews,
     refreshWorkspaceState,
@@ -199,9 +199,15 @@ export default function WorkspacePage() {
   const latestReview = activeReviewRow ?? savedReviews[0] ?? null;
   const loading = portfoliosLoading || reviewsLoading || workspaceLoading;
 
+  function refreshWorkspace() {
+    void refreshSavedPortfolios();
+    void refreshSavedReviews();
+    void refreshWorkspaceState();
+  }
+
   function openReview(review: SavedReviewRecord) {
     hydrateCloudReview(review);
-    setNotice("success", review.readOnlyHistory ? "Opened compact read-only history. Run-local artifacts are not restored automatically." : "Opened saved review state.");
+    setNotice("success", review.readOnlyHistory ? "Opened read-only review history." : "Opened saved review.");
     router.push(nextHrefForReview(review));
   }
 
@@ -214,14 +220,14 @@ export default function WorkspacePage() {
       versionId: portfolio.latestVersionId,
       versionNumber: portfolio.versionNumber
     });
-    setNotice("info", "Loaded the saved portfolio input. Changing it starts a new draft and does not recalculate automatically.");
+    setNotice("info", "Loaded the saved portfolio. Editing it starts a new review and does not change past reviews.");
     router.push("/portfolio-input");
   }
 
   if (!enabled) {
     return (
       <div>
-        <PageHeader kicker="Workspace" title="Cloud workspace is not configured" description="The workspace requires Supabase public configuration. Local portfolio input can still be used, but saved account history is unavailable." />
+        <PageHeader kicker="Workspace" title="Account saving is not configured" description="You can still enter a portfolio in this browser, but saved portfolios and review history are unavailable." />
         <CardShell><Link href="/portfolio-input" className="pmri-focus pmri-primary-action inline-flex rounded-full px-5 py-2.5 text-sm font-semibold">Go to Portfolio Input</Link></CardShell>
       </div>
     );
@@ -230,7 +236,7 @@ export default function WorkspacePage() {
   if (status !== "signed_in" || !signedIn) {
     return (
       <div>
-        <PageHeader kicker="Workspace" title="Sign in to open your workspace" description="Portfolio library and review history are tied to the signed-in account, not a loose browser session." />
+        <PageHeader kicker="Workspace" title="Sign in to open your workspace" description="Your saved portfolios and past reviews are tied to your account." />
         <CardShell><Link href="/onboarding/sign-in" className="pmri-focus pmri-primary-action inline-flex rounded-full px-5 py-2.5 text-sm font-semibold">Sign in</Link></CardShell>
       </div>
     );
@@ -239,17 +245,27 @@ export default function WorkspacePage() {
   return (
     <div>
       <PageHeader
-        kicker="Account workspace"
-        title="Saved portfolios and review history"
-        description="Login restores compact workspace state, but it never recalculates automatically. Changing a portfolio starts a new draft; completed reviews remain immutable history."
-        boundaryNote="Supabase stores compact app-data summaries only. Generated artifacts, run folders, PDFs, CSVs, and raw diagnostic JSON stay outside cloud history."
+        kicker="Workspace"
+        title="Your investment workspace"
+        description="Keep your saved portfolios, past reviews, and current analysis in one place."
+        boundaryNote="Opening a saved portfolio starts a new review. Completed reviews remain unchanged."
       >
         <StatusBadge tone="green">Signed in</StatusBadge>
       </PageHeader>
 
       {notice ? (
-        <div className="mb-5 rounded-2xl border border-pmri-border/45 bg-white/[0.025] px-4 py-3 text-sm leading-6 text-pmri-text2" role="status">
-          {notice.message}
+        <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-pmri-border/45 bg-white/[0.025] px-4 py-3 text-sm leading-6 text-pmri-text2 md:flex-row md:items-center md:justify-between" role="status">
+          <p>{notice.message}</p>
+          {notice.tone === "warning" ? (
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <button type="button" onClick={refreshWorkspace} className="pmri-focus rounded-full border border-pmri-blue/40 bg-pmri-blue/[0.08] px-3 py-1.5 text-xs font-semibold text-pmri-blueSoft transition hover:bg-pmri-blue/[0.13]">
+                Try again
+              </button>
+              <button type="button" onClick={clearNotice} className="pmri-focus rounded-full border border-pmri-border/55 px-3 py-1.5 text-xs font-semibold text-pmri-muted transition hover:border-pmri-border hover:text-pmri-text2">
+                Continue locally
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -258,15 +274,14 @@ export default function WorkspacePage() {
           <CardShell>
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
-                <p className="pmri-label text-pmri-blueSoft">Current workspace</p>
+                <p className="pmri-label text-pmri-blueSoft">Current review</p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em] text-pmri-text">{reviewTitle(latestReview)}</h2>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-pmri-muted">
-                  {latestReview ? "Continue from the latest saved compact review, or load a portfolio to create a new draft before running diagnosis again." : "No saved review exists yet. Start by entering a portfolio and running diagnosis."}
+                  {latestReview ? "Continue the latest saved review, or start a new one from a saved portfolio." : "Start by adding your portfolio. Once the diagnosis is complete, it will appear here."}
                 </p>
               </div>
               <div className="flex shrink-0 flex-wrap gap-2">
                 <StatusBadge tone={reviewStatusTone(latestReview)}>{reviewStatusLabel(latestReview)}</StatusBadge>
-                {activeReview?.reviewId ? <StatusBadge tone="slate">Local active: {activeReview.reviewId}</StatusBadge> : null}
               </div>
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -279,20 +294,20 @@ export default function WorkspacePage() {
                 <p className="mt-2 text-sm text-pmri-text">{activePortfolio?.name ?? activeReview?.cloudPortfolio?.name ?? "Not selected"}</p>
               </div>
               <div className="rounded-2xl border border-pmri-border/40 bg-white/[0.02] p-4">
-                <p className="pmri-label text-pmri-text2">Saved history</p>
-                <p className="mt-2 text-sm text-pmri-text">{savedReviews.length} reviews / {savedPortfolios.length} portfolios</p>
+                <p className="pmri-label text-pmri-text2">Saved reviews</p>
+                <p className="mt-2 text-sm text-pmri-text">{savedReviews.length}</p>
               </div>
             </div>
             <div className="mt-5 flex flex-wrap gap-3">
               {latestReview ? (
                 <button type="button" onClick={() => openReview(latestReview)} className="pmri-focus pmri-primary-action rounded-full px-5 py-2.5 text-sm font-semibold">
-                  Continue latest review
+                  Continue review
                 </button>
               ) : null}
               <Link href="/portfolio-input" className="pmri-focus rounded-full border border-pmri-border/60 px-5 py-2.5 text-sm font-semibold text-pmri-text2 transition hover:border-pmri-blue/40 hover:text-pmri-text">
-                Start or edit portfolio
+                {latestReview ? "Start new review" : "Start portfolio review"}
               </Link>
-              <button type="button" onClick={() => { void refreshSavedPortfolios(); void refreshSavedReviews(); void refreshWorkspaceState(); }} className="pmri-focus rounded-full border border-pmri-border/60 px-5 py-2.5 text-sm font-semibold text-pmri-muted transition hover:border-pmri-border hover:text-pmri-text2">
+              <button type="button" onClick={refreshWorkspace} className="pmri-focus rounded-full border border-pmri-border/60 px-5 py-2.5 text-sm font-semibold text-pmri-muted transition hover:border-pmri-border hover:text-pmri-text2">
                 {loading ? "Refreshing..." : "Refresh workspace"}
               </button>
             </div>
@@ -302,10 +317,10 @@ export default function WorkspacePage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="pmri-label text-pmri-blueSoft">Portfolio library</p>
-                <h2 className="mt-2 text-xl font-semibold tracking-[-0.025em] text-pmri-text">Saved inputs</h2>
-                <p className="mt-2 text-sm leading-6 text-pmri-muted">Loading a portfolio opens it as input. Any edit starts a new draft and leaves old completed reviews in history.</p>
+                <h2 className="mt-2 text-xl font-semibold tracking-[-0.025em] text-pmri-text">Saved portfolios</h2>
+                <p className="mt-2 text-sm leading-6 text-pmri-muted">Saved portfolios can be reused as a starting point for a new diagnosis.</p>
               </div>
-              <StatusBadge tone="slate">Archive hides, not delete</StatusBadge>
+              <StatusBadge tone="slate">Archive hides items</StatusBadge>
             </div>
             <div className="mt-5 space-y-3">
               {savedPortfolios.map((portfolio) => (
@@ -317,27 +332,24 @@ export default function WorkspacePage() {
                   onArchive={() => void deletePortfolio(portfolio.id)}
                 />
               ))}
-              {!savedPortfolios.length ? <p className="rounded-2xl border border-pmri-border/40 bg-white/[0.02] p-4 text-sm text-pmri-muted">No saved portfolios yet. Save one from Portfolio Input while signed in.</p> : null}
+              {!savedPortfolios.length ? (
+                <div className="rounded-2xl border border-pmri-border/40 bg-white/[0.02] p-4">
+                  <p className="text-sm text-pmri-muted">No saved portfolios yet. Add your portfolio to save it here for future reviews.</p>
+                  <Link href="/portfolio-input" className="pmri-focus mt-4 inline-flex rounded-full border border-pmri-blue/45 bg-pmri-blue/[0.08] px-4 py-2 text-xs font-semibold text-pmri-blueSoft transition hover:bg-pmri-blue/[0.13]">
+                    Add portfolio
+                  </Link>
+                </div>
+              ) : null}
             </div>
           </CardShell>
         </div>
 
         <aside className="space-y-5">
           <CardShell>
-            <p className="pmri-label text-pmri-blueSoft">Workspace rules</p>
-            <ul className="mt-4 space-y-3 text-sm leading-6 text-pmri-muted">
-              <li>Login restores saved work and does not trigger a new calculation.</li>
-              <li>Completed reviews are immutable portfolio snapshots.</li>
-              <li>Historical compact reviews may be read-only when run-local lineage is unavailable.</li>
-              <li>Archive hides items from default lists without physical deletion.</li>
-            </ul>
-          </CardShell>
-
-          <CardShell>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="pmri-label text-pmri-blueSoft">Review history</p>
-                <h2 className="mt-2 text-xl font-semibold tracking-[-0.025em] text-pmri-text">Compact reviews</h2>
+                <h2 className="mt-2 text-xl font-semibold tracking-[-0.025em] text-pmri-text">Past reviews</h2>
               </div>
               <StatusBadge tone="slate">{reviewsLoading ? "Loading" : `${savedReviews.length}`}</StatusBadge>
             </div>
@@ -351,8 +363,17 @@ export default function WorkspacePage() {
                   onArchive={() => void archiveReview(review.id)}
                 />
               ))}
-              {!savedReviews.length ? <p className="rounded-2xl border border-pmri-border/40 bg-white/[0.02] p-4 text-sm text-pmri-muted">No saved reviews yet. Run diagnosis while signed in to create history.</p> : null}
+              {!savedReviews.length ? <p className="rounded-2xl border border-pmri-border/40 bg-white/[0.02] p-4 text-sm text-pmri-muted">No completed reviews yet. Run your first diagnosis to create review history.</p> : null}
             </div>
+          </CardShell>
+
+          <CardShell>
+            <p className="pmri-label text-pmri-blueSoft">How it works</p>
+            <ul className="mt-4 space-y-3 text-sm leading-6 text-pmri-muted">
+              <li>Saved portfolios can be reused for new reviews.</li>
+              <li>Completed reviews do not change after they are created.</li>
+              <li>Archiving hides items from your main list without deleting them.</li>
+            </ul>
           </CardShell>
         </aside>
       </div>

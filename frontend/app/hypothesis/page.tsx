@@ -8,7 +8,8 @@ import { ClientFitContextCard } from "@/components/client-fit/ClientFitContextCa
 import { HypothesisCard } from "@/components/hypothesis/HypothesisCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatUnknownValue, normalizeDisplayLabel, normalizeDisplaySentence } from "@/lib/displayLabels";
-import { useReviewState, type CandidateGenerationSummary } from "@/lib/reviewState";
+import { diagnosisStageChainReady, useReviewState, type CandidateGenerationSummary } from "@/lib/reviewState";
+import type { StagedReviewStatusResponse } from "@/lib/generated/api-types";
 import type { Hypothesis } from "@/lib/types";
 
 type JsonRecord = Record<string, unknown>;
@@ -260,6 +261,30 @@ function safeErrorText(value: unknown, fallback: string) {
     return safeDetails ? `${message} ${safeDetails}` : message;
   }
   return message;
+}
+
+async function probeLiveReviewLineage(reviewId: string) {
+  const response = await fetch(`/api/portfolio/review/status?reviewId=${encodeURIComponent(reviewId)}`, {
+    method: "GET",
+    cache: "no-store"
+  });
+  const status = await response.json() as (StagedReviewStatusResponse & { error?: string; details?: unknown });
+  if (!response.ok) {
+    const message = safeErrorText(status, "This review is compact history. Run a new diagnosis before generating a candidate.");
+    return {
+      ok: false,
+      stale: response.status === 403 || response.status === 404 || /not found|forbidden|different authenticated user/i.test(message),
+      message
+    };
+  }
+  if (!diagnosisStageChainReady(status)) {
+    return {
+      ok: false,
+      stale: false,
+      message: "Portfolio diagnosis is still preparing. Wait for Diagnosis, Stress Lab, and Hypothesis setup to finish before generating a candidate."
+    };
+  }
+  return { ok: true, stale: false, message: "" };
 }
 
 function cardMatchesRecommendedTest(card: JsonRecord, recommendedNextTest: string) {
@@ -883,7 +908,7 @@ function EmptyState({ title, description, href = "/portfolio-input", cta = "Go t
 }
 
 export default function HypothesisPage() {
-  const { activeReview, hydrated, journeyFlags, recordBuilderSetup, recordCandidateGeneration } = useReviewState();
+  const { activeReview, hydrated, journeyFlags, markLiveLineageUnavailable, recordBuilderSetup, recordCandidateGeneration } = useReviewState();
   const [sampleMode, setSampleMode] = useState(false);
   const [sampleGenerated, setSampleGenerated] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
@@ -961,6 +986,16 @@ export default function HypothesisPage() {
     setGenerationError(undefined);
 
     try {
+      const lineageProbe = await probeLiveReviewLineage(reviewId);
+      if (!lineageProbe.ok) {
+        const message = lineageProbe.stale
+          ? "This review is compact history. Run a new diagnosis before generating a candidate."
+          : lineageProbe.message;
+        if (lineageProbe.stale) markLiveLineageUnavailable(message);
+        setGenerationError(message);
+        return;
+      }
+
       const prepareResponse = await fetch("/api/portfolio/builder/prepare", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

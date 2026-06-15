@@ -335,11 +335,14 @@ function holdingsFromVersionSnapshot(value: unknown): ReviewHolding[] {
 
 
 function humanizePersistenceError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error || "Unknown cloud persistence error.");
+  const message = error instanceof Error ? error.message : String(error || "Unknown save error.");
   if (message.toLowerCase().includes("fetch")) {
-    return "Could not reach Supabase. Check the public URL/key and network connection.";
+    return "Could not reach the saved workspace service. Check your connection and try again.";
   }
-  return message;
+  return message
+    .replace(/Supabase/gi, "saved workspace service")
+    .replace(/cloud persistence/gi, "workspace saving")
+    .replace(/cloud/gi, "workspace");
 }
 
 function clampWeightToFraction(weightPct: number) {
@@ -493,8 +496,7 @@ async function fetchSavedReviewsForUser(userId: string): Promise<SavedReviewReco
     const snapshot = row.portfolio_snapshot ?? {};
     const compactSummary = row.compact_summary ?? {};
     const diagnosisStage = stages.diagnosis ?? {};
-    const recoverableActions = compactSummary.recoverableActions ?? compactSummary.recoverable_actions;
-    const lineageAvailable = Array.isArray(recoverableActions) && recoverableActions.length > 0;
+    const lineageAvailable = false;
     return {
       id: row.id,
       reviewId: row.review_id,
@@ -1465,7 +1467,7 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
       const workspace = await fetchWorkspaceStateForUser(user.id);
       setWorkspaceState(workspace);
     } catch (error) {
-      setNotice("warning", `Could not load workspace state. ${humanizePersistenceError(error)}`);
+      setNotice("warning", `We could not load your latest workspace. ${humanizePersistenceError(error)}`);
     } finally {
       setWorkspaceLoading(false);
     }
@@ -1473,7 +1475,7 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
 
   const savePortfolio = useCallback(async (input: SavePortfolioInput) => {
     if (!signedIn || !user?.id) {
-      setNotice("warning", "Sign in first to save portfolios to cloud.");
+      setNotice("warning", "Sign in first to save portfolios to your workspace.");
       return null;
     }
 
@@ -1492,17 +1494,17 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
         }
       });
       setWorkspaceState(workspace);
-      setNotice("success", `Saved "${saved.name}" to optional cloud storage.`);
+      setNotice("success", `Saved "${saved.name}" to your workspace.`);
       return saved;
     } catch (error) {
-      setNotice("warning", `Cloud portfolio save failed. ${humanizePersistenceError(error)}`);
+      setNotice("warning", `We could not save this portfolio. ${humanizePersistenceError(error)}`);
       return null;
     }
   }, [setNotice, signedIn, user?.id, workspaceState?.activeReviewRowId, workspaceState?.lastOpenedReviewRowId]);
 
   const ensurePortfolioVersion = useCallback(async (input: { portfolioId: string; portfolioName?: string; investorCurrency: string; holdings: ReviewHolding[]; sourceKind?: string; sourceReviewId?: string }) => {
     if (!signedIn || !user?.id) {
-      setNotice("warning", "Sign in first to version portfolios in cloud.");
+      setNotice("warning", "Sign in first to save portfolio changes to your workspace.");
       return null;
     }
 
@@ -1531,14 +1533,14 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
       }
       return version;
     } catch (error) {
-      setNotice("warning", `Cloud portfolio version save failed. ${humanizePersistenceError(error)}`);
+      setNotice("warning", `We could not save this portfolio version. ${humanizePersistenceError(error)}`);
       return null;
     }
   }, [setNotice, signedIn, user?.id, workspaceState?.activeReviewRowId, workspaceState?.lastOpenedReviewRowId]);
 
   const deletePortfolio = useCallback(async (portfolioId: string) => {
     if (!signedIn || !user?.id) {
-      setNotice("warning", "Sign in first to delete saved cloud portfolios.");
+      setNotice("warning", "Sign in first to archive saved portfolios.");
       return false;
     }
 
@@ -1560,17 +1562,17 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
         });
         setWorkspaceState(workspace);
       }
-      setNotice("success", portfolioName ? `Archived "${portfolioName}" in cloud storage.` : "Archived saved cloud portfolio.");
+      setNotice("success", portfolioName ? `Archived "${portfolioName}".` : "Archived saved portfolio.");
       return true;
     } catch (error) {
-      setNotice("warning", `Cloud portfolio delete failed. ${humanizePersistenceError(error)}`);
+      setNotice("warning", `We could not archive this portfolio. ${humanizePersistenceError(error)}`);
       return false;
     }
   }, [savedPortfolios, setNotice, signedIn, user?.id, workspaceState?.activePortfolioId, workspaceState?.activeReviewRowId, workspaceState?.lastOpenedReviewRowId]);
 
   const archiveReview = useCallback(async (reviewRowId: string) => {
     if (!signedIn || !user?.id) {
-      setNotice("warning", "Sign in first to archive saved cloud reviews.");
+      setNotice("warning", "Sign in first to archive saved reviews.");
       return false;
     }
 
@@ -1592,10 +1594,10 @@ export function SupabasePersistenceProvider({ children }: { children: ReactNode 
         });
         setWorkspaceState(workspace);
       }
-      setNotice("success", review?.title ? `Archived "${review.title}" in cloud history.` : "Archived saved cloud review.");
+      setNotice("success", review?.title ? `Archived "${review.title}".` : "Archived saved review.");
       return true;
     } catch (error) {
-      setNotice("warning", `Cloud review archive failed. ${humanizePersistenceError(error)}`);
+      setNotice("warning", `We could not archive this review. ${humanizePersistenceError(error)}`);
       return false;
     }
   }, [savedReviews, setNotice, signedIn, user?.id, workspaceState]);
