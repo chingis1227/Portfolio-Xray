@@ -2,6 +2,9 @@
 
 ## 2026-06-15
 
+- Added bounded parallel data loading for cold Run Diagnostics. yfinance ticker downloads, factor
+  proxy loaders, and macro indicator resolution now overlap independent provider calls within safe
+  worker limits, while `PMRI_DISABLE_PARALLEL_DATA_LOAD=1` restores sequential behavior.
 - Improved staged Run Diagnostics performance and perceived latency. Portfolio Input now navigates
   to Diagnosis immediately after receiving `review_id`, Diagnosis owns staged polling/recovery, live
   staged diagnosis reuses shared run context by default, and warm-run cache helpers plus a

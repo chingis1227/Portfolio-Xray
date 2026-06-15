@@ -52,6 +52,12 @@ Current external and local source families:
 - Local YAML config and metadata files.
 - Local cache files under `cache/` when cache is enabled.
 - Process-local read-through caches for repeated live-run loads of yfinance price frames, FRED series, factor matrices, macro panels, and YAML taxonomy/config files. These caches are performance helpers only; they must return defensive copies, avoid caching failed external calls, and use source parameters plus mtime/size keys where local files are involved.
+- Bounded process-local parallel loading for independent I/O-bound data requests. The current
+  bounded loaders overlap yfinance ticker downloads, independent factor proxy loads, and independent
+  macro indicator resolution while preserving deterministic output order and the existing per-item
+  fallback/error semantics. Set `PMRI_DISABLE_PARALLEL_DATA_LOAD=1` to force sequential behavior.
+  Optional worker caps are `PMRI_YF_MAX_WORKERS` (default `4`), `PMRI_FACTOR_MAX_WORKERS` (default
+  `4`), and `PMRI_MACRO_MAX_WORKERS` (default `3`).
 
 Future quote-data candidates to evaluate: EODHD as first priority, Tiingo for personal usage only, and Alpaca. These are not default project data sources yet.
 
@@ -188,6 +194,8 @@ such as FRED rates, credit, inflation, USD, VIX, WEI, oil, or Yahoo commodity da
 `stress_report.json.factor_diagnostics_meta` records the available factors, missing factors, and
 per-factor reason. If only the cached benchmark/equity proxy is available, the run is disclosed as
 `factor_attribution_scope: equity_only` instead of being presented as a full multi-factor model.
+Independent factor proxy loaders may run concurrently under the bounded data-loading helper, but
+factor columns, diagnostics, and missing-factor handling remain ordered by the factor registry.
 Full factor-matrix FRED dependencies use a separate approved raw-series cache under
 `cache/factors/v_<series_id>/`; this is not the monthly risk-free cache. Product/demo analysis is
 cache-first: if the approved cache is complete, fresh, and covers the requested date range, the
@@ -219,6 +227,10 @@ Macro data supports:
 - regime labels
 - regime quality checks
 - regime-specific analytics
+
+Macro indicator loading may resolve multiple independent indicators concurrently. The fallback
+chain inside one indicator remains sequential and ordered by source precedence, so provenance and
+source-selection semantics do not change when parallel loading is enabled.
 
 Production factor definitions, extended diagnostic factors, macro source resolution, frequency rules, coverage tiers, and diagnostic-only boundaries are governed by [docs/specs/stress_testing_spec.md](docs/specs/stress_testing_spec.md), [docs/specs/factor_diagnostics_spec.md](docs/specs/factor_diagnostics_spec.md), and [docs/specs/macro_regime_spec.md](docs/specs/macro_regime_spec.md).
 

@@ -20,6 +20,12 @@ from run_report import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _clear_process_local_data_caches() -> None:
+    sf.clear_factor_matrix_memory_cache()
+    data_fred.clear_fred_series_memory_cache()
+
+
 def _test_output_dir(name: str) -> Path:
     root = Path.cwd() / "output" / "codex_test_artifacts" / name
     shutil.rmtree(root, ignore_errors=True)

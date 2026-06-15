@@ -24,6 +24,7 @@ from scipy import stats
 from src.data_fred import fetch_fred_series
 from src.data_yf import fetch_daily
 from src.pandas_compat import MONTH_END_FREQ
+from src.parallel_data_loading import bounded_parallel_map
 from src.real_cash import is_real_cash_ticker, partition_market_data_tickers
 
 _LOG = logging.getLogger(__name__)
@@ -1077,16 +1078,27 @@ def _build_factor_frame(
     factor_data_provenance: dict[str, Any] = {}
     source_used_values: set[str] = set()
     cache_status_values: set[str] = set()
-    for spec in FACTOR_DEFINITIONS:
+
+    def _load_factor(spec: FactorDefinition) -> pd.Series:
         loader = spec.monthly_loader if monthly else spec.weekly_loader
-        try:
-            series = loader(start, end)
-            if series is None:
-                series = _empty_factor_series("loader_returned_none")
-        except FactorDataUnavailableError:
-            raise
-        except Exception as exc:
-            series = _empty_factor_series(f"{type(exc).__name__}:{exc}")
+        series = loader(start, end)
+        if series is None:
+            return _empty_factor_series("loader_returned_none")
+        return series
+
+    for result in bounded_parallel_map(
+        FACTOR_DEFINITIONS,
+        _load_factor,
+        env_name="PMRI_FACTOR_MAX_WORKERS",
+        default_workers=4,
+    ):
+        spec = result.item
+        if result.exception is not None:
+            if isinstance(result.exception, FactorDataUnavailableError):
+                raise result.exception
+            series = _empty_factor_series(f"{type(result.exception).__name__}:{result.exception}")
+        else:
+            series = result.value if result.value is not None else _empty_factor_series("loader_returned_none")
         cleaned = series.dropna() if isinstance(series, pd.Series) else pd.Series(dtype=float)
         reason = None
         status = "available"
@@ -1302,16 +1314,26 @@ _DAILY_FACTOR_LOADERS: dict[str, Callable[[str, str], pd.Series]] = {
 
 def _build_factor_frame_daily(start: str, end: str) -> pd.DataFrame:
     data: dict[str, pd.Series] = {}
-    for spec in FACTOR_DEFINITIONS:
+
+    def _load_daily_factor(spec: FactorDefinition) -> pd.Series:
         loader = _DAILY_FACTOR_LOADERS.get(spec.column)
         if loader is None:
+            return pd.Series(dtype=float)
+        series = loader(start, end)
+        return series if series is not None else pd.Series(dtype=float)
+
+    for result in bounded_parallel_map(
+        FACTOR_DEFINITIONS,
+        _load_daily_factor,
+        env_name="PMRI_FACTOR_MAX_WORKERS",
+        default_workers=4,
+    ):
+        spec = result.item
+        if result.exception is not None:
             series = pd.Series(dtype=float)
         else:
-            try:
-                series = loader(start, end)
-            except Exception:
-                series = pd.Series(dtype=float)
-        data[spec.column] = series if series is not None else pd.Series(dtype=float)
+            series = result.value if result.value is not None else pd.Series(dtype=float)
+        data[spec.column] = series
 
     ordered_cols = [spec.column for spec in FACTOR_DEFINITIONS]
     df = pd.DataFrame({col: data[col] for col in ordered_cols})

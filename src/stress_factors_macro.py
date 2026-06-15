@@ -24,6 +24,7 @@ from src.data_macro_sources import (
     resolve_indicator,
 )
 from src.pandas_compat import MONTH_END_FREQ
+from src.parallel_data_loading import bounded_parallel_map
 
 _LOG = logging.getLogger(__name__)
 
@@ -660,13 +661,22 @@ def fetch_macro_indicators(
     unavailable_indicators: list[str] = []
     transform_used: dict[str, str] = {}
 
-    for spec in indicators:
-        try:
-            raw, src_meta = resolver(spec, start, end)
-        except Exception as exc:  # defensive
-            _LOG.debug("resolve_indicator(%s) raised: %s", spec.key, exc)
+    def _resolve_one(spec: IndicatorSpec) -> tuple[pd.Series, dict[str, Any]]:
+        return resolver(spec, start, end)
+
+    for result in bounded_parallel_map(
+        indicators,
+        _resolve_one,
+        env_name="PMRI_MACRO_MAX_WORKERS",
+        default_workers=3,
+    ):
+        spec = result.item
+        if result.exception is not None:
+            _LOG.debug("resolve_indicator(%s) raised: %s", spec.key, result.exception)
             raw = pd.Series(dtype=float)
-            src_meta = {"available": False, "source_used": "error", "error": str(exc)}
+            src_meta = {"available": False, "source_used": "error", "error": str(result.exception)}
+        else:
+            raw, src_meta = result.value if result.value is not None else (pd.Series(dtype=float), {})
 
         data_sources_used[spec.key] = str(src_meta.get("source_used") or "unavailable")
         frequency_native[spec.key] = str(src_meta.get("frequency_native") or spec.frequency)

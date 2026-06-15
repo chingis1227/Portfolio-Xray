@@ -10,6 +10,8 @@ from typing import Any
 import pandas as pd
 import yfinance as yf
 
+from src.parallel_data_loading import bounded_parallel_map
+
 _YFINANCE_CACHE_CONFIGURED = False
 _FETCH_DAILY_MEMORY_CACHE: dict[tuple[str, str, str, str | None], pd.DataFrame] = {}
 
@@ -131,7 +133,19 @@ def download_all(
     """
     currency_by_ticker = currency_by_ticker or {}
     out: dict[str, pd.DataFrame] = {}
-    for t in tickers:
+    _configure_yfinance_cache()
+
+    def _download_one(t: str) -> pd.DataFrame:
         cur = currency_by_ticker.get(t) or infer_currency_from_ticker(t)
-        out[t] = fetch_daily(t, start, end, currency_override=cur)
+        return fetch_daily(t, start, end, currency_override=cur)
+
+    for result in bounded_parallel_map(
+        list(tickers),
+        _download_one,
+        env_name="PMRI_YF_MAX_WORKERS",
+        default_workers=4,
+    ):
+        if result.exception is not None:
+            raise result.exception
+        out[result.item] = result.value if result.value is not None else pd.DataFrame(columns=["Close"]).rename_axis("Date")
     return out
