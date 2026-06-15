@@ -58,22 +58,21 @@ function currencyFromRecoveredReview(result: ReviewResult | undefined) {
   return typeof currency === "string" && currency.trim() ? currency.trim().toUpperCase() : "";
 }
 
-function FailedDiagnosisState({ message, details }: { message: string; details?: string }) {
+function FailedDiagnosisState() {
   return (
     <section className="pmri-card rounded-2xl border-pmri-risk/35 p-6 md:p-8">
-      <StatusBadge tone="red">Diagnosis failed</StatusBadge>
+      <StatusBadge tone="amber">Needs retry</StatusBadge>
       <h2 className="mt-4 pmri-heading-section text-2xl text-pmri-text">
-        Portfolio diagnosis could not be completed.
+        Diagnosis is taking longer than expected
       </h2>
-      <p className="mt-3 max-w-2xl text-sm leading-7 text-pmri-text2">{message}</p>
-      {details ? (
-        <pre className="mt-4 max-h-56 overflow-auto rounded-xl border border-pmri-border bg-pmri-secondary p-4 text-xs leading-5 text-pmri-muted">{details}</pre>
-      ) : null}
+      <p className="mt-3 max-w-2xl text-sm leading-7 text-pmri-text2">
+        Please try again. Your portfolio input is still saved on this device.
+      </p>
       <Link
         href="/portfolio-input"
         className="pmri-focus mt-6 inline-flex rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg transition hover:bg-pmri-blueSoft"
       >
-        Back to Portfolio Input
+        Review portfolio input
       </Link>
     </section>
   );
@@ -100,41 +99,26 @@ function LockedDiagnosisState() {
 }
 
 function RunningDiagnosisState({
-  progress,
-  recoveryError
+  progress: _progress,
+  recoveryError: _recoveryError
 }: {
   progress: StagedReviewProgress | undefined;
   recoveryError?: string | null;
 }) {
   return (
     <section className="pmri-card rounded-2xl p-6 md:p-8">
-      <StatusBadge tone="blue">Diagnosis running</StatusBadge>
       <h2 className="mt-4 pmri-heading-section text-2xl text-pmri-text">
         Portfolio MRI is preparing your diagnosis.
       </h2>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-pmri-muted">
-        You can keep this page open or refresh it. The review ID is saved locally and the results
-        will appear here when the backend finishes.
+        This usually takes a moment.
       </p>
-      <div className="mt-5 rounded-2xl border border-pmri-blue/25 bg-pmri-blue/10 p-4">
-        <div className="flex items-center gap-2 text-sm font-semibold leading-5 text-pmri-text">
-          <span className="pmri-spinner" aria-hidden="true" />
-          Preparing your diagnosis...
-        </div>
-        <p className="mt-3 max-w-2xl text-xs leading-5 text-pmri-muted">
-          Portfolio MRI is reviewing allocation, concentration, risk drivers, and stress vulnerabilities.
-          Results will appear automatically when the diagnosis is ready.
-        </p>
-        {progress?.safeError ? (
-          <p className="mt-3 rounded-xl border border-pmri-risk/35 bg-pmri-risk/10 px-3 py-2 text-xs leading-5 text-pmri-risk">
-            {progress.safeError.message}
-          </p>
-        ) : recoveryError ? (
-          <p className="mt-3 rounded-xl border border-pmri-risk/35 bg-pmri-risk/10 px-3 py-2 text-xs leading-5 text-pmri-risk">
-            {recoveryError}
-          </p>
-        ) : null}
-      </div>
+      <Link
+        href="/portfolio-input"
+        className="pmri-focus mt-6 inline-flex rounded-full border border-pmri-border/60 px-5 py-2.5 text-sm font-semibold text-pmri-text2 transition hover:border-pmri-blue/40 hover:text-pmri-text"
+      >
+        Back to Portfolio Input
+      </Link>
     </section>
   );
 }
@@ -246,8 +230,8 @@ export default function DiagnosisPage() {
     <div>
       <PageHeader
         kicker="Step 02 / Portfolio Diagnosis"
-        title="Current Portfolio Diagnosis"
-        description="Current-portfolio review before any candidate test."
+        title="Portfolio Diagnosis"
+        description="Review your current portfolio before testing alternatives."
       />
       <SiteExplanationHierarchy
         bundle={siteExplanation}
@@ -255,7 +239,7 @@ export default function DiagnosisPage() {
         fallbackTitle="Diagnosis explanation"
       />
       {!hydrated ? null : failedRealRun && activeReview?.reviewError ? (
-        <FailedDiagnosisState message={activeReview.reviewError.message} details={activeReview.reviewError.details} />
+        <FailedDiagnosisState />
       ) : runningRealRun ? (
         <RunningDiagnosisState progress={activeReview?.stagedProgress} recoveryError={recoveryError} />
       ) : diagnosis ? <DiagnosisSummaryPanel {...diagnosis} xraySummary={xraySummary} /> : <LockedDiagnosisState />}
