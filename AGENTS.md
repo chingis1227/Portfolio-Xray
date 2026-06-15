@@ -119,6 +119,18 @@ python run_mvp_workflow.py [--workflow policy-only|policy-current|full-decision|
 
 Candidate and robust portfolio commands are indexed in `docs/specs/candidate_portfolios_spec.md`, `docs/specs/candidate_factory_spec.md`, `docs/specs/robust_mv_spec.md`, and `docs/specs/robust_scenario_optimization_spec.md`.
 
+## Production Stack Snapshot
+
+- Public domain: `portfolio-mri.com`.
+- DNS, domain, and frontend hosting: Cloudflare / Workers & Pages project `portfolio-xray`.
+- Python API backend: Render web service `portfolio-mri-backend`, public health URL `https://portfolio-mri-backend.onrender.com/api/v1/health`.
+- Database/persistence: Supabase stores compact review records and stage summaries only; generated artifacts remain backend/run-local.
+- Frontend-to-backend bridge: Cloudflare Pages calls Render through `PMRI_FASTAPI_BASE_URL=https://portfolio-mri-backend.onrender.com`.
+- Shared internal API auth: set the same `PMRI_FASTAPI_INTERNAL_SECRET` in Cloudflare Pages and Render.
+- Render runtime defaults: start FastAPI with `uvicorn src.api.app:app --host 0.0.0.0 --port $PORT`; set `PMRI_STAGED_REVIEW_RUNTIME=direct`.
+- Market data dependencies: Yahoo/yfinance for prices and FRED `DTB3` for USD risk-free data; production Render should set `FRED_API_KEY` to reduce FRED timeout failures.
+- After changing Cloudflare env vars, redeploy Cloudflare Pages. After changing Render env vars or backend code, redeploy the Render service.
+
 ## Source of Truth Routing
 
 Before changing behavior, follow `WORKFLOW.md` and start from `RULES.md`.
