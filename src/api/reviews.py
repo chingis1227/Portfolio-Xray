@@ -465,7 +465,7 @@ def _initial_staged_state(
         "status": "running",
         "current_stage": "input",
         "mode": mode,
-        "owner_id": owner_id,
+        "owner_id": owner_id or "local-dev-user",
         "created_at": now,
         "updated_at": now,
         "stages": stages,

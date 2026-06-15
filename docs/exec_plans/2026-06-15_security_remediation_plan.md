@@ -18,8 +18,8 @@ A developer can see Sessions 03-05 working by running `\.\.venv\Scripts\python.e
 - [x] (2026-06-15) Session 05: Added diagnosis workload abuse controls: request body size limit, holdings count bound, and staged background worker queue limits.
 - [x] (2026-06-15) Session 06: Hardened the local configuration UI with local-only access, CSRF protection for mutating routes, loopback-only startup, and fixed broken inline JavaScript conditionals.
 - [x] (2026-06-15) Session 07: Completed low/later hardening for review id entropy, FastAPI docs gating, results dashboard path containment, and deferred worklist reconciliation in TESTING/CHANGELOG/API contract docs.
-- [ ] Session 08: Expand the full security regression layer.
-- [ ] Session 09: Complete product-flow QA and documentation closure.
+- [x] (2026-06-15) Session 08: Expanded the full security regression layer and fixed the gaps it exposed in signed proxy auth, ownerless review handling, and public error-code typing.
+- [x] (2026-06-15) Session 09: Completed product-flow QA and documentation closure for the security remediation plan.
 
 ## Surprises & Discoveries
 
@@ -31,6 +31,14 @@ A developer can see Sessions 03-05 working by running `\.\.venv\Scripts\python.e
   Evidence: the first focused pytest run returned HTTP 401 for authenticated-path tests until the test helper was updated to send `X-PMRI-User-Id`, `X-PMRI-Auth-Timestamp`, and `X-PMRI-Internal-Signature`.
 - Observation: `config_ui/templates/config_form.html` contained invalid JavaScript ternaries rendered as `...`, which would break browser-side save/run actions.
   Evidence: `Select-String -Path config_ui\templates\config_form.html -Pattern '\.\.\.'` found the broken conditional expressions before Session 06; the same search returned no matches after the fix.
+
+
+- Observation: The Next.js FastAPI bridge did not attach the signed `X-PMRI-*` headers required by the FastAPI protected routes, so the frontend proxy contract from Session 02 was not actually enforced end-to-end.
+  Evidence: `frontend/lib/server/fastapiBridge.ts` called `fetch()` with only `Content-Type` before Session 08; `frontend/tests/api-route-tests.cjs` now asserts the signed user id, timestamp, and HMAC signature on diagnosis/status/downstream proxy calls.
+- Observation: Ownerless `review_state.json` was still readable through staged status because `_assert_review_owner` returned successfully when `owner_id` was missing.
+  Evidence: the first Session 08 focused pytest run failed because ownerless status returned HTTP 200; after fixing `_assert_review_owner`, `tests/test_fastapi_app.py` reports HTTP 403 for ownerless status and recovery.
+- Observation: `review_forbidden` was used by access-control code but was missing from the public `SafeErrorCode` enum, causing ownerless recovery to raise a Pydantic validation error instead of returning a safe 403 envelope.
+  Evidence: the second Session 08 focused pytest run failed with a `SafeError.code` literal validation error; adding `review_forbidden` to `src/api/models.py` and regenerating `frontend/lib/generated/api-types.ts` resolved it.
 
 ## Decision Log
 
@@ -56,9 +64,28 @@ A developer can see Sessions 03-05 working by running `\.\.venv\Scripts\python.e
   Rationale: New review ids become harder to guess without breaking older local run folders and focused tests that use simple fixture ids.
   Date/Author: 2026-06-15 / Codex.
 
+
+- Decision: Require Next.js portfolio API proxies to resolve a browser user before calling FastAPI and to sign every FastAPI request with the shared internal secret.
+  Rationale: The browser must never be allowed to choose the FastAPI owner header directly. Next.js is the trust boundary that authenticates the user and sends a short-lived HMAC to FastAPI. Local demos remain possible only with explicit non-production `PMRI_PORTFOLIO_API_AUTH_MODE=dev_bypass`.
+  Date/Author: 2026-06-15 / Codex.
+- Decision: Treat missing `owner_id` in run-local review state as forbidden instead of legacy-compatible.
+  Rationale: Ownerless run-local reviews cannot be safely attributed to the current caller, so status and recovery must return HTTP 403 and ask the user to restart the review.
+  Date/Author: 2026-06-15 / Codex.
+- Decision: Add `review_forbidden` to the public FastAPI `SafeErrorCode` contract.
+  Rationale: Access-control failures are distinct from not-found or lineage mismatch, and recovery endpoints need a typed, safe 403 envelope instead of a validation exception.
+  Date/Author: 2026-06-15 / Codex.
+
 ## Outcomes & Retrospective
 
-Sessions 03-07 are implemented. Staged review state now records an owner id, status/recovery/downstream endpoints reject mismatched owners, downstream mutation endpoints also require the previous stage to have completed, and diagnosis entrypoints have bounded holdings/body/worker controls. The local Config UI is loopback-only, requires CSRF tokens for write/run routes, and no longer ships broken inline JavaScript ternaries. New run-local review ids use higher entropy, FastAPI docs/OpenAPI HTTP routes are opt-in, and the Results Dashboard refuses configured output folders that escape the project root. Focused regression coverage for Sessions 06-07 passed with 36 tests. Remaining hardening is intentionally left to Sessions 08-09.
+Sessions 03-09 are implemented and this plan is closed. Staged review state now records an owner id, status/recovery/downstream endpoints reject mismatched owners, downstream mutation endpoints also require the previous stage to have completed, and diagnosis entrypoints have bounded holdings/body/worker controls. The local Config UI is loopback-only, requires CSRF tokens for write/run routes, and no longer ships broken inline JavaScript ternaries. New run-local review ids use higher entropy, FastAPI docs/OpenAPI HTTP routes are opt-in, and the Results Dashboard refuses configured output folders that escape the project root. Focused regression coverage for Sessions 06-07 passed with 36 tests. Sessions 08-09 added regression depth and closure validation; no planned security remediation sessions remain in this plan.
+
+Session 08-09 closure specifically fixed and proved the end-to-end authentication boundary between
+Next.js and FastAPI. Next.js portfolio API proxies now require Supabase-authenticated users or
+explicit non-production local dev bypass, sign FastAPI calls with `X-PMRI-User-Id`,
+`X-PMRI-Auth-Timestamp`, and `X-PMRI-Internal-Signature`, and have route-level tests proving the
+signature contract. Backend regression tests now cover missing, invalid, and expired internal auth;
+production bypass blocking; owner mismatch; ownerless status/recovery rejection; excessive holdings;
+request body limits; and staged worker queue throttling.
 
 ## Context and Orientation
 
@@ -98,6 +125,19 @@ Implemented edits in Sessions 03-07:
     CHANGELOG.md
     docs/exec_plans/2026-06-15_security_remediation_plan.md
 
+Implemented edits in Sessions 08-09:
+
+    frontend/lib/server/fastapiBridge.ts
+    frontend/tests/api-route-tests.cjs
+    src/api/reviews.py
+    src/api/models.py
+    frontend/lib/generated/api-types.ts
+    tests/test_fastapi_app.py
+    docs/contracts/FASTAPI_V1_API_CONTRACT.md
+    TESTING.md
+    CHANGELOG.md
+    docs/exec_plans/2026-06-15_security_remediation_plan.md
+
 Validation command:
 
     .\.venv\Scripts\python.exe -m pytest tests\test_fastapi_app.py -q --basetemp tmp\pytest_security_sessions_03_05_fifth
@@ -124,6 +164,16 @@ Observed result:
     docs verification: OK
 
 ## Validation and Acceptance
+
+Acceptance for Sessions 08-09 is:
+
+- Next.js portfolio API proxy calls reject browser review work unless Supabase auth is available or explicit non-production `PMRI_PORTFOLIO_API_AUTH_MODE=dev_bypass` is set.
+- Next.js proxy calls to FastAPI include signed `X-PMRI-User-Id`, `X-PMRI-Auth-Timestamp`, and `X-PMRI-Internal-Signature` headers.
+- FastAPI protected review routes reject missing, invalid, and expired internal signatures.
+- FastAPI production mode does not honor `PMRI_FASTAPI_AUTH_MODE=dev_bypass`.
+- Ownerless `review_state.json` cannot be read through status or recovery and returns HTTP 403 with a safe `review_forbidden` envelope.
+- Generated frontend API types include the updated `review_forbidden` public error code.
+- The security remediation plan, API contract, TESTING, and CHANGELOG reflect closure status and validation evidence.
 
 Acceptance for Sessions 03-05 is:
 
@@ -170,6 +220,28 @@ Important evidence from Sessions 06-07:
     .\.venv\Scripts\python.exe scripts\verify_docs.py
     # Result: docs verification: OK
 
+
+Important evidence from Sessions 08-09:
+
+    .\.venv\Scripts\python.exe scripts\generate_fastapi_api_types.py
+    # Result: Wrote frontend\lib\generated\api-types.ts
+    .\.venv\Scripts\python.exe -m pytest tests\test_fastapi_app.py -q --basetemp tmp\pytest_security_session_08_fastapi_third
+    # Result: 35 passed in 6.17s
+    .\.venv\Scripts\python.exe -m pytest tests\test_fastapi_app.py tests\test_fastapi_contract_governance.py -q --basetemp tmp\pytest_security_sessions_08_09_api
+    # Result: 39 passed in 10.22s
+    .\.venv\Scripts\python.exe -m pytest tests\test_frontend_review_bridge.py -q --basetemp tmp\pytest_security_sessions_08_09_bridge
+    # Result: 42 passed in 5.07s
+    npm.cmd run test:api
+    # Result: 24 passed
+    npm.cmd run typecheck
+    # Result: tsc --noEmit completed successfully.
+    .\.venv\Scripts\python.exe scripts\verify_fastapi_contract_governance.py
+    # Result: FastAPI contract governance OK.
+    .\.venv\Scripts\python.exe scripts\verify_docs.py
+    # Result: docs verification: OK
+    git diff --check
+    # Result: passed; Git reported LF-to-CRLF working-copy warnings only.
+
 ## Interfaces and Dependencies
 
 `src/api/auth.py` defines:
@@ -200,4 +272,11 @@ Session 06-07 interfaces:
     scripts/run_review_from_payload.py: create_run_dir() emits `frontend_review_<timestamp>_<22-char-token>` for new reviews.
     ../../results_dashboard/app.py: output_dir_final must resolve under PROJECT_ROOT.
 
+Session 08-09 interfaces:
+
+    frontend/lib/server/fastapiBridge.ts: portfolio API calls require Supabase auth or explicit non-production `PMRI_PORTFOLIO_API_AUTH_MODE=dev_bypass`, then sign FastAPI calls with the configured `PMRI_FASTAPI_INTERNAL_SECRET` / `PMRI_INTERNAL_AUTH_SECRET`.
+    src/api/models.py: `SafeErrorCode` includes `review_forbidden` for typed access-control failures.
+    src/api/reviews.py: ownerless staged state is forbidden rather than legacy-compatible.
+
 Revision note (2026-06-15 / Codex): Updated this living plan after implementing Sessions 06-07 so the next contributor can restart from the file and see completed hardening, decisions, validation evidence, and remaining Sessions 08-09 work.
+Revision note (2026-06-15 / Codex): Closed Sessions 08-09 after adding signed Next.js proxy auth, ownerless review rejection, expanded security regressions, API contract/type updates, and closure validation evidence.

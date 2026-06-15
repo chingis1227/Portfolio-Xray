@@ -2,6 +2,10 @@
 
 ## 2026-06-15
 
+- Completed security remediation Sessions 08-09. Next.js portfolio API proxies now require a signed-in
+  user or explicit non-production local dev bypass, attach signed `X-PMRI-*` internal auth headers to
+  FastAPI, and regression coverage now checks invalid/expired signatures, production bypass blocking,
+  ownerless review rejection, and the signed proxy contract.
 - Implemented security remediation Sessions 06-07. The local Config UI is local-only with CSRF-protected mutating routes, FastAPI docs/OpenAPI routes are opt-in, run-local review ids use higher-entropy tokens, and the Results Dashboard rejects output paths that resolve outside the project root.
 - Implemented security remediation Sessions 03-05. FastAPI staged review state now stores owner ids, protected status/recovery/downstream stage endpoints enforce owner and stage-lineage checks, and diagnosis workload controls bound holdings, request body size, and staged worker queue capacity.
 - Fixed local staged FastAPI auth/runtime drift. Local non-production API calls now fall back to a
