@@ -120,6 +120,18 @@ Platform routes use:
 - explicit boundary notes;
 - clear locked/empty states.
 
+### Hypothesis Builder workstation
+
+`/hypothesis` uses an Analyst Workstation layout rather than a stack of equal-weight evidence cards. The screen hierarchy is:
+
+1. compact Hypothesis Builder header and journey stepper;
+2. primary diagnosis recap;
+3. one recommended diagnostic test with success criteria, trade-off, and decision boundary;
+4. right-side action console for selected setup, candidate state, and the primary CTA;
+5. secondary panels for Client Fit context, other possible tests, and evidence/technical details.
+
+Client Fit, alternative tests, supporting evidence, and developer/technical details must not compete visually with the primary diagnostic test or the Generate/Continue action.
+
 Current platform steps:
 
 1. Portfolio
@@ -135,9 +147,11 @@ Current platform steps:
 
 Cards use rounded corners, thin borders, subtle gradients, and `shadow-decision`. Depth is allowed when it supports hierarchy. Metric cards show a label, optional status badge, a tabular value, and one short explanation. Avoid all-at-once metric walls.
 
+Portfolio Diagnosis uses a diagnosis-first simplification pattern: one main finding, a maximum of three primary evidence facts, one compact `What matters first` strip, a three-item behavior snapshot, and advanced diagnostics hidden by default. Professional metrics such as VaR, ES, skewness, kurtosis, beta, Sharpe, Sortino, and Treynor remain available behind disclosure controls rather than dominating the first read.
+
 ### Badges
 
-Badges must communicate evidence-backed state. Do not use badges as decoration. One primary badge per card header is preferred.
+Badges must communicate evidence-backed state. Do not use badges as decoration. One primary badge per card header is preferred. Do not repeat generic evidence badges such as `Evidence available` across every Diagnosis fact; use one global data-coverage state and reserve per-row badges for material risk or review state.
 
 ### CTAs
 

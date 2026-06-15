@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { DiagnosisSummaryPanel } from "@/components/diagnosis/DiagnosisSummaryPanel";
-import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { buildDiagnosisFromReview, diagnosisStageChainReady, useReviewState, type ReviewHolding, type ReviewResult, type StagedReviewProgress } from "@/lib/reviewState";
 import type { StagedReviewStatusResponse } from "@/lib/generated/api-types";
@@ -230,19 +229,14 @@ export default function DiagnosisPage() {
     <div>
       <PageHeader
         kicker="Step 02 / Portfolio Diagnosis"
-        title="Portfolio Diagnosis"
+        title="Current Portfolio Diagnosis"
         description="Review your current portfolio before testing alternatives."
-      />
-      <SiteExplanationHierarchy
-        bundle={siteExplanation}
-        screen="diagnosis"
-        fallbackTitle="Diagnosis explanation"
       />
       {!hydrated ? null : failedRealRun && activeReview?.reviewError ? (
         <FailedDiagnosisState />
       ) : runningRealRun ? (
         <RunningDiagnosisState progress={activeReview?.stagedProgress} recoveryError={recoveryError} />
-      ) : diagnosis ? <DiagnosisSummaryPanel {...diagnosis} xraySummary={xraySummary} /> : <LockedDiagnosisState />}
+      ) : diagnosis ? <DiagnosisSummaryPanel {...diagnosis} xraySummary={xraySummary} siteExplanation={siteExplanation} /> : <LockedDiagnosisState />}
     </div>
   );
 }

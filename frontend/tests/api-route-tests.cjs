@@ -26,11 +26,17 @@ const stagedSafeErrorPath = path.resolve(frontendRoot, "lib", "review", "stagedS
 const fastApiErrorsPath = path.resolve(frontendRoot, "lib", "server", "fastapi", "errors.ts");
 const journeyPath = path.resolve(frontendRoot, "lib", "journey.ts");
 const clientFitContextCardPath = path.resolve(frontendRoot, "components", "client-fit", "ClientFitContextCard.tsx");
+const clientFitPresentationPath = path.resolve(frontendRoot, "lib", "clientFitPresentation.ts");
 const siteExplanationHierarchyPath = path.resolve(frontendRoot, "components", "explanation", "SiteExplanationHierarchy.tsx");
+const diagnosisPagePath = path.resolve(frontendRoot, "app", "diagnosis", "page.tsx");
+const diagnosisDisplayModelPath = path.resolve(frontendRoot, "lib", "diagnosisDisplayModel.ts");
+const diagnosisSummaryPanelPath = path.resolve(frontendRoot, "components", "diagnosis", "DiagnosisSummaryPanel.tsx");
+const stressStoryModelPath = path.resolve(frontendRoot, "components", "evidence", "stressStoryModel.ts");
 const hypothesisPagePath = path.resolve(frontendRoot, "app", "hypothesis", "page.tsx");
 const comparisonPagePath = path.resolve(frontendRoot, "app", "comparison", "page.tsx");
 const verdictPagePath = path.resolve(frontendRoot, "app", "verdict", "page.tsx");
 const siteExplanationPresenterPath = path.resolve(frontendRoot, "lib", "siteExplanationPresenter.ts");
+const hypothesisScreenModelPath = path.resolve(frontendRoot, "lib", "hypothesis", "hypothesisScreenModel.ts");
 
 function makeJsonRequest(body, url = "http://localhost/api/portfolio/builder/prepare") {
   return new Request(url, {
@@ -96,6 +102,10 @@ function loadTsModule(filePath, { readFileImpl, moduleCache = new Map() } = {}) 
 
   Function("require", "exports", "module", compiled)(sandboxRequire, exports, module);
   return module.exports;
+}
+
+function readJsonFixture(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, "utf8").replace(/^\uFEFF/, ""));
 }
 
 function loadRoute({ routePath = builderPrepareRoutePath, readFileImpl } = {}) {
@@ -692,6 +702,145 @@ test("Hypothesis, Comparison, and Verdict keep Client Fit separate from structur
   assert.doesNotMatch(combined, /\bsell\b/i);
 });
 
+function mockHypothesisReview(cards, extra = {}) {
+  return {
+    investorCurrency: "USD",
+    holdings: [],
+    lineageAvailable: extra.lineageAvailable ?? true,
+    readOnlyHistory: extra.readOnlyHistory ?? false,
+    reviewId: "frontend_review_adapter",
+    runMode: "real_run",
+    runStatus: "completed",
+    submitted: true,
+    diagnosisReady: true,
+    evidenceReady: true,
+    improvementPathsReady: true,
+    candidateReady: false,
+    comparisonReady: false,
+    verdictReady: false,
+    updatedAt: "2026-06-15T00:00:00.000Z",
+    reviewSummary: {
+      version: 1,
+      source: "real_run",
+      status: "completed",
+      reviewId: "frontend_review_adapter",
+      generatedAt: "2026-06-15T00:00:00.000Z",
+      investorCurrency: "USD",
+      holdingsCount: 3,
+      totalWeight: 100,
+      cashWeight: 0,
+      rawOutputKeys: [],
+      outputPaths: {},
+      diagnosis: {
+        status: "Diagnosis ready",
+        headline: "Weak crisis resilience is the primary diagnosis.",
+        evidenceQuality: "Moderate evidence",
+        nextStep: "Improve Crisis Resilience",
+        boundaryNote: "Diagnostic only.",
+        drivers: [],
+        metrics: [],
+        sourceArtifacts: [],
+        rejectedAlternatives: [],
+        rationaleRefs: []
+      },
+      primaryProblem: "Weak crisis resilience",
+      problemSeverity: "High",
+      problemConfidence: "High",
+      suggestedActionPaths: ["Improve Crisis Resilience"],
+      launchpadCardsCount: cards.length,
+      launchpadCards: cards,
+      recommendedFirstTest: "Improve Crisis Resilience",
+      candidateLaunchpadAvailable: true,
+      problemClassificationAvailable: true,
+      clientFit: extra.clientFit,
+      storage: {
+        summaryBytes: 0,
+        rawBytes: 0,
+        rawPersisted: false,
+        rawAccessStrategy: "test"
+      }
+    },
+    ...extra
+  };
+}
+
+test("Hypothesis screen model selects primary Launchpad card without text-guessing", () => {
+  const { buildHypothesisScreenModel } = loadTsModule(hypothesisScreenModelPath);
+  const cards = [
+    {
+      card_id: "launchpad_01_improve_crisis_resilience",
+      title: "Improve Crisis Resilience",
+      goal: "Improve crisis resilience",
+      hypothesis_to_test: "Test whether crisis resilience improves.",
+      card_type: "targeted_hypothesis_test",
+      source_problem_label: "Weak crisis resilience",
+      suggested_methods: [{ candidate_method_id: "minimum_cvar", method_role: "targeted_hypothesis" }],
+      default_method: "minimum_cvar",
+      success_criteria: ["Lower worst stress loss."],
+      tradeoff_to_watch: "Lower tail loss vs lower expected return.",
+      decision_boundary: "This is not a rebalance recommendation.",
+      is_rebalance_recommendation: false,
+      generates_portfolio: false
+    },
+    {
+      card_id: "launchpad_02_reduce_credit_liquidity_risk",
+      title: "Reduce Credit / Liquidity Risk",
+      goal: "Reduce credit / liquidity risk",
+      hypothesis_to_test: "Test whether credit risk improves.",
+      card_type: "targeted_hypothesis_test",
+      source_problem_label: "Credit / liquidity fragility",
+      suggested_methods: [{ candidate_method_id: "minimum_variance", method_role: "targeted_hypothesis" }],
+      default_method: "minimum_variance",
+      success_criteria: ["Lower credit shock loss."],
+      decision_boundary: "This is not a rebalance recommendation.",
+      is_rebalance_recommendation: false,
+      generates_portfolio: false
+    }
+  ];
+
+  const model = buildHypothesisScreenModel({ activeReview: mockHypothesisReview(cards) });
+
+  assert.equal(model.primaryTest.title, "Improve Crisis Resilience");
+  assert.equal(model.primaryTest.selectedMethodLabel, "Minimum CVaR");
+  assert.equal(model.defaultSelectedCardId, "launchpad_01_improve_crisis_resilience");
+  assert.equal(model.alternativeTests.length, 1);
+});
+
+test("Hypothesis screen model blocks data-quality paths and keeps Client Fit contextual", () => {
+  const { buildHypothesisScreenModel, sanitizeHypothesisError } = loadTsModule(hypothesisScreenModelPath);
+  const cards = [{
+    card_id: "launchpad_01_evidence_insufficient_do_not_act_yet",
+    title: "Review Data Quality",
+    goal: "Do not act yet",
+    hypothesis_to_test: "Resolve data quality before testing candidates.",
+    card_type: "monitor_or_data_step",
+    source_problem_label: "Evidence quality requires review",
+    suggested_methods: [],
+    default_method: undefined,
+    success_criteria: ["Resolve data-quality blockers."],
+    decision_boundary: "This is not a rebalance recommendation.",
+    is_rebalance_recommendation: false,
+    generates_portfolio: false
+  }];
+  const clientFit = {
+    status_label: "Outside stated Client Fit limits",
+    status_tone: "red",
+    main_explanation: "Return target gap is outside the stated range.",
+    decision_boundary: "Client Fit is non-binding context."
+  };
+
+  const model = buildHypothesisScreenModel({ activeReview: mockHypothesisReview(cards, { clientFit }) });
+  const sanitized = sanitizeHypothesisError("FastAPI backend is unavailable. Start it with uvicorn src.api.app:app --host 127.0.0.1 --port 8000.");
+
+  assert.equal(model.primaryTest.canGenerate, false);
+  assert.equal(model.action.state, "blocked");
+  assert.equal(model.clientFitContext.statusLabel, "Outside stated Client Fit limits");
+  assert.match(model.clientFitContext.boundary, /Client Fit/i);
+  assert.match(sanitized.userError, /Supporting data service is unavailable/);
+  assert.doesNotMatch(sanitized.userError, /uvicorn|127\.0\.0\.1|FastAPI/);
+  assert.match(sanitized.developerError, /uvicorn/);
+});
+
 test("site explanation presenter strips raw provenance from the public display model", () => {
   const presenter = loadTsModule(siteExplanationPresenterPath);
   const rawBundle = {
@@ -745,6 +894,80 @@ test("site explanation presenter strips raw provenance from the public display m
   assert.doesNotMatch(serializedDisplay, /"available"|"limited"|"missing"|"preliminary"/);
 });
 
+test("Client Fit presentation maps technical API labels into concise user-facing copy", () => {
+  const presenter = loadTsModule(clientFitPresentationPath);
+  const display = presenter.buildClientFitPresentation({
+    status_label: "Outside stated Client Fit limits",
+    status_tone: "red",
+    profile_label: "ultra_conservative",
+    source_quality_label: "high",
+    main_explanation: "Client Fit status is breach.",
+    decision_boundary: "Client Fit is non-binding decision support.",
+    next_best_test: "Review the hypothesis page.",
+    target_rows: [
+      {
+        dimension_label: "Return target",
+        portfolio_value_label: "7.8%",
+        target_or_limit_label: "2.0% to 4.0%",
+        status_label: "Client Fit watch",
+        status_tone: "amber",
+        explanation: "Return target gap is outside the stated range but not a risk-limit breach."
+      },
+      {
+        dimension_label: "Worst stress loss limit",
+        portfolio_value_label: "-26.1%",
+        target_or_limit_label: "Limit: -10.0%",
+        status_label: "Outside stated Client Fit limits",
+        status_tone: "red",
+        explanation: "Worst stress loss is worse than the stated drawdown limit."
+      },
+      {
+        dimension_label: "Volatility comfort range",
+        portfolio_value_label: "10.8%",
+        target_or_limit_label: "2.0% to 5.0%",
+        status_label: "Outside stated Client Fit limits",
+        status_tone: "red",
+        explanation: "Volatility is above the stated comfort range."
+      }
+    ]
+  }, {
+    schema_version: "site_explanation_bundle_v1",
+    screens: {
+      client_fit: {
+        executive: [{
+          id: "client_fit.executive.status_boundary",
+          level: "executive",
+          text: "Client Fit status is breach; diagnostic quality status is material issue.",
+          tone: "risk",
+          evidence_status: "available",
+          claim_type: "material_claim",
+          source_refs: [{ artifact: "client_fit_check.json", field_path: "client_fit_status" }]
+        }],
+        evidence: [{
+          id: "client_fit.evidence.primary",
+          level: "evidence",
+          text: "Worst stress loss vs limit: portfolio evidence is breach.",
+          tone: "risk",
+          evidence_status: "available",
+          claim_type: "material_claim",
+          source_refs: [{ artifact: "client_fit_check.json", field_path: "checks[0]" }]
+        }],
+        technical: []
+      }
+    }
+  });
+
+  assert.equal(display.statusLabel, "Outside your profile");
+  assert.equal(display.profileLabel, "Very cautious");
+  assert.equal(display.primaryReasons[0].label, "Stress loss");
+  assert.equal(display.primaryReasons[0].status, "Outside");
+
+  const serialized = JSON.stringify(display);
+  assert.doesNotMatch(serialized, /ultra_conservative/);
+  assert.doesNotMatch(serialized, /Evidence available/);
+  assert.doesNotMatch(serialized, /client_fit_check\.json/);
+});
+
 test("site explanation presenter exposes raw provenance only when explicitly requested", () => {
   const presenter = loadTsModule(siteExplanationPresenterPath);
   const rawBundle = {
@@ -783,6 +1006,138 @@ test("site explanation presenter exposes raw provenance only when explicitly req
   assert.deepEqual(developerDisplay.developerProvenance.items[0].sourceRefs, [
     "problem_classification.json:root_cause.statement"
   ]);
+});
+
+test("diagnosis display model keeps the public Diagnosis screen compact", () => {
+  const diagnosisDisplay = loadTsModule(diagnosisDisplayModelPath);
+  const model = diagnosisDisplay.buildDiagnosisDisplayModel({
+    headline: "Fallback diagnosis headline.",
+    evidenceQuality: "Strong evidence",
+    nextStep: "Review supporting evidence before testing one candidate hypothesis.",
+    boundaryNote: "Diagnosis is decision-support evidence only.",
+    drivers: [
+      "Driver one should be visible.",
+      "Driver two should be trimmed by stronger facts.",
+      "Driver three should be trimmed by stronger facts."
+    ],
+    metrics: [],
+    xraySummary: {
+      snapshotCards: [
+        { label: "Top 3 concentration", value: "60.00%", detail: "Capital in largest three holdings", tone: "amber" },
+        { label: "Dominant exposure", value: "Equity", detail: "60.00%", tone: "amber" },
+        { label: "Max drawdown", value: "-20.20%", detail: "Recovered within sample", tone: "red" },
+        { label: "Worst pre-stress weakness", value: "Equity sell-off risk", detail: "Score 55/100", tone: "amber" }
+      ],
+      riskProfile: {
+        insight: "Risk profile evidence is available.",
+        metrics: [
+          { label: "CAGR", value: "7.80%", detail: "Primary diagnostic window", tone: "blue" },
+          { label: "Max drawdown", value: "-20.20%", detail: "Recovered within sample", tone: "red" },
+          { label: "Time to recovery", value: "11.00 months", detail: "Recovered within sample", tone: "slate" },
+          { label: "Beta", value: "0.61", detail: "SPY", tone: "blue" },
+          { label: "VaR 95", value: "-1.00%", detail: "Daily historical tail metric", tone: "blue" },
+          { label: "Sharpe", value: "0.54", detail: "Total-volatility efficiency", tone: "blue" },
+          { label: "Treynor", value: "n/a", detail: "Unavailable", tone: "slate" }
+        ],
+        keyFacts: []
+      },
+      unavailableNotes: ["Rolling chart not shown.", "Factor names normalized for product contract."]
+    },
+    siteExplanation: {
+      schema_version: "site_explanation_bundle_v1",
+      warnings: ["missing_source:stress_report"],
+      screens: {
+        diagnosis: {
+          executive: [{ id: "e", level: "executive", text: "Executive explanation.", tone: "neutral", evidence_status: "available", claim_type: "material_claim", source_refs: [] }],
+          evidence: [{ id: "v", level: "evidence", text: "Evidence explanation.", tone: "neutral", evidence_status: "available", claim_type: "material_claim", source_refs: [] }],
+          technical: [{ id: "t", level: "technical", text: "Technical explanation.", tone: "neutral", evidence_status: "preliminary", claim_type: "boundary_note", source_refs: [] }]
+        }
+      }
+    }
+  });
+
+  assert.equal(model.primaryEvidence.length, 3);
+  assert.equal(model.whatMatters.length, 4);
+  assert.equal(model.behaviorSnapshot.length, 3);
+  assert.match(model.mainFinding, /equity-led/i);
+  assert.match(JSON.stringify(model.primaryEvidence), /60%/);
+  assert.doesNotMatch(JSON.stringify(model.primaryEvidence), /60\.00%|7\.80%|11\.00 months/);
+  assert.ok(model.advancedMetrics.some((metric) => metric.label === "VaR 95"));
+  assert.ok(model.advancedMetrics.some((metric) => metric.label === "Sharpe"));
+  assert.ok(!model.advancedMetrics.some((metric) => metric.label === "Treynor"));
+  assert.deepEqual(model.limitations, ["Missing source:stress evidence"]);
+});
+
+test("Diagnosis page uses the compact display model instead of the standalone explanation wall", () => {
+  const diagnosisPage = fs.readFileSync(diagnosisPagePath, "utf8");
+  const diagnosisPanel = fs.readFileSync(diagnosisSummaryPanelPath, "utf8");
+
+  assert.doesNotMatch(diagnosisPage, /SiteExplanationHierarchy/);
+  assert.match(diagnosisPage, /siteExplanation/);
+  assert.match(diagnosisPanel, /buildDiagnosisDisplayModel/);
+  assert.match(diagnosisPanel, /Advanced diagnostics and technical evidence/);
+  assert.match(diagnosisPanel, /How the current portfolio behaved historically/);
+  assert.doesNotMatch(diagnosisPanel, /Evidence available/);
+  assert.doesNotMatch(diagnosisPanel, /Rolling charts are not shown/);
+});
+
+test("stress story presenter keeps the primary Stress Lab surface compact", () => {
+  const storyModel = loadTsModule(stressStoryModelPath);
+  const sample = readJsonFixture(path.resolve(frontendRoot, "data", "demo", "stress-lab.json"));
+  const story = storyModel.buildStressStoryViewModel(sample);
+  const limits = storyModel.assertPublicStressStoryLimits(story);
+
+  assert.equal(story.state, "material_vulnerability");
+  assert.equal(limits.hasSingleAnswer, true);
+  assert.equal(limits.factCountOk, true);
+  assert.equal(limits.metricCountOk, true);
+  assert.equal(limits.noRawTerms, true);
+  assert.ok(story.facts.length <= 3);
+  assert.ok(story.metrics.length <= 4);
+  assert.match(story.answer, /current portfolio/i);
+  assert.doesNotMatch(JSON.stringify(story), /Evidence available|stress_report\.json|field_path|must rebalance|trade now/i);
+});
+
+test("stress story presenter handles limited and acceptable stress states", () => {
+  const storyModel = loadTsModule(stressStoryModelPath);
+  const sample = readJsonFixture(path.resolve(frontendRoot, "data", "demo", "stress-lab.json"));
+  const limited = JSON.parse(JSON.stringify(sample));
+  limited.syntheticScenarios = limited.syntheticScenarios.map((scenario) => ({
+    ...scenario,
+    availability: "unavailable",
+    portfolioLossPct: null
+  }));
+  limited.historicalScenarios = limited.historicalScenarios.map((scenario) => ({
+    ...scenario,
+    availability: "unavailable",
+    drawdownPct: null,
+    portfolioLossPct: null
+  }));
+  limited.limitations.evidenceQualityLabel = "Insufficient data";
+  limited.limitations.evidenceTone = "slate";
+
+  const limitedStory = storyModel.buildStressStoryViewModel(limited);
+  assert.equal(limitedStory.state, "evidence_limited");
+  assert.equal(storyModel.assertPublicStressStoryLimits(limitedStory).noRawTerms, true);
+
+  const acceptable = JSON.parse(JSON.stringify(sample));
+  acceptable.syntheticScenarios = acceptable.syntheticScenarios.map((scenario, index) => ({
+    ...scenario,
+    portfolioLossPct: index === 0 ? -0.025 : -0.01,
+    severityTone: "slate",
+    severityLabel: "Less damaging",
+    isWorst: index === 0
+  }));
+  acceptable.hedgeGap.offsetCoverageRatio = 0.45;
+  acceptable.hedgeGap.statusLabel = "Partial offset";
+  acceptable.hedgeGap.statusTone = "amber";
+  acceptable.limitations.evidenceQualityLabel = "Strong evidence";
+  acceptable.limitations.evidenceTone = "green";
+
+  const acceptableStory = storyModel.buildStressStoryViewModel(acceptable);
+  assert.equal(acceptableStory.state, "stress_acceptable");
+  assert.ok(acceptableStory.facts.length <= 3);
+  assert.ok(acceptableStory.metrics.length <= 4);
 });
 
 test("SiteExplanationHierarchy renders public explanation data instead of raw provenance", () => {

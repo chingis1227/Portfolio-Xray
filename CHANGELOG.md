@@ -2,6 +2,10 @@
 
 ## 2026-06-15
 
+- Redesigned Hypothesis Builder around a frontend `HypothesisScreenModel` and Analyst Workstation layout. `/hypothesis` now ranks one primary diagnosis, one recommended diagnostic test, and one action console first, while Client Fit, alternative tests, and evidence/technical details stay secondary.
+- Redesigned the Client Fit screen around a calm verdict-first presentation model. `/client-fit` now uses concise user-facing labels, ranked mismatch reasons, compact profile checks, and collapsed evidence details instead of a duplicated explanation wall with repeated evidence badges.
+- Simplified the Portfolio Diagnosis screen around a compact display model. Diagnosis now leads with one main finding, up to three evidence facts, a compact `What matters first` strip, a three-item historical behavior snapshot, and collapsed advanced diagnostics instead of a standalone explanation wall and repeated evidence badges.
+- Fixed two frontend verification blockers encountered while validating the Diagnosis redesign: Hypothesis now guards missing active review state during static rendering, and the legacy `/onboarding/goals` compatibility route renders a safe client-side redirect fallback.
 - Added production memory guardrails for staged FastAPI reviews. Hosted staged diagnosis now defaults
   to one active worker, releases allocator pressure after heavy review/candidate stages, and constrains
   common numeric thread pools in the candidate factory child process to reduce Render memory-limit

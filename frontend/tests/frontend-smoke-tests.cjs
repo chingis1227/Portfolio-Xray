@@ -115,7 +115,7 @@ test("frontend static journey pages respond on a local Next server", { timeout: 
       ["/portfolio-input", /Portfolio Input|Run diagnosis/i],
       ["/diagnosis", /Diagnosis|Portfolio/i],
       ["/evidence", /Stress Test Lab|Diagnosis/i],
-      ["/client-fit", /Client Fit|provided profile/i],
+      ["/client-fit", /Your portfolio vs your risk profile|Risk profile check/i],
       ["/hypothesis", /Hypothesis|Builder/i],
       ["/comparison", /Comparison|Current/i],
       ["/verdict", /Verdict|Decision/i],

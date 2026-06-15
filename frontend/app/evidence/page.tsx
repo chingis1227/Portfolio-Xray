@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
 import { StressTestLab } from "@/components/evidence/StressTestLab";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import sampleStressLabData from "@/data/demo/stress-lab.json";
@@ -78,14 +77,9 @@ function EvidencePageContent() {
       >
         <StatusBadge tone={stateTone}>{stateLabel}</StatusBadge>
       </PageHeader>
-      <SiteExplanationHierarchy
-        bundle={siteExplanation}
-        screen="evidence"
-        fallbackTitle="Stress evidence explanation"
-      />
       {!hydrated ? null : model ? (
         <>
-          <StressTestLab model={model} />
+          <StressTestLab model={model} siteExplanation={siteExplanation} />
           <section className="pmri-card mt-6 rounded-3xl p-5 md:p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>

@@ -237,8 +237,10 @@ Locked state:
 
 Ready state:
 
-- Shows diagnosis summary panels, Portfolio Diagnosis blocks, evidence chain context, and site explanation when available.
-- Metrics are shown through decision cards and metric cards, not as raw backend JSON.
+- Shows a simplified Diagnosis display model for the active review: one main finding, one data-coverage badge, one candidate-not-tested state, up to three primary evidence facts, a compact `What matters first` strip, and a three-item historical behavior snapshot.
+- Does not show the standalone `Diagnosis explanation` wall in the normal ready state. Evidence-chain and technical text are integrated into collapsed advanced diagnostics when available.
+- Professional metrics such as VaR, ES, skewness, kurtosis, beta, Sharpe, Sortino, and Treynor are hidden behind `Advanced diagnostics and technical evidence`.
+- Metrics are shown through compact decision rows and metric cards, not as raw backend JSON or repeated unavailable/evidence badges.
 
 ## `/evidence`
 
@@ -258,8 +260,10 @@ Locked state:
 
 Ready state:
 
-- Shows scenario library, selected scenario detail, helped/hurt assets, loss contribution, hedge gap, scorecard, factor stress attribution, and data limitations.
-- Metrics are scenario/evidence facts tied to current portfolio stress behavior.
+- Shows one current-portfolio stress answer first, with up to three supporting facts and up to four primary metrics.
+- Keeps scenario library, selected scenario detail, helped/hurt assets, loss contribution, hedge gap, factor stress attribution, diagnosis confirmation, technical evidence trace, and data limitations behind collapsed drill-down details by default.
+- Metrics are scenario/evidence facts tied to current portfolio stress behavior, not candidate, verdict, or rebalance language.
+- Repeated evidence badges are avoided on the primary surface; evidence quality appears as one compact confidence signal and detailed limitations remain in the drill-down.
 
 ## `/client-fit`
 
@@ -299,8 +303,10 @@ Locked state:
 
 Ready state:
 
-- Shows current diagnosis, recommended test, launchpad cards, selected test setup, candidate generation state, and continue-to-comparison action when valid.
+- Shows an Analyst Workstation layout: primary diagnosis recap, one recommended diagnostic test, success criteria, trade-off, decision boundary, and a right-side action console for selected setup, candidate generation state, and continue-to-comparison action when valid.
+- Shows Client Fit context, other possible tests, and evidence/technical details as secondary panels below the primary workstation.
 - Candidate language must remain test/hypothesis language.
+- Technical service/developer details must stay out of the primary user error surface.
 
 ## `/comparison`
 

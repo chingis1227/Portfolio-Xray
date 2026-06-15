@@ -104,28 +104,39 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 
 - Must show `Current Portfolio Diagnosis`.
 - Locked state must say `Complete Portfolio Input first to unlock Diagnosis.` and link to Portfolio Input.
-- Ready state must explain current portfolio evidence before any candidate test.
+- Ready state must explain current portfolio evidence before any candidate test through a compact display model: one main finding, up to three primary evidence facts, a compact `What matters first` strip, and a three-item historical behavior snapshot.
+- Ready state must keep professional metrics and technical evidence behind collapsed advanced diagnostics instead of showing a metric wall by default.
+- Ready state must not render a standalone `Diagnosis explanation` wall or repeat generic `Evidence available` badges across every fact.
 - Must not recommend rebalance from Portfolio Diagnosis alone.
 
 ### Stress Test Lab `/evidence`
 
 - Must show `Step 03 / Stress Test Lab` and `Stress Test Lab`.
 - Locked state must say Stress Lab requires Portfolio Input / diagnosis first.
-- Ready state must show stress scenarios, loss contributors, helped/hurt assets, hedge gaps, scorecard, and limitations when available.
+- Ready state must show one primary current-portfolio stress answer before detailed evidence.
+- The primary surface must stay compact: no more than three supporting facts and no more than four primary metric cards.
+- Stress scenarios, loss contributors, helped/hurt assets, hedge gaps, diagnosis confirmation, evidence trace, and limitations must remain available when present, but detailed scenario and technical sections should be collapsed by default.
+- Repeated `Evidence available` badges should not appear across the primary stress cards; evidence quality should be summarized once and expanded in the evidence-quality drill-down.
 - Must not create candidate, comparison, verdict, or rebalance language.
 
 ### Client Fit `/client-fit`
 
-- Must show `Step 04 / Client Fit` and `Does this risk fit the provided profile?`.
+- Must show `Step 04 / Risk profile check` and `Your portfolio vs your risk profile`.
+- Must lead with one concise verdict card (`Within your profile`, `Worth reviewing`, `Outside your profile`, `Goal and risk conflict`, or `Profile missing`) before detailed rows.
 - Must explain Client Fit is separate from diagnostic quality and decision action.
 - Locked state must route to Client Profile or Portfolio Input.
-- Ready state must show status, source quality/profile confidence, target rows, portfolio values, limits, explanations, and next test context.
+- Ready state must show source quality/profile confidence, two to three ranked reasons, compact target rows, portfolio values, limits, explanations, and next test context.
+- Raw evidence hierarchy and technical provenance must be collapsed by default under `How we checked this`; repeated `Evidence available` badges must not appear in the primary UI.
 
 ### Hypothesis `/hypothesis`
 
 - Must show `Step 05 / Hypothesis`.
 - Must keep Launchpad, Builder setup, and candidate generation as one merged MVP screen unless a future route split is approved.
-- Must present candidates as tests only.
+- Must render through a frontend Hypothesis screen model that normalizes compact review state into one primary diagnosis, one recommended diagnostic test, one primary CTA, secondary alternatives, Client Fit context, and collapsed evidence/technical details.
+- Must preserve backend Launchpad priority: the primary test comes from the first eligible Launchpad card unless the user selected another eligible card.
+- Must present candidates as tests only and show the decision boundary once in the main test/workstation surface.
+- Must keep Client Fit as a secondary context panel; it must not override the selected diagnosis or approve suitability.
+- Must place supporting evidence and technical details below the main workstation instead of competing with the primary CTA.
 - Must show selected-card/builder lineage before candidate generation.
 - Must not auto-generate candidates or present a candidate as a recommended allocation.
 

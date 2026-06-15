@@ -68,6 +68,7 @@ No neon, rainbow, crypto-style glow systems, or decorative red/green chart color
 - Use cards as decision-reading units, not as raw JSON containers.
 - A card header should usually have at most one primary status badge.
 - Badges must have nearby explanatory copy.
+- Diagnosis must not repeat generic evidence-availability badges across every fact. Use one global data-coverage badge and reserve row-level badges for material risk, review state, or unavailable states.
 - Status labels must be product-facing, not backend enum names or file names.
 - Empty, locked, partial, no-trade, evidence-insufficient, and unavailable states are valid product states and must not look like broken UI.
 
