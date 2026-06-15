@@ -10,6 +10,7 @@ frontend routing behavior.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import threading
@@ -99,6 +100,8 @@ from src.api.models import (
     VerdictSummary,
 )
 
+
+LOGGER = logging.getLogger(__name__)
 
 CREATE_REVIEW_SCHEMA_VERSION = "review_create_v1"
 RECOVERY_SCHEMA_VERSION = "review_recovery_v1"
@@ -1467,6 +1470,14 @@ def _run_staged_review_background(
         review_result = _read_json_file(result_path)
         if code != 0 or review_result.get("status") != "completed":
             error_code, message, user_action, retryable, failed_stage = _classify_staged_failure(review_result, code)
+            LOGGER.warning(
+                "staged review failed review_id=%s code=%s classified_code=%s stage=%s reason=%s",
+                review_id,
+                code,
+                error_code,
+                failed_stage,
+                scrub_failure_text(_safe_failure_text_for_classification(review_result))[:1200],
+            )
             artifact_failed_stage, missing_refs, warnings = _sync_diagnosis_stage_artifacts(
                 state,
                 run_dir,
@@ -1516,6 +1527,7 @@ def _run_staged_review_background(
         state["safe_error"] = None
         _write_staged_state(run_dir, state)
     except Exception as exc:
+        LOGGER.exception("staged review crashed review_id=%s stage=data_load", review_id)
         _set_stage_status(state, "data_load", "failed")
         state["status"] = "failed"
         state["safe_error"] = _staged_safe_error(
