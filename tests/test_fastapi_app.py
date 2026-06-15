@@ -165,7 +165,7 @@ def test_staged_failure_classifier_uses_stderr_tail_for_fred_http_failure() -> N
     code, message, user_action, retryable, stage = review_service._classify_staged_failure(result, 1)
 
     assert code == "DATA_PROVIDER_FAILED"
-    assert message == "Backend run failed."
+    assert message.startswith("Market data provider failed during data loading.")
     assert user_action == "retry"
     assert retryable is True
     assert stage == "data_load"
@@ -188,9 +188,10 @@ def test_staged_failure_classifier_timeout_stays_timeout_from_tail() -> None:
         "stdout_tail": "Market data provider request timeout while loading Yahoo prices.",
     }
 
-    code, _message, user_action, retryable, stage = review_service._classify_staged_failure(result, 1)
+    code, message, user_action, retryable, stage = review_service._classify_staged_failure(result, 1)
 
     assert code == "TIMEOUT"
+    assert message.startswith("Portfolio diagnosis timed out")
     assert user_action == "retry"
     assert retryable is True
     assert stage == "data_load"
@@ -204,9 +205,10 @@ def test_staged_failure_classifier_unknown_python_failure_remains_python_stage_f
         "stderr_tail": "ValueError: unexpected internal state while formatting diagnostics.",
     }
 
-    code, _message, user_action, retryable, stage = review_service._classify_staged_failure(result, 1)
+    code, message, user_action, retryable, stage = review_service._classify_staged_failure(result, 1)
 
     assert code == "PYTHON_STAGE_FAILED"
+    assert message.startswith("Portfolio diagnosis failed during backend execution.")
     assert user_action == "retry"
     assert retryable is True
     assert stage == "data_load"

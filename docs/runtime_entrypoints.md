@@ -112,6 +112,54 @@ legacy compatibility runners and are not the Core MVP product path.
 
 Data/universe maintenance (advanced): `run_etf_universe.py`, `run_stock_universe.py`, `run_ibkr_market_data.py`
 
+### Root `run_*.py` inventory and retirement classes
+
+Use this inventory before removing, hiding, or changing warnings on root runner scripts. Retirement
+means removal from the current operator surface, not deletion of useful implementation history.
+No script in this table should be deleted unless a replacement command is documented here and the
+focused tests or smoke checks for that use case pass.
+
+| Script | Class | Operator boundary |
+| --- | --- | --- |
+| `run_core_diagnostics.py` | Current product | Core MVP Blocks 1-3 diagnosis entrypoint. |
+| `run_portfolio_review.py` | Current product | Default portfolio-first diagnosis workflow; explicit candidate flags are compatibility or advanced paths. |
+| `scripts/run_blocks_5_to_9_vertical_flow.py` | Current product demo | Canonical one-candidate vertical demo, although it is not a root `run_*.py` file. |
+| `run_report.py` | Internal/report engine | Calculation and materialization engine; use directly only for advanced or explicit report materialization work. |
+| `run_candidate_factory.py` | Advanced/internal engine | Candidate factory orchestration; prefer review flags or vertical-flow adapter for product paths. |
+| `run_compare_variants.py` | Advanced/internal engine | Comparison and verdict package writer; product demos call it through the vertical flow. |
+| `run_etf_universe.py` | Advanced data maintenance | ETF universe validation/export/enrichment command. |
+| `run_stock_universe.py` | Advanced data maintenance | Stock universe validation/export command. |
+| `run_ibkr_market_data.py` | Advanced data smoke | Read-only market-data smoke command. |
+| `run_optimization.py` | Legacy compatibility | Legacy policy optimizer wrapper under `legacy/runners/`; not a Core MVP entrypoint. |
+| `run_mvp_workflow.py` | Legacy compatibility | Older policy/current/full-decision workflow wrapper; not the current product journey. |
+| `run_equal_weight.py` | Legacy compatibility | Candidate builder wrapper retained for explicit optimizer/candidate smoke checks. |
+| `run_equal_weight_by_asset_class.py` | Legacy compatibility | Candidate builder wrapper retained for explicit advanced checks. |
+| `run_risk_parity.py` | Legacy compatibility | Candidate builder wrapper retained for explicit advanced checks. |
+| `run_risk_budget_by_asset.py` | Legacy compatibility | Candidate builder wrapper retained for explicit advanced checks. |
+| `run_risk_budget_by_asset_class.py` | Legacy compatibility | Candidate builder wrapper retained for explicit advanced checks. |
+| `run_hierarchical_risk_parity.py` | Legacy compatibility | Candidate builder wrapper retained for explicit advanced checks. |
+| `run_minimum_variance.py` | Legacy compatibility | Candidate builder wrapper retained for explicit advanced checks. |
+| `run_minimum_variance_advanced.py` | Legacy compatibility | Candidate builder wrapper retained for explicit advanced checks. |
+| `run_minimum_variance_uncapped.py` | Legacy compatibility | Candidate builder wrapper retained for explicit advanced checks. |
+| `run_minimum_cvar_constrained.py` | Legacy compatibility | Candidate builder wrapper retained for explicit advanced checks. |
+| `run_minimum_cvar_uncapped.py` | Legacy compatibility | Candidate builder wrapper retained for explicit advanced checks. |
+| `run_maximum_diversification.py` | Legacy compatibility | Candidate builder wrapper retained for explicit advanced checks. |
+| `run_maximum_diversification_unconstrained.py` | Legacy compatibility | Candidate builder wrapper retained for explicit advanced checks. |
+| `run_robust_mean_variance_constrained.py` | Legacy compatibility | Robust candidate wrapper retained for explicit advanced checks. |
+| `run_robust_mean_variance_uncapped.py` | Legacy compatibility | Robust candidate wrapper retained for explicit advanced checks. |
+| `run_robust_mv_lambda_calibration.py` | Legacy compatibility | Robust calibration wrapper retained for explicit advanced checks. |
+| `run_robust_scenario_optimization.py` | Legacy compatibility | Robust scenario wrapper retained for explicit advanced checks. |
+| `run_robust_scenario_portfolio_report.py` | Legacy compatibility/export | Robust scenario report wrapper retained for explicit export checks. |
+| `run_advanced_mv_lambda_sensitivity.py` | Legacy compatibility/research | Research wrapper retained for explicit sensitivity-analysis checks. |
+| `run_compare_ew_rp.py` | Legacy compatibility/research | Older equal-weight versus risk-parity comparison helper. |
+| `run_rebalance.py` | Legacy compatibility | Legacy rebalancing helper; not a current product recommendation path. |
+| `run_stress_variant.py` | Legacy compatibility/export | Variant stress/report rebuild helper retained for explicit artifact refresh work. |
+| `run_view_after_optimization.py` | Legacy compatibility | View After Optimization helper retained for its governed legacy protocol. |
+
+Candidate for future retirement is a state reached only after a separate session proves that the
+script has no canonical doc or test dependency, a replacement command is documented in this file,
+and the replacement smoke check covers the old use case.
+
 ## Stale candidate isolation
 
 `run_core_diagnostics.py` materializes only `analysis_subject/` and does not invoke the candidate

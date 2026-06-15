@@ -782,7 +782,16 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
       recordStagedProgress(status);
 
       if (status.status === "failed" || status.safe_error) {
-        throw new Error(status.safe_error?.message || "Portfolio diagnosis failed during staged execution.");
+        const safeError = status.safe_error;
+        const safeErrorMessage = safeError
+          ? [
+            safeError.message,
+            safeError.code ? `Code: ${safeError.code}` : "",
+            safeError.stage ? `Stage: ${safeError.stage}` : "",
+            safeError.retryable ? "Retry after confirming the backend/frontend servers are freshly restarted." : ""
+          ].filter(Boolean).join(" ")
+          : "Portfolio diagnosis failed during staged execution.";
+        throw new Error(safeErrorMessage);
       }
 
       if (diagnosisChainReady(status)) {

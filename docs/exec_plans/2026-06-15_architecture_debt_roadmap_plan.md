@@ -28,11 +28,11 @@ into safe tracks that future chats can pick up independently.
 ## Progress
 
 - [x] (2026-06-15 00:30Z) Roadmap created with three tracks: staged API/subprocess boundary, large frontend module seams, and legacy wrapper retirement criteria.
-- [ ] Track 1 discovery: map staged FastAPI calls and subprocess/script boundaries without changing behavior.
+- [x] (2026-06-15 12:00Z) Track 1 discovery refreshed: staged FastAPI still enters `scripts/run_review_from_payload.py`, which still owns the `run_report.py` subprocess boundary.
 - [ ] Track 1 implementation: replace the normal staged diagnosis subprocess with direct service calls where tests prove parity.
-- [ ] Track 2 discovery: extract responsibilities from `frontend/lib/server/fastapiBridge.ts` and `frontend/lib/reviewState.tsx` into stable seams without changing public routes or storage keys.
-- [ ] Track 2 implementation: split one low-risk frontend adapter slice at a time with API route tests and typecheck.
-- [ ] Track 3 discovery: classify every root `run_*.py` wrapper as current, compatibility, research, export, or retirement candidate.
+- [x] (2026-06-15 12:00Z) Track 2 discovery: selected pure low-risk seams for staged safe-error formatting and server-only FastAPI error scrubbing.
+- [x] (2026-06-15 12:00Z) Track 2 implementation slice 1: moved staged safe-error formatting to `frontend/lib/review/stagedSafeError.ts` and moved FastAPI error scrubbing/mapping to `frontend/lib/server/fastapi/errors.ts`.
+- [x] (2026-06-15 12:00Z) Track 3 discovery: classified root `run_*.py` commands in `docs/runtime_entrypoints.md` without deleting or hiding wrappers.
 - [ ] Track 3 implementation: add retirement/deprecation gates only after docs, tests, and operator commands prove no current path depends on the wrapper.
 
 ## Surprises & Discoveries
@@ -45,6 +45,10 @@ into safe tracks that future chats can pick up independently.
   Evidence: `frontend/lib/reviewState.tsx` is about 3388 lines.
 - Observation: Root legacy wrappers already exist and delegate into `legacy/runners/`, but some wrapper docstrings still contain encoding-damaged punctuation in existing text.
   Evidence: `run_optimization.py` and `run_equal_weight.py` begin with a legacy wrapper banner and delegate to matching files under `legacy/runners/`. Do not normalize wrapper text in an unrelated architecture refactor unless that wrapper file is intentionally touched.
+- Observation: The first frontend extraction can be pure and behavior-preserving because staged safe-error formatting has no React dependency and FastAPI legacy error scrubbing has no Next route dependency.
+  Evidence: `frontend/lib/review/stagedSafeError.ts` and `frontend/lib/server/fastapi/errors.ts` are covered by `frontend/tests/api-route-tests.cjs`.
+- Observation: Root runner inventory has no immediate deletion candidate under this plan because each legacy wrapper still represents either documented compatibility, advanced research, export, or smoke-test surface.
+  Evidence: `docs/runtime_entrypoints.md` now classifies each root `run_*.py` and requires replacement docs plus focused verification before retirement.
 
 ## Decision Log
 
@@ -57,12 +61,21 @@ into safe tracks that future chats can pick up independently.
 - Decision: Preserve all public API routes, generated artifact names, browser storage keys, and CLI commands until a track explicitly proves a compatibility migration.
   Rationale: The current website and operator workflows depend on these contracts. Internal cleanup must not surprise users or invalidate existing run artifacts.
   Date/Author: 2026-06-15 / Codex.
+- Decision: Implement Track 2 before Track 1 subprocess replacement in this session.
+  Rationale: The repository already had dirty staged-failure files, and the frontend extraction seams are pure, testable, and lower risk. Replacing the diagnosis subprocess requires parity tests and a service boundary that should not be mixed with unrelated dirty changes.
+  Date/Author: 2026-06-15 / Codex.
+- Decision: Treat Track 3 implementation as documentation/inventory only for now.
+  Rationale: Removing or changing wrapper behavior without proving no docs or tests depend on those commands would violate the compatibility boundary. The inventory is the safe prerequisite for future retirement gates.
+  Date/Author: 2026-06-15 / Codex.
 
 ## Outcomes & Retrospective
 
 The roadmap exists as a separate handoff artifact and no broad behavior change has been mixed into
-the Run Diagnostics fix. The next contributor can start with Track 1, Track 2, or Track 3 without
-rediscovering the debt map. No code has been refactored by this initial roadmap session.
+the Run Diagnostics fix. The first implementation session completed two small Track 2 extractions
+and the Track 3 root runner inventory. The next contributor can continue Track 1 by adding parity
+tests for a direct staged diagnosis service, continue Track 2 by extracting another pure helper, or
+continue Track 3 by adding retirement gates for a specific wrapper only after replacement docs and
+smoke checks prove safety.
 
 ## Context and Orientation
 
@@ -155,10 +168,16 @@ For each Track 2 extraction, run:
     cmd /c npm --prefix frontend run test:api
     cmd /c npm --prefix frontend run typecheck
 
+The first Track 2 extraction added focused coverage inside `frontend/tests/api-route-tests.cjs` for
+`frontend/lib/review/stagedSafeError.ts` and `frontend/lib/server/fastapi/errors.ts`.
+
 For Track 3 discovery, build the wrapper inventory:
 
     Get-ChildItem -LiteralPath . -File -Filter 'run_*.py' | Select-Object -ExpandProperty Name
     rg -n "run_[A-Za-z0-9_]+\.py|legacy/runners|Core MVP entrypoints" README.md AGENTS.md docs scripts tests -S
+
+The current inventory lives in `docs/runtime_entrypoints.md` under "Root `run_*.py` inventory and
+retirement classes".
 
 For Track 3 implementation, run docs verification and focused smoke checks for any command whose
 docs or warning text changes:
@@ -239,3 +258,6 @@ Preferred new internal module locations:
 
 - 2026-06-15 / Codex: Initial roadmap created from the Run Diagnostics stabilization plan Session 6
   requirement. It records the architecture debt tracks without changing runtime behavior.
+- 2026-06-15 / Codex: First implementation pass completed behavior-preserving Track 2 helper
+  extractions and Track 3 runner inventory documentation. Track 1 subprocess replacement remains
+  pending because it needs dedicated parity tests before changing runtime execution.

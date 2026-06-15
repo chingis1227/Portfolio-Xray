@@ -22,6 +22,7 @@ import { evidenceQualityLabel, formatUnknownValue, normalizeDisplaySentence } fr
 import { instrumentByTicker } from "@/data/instrumentUniverse";
 import { buildStressLabModelFromOutputs } from "@/components/evidence/stressLabModel";
 import type { StressLabModel } from "@/components/evidence/stressLabTypes";
+import { stagedSafeErrorMessage } from "@/lib/review/stagedSafeError";
 import { useSupabaseAuth } from "@/lib/supabase/auth";
 import { persistCompactStageSummariesForReview, persistDiagnosisSummaryForReview, persistStagedProgressForReview, useSupabasePersistence, type SavedReviewRecord } from "@/lib/supabase/persistence";
 
@@ -1159,7 +1160,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       runMode: "real_run",
       runStatus: progress.status === "failed" ? "failed" : "running",
       reviewError: progress.safeError ? {
-        message: progress.safeError.message,
+        message: stagedSafeErrorMessage(progress.safeError),
         occurredAt: nowIso()
       } : undefined,
       submitted: true,
@@ -1182,7 +1183,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       runMode: "real_run",
       runStatus: progress.status === "failed" ? "failed" : current.runStatus === "completed" ? "completed" : "running",
       reviewError: progress.safeError ? {
-        message: progress.safeError.message,
+        message: stagedSafeErrorMessage(progress.safeError),
         occurredAt: nowIso()
       } : current.reviewError,
       submitted: true,
@@ -1201,7 +1202,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
       runMode: "real_run",
       runStatus: progress.status === "failed" ? "failed" : "running",
       reviewError: progress.safeError ? {
-        message: progress.safeError.message,
+        message: stagedSafeErrorMessage(progress.safeError),
         occurredAt: nowIso()
       } : undefined,
       submitted: true,
@@ -1318,7 +1319,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
         runMode: "real_run",
         runStatus: stagedProgress.status === "failed" ? "failed" : stagedProgress.status === "completed" ? "completed" : "running",
         reviewError: stagedProgress.safeError ? {
-          message: stagedProgress.safeError.message,
+          message: stagedSafeErrorMessage(stagedProgress.safeError),
           occurredAt: savedReview.updatedAt ?? nowIso()
         } : undefined,
         submitted: true,

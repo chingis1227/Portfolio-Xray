@@ -17,6 +17,8 @@ const supabaseAuthCallbackPath = path.resolve(frontendRoot, "app", "auth", "call
 const sidebarPath = path.resolve(frontendRoot, "components", "layout", "Sidebar.tsx");
 const portfolioInputTablePath = path.resolve(frontendRoot, "components", "portfolio", "PortfolioInputTable.tsx");
 const reviewStatePath = path.resolve(frontendRoot, "lib", "reviewState.tsx");
+const stagedSafeErrorPath = path.resolve(frontendRoot, "lib", "review", "stagedSafeError.ts");
+const fastApiErrorsPath = path.resolve(frontendRoot, "lib", "server", "fastapi", "errors.ts");
 const journeyPath = path.resolve(frontendRoot, "lib", "journey.ts");
 const clientFitContextCardPath = path.resolve(frontendRoot, "components", "client-fit", "ClientFitContextCard.tsx");
 const siteExplanationHierarchyPath = path.resolve(frontendRoot, "components", "explanation", "SiteExplanationHierarchy.tsx");
@@ -276,6 +278,43 @@ test("builder prepare route returns legacy-compatible setup after FastAPI succes
     assert.equal(result.body.path, "runs/frontend_review_ok/analysis_subject/portfolio_alternatives_builder.json");
     assert.equal(result.body.portfolio_alternatives_builder.candidate_setup.candidate_setup_id, "candidate_setup_card_equal_weight");
   });
+});
+
+test("staged safe error formatter includes code, stage, and retry guidance", () => {
+  const { stagedSafeErrorMessage } = loadTsModule(stagedSafeErrorPath);
+
+  const message = stagedSafeErrorMessage({
+    message: "Market data provider failed during data loading.",
+    code: "DATA_PROVIDER_FAILED",
+    stage: "data_load",
+    retryable: true
+  });
+
+  assert.equal(
+    message,
+    "Market data provider failed during data loading. Code: DATA_PROVIDER_FAILED Stage: data_load You can retry after checking that the backend/frontend servers are freshly restarted."
+  );
+});
+
+test("FastAPI legacy error mapper scrubs unsafe backend details", () => {
+  const { legacyErrorFromFastApi } = loadTsModule(fastApiErrorsPath);
+
+  const result = legacyErrorFromFastApi({
+    safe_error: {
+      message: "Backend run failed.",
+      details: [
+        "Traceback (most recent call last):\n  File \"D:\\repo\\scripts\\run_review_from_payload.py\", line 10, in run\nValueError: boom",
+        "/Users/alice/project/run_review_from_payload.py failed"
+      ]
+    }
+  }, "Fallback failure.");
+
+  assert.equal(result.status, "failed");
+  assert.equal(result.error, "Backend run failed.");
+  assert.deepEqual(result.details, [
+    "Backend failure details were captured safely.",
+    "[path] failed"
+  ]);
 });
 
 test("diagnosis route maps instrument and cash rows into the staged FastAPI create-review contract", async () => {

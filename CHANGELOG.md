@@ -2,6 +2,12 @@
 
 ## 2026-06-15
 
+- Started the architecture debt roadmap implementation. Extracted staged review safe-error
+  formatting and FastAPI legacy error scrubbing into small frontend helper modules, and documented
+  the root `run_*.py` runner inventory and retirement classes in `docs/runtime_entrypoints.md`.
+- Improved staged diagnosis failure copy. Backend staged failures now return user-facing messages
+  for provider, timeout, input, and generic Python-stage failures, and the Portfolio Input UI shows
+  the safe error code/stage instead of only `Backend run failed.`
 - Added the architecture debt roadmap for staged review runtime, frontend state, and legacy runner
   cleanup. The new ExecPlan separates future API/subprocess migration, large frontend module
   extraction, and root legacy wrapper retirement criteria without changing runtime behavior.

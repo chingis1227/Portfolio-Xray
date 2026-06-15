@@ -522,6 +522,27 @@ STAGED_PROVIDER_FAILURE_TERMS = (
 )
 
 
+def _staged_failure_public_message(code: str, fallback: str) -> str:
+    if code == "DATA_PROVIDER_FAILED":
+        return (
+            "Market data provider failed during data loading. "
+            "Retry the diagnosis; if it repeats, check provider availability or switch to Demo / QA mode."
+        )
+    if code == "TIMEOUT":
+        return (
+            "Portfolio diagnosis timed out while loading or processing data. "
+            "Retry the diagnosis; if it repeats, use a smaller portfolio or check provider/network status."
+        )
+    if code == "INVALID_TICKER":
+        return "Portfolio input could not be validated. Check tickers, cash rows, and weights, then run diagnosis again."
+    if code == "PYTHON_STAGE_FAILED" and fallback.strip().lower() == "backend run failed.":
+        return (
+            "Portfolio diagnosis failed during backend execution. "
+            "Retry after restarting the backend/frontend; if it repeats, inspect the run state for the failed stage."
+        )
+    return fallback
+
+
 def _safe_failure_text_for_classification(review_result: dict[str, Any]) -> str:
     parts = [
         review_result.get("error"),
@@ -541,12 +562,12 @@ def _classify_staged_failure(review_result: dict[str, Any], code: int) -> tuple[
     message = _text(review_result.get("error"), "Portfolio diagnosis failed.") or "Portfolio diagnosis failed."
     lowered = _safe_failure_text_for_classification(review_result)
     if code == 124 or "timeout" in lowered:
-        return "TIMEOUT", message, "retry", True, "data_load"
+        return "TIMEOUT", _staged_failure_public_message("TIMEOUT", message), "retry", True, "data_load"
     if "input_validation_error" in details:
-        return "INVALID_TICKER", message, "fix_input", False, "input"
+        return "INVALID_TICKER", _staged_failure_public_message("INVALID_TICKER", message), "fix_input", False, "input"
     if any(term in lowered for term in STAGED_PROVIDER_FAILURE_TERMS):
-        return "DATA_PROVIDER_FAILED", message, "retry", True, "data_load"
-    return "PYTHON_STAGE_FAILED", message, "retry", True, "data_load"
+        return "DATA_PROVIDER_FAILED", _staged_failure_public_message("DATA_PROVIDER_FAILED", message), "retry", True, "data_load"
+    return "PYTHON_STAGE_FAILED", _staged_failure_public_message("PYTHON_STAGE_FAILED", message), "retry", True, "data_load"
 
 
 def _existing_stage_refs(run_dir: Path, refs: list[str]) -> list[str]:
