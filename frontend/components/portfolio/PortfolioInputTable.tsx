@@ -33,15 +33,6 @@ const WEIGHT_TOLERANCE = 0.01;
 const MIN_VALID_HOLDINGS = 2;
 const STAGED_POLL_INTERVAL_MS = 1200;
 const STAGED_POLL_TIMEOUT_MS = 10 * 60 * 1000;
-const STAGED_PROGRESS_STAGES = [
-  { id: "input", label: "Portfolio input" },
-  { id: "data_load", label: "Data check" },
-  { id: "xray", label: "Diagnosis" },
-  { id: "stress", label: "Stress Lab" },
-  { id: "client_fit", label: "Client Fit" },
-  { id: "problem_classification", label: "Problem diagnosis" },
-  { id: "launchpad_builder", label: "Candidate Launchpad" }
-] as const;
 const DEFAULT_CLIENT_FIT_PROFILE: ClientFitInput = {
   preset_id: "balanced",
   source: "questionnaire",
@@ -153,55 +144,6 @@ function diagnosisChainReady(progress: Pick<StagedReviewStatusResponse, "stages"
     && stageReady(progress, "stress")
     && stageReady(progress, "problem_classification")
     && stageReady(progress, "launchpad_builder");
-}
-
-function stagedProgressPct(progress: StagedReviewProgress | undefined) {
-  if (!progress) return 0;
-  const readyCount = STAGED_PROGRESS_STAGES.filter((stage) => stageReady(progress, stage.id)).length;
-  return Math.round((readyCount / STAGED_PROGRESS_STAGES.length) * 100);
-}
-
-function stagedStatusTone(status: string | undefined): "green" | "amber" | "red" | "blue" | "slate" {
-  if (status === "completed" || status === "partial") return "green";
-  if (status === "running") return "blue";
-  if (status === "failed" || status === "blocked") return "red";
-  return "slate";
-}
-
-function stagedStatusLabel(status: string | undefined) {
-  const labels: Record<string, string> = {
-    pending: "Waiting",
-    running: "Running",
-    completed: "Ready",
-    partial: "Ready with limits",
-    blocked: "Needs input",
-    failed: "Failed",
-    skipped: "Skipped"
-  };
-  return labels[status || ""] ?? "Waiting";
-}
-
-function stagedModeLabel(mode: StagedReviewProgress["mode"] | undefined) {
-  return mode === "demo_qa" ? "Local demo" : "Live data";
-}
-
-function shortReviewId(reviewId: string | undefined) {
-  if (!reviewId) return "Starting";
-  const suffix = reviewId.slice(-8);
-  return `Run ...${suffix}`;
-}
-
-function stagedProgressMessage(progress: StagedReviewProgress | undefined, currentStageLabel: string) {
-  if (!progress) return "Starting diagnosis.";
-  if (progress.safeError?.message) return progress.safeError.message;
-  if (progress.mode === "demo_qa") {
-    return currentStageLabel
-      ? `${currentStageLabel} is running with deterministic local demo data.`
-      : "Running with deterministic local demo data.";
-  }
-  return currentStageLabel
-    ? `${currentStageLabel} is checking live market-data inputs.`
-    : "Checking live market-data inputs.";
 }
 
 function pctRangeLabel(range: { min: number; max: number } | null | undefined) {
@@ -1073,8 +1015,6 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
     || stagedProgress.status === "running"
     || stagedProgress.status === "partial"
   ));
-  const stagedPct = stagedProgressPct(stagedProgress);
-  const currentStageLabel = STAGED_PROGRESS_STAGES.find((stage) => stage.id === stagedProgress?.currentStage)?.label;
 
   return (
     <div className="space-y-5">
@@ -1305,43 +1245,15 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
               </p>
             ) : null}
             {showStagedProgress ? (
-              <div className="mt-3 overflow-hidden rounded-2xl border border-pmri-blue/25 bg-pmri-blue/10 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="pmri-label text-pmri-blueSoft">Diagnosis progress</p>
-                    <p className="mt-1 text-sm font-semibold leading-5 text-pmri-text">
-                      {currentStageLabel || "Starting diagnosis"}
-                    </p>
-                  </div>
-                  <StatusBadge tone={stagedProgress?.mode === "demo_qa" ? "amber" : "blue"}>
-                    {stagedModeLabel(stagedProgress?.mode)}
-                  </StatusBadge>
+              <div className="mt-3 rounded-2xl border border-pmri-blue/25 bg-pmri-blue/10 px-4 py-3 text-xs leading-5 text-pmri-blueSoft">
+                <div className="flex items-center gap-2 font-medium text-pmri-text">
+                  <span className="pmri-spinner" aria-hidden="true" />
+                  Preparing your diagnosis...
                 </div>
-                <p className="mt-3 text-xs leading-5 text-pmri-muted">
-                  {stagedProgressMessage(stagedProgress, currentStageLabel ?? "")}
+                <p className="mt-2 text-pmri-muted">
+                  Portfolio MRI is reviewing allocation, concentration, risk drivers, and stress vulnerabilities.
+                  You can keep this page open; results will appear automatically.
                 </p>
-                <p className="mt-2 text-xs leading-5 text-pmri-muted">
-                  {shortReviewId(stagedProgress?.reviewId)} - safe to refresh
-                </p>
-                {stagedProgress?.providerStatus?.freshness ? (
-                  <p className="mt-3 text-xs leading-5 text-pmri-muted">
-                    Data freshness: <span className="font-medium text-pmri-text2">{stagedProgress.providerStatus.freshness.replaceAll("_", " ")}</span>
-                  </p>
-                ) : null}
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10" aria-label="Staged diagnosis progress">
-                  <div className="h-full rounded-full bg-pmri-blue transition-all duration-500" style={{ width: `${stagedPct}%` }} />
-                </div>
-                <div className="mt-4 grid gap-2">
-                  {STAGED_PROGRESS_STAGES.map((stage) => {
-                    const status = stagedProgress?.stages?.[stage.id]?.status ?? "pending";
-                    return (
-                      <div key={stage.id} className="flex items-center justify-between gap-3 rounded-xl border border-pmri-border/35 bg-white/[0.022] px-3 py-2">
-                        <span className="text-xs font-medium text-pmri-text2">{stage.label}</span>
-                        <StatusBadge tone={stagedStatusTone(status)}>{stagedStatusLabel(status)}</StatusBadge>
-                      </div>
-                    );
-                  })}
-                </div>
                 {stagedProgress?.safeError ? (
                   <p className="mt-3 rounded-xl border border-pmri-risk/35 bg-pmri-risk/10 px-3 py-2 text-xs leading-5 text-pmri-risk">
                     {stagedProgress.safeError.message}

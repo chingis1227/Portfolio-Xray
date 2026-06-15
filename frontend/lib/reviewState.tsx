@@ -431,6 +431,10 @@ const ACTIVE_REVIEW_STORAGE_KEY = "pmri.activeReview.v2";
 const LEGACY_ACTIVE_REVIEW_STORAGE_KEY = "pmri.activeReview.v1";
 const RAW_REVIEW_STORAGE_PREFIX = "pmri.reviewResult."; // legacy cleanup only; raw review JSON is no longer persisted.
 const ReviewStateContext = createContext<ReviewStateContextValue | null>(null);
+const LEGACY_DEMO_PORTFOLIO_SIGNATURES = new Set([
+  "BND:20|CASH_USD:10|GLD:10|QQQ:20|SPY:40",
+  "BND:10|CASH_USD:10|GLD:15|QQQ:25|SPY:40"
+]);
 
 function nowIso() {
   return new Date().toISOString();
@@ -438,6 +442,23 @@ function nowIso() {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function holdingsSignature(holdings: ReviewHolding[]) {
+  return holdings
+    .map((holding) => `${holding.ticker}:${holding.weight}`)
+    .sort()
+    .join("|");
+}
+
+function isLegacyUnsubmittedDemoPortfolio(value: ActiveReviewState) {
+  return value.runMode === "sample_demo"
+    && value.runStatus === "draft"
+    && !value.submitted
+    && !value.reviewId
+    && !value.reviewSummary
+    && !value.cloudPortfolio
+    && LEGACY_DEMO_PORTFOLIO_SIGNATURES.has(holdingsSignature(value.holdings));
 }
 
 function isJsonValue(value: unknown): value is JsonValue {
@@ -982,10 +1003,19 @@ function readStoredReview(): ActiveReviewState | null {
     const parsed = JSON.parse(raw) as ActiveReviewState;
     removeStoredRawReviews();
 
-    return cleanReviewState({
+    const clean = cleanReviewState({
       ...parsed,
       reviewResult: undefined
     } as ActiveReviewState);
+    if (isLegacyUnsubmittedDemoPortfolio(clean)) {
+      return {
+        ...clean,
+        holdings: [],
+        updatedAt: nowIso()
+      };
+    }
+
+    return clean;
   } catch {
     return null;
   }

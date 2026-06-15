@@ -34,9 +34,9 @@ export default function RequiredSignInPage() {
     const trimmed = email.trim();
     if (!trimmed || !enabled) return;
     setSubmitting(true);
-    await sendEmailOtp(trimmed);
+    const sent = await sendEmailOtp(trimmed);
     setSubmitting(false);
-    setStage("code");
+    if (sent) setStage("code");
   }
 
   async function submitCode(event: FormEvent<HTMLFormElement>) {

@@ -2,6 +2,10 @@
 
 ## 2026-06-15
 
+- Removed technical staged diagnosis progress panels from Portfolio Input and Diagnosis. Running
+  diagnosis now shows a simple product-facing preparation message while backend stage details remain
+  internal, and legacy unsubmitted demo draft portfolios are cleared on hydration so old
+  SPY/QQQ/BND/GLD/Cash allocations do not reappear as default inputs.
 - Added bounded parallel data loading for cold Run Diagnostics. yfinance ticker downloads, factor
   proxy loaders, and macro indicator resolution now overlap independent provider calls within safe
   worker limits, while `PMRI_DISABLE_PARALLEL_DATA_LOAD=1` restores sequential behavior.
@@ -20,6 +24,8 @@
   onboarding directly to Portfolio Input, restores compact Client Fit context, exposes a sidebar
   sign-out control, requests email OTP codes instead of sign-in-link copy, and documents the
   Supabase sender/template settings required for Portfolio MRI branded code emails.
+- Added a minimal Portfolio MRI Supabase OTP email template and kept the sign-in page on the email
+  step when Supabase fails to send the code.
 - Fixed staged review recovery hydration. FastAPI recovery now returns bounded diagnosis/evidence
   artifact payloads and the Next.js recovery bridge maps them back into compact screen summaries, so
   Diagnosis and Stress Lab do not fall back to unavailable compact-state cards after recovery.

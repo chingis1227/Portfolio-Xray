@@ -27,3 +27,24 @@ Supabase database rejects staged rows with `review_stage_summaries_stage_check` 
 to align the live check constraint with `review_state_v1`.
 
 The frontend uses public browser-safe Supabase clients plus Row Level Security; it must not use service-role keys, secret keys, database passwords, Supabase Storage, Realtime, Edge Functions, or privileged frontend credentials for this optional persistence layer.
+
+## Auth email setup
+
+The Portfolio MRI sign-in screen is code-first: the user enters an email, receives a one-time code,
+types that code into `/onboarding/sign-in`, and only then continues into onboarding. The frontend
+calls `signInWithOtp()` and verifies the typed code with `verifyOtp(..., type: "email")`.
+
+Supabase controls the actual email body and sender identity from the project dashboard. If the
+project is left on the default template, users may receive a "Supabase Auth" magic-link email even
+though the Portfolio MRI UI is waiting for a code. For the production code-only UX, configure the
+Supabase project outside this repo:
+
+1. Open Supabase Dashboard -> Authentication -> Emails / Templates.
+2. Update the Email OTP / Magic Link template to show `{{ .Token }}` as the primary sign-in code.
+   Use `docs/supabase/auth_email_otp_template.html` as the minimal Portfolio MRI template.
+3. Remove or de-emphasize `{{ .ConfirmationURL }}` if the desired public UX is code-only.
+4. Open Authentication -> SMTP / Email provider settings and set a verified Portfolio MRI sender,
+   for example `Portfolio MRI <no-reply@portfolio-mri.com>`.
+
+These sender/template settings are not changed by a Next.js redeploy. They take effect from the
+Supabase project configuration.

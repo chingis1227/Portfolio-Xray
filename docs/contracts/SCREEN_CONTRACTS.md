@@ -54,6 +54,7 @@ There is no current `/candidate`, `/monitoring`, `/what-changed`, optimizer-aren
 8. Missing, partial, stale, blocked, locked, and evidence-insufficient states are valid and visible.
 9. Raw artifact filenames, JSON keys, booleans, backend IDs, run folder paths, and operator terms are not primary UI copy.
 10. Evidence-provenance traces from `site_explanation_bundle.json` are hidden by default. Public explanation cards show product-language evidence labels; raw schema names, artifact filenames, and field paths may appear only in an explicit developer/debug provenance panel.
+11. Staged diagnosis internals such as `Data check`, `pending`, `waiting`, provider freshness, backend stage IDs, and per-stage status rows are operational state, not normal product UI. Running diagnosis screens may show a simple product-facing preparation message and safe user-facing errors.
 
 ## Route contracts
 
@@ -64,8 +65,8 @@ There is no current `/candidate`, `/monitoring`, `/what-changed`, optimizer-aren
 | `/onboarding/name` | Friendly personal setup. | Name input and Continue CTA. | `/onboarding/investor-type`. | Portfolio diagnostics or suitability language. |
 | `/onboarding/investor-type` | Five-question Client Fit intake. | One question at a time, progress, Back/Next/final save; questions cover stress-loss reaction, withdrawal horizon, temporary-loss limit, return target, and concentration response. | `/onboarding/loading`. | Investment advice or optimizer mandates. |
 | `/onboarding/loading` | Setup transition. | Setup progress and Client Fit context save messaging. | Auto-redirect to `/portfolio-input`. | Platform sidebar. |
-| `/portfolio-input` | Step 01: define current portfolio. | Client Fit summary, currency, holdings/weights, validation, recovery. | Run diagnosis -> `/diagnosis`. | Optimizer targets, tax settings, suitability approval. |
-| `/diagnosis` | Step 02: current portfolio diagnosis. | Diagnosis summary or locked state. | Continue to Stress Lab or return to Portfolio Input. | Rebalance recommendation from diagnosis alone. |
+| `/portfolio-input` | Step 01: define current portfolio. | Client Fit summary, empty-by-default holdings/weights input, validation, recovery. | Run diagnosis -> `/diagnosis`. | Prefilled demo allocation, optimizer targets, tax settings, suitability approval, technical staged-progress table. |
+| `/diagnosis` | Step 02: current portfolio diagnosis. | Diagnosis summary, locked state, or simple product-facing running state. | Continue to Stress Lab or return to Portfolio Input. | Rebalance recommendation from diagnosis alone, technical staged-progress table. |
 | `/evidence` | Step 03: Stress Test Lab. | Stress evidence, helped/hurt, hedge gaps, limitations, or locked state. | Continue to Client Fit. | Candidate/comparison/verdict language. |
 | `/client-fit` | Step 04: profile-fit interpretation. | Fit status, source quality, target rows, explanations, or locked state. | Continue to Hypothesis. | Suitability approval or hiding diagnostic issues. |
 | `/hypothesis` | Step 05: one diagnostic test path. | Diagnosis recap, Launchpad, Builder setup, candidate generation state. | Generate one test candidate / continue to Comparison. | Candidate as recommendation or auto-generated action. |

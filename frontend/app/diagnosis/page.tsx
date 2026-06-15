@@ -12,15 +12,6 @@ import type { StagedReviewStatusResponse } from "@/lib/generated/api-types";
 const STAGED_POLL_INTERVAL_MS = 2000;
 const STAGED_RECOVERY_TIMEOUT_MS = 15 * 60 * 1000;
 
-const STAGED_PROGRESS_STAGES = [
-  { id: "data_load", label: "Data load" },
-  { id: "xray", label: "Portfolio X-Ray" },
-  { id: "stress", label: "Stress Lab" },
-  { id: "client_fit", label: "Client Fit" },
-  { id: "problem_classification", label: "Problem Classification" },
-  { id: "launchpad_builder", label: "Launchpad / Builder" }
-];
-
 function sleep(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -35,42 +26,6 @@ function diagnosisChainReady(progress: Pick<StagedReviewStatusResponse, "stages"
     && stageReady(progress, "stress")
     && stageReady(progress, "problem_classification")
     && stageReady(progress, "launchpad_builder");
-}
-
-function stagedProgressPct(progress: StagedReviewProgress | undefined) {
-  if (!progress) return 0;
-  const readyCount = STAGED_PROGRESS_STAGES.filter((stage) => stageReady(progress, stage.id)).length;
-  return Math.round((readyCount / STAGED_PROGRESS_STAGES.length) * 100);
-}
-
-function stagedStatusTone(status: string | undefined): "green" | "amber" | "red" | "blue" | "slate" {
-  if (status === "completed" || status === "partial") return "green";
-  if (status === "running") return "blue";
-  if (status === "failed" || status === "blocked") return "red";
-  return "slate";
-}
-
-function stagedStatusLabel(status: string | undefined) {
-  const labels: Record<string, string> = {
-    pending: "Waiting",
-    running: "Running",
-    completed: "Ready",
-    partial: "Ready with limits",
-    blocked: "Needs input",
-    failed: "Failed",
-    skipped: "Skipped"
-  };
-  return labels[status || ""] ?? "Waiting";
-}
-
-function currentStageLabel(progress: StagedReviewProgress | undefined) {
-  return STAGED_PROGRESS_STAGES.find((stage) => stage.id === progress?.currentStage)?.label
-    ?? "Starting diagnosis";
-}
-
-function shortReviewId(reviewId: string | undefined) {
-  if (!reviewId) return "Starting";
-  return `Run ...${reviewId.slice(-8)}`;
 }
 
 function holdingsFromRecoveredReview(result: ReviewResult | undefined) {
@@ -163,8 +118,6 @@ function RunningDiagnosisState({
   progress: StagedReviewProgress | undefined;
   recoveryError?: string | null;
 }) {
-  const label = currentStageLabel(progress);
-  const pct = stagedProgressPct(progress);
   return (
     <section className="pmri-card rounded-2xl p-6 md:p-8">
       <StatusBadge tone="blue">Diagnosis running</StatusBadge>
@@ -175,34 +128,20 @@ function RunningDiagnosisState({
         You can keep this page open or refresh it. The review ID is saved locally and the results
         will appear here when the backend finishes.
       </p>
-      <div className="mt-5 overflow-hidden rounded-2xl border border-pmri-blue/25 bg-pmri-blue/10 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <p className="pmri-label text-pmri-blueSoft">Diagnosis progress</p>
-            <p className="mt-1 text-sm font-semibold leading-5 text-pmri-text">{label}</p>
-          </div>
-          <StatusBadge tone={progress?.mode === "demo_qa" ? "amber" : "blue"}>
-            {progress?.mode === "demo_qa" ? "Local demo" : "Live data"}
-          </StatusBadge>
+      <div className="mt-5 rounded-2xl border border-pmri-blue/25 bg-pmri-blue/10 p-4">
+        <div className="flex items-center gap-2 text-sm font-semibold leading-5 text-pmri-text">
+          <span className="pmri-spinner" aria-hidden="true" />
+          Preparing your diagnosis...
         </div>
-        <p className="mt-3 text-xs leading-5 text-pmri-muted">
-          {progress?.safeError?.message || `${label} is running. ${shortReviewId(progress?.reviewId)} is safe to refresh.`}
+        <p className="mt-3 max-w-2xl text-xs leading-5 text-pmri-muted">
+          Portfolio MRI is reviewing allocation, concentration, risk drivers, and stress vulnerabilities.
+          Results will appear automatically when the diagnosis is ready.
         </p>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10" aria-label="Staged diagnosis progress">
-          <div className="h-full rounded-full bg-pmri-blue transition-all duration-500" style={{ width: `${pct}%` }} />
-        </div>
-        <div className="mt-4 grid gap-2">
-          {STAGED_PROGRESS_STAGES.map((stage) => {
-            const status = progress?.stages?.[stage.id]?.status ?? "pending";
-            return (
-              <div key={stage.id} className="flex items-center justify-between gap-3 rounded-xl border border-pmri-border/35 bg-white/[0.022] px-3 py-2">
-                <span className="text-xs font-medium text-pmri-text2">{stage.label}</span>
-                <StatusBadge tone={stagedStatusTone(status)}>{stagedStatusLabel(status)}</StatusBadge>
-              </div>
-            );
-          })}
-        </div>
-        {recoveryError ? (
+        {progress?.safeError ? (
+          <p className="mt-3 rounded-xl border border-pmri-risk/35 bg-pmri-risk/10 px-3 py-2 text-xs leading-5 text-pmri-risk">
+            {progress.safeError.message}
+          </p>
+        ) : recoveryError ? (
           <p className="mt-3 rounded-xl border border-pmri-risk/35 bg-pmri-risk/10 px-3 py-2 text-xs leading-5 text-pmri-risk">
             {recoveryError}
           </p>

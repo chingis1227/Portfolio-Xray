@@ -91,6 +91,8 @@ product or trading system.
   reclassifies the displayed preset from the edited target rows.
 - Investor currency is required and currently limited in the UI to USD or EUR.
 - New Portfolio Input sessions start with empty holding fields rather than the old static demo allocation.
+- Legacy unsubmitted demo draft portfolios in browser storage are cleared on hydration so the old
+  SPY/QQQ/BND/GLD/Cash allocation does not reappear as a default input.
 - Every visible portfolio row must use a selected instrument from the local instrument list and a weight greater than 0.
 - At least 2 valid rows are required before diagnosis.
 - Portfolio weights must add up to 100%, with a 0.01 tolerance for rounding.
@@ -117,8 +119,10 @@ product or trading system.
 - The staged migration adds compact `review_state_v1` progress fields to the active review state:
   overall run status, current stage, per-stage statuses, provider status, mode (`demo_qa` or `live`),
   and safe stage errors. Portfolio Input saves `reviewId` immediately and moves the user to
-  `/diagnosis` without waiting for the full backend calculation. The Diagnosis route shows running
-  progress, polls staged status, and hydrates screen summaries through run-local recovery after the
+  `/diagnosis` without waiting for the full backend calculation. The Diagnosis route polls staged
+  status but keeps per-stage status rows and provider freshness as internal operational state; the
+  normal UI shows only a simple product-facing running message and safe errors. It hydrates screen
+  summaries through run-local recovery after the
   Diagnosis, Stress, Client Fit, Problem Classification, and Launchpad/Builder evidence chain is
   available. The canonical contract is `../docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`.
 - When Supabase is enabled and the user is signed in, the active review may also keep a compact
@@ -180,6 +184,8 @@ For production email branding and code-only UX, update Supabase project settings
 
 - Authentication -> Emails / Templates: make the relevant Email OTP/Magic Link template show
   `{{ .Token }}` as the primary login code and remove or de-emphasize `{{ .ConfirmationURL }}`.
+  A minimal Portfolio MRI code template is checked in at
+  `docs/supabase/auth_email_otp_template.html`.
 - Authentication -> SMTP or Email provider settings: set sender name/from name to `Portfolio MRI`
   and use a verified product/domain sender address, for example `Portfolio MRI <no-reply@portfolio-mri.com>`.
 - Redeploy the frontend after changing Cloudflare environment variables, but note that Supabase

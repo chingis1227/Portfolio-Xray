@@ -15,8 +15,8 @@ type SupabaseAuthContextValue = {
   user: User | null;
   message: string | null;
   error: string | null;
-  sendEmailOtp: (email: string) => Promise<void>;
-  verifyEmailOtp: (email: string, token: string) => Promise<void>;
+  sendEmailOtp: (email: string) => Promise<boolean>;
+  verifyEmailOtp: (email: string, token: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   clearAuthNotice: () => void;
 };
@@ -93,13 +93,13 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
       setError("Enter an email address first.");
-      return;
+      return false;
     }
 
     const supabase = getSupabaseBrowserClient();
     if (!enabled || !supabase) {
       setError("Cloud sign-in is disabled. The local demo remains available without login.");
-      return;
+      return false;
     }
 
     const { error: otpError } = await supabase.auth.signInWithOtp({
@@ -111,10 +111,11 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
     if (otpError) {
       setError(humanizeError(otpError.message));
-      return;
+      return false;
     }
 
     setMessage("Check your email for the Portfolio MRI one-time code.");
+    return true;
   }, [enabled]);
 
   const verifyEmailOtp = useCallback(async (email: string, token: string) => {
@@ -125,13 +126,13 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     const trimmedToken = token.trim();
     if (!trimmedEmail || !trimmedToken) {
       setError("Enter both email address and OTP code.");
-      return;
+      return false;
     }
 
     const supabase = getSupabaseBrowserClient();
     if (!enabled || !supabase) {
       setError("Cloud sign-in is disabled. The local demo remains available without login.");
-      return;
+      return false;
     }
 
     const { error: verifyError } = await supabase.auth.verifyOtp({
@@ -142,10 +143,11 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
     if (verifyError) {
       setError(humanizeError(verifyError.message));
-      return;
+      return false;
     }
 
     setMessage("Signed in. Your Portfolio MRI workspace is ready.");
+    return true;
   }, [enabled]);
 
   const signOut = useCallback(async () => {
