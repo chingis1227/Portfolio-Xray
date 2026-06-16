@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ClientFitContextCard } from "@/components/client-fit/ClientFitContextCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { diagnosisStageChainReady, useReviewState, type ActiveReviewState } from "@/lib/reviewState";
@@ -89,10 +90,6 @@ async function probeLiveReviewLineage(reviewId: string) {
     };
   }
   return { ok: true, stale: false, message: "" };
-}
-
-function formatWeight(value: number) {
-  return `${(value * 100).toFixed(2).replace(/\.?0+$/, "")}%`;
 }
 
 function percentInputValue(value: number | null) {
@@ -601,19 +598,9 @@ function HypothesisActionConsole({
         <div className="mt-5 rounded-2xl border border-pmri-positive/30 bg-pmri-positive/10 p-4">
           <p className="pmri-label text-pmri-positive">Test candidate generated</p>
           <p className="mt-1 text-sm font-medium text-pmri-text">{action.candidateName}</p>
-          {action.candidateWeights.length ? (
-            <details className="mt-3 text-xs text-pmri-text2">
-              <summary className="cursor-pointer text-pmri-blueSoft">View weights</summary>
-              <ul className="mt-3 grid gap-2">
-                {action.candidateWeights.map((item) => (
-                  <li key={item.ticker} className="flex justify-between rounded-lg bg-white/[0.04] px-3 py-2">
-                    <span>{item.ticker}</span>
-                    <span>{formatWeight(item.weight)}</span>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          ) : null}
+          <p className="mt-2 text-sm leading-6 text-pmri-text2">
+            The generated weights are reviewed in Current vs Candidate Comparison, not inside Hypothesis Builder.
+          </p>
         </div>
       ) : null}
 
@@ -800,6 +787,7 @@ function HypothesisWorkstation({
 }
 
 export function HypothesisScreen() {
+  const router = useRouter();
   const { activeReview, clearDownstreamReviewState, hydrated, journeyFlags, markLiveLineageUnavailable, recordBuilderSetup, recordCandidateGeneration } = useReviewState();
   const [sampleMode, setSampleMode] = useState(false);
   const [sampleGenerated, setSampleGenerated] = useState(false);
@@ -865,6 +853,7 @@ export function HypothesisScreen() {
   async function handleGenerateCandidate() {
     if (sampleMode) {
       setSampleGenerated(true);
+      router.push("/hypothesis?sample=1&generated=1");
       return;
     }
 
@@ -927,6 +916,7 @@ export function HypothesisScreen() {
         return;
       }
       recordCandidateGeneration(result);
+      router.push("/comparison");
     } catch (error) {
       const raw = error instanceof Error ? error.message : "The test candidate could not be generated. Please try again or choose another test path.";
       setGenerationError(sanitizeHypothesisError(raw).userError ?? raw);

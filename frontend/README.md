@@ -117,7 +117,7 @@ product or trading system.
   explanation preview. `/workspace` is an account home and history hub, not a calculation stage. If comparison evidence is current but metrics are unavailable, the UI may still
   continue to Verdict so the system can show an evidence-insufficient decision-support outcome
   instead of silently blocking the journey.
-- The UI stores compact display state in `pmri.activeReview.v2`: the Client Fit profile, `reviewId`, portfolio input, diagnosis/stress/Client Fit evidence, launchpad/builder summaries, selected card/candidate, and stage summaries. Core screens consume display models, not raw backend artifact trees. `/hypothesis` builds a `HypothesisScreenModel` so one primary diagnosis, one recommended diagnostic test, the action console, Client Fit context, alternatives, and evidence details are ranked consistently for every portfolio. Candidate generation is enabled only when the selected Launchpad card has an eligible test method and the current FastAPI backend confirms that the run-local `reviewId` still exists.
+- The UI stores compact display state in `pmri.activeReview.v2`: the Client Fit profile, `reviewId`, portfolio input, diagnosis/stress/Client Fit evidence, launchpad/builder summaries, selected card/candidate, and stage summaries. Core screens consume display models, not raw backend artifact trees. `/hypothesis` builds a `HypothesisScreenModel` so one primary diagnosis, one recommended diagnostic test, the action console, Client Fit context, alternatives, and evidence details are ranked consistently for every portfolio. Candidate generation is enabled only when the selected Launchpad card has an eligible test method and the current FastAPI backend confirms that the run-local `reviewId` still exists. After candidate generation succeeds, the UI hands off to `/comparison`, where current and candidate weights are shown together and same-candidate comparison is attempted.
 - The staged migration adds compact `review_state_v1` progress fields to the active review state:
   overall run status, current stage, per-stage statuses, provider status, mode (`demo_qa` or `live`),
   and safe stage errors. Portfolio Input saves `reviewId` immediately and moves the user to
@@ -150,6 +150,9 @@ product or trading system.
   available, including `comparisons[].dimensions`, instead of inventing metric rows from compact
   summaries. A successful fresh candidate comparison should show real metric rows; stale or
   unavailable comparison rows remain blocked or evidence-insufficient rather than being masked.
+- Comparison owns generated candidate weights. Hypothesis may show generation status, but the
+  weight table is displayed next to the current allocation on Comparison so the user reviews the
+  candidate in the same place where trade-off evidence is produced.
 - Legacy raw keys matching `pmri.reviewResult.*` are removed on hydration/write. Future raw access should go through backend artifacts addressed by `reviewId`, not permanent localStorage copies.
 - Real backend failures are persisted as `runStatus: "failed"` with a visible error state; static demo data remains clearly separate from `runMode: "real_run"`.
 

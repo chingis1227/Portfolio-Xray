@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -80,6 +80,42 @@ function comparisonCanGenerateVerdict(comparison: NonNullable<ReturnType<typeof 
   );
 }
 
+function formatWeight(value: number, unit: "percent" | "fraction") {
+  const normalized = unit === "fraction" ? value * 100 : value;
+  return `${normalized.toFixed(2).replace(/\.?0+$/, "")}%`;
+}
+
+function AllocationList({
+  title,
+  subtitle,
+  weightUnit,
+  items
+}: {
+  title: string;
+  subtitle: string;
+  weightUnit: "percent" | "fraction";
+  items: Array<{ ticker: string; weight: number }>;
+}) {
+  return (
+    <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
+      <p className="pmri-label">{subtitle}</p>
+      <h2 className="mt-2 pmri-heading-section text-lg text-pmri-text">{title}</h2>
+      {items.length ? (
+        <ul className="mt-4 grid gap-2">
+          {items.map((item) => (
+            <li key={item.ticker} className="flex items-center justify-between rounded-xl bg-white/[0.04] px-3 py-2 text-sm">
+              <span className="font-medium text-pmri-text">{item.ticker}</span>
+              <span className="text-pmri-text2">{formatWeight(item.weight, weightUnit)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-4 text-sm leading-6 text-pmri-muted">Weights are unavailable for this portfolio.</p>
+      )}
+    </article>
+  );
+}
+
 function comparisonMissingReasons({
   comparison,
   comparisonError,
@@ -148,6 +184,7 @@ export function ComparisonScreen() {
   const { activeReview, hydrated, markComparisonReady, recordComparisonResult } = useReviewState();
   const [isComparing, setIsComparing] = useState(false);
   const [comparisonError, setComparisonError] = useState<string | undefined>();
+  const autoComparisonKeyRef = useRef<string | null>(null);
 
   const reviewId = activeReview?.reviewId ?? activeReview?.reviewSummary?.reviewId ?? activeReview?.reviewResult?.review_id;
   const candidateGeneration = activeReview?.candidateGeneration;
@@ -183,6 +220,11 @@ export function ComparisonScreen() {
     : comparison;
   const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
   const clientFitForStage = comparison?.clientFit ?? activeReview?.reviewSummary?.clientFit;
+  const currentWeights = (activeReview?.holdings ?? []).map((holding) => ({
+    ticker: holding.ticker,
+    weight: holding.weight
+  }));
+  const candidateWeights = candidateGeneration?.weights ?? [];
 
   useEffect(() => {
     setComparisonError(undefined);
@@ -225,6 +267,14 @@ export function ComparisonScreen() {
     }
   }
 
+  useEffect(() => {
+    if (!canRunComparison || comparisonMatchesCandidate || comparisonError || isComparing) return;
+    const autoKey = [reviewId, selectedCardId, candidateId, candidateGeneration?.generatedAt ?? "no_generation_time"].join("|");
+    if (autoComparisonKeyRef.current === autoKey) return;
+    autoComparisonKeyRef.current = autoKey;
+    void handleRunComparison();
+  }, [canRunComparison, candidateGeneration?.generatedAt, candidateId, comparisonError, comparisonMatchesCandidate, isComparing, reviewId, selectedCardId]);
+
   if (!hydrated) return null;
 
   const showCandidateMissingState = !hasGeneratedCandidate;
@@ -259,11 +309,13 @@ export function ComparisonScreen() {
             {activeReview?.readOnlyHistory ? "Read-only compact history" : validComparisonAvailable ? "Active comparison" : "Comparison required"}
           </StatusBadge>
         </PageHeader>
-        <SiteExplanationHierarchy
-          bundle={siteExplanation}
-          screen="comparison"
-          fallbackTitle="Comparison explanation"
-        />
+        {validComparisonAvailable ? (
+          <SiteExplanationHierarchy
+            bundle={siteExplanation}
+            screen="comparison"
+            fallbackTitle="Comparison explanation"
+          />
+        ) : null}
 
         {activeReview?.readOnlyHistory ? (
           <section className="mb-6 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
@@ -271,6 +323,39 @@ export function ComparisonScreen() {
             <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-text2">
               This is compact review history. Run-local lineage is not recovered, so Portfolio MRI will not reuse this comparison to create a new verdict.
             </p>
+          </section>
+        ) : null}
+
+        {hasGeneratedCandidate ? (
+          <section className="mb-6 pmri-card rounded-3xl p-6">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="pmri-label">Generated diagnostic candidate</p>
+                <h2 className="mt-2 pmri-heading-section text-xl text-pmri-text">
+                  Current portfolio vs {candidateGeneration?.methodLabel ?? "generated candidate"}
+                </h2>
+                <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
+                  These are the two portfolios being compared. Portfolio MRI still treats the candidate as a diagnostic test, not as a rebalance instruction.
+                </p>
+              </div>
+              <StatusBadge tone={isComparing ? "blue" : validComparisonAvailable ? "green" : "amber"}>
+                {isComparing ? "Comparison running" : validComparisonAvailable ? "Comparison ready" : "Preparing comparison"}
+              </StatusBadge>
+            </div>
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              <AllocationList
+                title="Current portfolio"
+                subtitle="Input allocation"
+                weightUnit="percent"
+                items={currentWeights}
+              />
+              <AllocationList
+                title={candidateGeneration?.methodLabel ?? "Generated candidate"}
+                subtitle="Candidate allocation"
+                weightUnit="fraction"
+                items={candidateWeights}
+              />
+            </div>
           </section>
         ) : null}
 
@@ -299,6 +384,20 @@ export function ComparisonScreen() {
                 : "Regenerate candidate, adjust setup, or resolve data quality."}
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
+              {comparisonError && canRunComparison ? (
+                <button
+                  type="button"
+                  disabled={isComparing}
+                  className={`rounded-full border px-5 py-2.5 text-sm font-medium transition ${
+                    isComparing
+                      ? "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
+                      : "pmri-focus border-pmri-blue/50 bg-pmri-blue text-pmri-bg shadow-decision hover:bg-pmri-blueSoft"
+                  }`}
+                  onClick={handleRunComparison}
+                >
+                  {isComparing ? "Retrying comparison..." : "Retry comparison"}
+                </button>
+              ) : null}
               {canGenerateEvidenceVerdict ? (
                 <button
                   type="button"

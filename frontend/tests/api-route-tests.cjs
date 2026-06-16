@@ -29,12 +29,13 @@ const clientFitContextCardPath = path.resolve(frontendRoot, "components", "clien
 const clientFitPresentationPath = path.resolve(frontendRoot, "lib", "clientFitPresentation.ts");
 const siteExplanationHierarchyPath = path.resolve(frontendRoot, "components", "explanation", "SiteExplanationHierarchy.tsx");
 const diagnosisPagePath = path.resolve(frontendRoot, "app", "diagnosis", "page.tsx");
+const diagnosisScreenPath = path.resolve(frontendRoot, "components", "diagnosis", "DiagnosisScreen.tsx");
 const diagnosisDisplayModelPath = path.resolve(frontendRoot, "lib", "diagnosisDisplayModel.ts");
 const diagnosisSummaryPanelPath = path.resolve(frontendRoot, "components", "diagnosis", "DiagnosisSummaryPanel.tsx");
 const stressStoryModelPath = path.resolve(frontendRoot, "components", "evidence", "stressStoryModel.ts");
-const hypothesisPagePath = path.resolve(frontendRoot, "app", "hypothesis", "page.tsx");
-const comparisonPagePath = path.resolve(frontendRoot, "app", "comparison", "page.tsx");
-const verdictPagePath = path.resolve(frontendRoot, "app", "verdict", "page.tsx");
+const hypothesisScreenPath = path.resolve(frontendRoot, "components", "hypothesis", "HypothesisScreen.tsx");
+const comparisonScreenPath = path.resolve(frontendRoot, "components", "comparison", "ComparisonScreen.tsx");
+const verdictScreenPath = path.resolve(frontendRoot, "components", "verdict", "VerdictScreen.tsx");
 const siteExplanationPresenterPath = path.resolve(frontendRoot, "lib", "siteExplanationPresenter.ts");
 const hypothesisScreenModelPath = path.resolve(frontendRoot, "lib", "hypothesis", "hypothesisScreenModel.ts");
 
@@ -685,14 +686,14 @@ test("journey route order requires Client Fit before Hypothesis", () => {
 
 test("Hypothesis, Comparison, and Verdict keep Client Fit separate from structural diagnosis", () => {
   const clientFitCard = fs.readFileSync(clientFitContextCardPath, "utf8");
-  const hypothesisPage = fs.readFileSync(hypothesisPagePath, "utf8");
-  const comparisonPage = fs.readFileSync(comparisonPagePath, "utf8");
-  const verdictPage = fs.readFileSync(verdictPagePath, "utf8");
-  const combined = [clientFitCard, hypothesisPage, comparisonPage, verdictPage].join("\n");
+  const hypothesisScreen = fs.readFileSync(hypothesisScreenPath, "utf8");
+  const comparisonScreen = fs.readFileSync(comparisonScreenPath, "utf8");
+  const verdictScreen = fs.readFileSync(verdictScreenPath, "utf8");
+  const combined = [clientFitCard, hypothesisScreen, comparisonScreen, verdictScreen].join("\n");
 
-  assert.match(hypothesisPage, /ClientFitContextCard/);
-  assert.match(comparisonPage, /ClientFitContextCard/);
-  assert.match(verdictPage, /ClientFitContextCard/);
+  assert.match(hypothesisScreen, /ClientFitContextCard/);
+  assert.match(comparisonScreen, /ClientFitContextCard/);
+  assert.match(verdictScreen, /ClientFitContextCard/);
   assert.match(combined, /Client Fit pass does not clear concentration, stress, drawdown, or other structural issues/);
   assert.match(combined, /Separate from diagnosis/);
   assert.match(combined, /does not clear a material issue|does not clear concentration|does not clear.*structural/i);
@@ -1070,10 +1071,11 @@ test("diagnosis display model keeps the public Diagnosis screen compact", () => 
 
 test("Diagnosis page uses the compact display model instead of the standalone explanation wall", () => {
   const diagnosisPage = fs.readFileSync(diagnosisPagePath, "utf8");
+  const diagnosisScreen = fs.readFileSync(diagnosisScreenPath, "utf8");
   const diagnosisPanel = fs.readFileSync(diagnosisSummaryPanelPath, "utf8");
 
   assert.doesNotMatch(diagnosisPage, /SiteExplanationHierarchy/);
-  assert.match(diagnosisPage, /siteExplanation/);
+  assert.match(diagnosisScreen, /siteExplanation/);
   assert.match(diagnosisPanel, /buildDiagnosisDisplayModel/);
   assert.match(diagnosisPanel, /Advanced diagnostics and technical evidence/);
   assert.match(diagnosisPanel, /How the current portfolio behaved historically/);
@@ -1280,7 +1282,7 @@ test("candidate route rejects FastAPI lineage from a different active review bef
 });
 
 test("Hypothesis probes backend review status before Builder and Candidate generation", () => {
-  const source = fs.readFileSync(hypothesisPagePath, "utf8");
+  const source = fs.readFileSync(hypothesisScreenPath, "utf8");
   const probeIndex = source.indexOf("probeLiveReviewLineage(reviewId)");
   const builderIndex = source.indexOf('fetch("/api/portfolio/builder/prepare"');
   const candidateIndex = source.indexOf('fetch("/api/portfolio/candidate/generate"');
@@ -1290,6 +1292,24 @@ test("Hypothesis probes backend review status before Builder and Candidate gener
   assert.ok(candidateIndex > builderIndex, "Candidate generation must happen after Builder prepare.");
   assert.match(source, /Run a new diagnosis before generating a candidate/);
   assert.match(source, /markLiveLineageUnavailable\(message\)/);
+});
+
+test("candidate generation hands off weights to Comparison instead of rendering them in Hypothesis", () => {
+  const hypothesisSource = fs.readFileSync(hypothesisScreenPath, "utf8");
+  const comparisonSource = fs.readFileSync(comparisonScreenPath, "utf8");
+
+  assert.match(hypothesisSource, /router\.push\("\/comparison"\)/);
+  assert.match(hypothesisSource, /router\.push\("\/hypothesis\?sample=1&generated=1"\)/);
+  assert.doesNotMatch(hypothesisSource, /router\.push\("\/comparison\?sample=1"\)/);
+  assert.match(hypothesisSource, /generated weights are reviewed in Current vs Candidate Comparison/i);
+  assert.doesNotMatch(hypothesisSource, /View weights/);
+  assert.match(comparisonSource, /Current portfolio vs/);
+  assert.match(comparisonSource, /AllocationList/);
+  assert.match(comparisonSource, /weightUnit="percent"/);
+  assert.match(comparisonSource, /weightUnit="fraction"/);
+  assert.match(comparisonSource, /Retry comparison/);
+  assert.match(comparisonSource, /candidateGeneration\?\.generatedAt/);
+  assert.match(comparisonSource, /void handleRunComparison\(\)/);
 });
 
 test("report route returns a display model from the FastAPI public envelope", async () => {

@@ -138,12 +138,14 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 - Must keep Client Fit as a secondary context panel; it must not override the selected diagnosis or approve suitability.
 - Must place supporting evidence and technical details below the main workstation instead of competing with the primary CTA.
 - Must show selected-card/builder lineage before candidate generation.
-- Must not auto-generate candidates or present a candidate as a recommended allocation.
+- Must not auto-generate candidates, display generated weights as primary Hypothesis content, or present a candidate as a recommended allocation.
 
 ### Comparison `/comparison`
 
 - Must show `Step 06 / Comparison` and `Current vs Candidate Comparison`.
 - Must require one active generated candidate.
+- Must show the current allocation next to the generated candidate allocation before or while comparison evidence is produced.
+- Must automatically attempt same-candidate comparison when the generated candidate is compare-ready, while preserving a retry path for failures.
 - Must show improvements, worsening, similar/neutral results, unavailable evidence, practicality, and materiality.
 - Must not crown a winner or issue a verdict.
 

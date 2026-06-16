@@ -303,9 +303,10 @@ Locked state:
 
 Ready state:
 
-- Shows an Analyst Workstation layout: primary diagnosis recap, one recommended diagnostic test, success criteria, trade-off, decision boundary, and a right-side action console for selected setup, candidate generation state, and continue-to-comparison action when valid.
+- Shows an Analyst Workstation layout: primary diagnosis recap, one recommended diagnostic test, success criteria, trade-off, decision boundary, and a right-side action console for selected setup, candidate generation state, and comparison handoff when valid.
 - Shows Client Fit context, other possible tests, and evidence/technical details as secondary panels below the primary workstation.
 - Candidate language must remain test/hypothesis language.
+- Generated candidate weights are not displayed as Hypothesis content; they are reviewed on `/comparison`.
 - Technical service/developer details must stay out of the primary user error surface.
 
 ## `/comparison`
@@ -326,7 +327,7 @@ Blocked state:
 
 Ready state:
 
-- Shows current vs candidate values, improved/worsened/similar/unavailable evidence, trade-off summary, Client Fit context when available, and materiality cues.
+- Shows the current allocation next to the generated candidate allocation, attempts the same-candidate comparison automatically when possible, then shows current vs candidate values, improved/worsened/similar/unavailable evidence, trade-off summary, Client Fit context when available, and materiality cues.
 
 ## `/verdict`
 
