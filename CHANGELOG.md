@@ -2,6 +2,9 @@
 
 ## 2026-06-16
 
+- Fixed Current vs Candidate fallback display for generated candidates whose full candidate snapshot
+  metrics are not available yet. Block 8 can now show degraded weight-only concentration/turnover
+  evidence from same-run generated weights instead of surfacing an opaque unavailable comparison row.
 - Fixed Hypothesis Builder constraint handling. Builder numeric min/max fields are now directly
   editable after preset selection, the initial capped preset follows the saved Client Fit profile
   family, infeasible caps are blocked before Candidate/Comparison, and Block 7 rejects or prevents

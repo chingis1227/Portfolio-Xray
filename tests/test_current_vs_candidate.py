@@ -108,6 +108,46 @@ def test_build_current_vs_candidate_blocks_when_candidate_generation_failed() ->
     assert doc["comparisons"] == []
 
 
+def test_build_current_vs_candidate_uses_generated_weights_when_candidate_snapshot_missing() -> None:
+    comparison = _comparison()
+    candidate = next(row for row in comparison["candidates"] if row["candidate_id"] == "equal_weight")
+    candidate["status"] = "unavailable"
+    candidate["unavailable_reason"] = "missing_snapshot"
+    candidate["metrics"] = {}
+    candidate["stress"] = {}
+    candidate["weight_concentration"] = {}
+    baseline = next(row for row in comparison["candidates"] if row["candidate_id"] == "analysis_subject")
+    baseline["weights"] = {"AAA": 0.7, "BBB": 0.3}
+    baseline["weight_concentration"] = {
+        "top1_weight_pct": 0.7,
+        "top3_weight_sum_pct": 1.0,
+        "weight_hhi": 0.58,
+    }
+
+    doc = build_current_vs_candidate(
+        comparison,
+        candidate_ids=["equal_weight"],
+        candidate_generation={
+            "generation_status": "generated",
+            "candidate": {
+                "candidate_id": "equal_weight",
+                "status": "generated",
+                "weights": {"AAA": 0.5, "BBB": 0.5},
+            },
+            "handoff_to_comparison": {"can_compare": True},
+        },
+    )
+
+    assert doc["comparison_status"] == "available"
+    assert doc["selected_candidate_ids"] == ["equal_weight"]
+    row = doc["comparisons"][0]
+    assert row["status"] == "degraded"
+    dimensions = {dim["field"]: dim for dim in row["dimensions"]}
+    assert dimensions["weight_top1_weight_pct"]["status"] == "available"
+    assert dimensions["weight_top1_weight_pct"]["direction"] == "improved"
+    assert row["data_quality"]["weight_only_fallback_used"] is True
+
+
 def test_write_current_vs_candidate_outputs(tmp_path: Path) -> None:
     paths = write_current_vs_candidate_outputs(
         output_dir=tmp_path,

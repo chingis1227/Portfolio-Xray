@@ -280,6 +280,51 @@ def _weight_maps_from_row(row: dict[str, Any]) -> dict[str, float]:
     return {}
 
 
+def _weight_concentration_from_weights(weights: Mapping[str, float]) -> dict[str, float]:
+    positive = sorted((float(weight) for weight in weights.values() if float(weight) > 0), reverse=True)
+    if not positive:
+        return {}
+    return {
+        "top1_weight_pct": positive[0],
+        "top3_weight_sum_pct": sum(positive[:3]),
+        "weight_hhi": sum(weight * weight for weight in positive),
+    }
+
+
+def _candidate_with_generation_weight_fallback(
+    candidate: dict[str, Any],
+    generation_candidate: dict[str, Any] | None,
+) -> tuple[dict[str, Any], bool]:
+    """Use Block 7 weights for weight-only comparison when snapshots are missing.
+
+    The vertical web path can generate a valid candidate weight vector before the
+    candidate's lightweight metric snapshots are available.  In that state the
+    comparison should still show bounded, honest weight/concentration evidence
+    instead of an opaque unavailable row.
+    """
+
+    weights = _normalize_weights((generation_candidate or {}).get("weights"))
+    if not weights:
+        return candidate, False
+    enriched = dict(candidate)
+    used_fallback = False
+    if not _weight_maps_from_row(enriched):
+        enriched["weights"] = weights
+        used_fallback = True
+    if not isinstance(enriched.get("weight_concentration"), Mapping) or not _nested_float(
+        enriched,
+        "weight_concentration",
+        "top1_weight_pct",
+    ):
+        concentration = _weight_concentration_from_weights(weights)
+        if concentration:
+            enriched["weight_concentration"] = concentration
+            used_fallback = True
+    if str(enriched.get("status") or "").strip().lower() == "unavailable" and used_fallback:
+        enriched["status"] = "degraded"
+    return enriched, used_fallback
+
+
 def _normalize_weights(raw: Any) -> dict[str, float]:
     if not isinstance(raw, Mapping):
         return {}
@@ -799,11 +844,15 @@ def _comparison_row(
         candidate_generation,
         str(candidate.get("candidate_id") or ""),
     )
+    candidate_for_compare, used_generation_weight_fallback = _candidate_with_generation_weight_fallback(
+        candidate,
+        generation_candidate,
+    )
     dimensions = [
         _dimension_row(
             field="cagr",
             label="Return",
-            candidate=candidate,
+            candidate=candidate_for_compare,
             baseline=baseline,
             primary_window=primary_window,
             category="risk_return",
@@ -812,7 +861,7 @@ def _comparison_row(
         _dimension_row(
             field="vol_annual",
             label="Volatility",
-            candidate=candidate,
+            candidate=candidate_for_compare,
             baseline=baseline,
             primary_window=primary_window,
             lower_is_better=True,
@@ -822,7 +871,7 @@ def _comparison_row(
         _dimension_row(
             field="max_drawdown",
             label="Max drawdown",
-            candidate=candidate,
+            candidate=candidate_for_compare,
             baseline=baseline,
             primary_window=primary_window,
             lower_is_better=False,
@@ -832,7 +881,7 @@ def _comparison_row(
         _dimension_row(
             field="sharpe",
             label="Sharpe",
-            candidate=candidate,
+            candidate=candidate_for_compare,
             baseline=baseline,
             primary_window=primary_window,
             category="risk_return",
@@ -840,7 +889,7 @@ def _comparison_row(
         ),
     ]
     b_stress = _worst_stress_loss(baseline)
-    c_stress = _worst_stress_loss(candidate)
+    c_stress = _worst_stress_loss(candidate_for_compare)
     dimensions.append(
         _dimension_from_values(
             field="worst_stress_loss",
@@ -863,7 +912,7 @@ def _comparison_row(
                     baseline, "weight_concentration", "top1_weight_pct"
                 ),
                 candidate_value=_nested_float(
-                    candidate, "weight_concentration", "top1_weight_pct"
+                    candidate_for_compare, "weight_concentration", "top1_weight_pct"
                 ),
                 lower_is_better=True,
             ),
@@ -876,7 +925,7 @@ def _comparison_row(
                     baseline, "weight_concentration", "top3_weight_sum_pct"
                 ),
                 candidate_value=_nested_float(
-                    candidate, "weight_concentration", "top3_weight_sum_pct"
+                    candidate_for_compare, "weight_concentration", "top3_weight_sum_pct"
                 ),
                 lower_is_better=True,
             ),
@@ -886,7 +935,7 @@ def _comparison_row(
                 category="concentration",
                 impact_area="concentration_risk",
                 baseline_value=_nested_float(baseline, "weight_concentration", "weight_hhi"),
-                candidate_value=_nested_float(candidate, "weight_concentration", "weight_hhi"),
+                candidate_value=_nested_float(candidate_for_compare, "weight_concentration", "weight_hhi"),
                 lower_is_better=True,
             ),
             _dimension_from_values(
@@ -895,7 +944,7 @@ def _comparison_row(
                 category="concentration",
                 impact_area="risk_contribution",
                 baseline_value=_nested_float(baseline, "diversification", "top1_rc_pct"),
-                candidate_value=_nested_float(candidate, "diversification", "top1_rc_pct"),
+                candidate_value=_nested_float(candidate_for_compare, "diversification", "top1_rc_pct"),
                 lower_is_better=True,
             ),
             _dimension_from_values(
@@ -904,7 +953,7 @@ def _comparison_row(
                 category="concentration",
                 impact_area="risk_contribution",
                 baseline_value=_nested_float(baseline, "diversification", "top3_rc_sum_pct"),
-                candidate_value=_nested_float(candidate, "diversification", "top3_rc_sum_pct"),
+                candidate_value=_nested_float(candidate_for_compare, "diversification", "top3_rc_sum_pct"),
                 lower_is_better=True,
             ),
             _dimension_from_values(
@@ -913,13 +962,13 @@ def _comparison_row(
                 category="concentration",
                 impact_area="risk_contribution",
                 baseline_value=_nested_float(baseline, "diversification", "rc_hhi"),
-                candidate_value=_nested_float(candidate, "diversification", "rc_hhi"),
+                candidate_value=_nested_float(candidate_for_compare, "diversification", "rc_hhi"),
                 lower_is_better=True,
             ),
         ]
     )
     beta_baseline = _metric_value(baseline, "beta_portfolio", primary_window)
-    beta_candidate = _metric_value(candidate, "beta_portfolio", primary_window)
+    beta_candidate = _metric_value(candidate_for_compare, "beta_portfolio", primary_window)
     dimensions.append(
         _dimension_from_values(
             field="beta_portfolio",
@@ -934,7 +983,7 @@ def _comparison_row(
     )
     for beta_key in _FACTOR_BETA_KEYS:
         b_beta = _factor_beta_value(baseline, beta_key)
-        c_beta = _factor_beta_value(candidate, beta_key)
+        c_beta = _factor_beta_value(candidate_for_compare, beta_key)
         if b_beta is None and c_beta is None:
             continue
         dimensions.append(
@@ -957,7 +1006,7 @@ def _comparison_row(
     return {
         "candidate_id": candidate.get("candidate_id"),
         "display_name": candidate.get("display_name"),
-        "status": candidate.get("status"),
+        "status": candidate_for_compare.get("status"),
         "role": candidate.get("role"),
         "artifact_root": candidate.get("artifact_root"),
         "dimensions": dimensions,
@@ -967,14 +1016,14 @@ def _comparison_row(
         "risk_reduced": tradeoff_summary["risk_reduced"],
         "risk_added": tradeoff_summary["risk_added"],
         "practicality": _practicality(
-            candidate=candidate,
+            candidate=candidate_for_compare,
             baseline=baseline,
             generation_candidate=generation_candidate,
         ),
         "success_criteria_result": success_result,
         "client_fit_target_comparison": _client_target_comparison(
             baseline=baseline,
-            candidate=candidate,
+            candidate=candidate_for_compare,
             primary_window=primary_window,
             client_fit_check=client_fit_check,
         ),
@@ -985,7 +1034,15 @@ def _comparison_row(
         "tradeoff_summary": tradeoff_summary,
         "data_quality": {
             "missing_fields": candidate.get("missing_fields") or [],
-            "warnings": candidate.get("warnings") or [],
+            "warnings": (
+                list(candidate.get("warnings") or [])
+                + (
+                    ["candidate_snapshot_metrics_unavailable_using_generated_weights_for_weight_only_comparison"]
+                    if used_generation_weight_fallback
+                    else []
+                )
+            ),
+            "weight_only_fallback_used": used_generation_weight_fallback,
             "construction_disclosure_status": (
                 (candidate.get("construction_disclosure") or {}).get("disclosure_status")
                 if isinstance(candidate.get("construction_disclosure"), dict)

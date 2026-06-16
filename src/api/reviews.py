@@ -1318,6 +1318,26 @@ def _demo_qa_current_vs_candidate_doc(candidate_generation: dict[str, Any], cand
                 "what_improved": [{"label": "Largest-position concentration is lower in the fixture comparison."}],
                 "what_worsened": [{"label": "Turnover and tracking difference require review."}],
                 "what_stayed_similar": [{"label": "The candidate still keeps broad market exposure."}],
+                "dimensions": [
+                    {
+                        "field": "weight_top1_weight_pct",
+                        "label": "Largest holding weight",
+                        "category": "concentration",
+                        "impact_area": "concentration_risk",
+                        "baseline_value": 0.45,
+                        "candidate_value": 0.25,
+                        "delta": -0.2,
+                        "lower_is_better": True,
+                        "direction": "improved",
+                        "status": "available",
+                        "comparison_basis": "candidate_minus_baseline",
+                        "materiality": {
+                            "is_material": True,
+                            "threshold": 0.05,
+                            "status": "assessed",
+                        },
+                    }
+                ],
                 "unavailable_metrics": [{"field": "live price refresh"}],
                 "success_criteria_result": {"overall_status": "met"},
                 "materiality_for_decision_review": {"status": "review_candidate"},

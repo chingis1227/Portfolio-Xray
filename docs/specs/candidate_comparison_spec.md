@@ -13,6 +13,14 @@ The Candidate Comparison layer:
 - marks candidates `available`, `unavailable`, or `degraded`;
 - stays **diagnostic-only** (no selection, no-trade, ranking, or trade instructions).
 
+For the vertical web path, `current_vs_candidate.json` may add a bounded degraded fallback when the
+selected same-run `candidate_generation.json` contains generated weights but the candidate row lacks
+full snapshot metrics. In that case `src/current_vs_candidate.py` can compute weight-only
+concentration and turnover evidence from the generated weights, mark the row as degraded, and keep
+return, volatility, stress, factor, and risk-contribution dimensions unavailable. This fallback does
+not change `candidate_comparison.json` availability rules and must not be presented as full
+performance or stress evidence.
+
 Implementation: `src/candidate_comparison.py` (builder) and `run_compare_variants.py` (CLI). Legacy `portfolio_comparison.json` / `ew_rp_comparison.json` remain for backward compatibility.
 
 Upstream orchestration (optional): [candidate_factory_spec.md](candidate_factory_spec.md) defines how existing per-candidate `run_*.py` scripts are run before comparison so the registry is populated deliberately rather than by ad hoc manual runs.
