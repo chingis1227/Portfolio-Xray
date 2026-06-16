@@ -1,26 +1,24 @@
-"""LEGACY RUNNER WRAPPER — implementation lives in legacy/runners/run_risk_budget_by_asset.py.
+"""LEGACY RUNNER WRAPPER - implementation lives in legacy/runners/run_risk_budget_by_asset.py.
 
 Prefer Core MVP entrypoints:
   python run_core_diagnostics.py
   python run_portfolio_review.py
 See docs/runtime_entrypoints.md.
+
+Emits "WARNING: legacy compatibility runner" and reminds callers this is
+"not the Core MVP product path"; the shared helper also points to
+"scripts/run_blocks_5_to_9_vertical_flow.py" for the current product flow.
 """
 from __future__ import annotations
 
-import subprocess
-import sys
-from pathlib import Path
+from src.legacy_runner_wrapper import run_legacy_runner
+
+LEGACY_RUNNER = "legacy/runners/run_risk_budget_by_asset.py"
+
 
 def main() -> int:
-    root = Path(__file__).resolve().parent
-    target = root / "legacy" / "runners" / "run_risk_budget_by_asset.py"
-    cmd = [sys.executable, str(target), *sys.argv[1:]]
-    sys.stderr.write(
-        "WARNING: legacy compatibility runner. This is not the Core MVP product path. "
-        "Use run_core_diagnostics.py, run_portfolio_review.py, or "
-        "scripts/run_blocks_5_to_9_vertical_flow.py for the current product flow.\n"
-    )
-    return int(subprocess.call(cmd, cwd=str(root)))
+    return run_legacy_runner(LEGACY_RUNNER)
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
