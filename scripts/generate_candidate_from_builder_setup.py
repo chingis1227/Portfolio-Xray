@@ -23,6 +23,8 @@ import sys
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+import yaml
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -68,11 +70,16 @@ def generate_candidate_from_builder_setup(
     kwargs: dict[str, Any] = {}
 
     if run_factory:
+        effective_config_path = _write_builder_constraint_config(
+            candidate_setup,
+            config_path=config_path,
+            output_path=output,
+        )
         completed = _run_one_candidate_factory(
             candidate_id,
             project_root=root,
             force=force,
-            config_path=config_path,
+            config_path=effective_config_path,
             execution_mode=factory_execution_mode,
             python_executable=python_executable,
             runner=runner,
@@ -80,7 +87,7 @@ def generate_candidate_from_builder_setup(
         factory_path = (
             _resolve_path(factory_run_json, root)
             if factory_run_json is not None
-            else _default_factory_run_path(root, config_path)
+            else _default_factory_run_path(root, effective_config_path)
         )
         factory_doc = _read_json_object(factory_path) if factory_path.is_file() else None
         kwargs = generation_kwargs_from_factory_result(
@@ -91,6 +98,10 @@ def generate_candidate_from_builder_setup(
             stderr=str(getattr(completed, "stderr", "") or ""),
         )
         warnings.extend(_factory_warnings(factory_doc))
+        cap_reason = _constraint_violation_reason(candidate_setup, kwargs.get("weights"))
+        if cap_reason:
+            kwargs = {"status": "infeasible", "infeasibility_reason": cap_reason}
+            warnings.append("candidate_weights_rejected_by_builder_constraints")
     else:
         warnings.append("factory_not_run_candidate_weights_not_available")
 
@@ -103,6 +114,96 @@ def generate_candidate_from_builder_setup(
     )
     _write_json(output, document)
     return document
+
+
+def _write_builder_constraint_config(
+    candidate_setup: Mapping[str, Any],
+    *,
+    config_path: str | Path | None,
+    output_path: Path,
+) -> str | Path | None:
+    """Write a run-local config copy with Builder caps applied to backend optimizers."""
+
+    if config_path is None:
+        return None
+    constraints = candidate_setup.get("constraints")
+    constraints = constraints if isinstance(constraints, Mapping) else {}
+    mode = str(constraints.get("mode") or candidate_setup.get("mode") or "capped").strip().lower()
+    if mode == "uncapped":
+        return config_path
+    max_weight = _number_or_none(constraints.get("max_asset_weight"))
+    min_weight = _number_or_none(constraints.get("min_asset_weight"))
+    if max_weight is None and min_weight is None:
+        return config_path
+
+    source = Path(config_path)
+    try:
+        config = yaml.safe_load(source.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError):
+        return config_path
+    if not isinstance(config, dict):
+        return config_path
+
+    if max_weight is not None:
+        config["max_single_security_weight_pct"] = float(max_weight)
+    if min_weight is not None and min_weight > 0:
+        config["min_single_security_weight_pct"] = float(min_weight)
+
+    target = output_path.parent / "_candidate_builder_input.yml"
+    target.write_text(
+        yaml.safe_dump(config, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+    return target
+
+
+def _constraint_violation_reason(
+    candidate_setup: Mapping[str, Any],
+    weights: Any,
+) -> str | None:
+    if not isinstance(weights, Mapping) or not weights:
+        return None
+    constraints = candidate_setup.get("constraints")
+    constraints = constraints if isinstance(constraints, Mapping) else {}
+    mode = str(constraints.get("mode") or candidate_setup.get("mode") or "capped").strip().lower()
+    if mode == "uncapped":
+        return None
+    max_weight = _number_or_none(constraints.get("max_asset_weight"))
+    min_weight = _number_or_none(constraints.get("min_asset_weight"))
+    tolerance = 1e-6
+    if max_weight is not None:
+        violators = [
+            f"{ticker}={float(weight):.6f}"
+            for ticker, weight in weights.items()
+            if _number_or_none(weight) is not None and float(weight) > max_weight + tolerance
+        ]
+        if violators:
+            return (
+                "candidate_weights_exceed_builder_max_asset_weight:"
+                f"max_asset_weight={max_weight:.6f}; " + ", ".join(violators)
+            )
+    if min_weight is not None and min_weight > 0:
+        violators = [
+            f"{ticker}={float(weight):.6f}"
+            for ticker, weight in weights.items()
+            if _number_or_none(weight) is not None and 0 < float(weight) < min_weight - tolerance
+        ]
+        if violators:
+            return (
+                "candidate_weights_below_builder_min_asset_weight:"
+                f"min_asset_weight={min_weight:.6f}; " + ", ".join(violators)
+            )
+    return None
+
+
+def _number_or_none(value: Any) -> float | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed == parsed else None
 
 
 def generation_kwargs_from_factory_result(

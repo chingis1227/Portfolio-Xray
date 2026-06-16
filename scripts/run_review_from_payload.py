@@ -99,6 +99,40 @@ def _read_json(path: Path) -> dict[str, Any]:
     return data
 
 
+def _read_yaml_object(path: Path) -> dict[str, Any] | None:
+    if not path.is_file():
+        return None
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _portfolio_asset_count_from_input(path: Path) -> int | None:
+    data = _read_yaml_object(path)
+    if not data:
+        return None
+    weights = data.get("current_weights") or data.get("weights")
+    if isinstance(weights, dict):
+        count = 0
+        for value in weights.values():
+            if isinstance(value, bool):
+                continue
+            try:
+                if float(value) > 0:
+                    count += 1
+            except (TypeError, ValueError):
+                continue
+        if count > 0:
+            return count
+    tickers = data.get("tickers")
+    if isinstance(tickers, list):
+        count = len([item for item in tickers if str(item or "").strip()])
+        return count or None
+    return None
+
+
 def _positive_weight(value: Any, *, row_number: int) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise PayloadValidationError(f"holding[{row_number}].weight must be a number.")
@@ -1070,6 +1104,9 @@ def prepare_selected_builder_setup(
         overrides["min_asset_weight"] = min_asset_weight
     if max_asset_weight is not None:
         overrides["max_asset_weight"] = max_asset_weight
+    asset_count = _portfolio_asset_count_from_input(run_dir / "input.yml")
+    if asset_count is not None:
+        overrides["asset_count"] = asset_count
 
     setup = build_simple_builder_parameters(prefill, overrides=overrides or None)
     validation = validate_builder_setup(setup)

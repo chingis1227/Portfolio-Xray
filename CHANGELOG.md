@@ -2,6 +2,10 @@
 
 ## 2026-06-16
 
+- Fixed Hypothesis Builder constraint handling. Builder numeric min/max fields are now directly
+  editable after preset selection, the initial capped preset follows the saved Client Fit profile
+  family, infeasible caps are blocked before Candidate/Comparison, and Block 7 rejects or prevents
+  generated weights that violate the visible Builder max weight.
 - Repaired and verified the live Builder-to-Report review flow. Hypothesis Builder now exposes
   simple capped/uncapped setup controls, fresh candidate generation is guarded against stale reused
   artifacts, Comparison receives full current-vs-candidate metric dimensions, and a one-scenario

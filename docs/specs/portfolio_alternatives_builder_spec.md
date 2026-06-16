@@ -80,6 +80,11 @@ Constraint presets:
 | `custom` | user field | user field | capped |
 | `uncapped` | 0% | null | uncapped |
 
+Frontend simple mode may choose the initial capped preset from the saved Client Fit profile family:
+`ultra_conservative` and `conservative` map to the Conservative Builder preset, `balanced` maps to
+Balanced, and `growth` / `aggressive` map to Aggressive. This is only a UI starting point. Client
+Fit targets still do not become optimizer objectives, suitability approval, or hidden mandates.
+
 ## Request Contract
 
 `PortfolioAlternativeRequest` contains:
@@ -197,7 +202,7 @@ Simple Mode is the small editable setup surface between `BuilderPrefill` and `Ca
 build_simple_builder_parameters(prefill, *, overrides=None) -> dict
 ```
 
-The editable setup fields are `goal`, `method`, `mode`, `constraint_preset`, `max_asset_weight`, and `min_asset_weight`. The only user-adjustable optimization fields are `min_asset_weight` and `max_asset_weight`. The allowed presets are `conservative`, `balanced`, `aggressive`, `custom`, `basic_reference`, and `uncapped`. Numeric fields are copied from preset defaults, Launchpad/Strategy Selector hints, or user overrides; preset labels are visible setup labels and do not secretly apply optimizer formulas.
+The editable setup fields are `goal`, `method`, `mode`, `constraint_preset`, `max_asset_weight`, and `min_asset_weight`. The only user-adjustable optimization fields are `min_asset_weight` and `max_asset_weight`. The allowed presets are `conservative`, `balanced`, `aggressive`, `custom`, `basic_reference`, and `uncapped`. Numeric fields are copied from preset defaults, Launchpad/Strategy Selector hints, or user overrides; preset labels are visible setup labels and do not secretly apply optimizer formulas. User-entered numeric overrides may be captured with `constraint_preset: custom` even when a preset originally filled the fields.
 
 The Simple Mode object preserves `builder_prefill_id`, source card/diagnosis/problem ids, `method_role`, `original_suggested_method`, `selected_method`, `method_changed_by_user`, hypothesis, success criteria, optional Client Fit context/test criteria, tradeoff, skip rule, decision boundary, and `is_rebalance_recommendation: false`. It also exposes `parameters` and `constraints` sub-objects for UI/API convenience.
 
@@ -217,6 +222,12 @@ Validation is the Block 6 guard before any Block 7 candidate generation. The pub
 ```text
 validate_builder_setup(setup) -> dict
 ```
+
+For frontend/run-local generation, validation may receive non-editable `asset_count` / `n_assets`
+metadata from the current input portfolio. If `max_asset_weight * asset_count < 1.0` or
+`min_asset_weight * asset_count > 1.0`, validation returns `infeasible_constraints_risk` and
+`can_generate_candidate: false`. The UI must show this as an actionable cap/holding-count problem
+and must not unlock Candidate Generation or Comparison.
 
 The result contains `validation_status`, `can_generate_candidate`, `validation_errors`, and `validation_warnings`. The status is exactly one of:
 

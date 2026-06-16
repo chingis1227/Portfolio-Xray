@@ -15,7 +15,7 @@ from src.portfolio_alternatives_builder import (
 )
 
 
-def _candidate_setup(method: str = "minimum_cvar") -> dict[str, object]:
+def _candidate_setup(method: str = "minimum_cvar", edits: dict[str, object] | None = None) -> dict[str, object]:
     prefill = launchpad_card_to_builder_prefill(
         {
             "card_id": f"launchpad_01_{method}",
@@ -36,7 +36,7 @@ def _candidate_setup(method: str = "minimum_cvar") -> dict[str, object]:
             "decision_boundary": "This is not a rebalance recommendation.",
         }
     )
-    setup = builder_prefill_to_candidate_setup(prefill)
+    setup = builder_prefill_to_candidate_setup(prefill, edits=edits)
     assert setup is not None
     return setup
 
@@ -114,7 +114,7 @@ def test_infeasible_factory_attempt_is_preserved_as_infeasible(tmp_path: Path) -
 
 
 def test_runtime_script_writes_generated_candidate_from_factory_weights(tmp_path: Path) -> None:
-    setup = _candidate_setup("equal_weight")
+    setup = _candidate_setup("equal_weight", {"constraint_preset": "basic_reference"})
     builder_doc = {
         "can_generate_candidate": True,
         "candidate_setup": setup,
@@ -167,3 +167,108 @@ def test_runtime_script_writes_generated_candidate_from_factory_weights(tmp_path
     assert document["candidate"]["is_rebalance_recommendation"] is False
     assert document["handoff_to_comparison"]["can_compare"] is True
     assert json.loads(output.read_text(encoding="utf-8"))["candidate"]["candidate_id"] == "equal_weight"
+
+
+def test_runtime_script_applies_builder_max_cap_to_factory_config(tmp_path: Path) -> None:
+    setup = _candidate_setup("minimum_cvar", {"constraint_preset": "custom", "max_asset_weight": 0.2})
+    builder_doc = {
+        "can_generate_candidate": True,
+        "candidate_setup": setup,
+    }
+    builder_path = tmp_path / "run" / "analysis_subject" / "portfolio_alternatives_builder.json"
+    builder_path.parent.mkdir(parents=True)
+    builder_path.write_text(json.dumps(builder_doc), encoding="utf-8")
+    config_path = tmp_path / "run" / "input.yml"
+    config_path.write_text(
+        "tickers: [SPY, GLD, AGG, EWJ, Cash USD]\ncurrent_weights: {SPY: 0.2, GLD: 0.2, AGG: 0.2, EWJ: 0.2, Cash USD: 0.2}\ninvestor_currency: USD\n",
+        encoding="utf-8",
+    )
+    artifact_dir = tmp_path / "minimum cvar constrained portfolio"
+    artifact_dir.mkdir()
+    (artifact_dir / "weights.json").write_text(
+        json.dumps({"SPY": 0.2, "GLD": 0.2, "AGG": 0.2, "EWJ": 0.2, "Cash USD": 0.2}),
+        encoding="utf-8",
+    )
+    factory_path = tmp_path / "run" / "candidate_factory_run.json"
+    factory_path.write_text(
+        json.dumps(
+            _factory_doc(
+                "minimum_cvar_constrained",
+                {
+                    "status": "succeeded",
+                    "artifact_root": "minimum cvar constrained portfolio",
+                    "reason_code": None,
+                    "message": None,
+                },
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    calls: list[list[str]] = []
+
+    def fake_runner(command: list[str], **_: object) -> SimpleNamespace:
+        calls.append(command)
+        return SimpleNamespace(returncode=0, stderr="")
+
+    output = tmp_path / "run" / "candidate_generation.json"
+    document = generate_candidate_from_builder_setup(
+        builder_input=builder_path,
+        output_path=output,
+        project_root=tmp_path,
+        factory_run_json=factory_path,
+        config_path=config_path,
+        runner=fake_runner,
+    )
+
+    assert document["generation_status"] == "generated"
+    assert "--config" in calls[0]
+    generated_config = Path(calls[0][calls[0].index("--config") + 1])
+    assert generated_config.name == "_candidate_builder_input.yml"
+    assert "max_single_security_weight_pct: 0.2" in generated_config.read_text(encoding="utf-8")
+
+
+def test_runtime_script_blocks_weights_that_violate_builder_max_cap(tmp_path: Path) -> None:
+    setup = _candidate_setup("minimum_cvar", {"constraint_preset": "custom", "max_asset_weight": 0.2})
+    builder_doc = {
+        "can_generate_candidate": True,
+        "candidate_setup": setup,
+    }
+    builder_path = tmp_path / "run" / "analysis_subject" / "portfolio_alternatives_builder.json"
+    builder_path.parent.mkdir(parents=True)
+    builder_path.write_text(json.dumps(builder_doc), encoding="utf-8")
+    artifact_dir = tmp_path / "minimum cvar constrained portfolio"
+    artifact_dir.mkdir()
+    (artifact_dir / "weights.json").write_text(
+        json.dumps({"SPY": 0.15, "GLD": 0.25, "AGG": 0.2, "EWJ": 0.2, "Cash USD": 0.2}),
+        encoding="utf-8",
+    )
+    factory_path = tmp_path / "run" / "candidate_factory_run.json"
+    factory_path.write_text(
+        json.dumps(
+            _factory_doc(
+                "minimum_cvar_constrained",
+                {
+                    "status": "succeeded",
+                    "artifact_root": "minimum cvar constrained portfolio",
+                    "reason_code": None,
+                    "message": None,
+                },
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    output = tmp_path / "run" / "candidate_generation.json"
+    document = generate_candidate_from_builder_setup(
+        builder_input=builder_path,
+        output_path=output,
+        project_root=tmp_path,
+        factory_run_json=factory_path,
+        runner=lambda command, **_: SimpleNamespace(returncode=0, stderr=""),
+    )
+
+    assert document["generation_status"] == "infeasible"
+    assert document["candidate"]["weights"] is None
+    assert "candidate_weights_exceed_builder_max_asset_weight" in document["candidate"]["infeasibility_reason"]
+    assert document["handoff_to_comparison"]["can_compare"] is False

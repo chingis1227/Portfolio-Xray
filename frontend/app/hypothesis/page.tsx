@@ -39,6 +39,14 @@ const DEFAULT_BUILDER_SETTINGS: BuilderSettings = {
   maxAssetWeight: 0.2
 };
 
+const CLIENT_FIT_TO_BUILDER_PRESET: Record<string, ConstraintPreset> = {
+  ultra_conservative: "conservative",
+  conservative: "conservative",
+  balanced: "balanced",
+  growth: "aggressive",
+  aggressive: "aggressive"
+};
+
 function isRecord(value: unknown): value is JsonRecord {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -116,6 +124,41 @@ function builderOverrides(settings: BuilderSettings, methodId?: string): Builder
   if (settings.minAssetWeight !== null) overrides.min_asset_weight = settings.minAssetWeight;
   if (settings.maxAssetWeight !== null) overrides.max_asset_weight = settings.maxAssetWeight;
   return overrides;
+}
+
+function settingsForConstraintPreset(preset: ConstraintPreset): BuilderSettings {
+  const matched = CAPPED_PRESETS.find((item) => item.id === preset);
+  return {
+    mode: "capped",
+    constraintPreset: preset,
+    minAssetWeight: matched?.min ?? null,
+    maxAssetWeight: matched?.max ?? null
+  };
+}
+
+function builderSettingsForClientFit(activeReview?: ActiveReviewState): BuilderSettings {
+  const presetId = optionalText(activeReview?.clientFitProfile?.preset_id)
+    ?? optionalText(activeReview?.reviewSummary?.clientFit?.profile_label);
+  const preset = presetId ? CLIENT_FIT_TO_BUILDER_PRESET[presetId] : undefined;
+  return preset ? settingsForConstraintPreset(preset) : DEFAULT_BUILDER_SETTINGS;
+}
+
+function formatGenerationError(value: unknown, fallback: string) {
+  const raw = safeErrorText(value, fallback);
+  const serialized = `${raw} ${JSON.stringify(value)}`;
+  if (/max_asset_weight_too_low_for_asset_count|infeasible_constraints_risk/i.test(serialized)) {
+    return "This cap cannot create a full 100% test portfolio with the current number of holdings. Increase the max asset weight or add more holdings, then generate the candidate again.";
+  }
+  if (/candidate_weights_exceed_builder_max_asset_weight/i.test(serialized)) {
+    return "The generated candidate violated the selected max asset weight, so Portfolio MRI blocked comparison. Increase the cap or regenerate with a different setup.";
+  }
+  if (/max_asset_weight_below_min_asset_weight/i.test(serialized)) {
+    return "Max asset weight must be greater than or equal to min asset weight.";
+  }
+  if (/max_asset_weight_must_be_positive/i.test(serialized)) {
+    return "Max asset weight must be above 0%.";
+  }
+  return raw;
 }
 
 function sampleActiveReview(generated: boolean): ActiveReviewState {
@@ -351,7 +394,7 @@ function BuilderControls({
       });
       return;
     }
-    onChange(DEFAULT_BUILDER_SETTINGS);
+    onChange(settingsForConstraintPreset("balanced"));
   }
 
   function applyPreset(preset: ConstraintPreset) {
@@ -415,8 +458,8 @@ function BuilderControls({
                 max={100}
                 step={0.25}
                 value={percentInputValue(settings.minAssetWeight)}
-                disabled={disabled || settings.mode === "uncapped" || settings.constraintPreset !== "custom"}
-                onChange={(event) => onChange({ ...settings, minAssetWeight: parsePercentInput(event.target.value) })}
+                disabled={disabled || settings.mode === "uncapped"}
+                onChange={(event) => onChange({ ...settings, constraintPreset: "custom", minAssetWeight: parsePercentInput(event.target.value) })}
                 className="pmri-focus w-full bg-transparent text-sm text-pmri-text outline-none disabled:opacity-60"
               />
               <span className="ml-2 text-xs text-pmri-muted">%</span>
@@ -432,8 +475,8 @@ function BuilderControls({
                 max={100}
                 step={0.25}
                 value={percentInputValue(settings.maxAssetWeight)}
-                disabled={disabled || settings.mode === "uncapped" || settings.constraintPreset !== "custom"}
-                onChange={(event) => onChange({ ...settings, maxAssetWeight: parsePercentInput(event.target.value) })}
+                disabled={disabled || settings.mode === "uncapped"}
+                onChange={(event) => onChange({ ...settings, constraintPreset: "custom", maxAssetWeight: parsePercentInput(event.target.value) })}
                 className="pmri-focus w-full bg-transparent text-sm text-pmri-text outline-none disabled:opacity-60"
               />
               <span className="ml-2 text-xs text-pmri-muted">%</span>
@@ -787,6 +830,11 @@ export default function HypothesisPage() {
   }, [model.defaultSelectedCardId, selectedCardId]);
 
   useEffect(() => {
+    if (sampleMode || !effectiveReview?.reviewId) return;
+    setBuilderSettings(builderSettingsForClientFit(effectiveReview));
+  }, [effectiveReview?.reviewId, sampleMode]);
+
+  useEffect(() => {
     setGenerationError(undefined);
   }, [selectedCardId, effectiveReview?.reviewId]);
 
@@ -848,7 +896,11 @@ export default function HypothesisPage() {
       });
       const prepareResult = await prepareResponse.json() as unknown;
       if (!prepareResponse.ok || !isRecord(prepareResult) || prepareResult.status !== "completed") {
-        setGenerationError(safeErrorText(prepareResult, "The selected test could not be prepared."));
+        setGenerationError(formatGenerationError(prepareResult, "The selected test could not be prepared."));
+        return;
+      }
+      if (prepareResult.can_generate_candidate !== true) {
+        setGenerationError(formatGenerationError(prepareResult, "The selected setup cannot generate a candidate. Adjust the cap or choose another preset."));
         return;
       }
       recordBuilderSetup(prepareResult);
@@ -867,7 +919,11 @@ export default function HypothesisPage() {
       });
       const result = await response.json() as unknown;
       if (!response.ok || !isRecord(result) || result.status !== "completed") {
-        setGenerationError(safeErrorText(result, "The test candidate could not be generated."));
+        setGenerationError(formatGenerationError(result, "The test candidate could not be generated."));
+        return;
+      }
+      if (result.can_compare !== true) {
+        setGenerationError(formatGenerationError(result, "The candidate could not be compared. Adjust the setup and generate it again."));
         return;
       }
       recordCandidateGeneration(result);

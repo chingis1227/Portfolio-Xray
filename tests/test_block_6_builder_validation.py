@@ -140,6 +140,20 @@ def test_builder_validation_flags_obvious_feasibility_risk() -> None:
     assert validation["validation_errors"] == ["max_asset_weight_too_low_for_asset_count"]
 
 
+def test_builder_validation_uses_asset_count_from_simple_mode_metadata() -> None:
+    prefill = launchpad_card_to_builder_prefill(_launchpad_card())
+    setup = build_simple_builder_parameters(
+        prefill,
+        overrides={"constraint_preset": "custom", "max_asset_weight": 0.1, "asset_count": 5},
+    )
+
+    validation = validate_builder_setup(setup)
+
+    assert setup["asset_count"] == 5
+    assert validation["validation_status"] == "infeasible_constraints_risk"
+    assert validation["validation_errors"] == ["max_asset_weight_too_low_for_asset_count"]
+
+
 def test_builder_validation_preserves_reference_benchmark_boundary() -> None:
     prefill = launchpad_card_to_builder_prefill(
         _launchpad_card(

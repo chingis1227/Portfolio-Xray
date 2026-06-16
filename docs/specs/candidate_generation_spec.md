@@ -29,6 +29,11 @@ delegates one backend candidate id to `run_candidate_factory.py --execution-mode
 `Main portfolio/candidate_generation.json`. The script does not pass `--then-compare`; Block 8 owns
 comparison and Block 9 owns the verdict.
 
+When a capped Builder setup supplies `max_asset_weight` or positive `min_asset_weight`, the runtime
+script writes a run-local `_candidate_builder_input.yml` config copy and passes it to the backend
+factory so guided candidate builders receive the selected single-asset cap/floor. The source
+`input.yml` is not mutated.
+
 ## Public Helpers
 
 The contract builder is:
@@ -108,6 +113,12 @@ Failed and infeasible attempts keep `weights: null`, keep `is_rebalance_recommen
 set `handoff_to_comparison.can_compare: false`. Existing `weights.json` files are ignored when the
 current factory step is failed or infeasible, so stale artifacts cannot turn a failed attempt into a
 candidate recommendation or comparison input.
+
+After successful factory output is read, the runtime script checks generated weights against the
+Builder min/max asset-weight constraints. If any positive weight violates the selected cap/floor, the
+attempt is rewritten as `generation_status: infeasible`, `weights: null`, and
+`handoff_to_comparison.can_compare: false`. This prevents Comparison from opening on a candidate that
+does not respect the visible Builder setup.
 
 ## Method Mapping
 

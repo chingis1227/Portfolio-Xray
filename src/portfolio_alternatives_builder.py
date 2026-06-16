@@ -853,6 +853,18 @@ def build_simple_builder_parameters(
         "prohibited_advanced_fields": [],
         "warnings": warning_list,
     }
+    asset_count = _simple_number_or_none(
+        _first_present(
+            edits.get("asset_count"),
+            edits.get("n_assets"),
+            prefill.get("asset_count"),
+            prefill.get("n_assets"),
+            strategy.get("asset_count"),
+            strategy.get("n_assets"),
+        )
+    )
+    if asset_count is not None:
+        setup["asset_count"] = int(asset_count)
     setup["parameters"] = {
         field: setup[field]
         for field in SIMPLE_BUILDER_EDITABLE_FIELDS
