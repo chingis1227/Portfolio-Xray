@@ -2023,6 +2023,29 @@ def _safe_error(
     )
 
 
+def _failed_envelope_contract_fields(
+    *,
+    code: str,
+    message: str,
+    user_action: str,
+    retryable: bool,
+    details: list[str] | None = None,
+) -> dict[str, Any]:
+    """Return common public failure fields shared by stage response envelopes."""
+
+    return {
+        "warnings": [],
+        "safe_error": _safe_error(
+            code=code,
+            message=message,
+            user_action=user_action,
+            retryable=retryable,
+            details=details,
+        ),
+        "evidence": ApiEvidence(source_artifacts=[], data_quality="unknown", confidence="unknown"),
+    }
+
+
 def _error_code_for_stage_exception(exc: BaseException, *, stage: str) -> tuple[int, str, str, bool]:
     """Map internal bridge exceptions to bounded public API errors."""
 
@@ -2059,15 +2082,13 @@ def _failed_create_envelope(
         status="failed",
         lineage=ApiLineage(review_id=review_id),
         data=ReviewCreatedData(next_allowed_actions=[]),
-        warnings=[],
-        safe_error=_safe_error(
+        **_failed_envelope_contract_fields(
             code=code,
             message=message,
             user_action=user_action,
             retryable=retryable,
             details=details,
         ),
-        evidence=ApiEvidence(source_artifacts=[], data_quality="unknown", confidence="unknown"),
     )
 
 
@@ -2155,15 +2176,13 @@ def _failed_builder_envelope(
         status="failed",
         lineage=ApiLineage(review_id=review_id, selected_card_id=selected_card_id),
         data=BuilderData(next_allowed_actions=["select_another_card"] if selected_card_id else []),
-        warnings=[],
-        safe_error=_safe_error(
+        **_failed_envelope_contract_fields(
             code=code,
             message=message,
             user_action=user_action,
             retryable=retryable,
             details=details,
         ),
-        evidence=ApiEvidence(source_artifacts=[], data_quality="unknown", confidence="unknown"),
     )
 
 
@@ -2190,15 +2209,13 @@ def _failed_candidate_envelope(
             builder_setup_id=builder_setup_id,
         ),
         data=CandidateData(next_allowed_actions=["select_another_card"]),
-        warnings=[],
-        safe_error=_safe_error(
+        **_failed_envelope_contract_fields(
             code=code,
             message=message,
             user_action=user_action,
             retryable=retryable,
             details=details,
         ),
-        evidence=ApiEvidence(source_artifacts=[], data_quality="unknown", confidence="unknown"),
     )
 
 
@@ -2225,15 +2242,13 @@ def _failed_comparison_envelope(
             candidate_id=candidate_id,
         ),
         data=ComparisonData(next_allowed_actions=["test_another_hypothesis"]),
-        warnings=[],
-        safe_error=_safe_error(
+        **_failed_envelope_contract_fields(
             code=code,
             message=message,
             user_action=user_action,
             retryable=retryable,
             details=details,
         ),
-        evidence=ApiEvidence(source_artifacts=[], data_quality="unknown", confidence="unknown"),
     )
 
 
@@ -2262,15 +2277,13 @@ def _failed_verdict_envelope(
             comparison_id=comparison_id,
         ),
         data=VerdictData(next_allowed_actions=["rerun_comparison"]),
-        warnings=[],
-        safe_error=_safe_error(
+        **_failed_envelope_contract_fields(
             code=code,
             message=message,
             user_action=user_action,
             retryable=retryable,
             details=details,
         ),
-        evidence=ApiEvidence(source_artifacts=[], data_quality="unknown", confidence="unknown"),
     )
 
 
@@ -2301,15 +2314,13 @@ def _failed_report_envelope(
             verdict_id=verdict_id,
         ),
         data=ReportData(),
-        warnings=[],
-        safe_error=_safe_error(
+        **_failed_envelope_contract_fields(
             code=code,
             message=message,
             user_action=user_action,
             retryable=retryable,
             details=details,
         ),
-        evidence=ApiEvidence(source_artifacts=[], data_quality="unknown", confidence="unknown"),
     )
 
 

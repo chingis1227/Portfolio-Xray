@@ -424,8 +424,36 @@ def test_direct_staged_diagnosis_service_calls_materializer_without_subprocess(
     assert calls[0]["cfg"] is fake_cfg
     assert calls[0]["output_profile"] == "site_api"
     assert calls[0]["review_mode"] == "core"
-    assert calls[0]["use_review_run_context"] is False
+    assert calls[0]["use_review_run_context"] is True
     assert calls[0]["core_diagnostics_only"] is False
+
+
+def test_direct_staged_diagnosis_service_allows_shared_context_rollback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict] = []
+
+    def fake_materializer(_cfg, **kwargs):
+        calls.append(kwargs)
+
+    monkeypatch.setenv("PMRI_STAGED_REVIEW_SHARED_CONTEXT", "0")
+    monkeypatch.setattr(staged_diagnosis_service, "load_validated_config", lambda path: SimpleNamespace())
+    monkeypatch.setattr(staged_diagnosis_service, "cleanup_old_cache", lambda keep_versions: None)
+    monkeypatch.setitem(
+        sys.modules,
+        "run_report",
+        SimpleNamespace(run_materialize_analysis_subject_report=fake_materializer),
+    )
+
+    completed = staged_diagnosis_service.run_staged_diagnosis_service(
+        tmp_path / "input.yml",
+        mode=bridge.MODE_DIAGNOSIS_PLUS_PROBLEM,
+        project_root=bridge.PROJECT_ROOT,
+    )
+
+    assert completed.returncode == 0
+    assert calls[0]["use_review_run_context"] is False
 
 
 def test_direct_staged_diagnosis_service_maps_core_mode(
