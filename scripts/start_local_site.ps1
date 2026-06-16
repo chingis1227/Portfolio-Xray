@@ -10,6 +10,8 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $frontendRoot = Join-Path $repoRoot "frontend"
 $python = Join-Path $repoRoot ".venv\Scripts\python.exe"
+$frontendPackageJson = Join-Path $frontendRoot "package.json"
+$nextCli = Join-Path $frontendRoot "node_modules\next\dist\bin\next"
 $backendUrl = "http://${HostName}:${BackendPort}"
 $frontendUrl = "http://${HostName}:${FrontendPort}"
 $logRoot = Join-Path $repoRoot "output\local_site"
@@ -51,6 +53,18 @@ if (-not (Test-Path $python)) {
 
 if (-not (Test-Path $frontendRoot)) {
   throw "Frontend directory was not found at $frontendRoot."
+}
+
+if (-not (Get-Command "npm.cmd" -ErrorAction SilentlyContinue)) {
+  throw "npm.cmd was not found on PATH. Install Node.js/npm before starting the local site."
+}
+
+if (-not (Test-Path $frontendPackageJson)) {
+  throw "Frontend package.json was not found at $frontendPackageJson."
+}
+
+if (-not (Test-Path $nextCli)) {
+  throw "Next CLI was not found at $nextCli. Run 'cd frontend; npm install' before starting the local site."
 }
 
 New-Item -ItemType Directory -Force -Path $logRoot | Out-Null

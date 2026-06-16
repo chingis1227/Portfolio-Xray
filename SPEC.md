@@ -22,7 +22,12 @@ Terminology boundary: product-facing documents should describe the current user-
 
 ## Canonical Product Scope
 
-Canonical current product flow:
+`SPEC.md` owns implementation truth, not the full product narrative. The short product narrative is
+in `README.md`; product direction is in `PRODUCT.md`; cross-step behavior is in
+`docs/contracts/PRODUCT_FLOW_CONTRACT.md`.
+
+The current implementation must be interpreted through the diagnosis-first, current-portfolio-first
+flow:
 
 ```text
 Input portfolio
@@ -39,19 +44,14 @@ Input portfolio
 -> Monitoring / What Changed
 ```
 
-This is the current product contract. The implementation is still CLI/file-driven and partially report-first, but current product surfaces must be interpreted through this flow, not through the older optimization/scorecard/report package.
+The implementation is still partly CLI/file-driven and report-first, but current product surfaces
+must not be interpreted as an optimizer arena, scorecard-first product, or report package merely
+because older support artifacts exist.
 
-Staged web execution contract: the web path uses staged review execution where `Run diagnosis`
-creates `review_id` immediately, the backend records `review_state_v1`, and the frontend unlocks
-partial results by canonical stage. The backend start/status endpoints are implemented as
-`POST /api/v1/reviews/staged` and `GET /api/v1/reviews/{review_id}/status`; the backend stage runner
-synchronizes diagnosis and downstream stage state from run-local artifacts. Staged `demo_qa` mode is
-implemented for backend Demo / QA runs via `options.sample_mode: true`; it writes frozen fixture
-evidence for diagnosis and downstream vertical QA stages and does not call external market-data
-providers. The frontend polls staged status, persists compact active-review state, and recovers an
-in-flight review after browser refresh. The source of truth for that wrapper is
-`docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`. The existing synchronous FastAPI and
-CLI/file-driven compatibility behavior remains valid for compatibility callers.
+Staged web execution is implemented through `POST /api/v1/reviews/staged`,
+`GET /api/v1/reviews/{review_id}/status`, run-local `review_state_v1`, frontend polling, compact
+active-review recovery, and Demo / QA fixture mode. The owning contract is
+`docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`; keep field-level or status-level detail there.
 
 Current live Run Diagnostics boundary: the staged diagnosis path does not compute or emit macro
 regime diagnostics, regime factor analytics, regime portfolio metrics, or portfolio PCA in new

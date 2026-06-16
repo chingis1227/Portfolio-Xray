@@ -192,16 +192,31 @@ function stopProcess(child) {
   child.kill('SIGTERM');
 }
 
+function resolvePythonCommand() {
+  const venvPython = path.join(repoRoot, '.venv', 'Scripts', 'python.exe');
+  if (fs.existsSync(venvPython)) {
+    return { command: venvPython, argsPrefix: [] };
+  }
+
+  try {
+    execFileSync('py', ['-3', '--version'], { stdio: 'ignore' });
+    return { command: 'py', argsPrefix: ['-3'] };
+  } catch (_error) {}
+
+  try {
+    execFileSync('python', ['--version'], { stdio: 'ignore' });
+    return { command: 'python', argsPrefix: [] };
+  } catch (_error) {}
+
+  throw new Error(`Python not found. Checked ${venvPython}, py -3, and python.`);
+}
+
 function startFastApi(port) {
-  const python = fs.existsSync(path.join(repoRoot, '.venv', 'Scripts', 'python.exe'))
-    ? path.join(repoRoot, '.venv', 'Scripts', 'python.exe')
-    : 'py';
-  const args = python === 'py'
-    ? ['-3', '-m', 'uvicorn', 'src.api.app:app', '--host', host, '--port', String(port)]
-    : ['-m', 'uvicorn', 'src.api.app:app', '--host', host, '--port', String(port)];
+  const python = resolvePythonCommand();
+  const args = [...python.argsPrefix, '-m', 'uvicorn', 'src.api.app:app', '--host', host, '--port', String(port)];
   const lines = [];
   const internalSecret = process.env.PMRI_FASTAPI_INTERNAL_SECRET || process.env.PMRI_INTERNAL_AUTH_SECRET || 'vertical-qa-internal-secret';
-  const child = spawn(python, args, {
+  const child = spawn(python.command, args, {
     cwd: repoRoot,
     env: {
       ...process.env,

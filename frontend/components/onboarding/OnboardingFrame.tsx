@@ -72,7 +72,7 @@ export function OnboardingFrame({
           <div className="mx-auto w-full max-w-2xl text-center lg:text-left">
             <div className="mb-8 flex justify-center lg:justify-start">
               <div className="rounded-3xl border border-pmri-border/55 bg-white/[0.035] p-4 shadow-decision">
-                <BrandMark className="h-14 w-14" />
+                <BrandMark size="lg" />
               </div>
             </div>
             <p className="pmri-label text-pmri-blueSoft">{eyebrow}</p>

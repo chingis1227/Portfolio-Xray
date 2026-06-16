@@ -25,11 +25,16 @@ governed by `SPEC.md`, `OUTPUTS.md`, detailed specs, and code.
 
 ## Current Pointer
 
-**Active:** [Exhaustive QA System](2026-06-14_exhaustive_qa_system_plan.md) - current release-grade
-QA handoff. Sessions 01-03 delivered the baseline orchestrator, P0 Run Diagnosis compatibility
-guard, local exhaustive gate, browser vertical/staging release-readiness hooks, detailed findings,
-and `qa-release-readiness.*`. Current release readiness is **not ready** until the blockers recorded
-in `KNOWN_ISSUES.md` are fixed, especially `KI-2026-06-14-001`.
+**Active:** [Documentation 9/10 Maintenance Plan](2026-06-16_documentation_9_10_plan.md) - current
+documentation cleanup plan. It keeps README short, clarifies owning-document routing, reduces
+top-level duplication, and strengthens current-vs-historical boundaries without changing runtime
+code, APIs, schemas, formulas, generated outputs, or frontend/backend behavior.
+
+**Paused Active Context:** [Exhaustive QA System](2026-06-14_exhaustive_qa_system_plan.md) -
+release-grade QA handoff. Sessions 01-03 delivered the baseline orchestrator, P0 Run Diagnosis
+compatibility guard, local exhaustive gate, browser vertical/staging release-readiness hooks,
+detailed findings, and `qa-release-readiness.*`. Current release readiness is **not ready** until
+the blockers recorded in `KNOWN_ISSUES.md` are fixed, especially `KI-2026-06-14-001`.
 
 **Completed:** [Repair the Builder to Report live review flow](2026-06-16_repair_builder_candidate_comparison_flow.md) -
 completed 2026-06-16. Sessions 1-4 repaired backend candidate freshness, Comparison API evidence

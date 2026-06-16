@@ -30,7 +30,8 @@ function Get-ProjectPython {
     $venvPython = Join-Path $RepoRoot ".venv\Scripts\python.exe"
     if (Test-Path $venvPython) { return @($venvPython) }
     if (Get-Command py -ErrorAction SilentlyContinue) { return @("py", "-3") }
-    throw "Python not found. Expected .\.venv\Scripts\python.exe or py -3."
+    if (Get-Command python -ErrorAction SilentlyContinue) { return @("python") }
+    throw "Python not found. Checked .\.venv\Scripts\python.exe, py -3, and python."
 }
 
 function Get-LogSafeName {

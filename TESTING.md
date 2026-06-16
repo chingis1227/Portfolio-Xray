@@ -12,6 +12,28 @@ Verify the changed risk, not just the changed file.
 
 Use the narrowest reliable check first. Broaden only when the change touches shared math, data alignment, optimizer behavior, config/schema, stress logic, report exports, or generated artifact contracts.
 
+For documentation-only work, do not run runtime, frontend, backend, or generated-output refresh
+commands by default. Run documentation link/stale-reference checks, `git diff --check`, and targeted
+command/path existence checks when the edited docs mention commands or files. Broaden to runtime
+tests only if the documentation change also changes executable examples, required commands,
+acceptance criteria, or behavior expectations.
+
+## Fast Docs-Only Gate
+
+Use this gate for documentation cleanup, source-of-truth routing changes, README/product wording, or
+historical-document labeling when no runtime behavior changed:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\verify_docs.py
+git diff --check
+git status --short
+```
+
+Add a targeted stale-language or command/path search when the edit renames concepts, moves files, or
+changes documented commands. Do not run `python run_portfolio_review.py`, frontend builds, full
+pytest, or generated-output refreshes for docs-only cleanup unless the edited docs change executable
+behavior claims.
+
 ## Verification Levels
 
 | Level | Use when | Commands or checks |

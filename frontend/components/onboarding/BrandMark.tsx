@@ -1,6 +1,16 @@
-export function BrandMark({ className = "h-12 w-12" }: { className?: string }) {
+const brandMarkSizeClasses = {
+  sm: "h-8 w-8",
+  md: "h-9 w-9",
+  base: "h-12 w-12",
+  lg: "h-14 w-14",
+  xl: "h-20 w-20"
+};
+
+type BrandMarkSize = keyof typeof brandMarkSizeClasses;
+
+export function BrandMark({ size = "base" }: { size?: BrandMarkSize }) {
   return (
-    <svg className={className} viewBox="0 0 64 64" role="img" aria-label="Portfolio MRI mark">
+    <svg className={brandMarkSizeClasses[size]} viewBox="0 0 64 64" role="img" aria-label="Portfolio MRI mark">
       <defs>
         <linearGradient id="pmri-mark-gradient" x1="14" x2="50" y1="10" y2="54" gradientUnits="userSpaceOnUse">
           <stop stopColor="#ECEFF3" />

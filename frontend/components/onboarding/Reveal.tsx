@@ -2,13 +2,23 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+const revealLayoutClasses = {
+  default: "",
+  hero: "relative z-10 w-full",
+  stack: "space-y-6",
+  centered: "text-center",
+  centeredColumn: "flex flex-col justify-center"
+};
+
+type RevealLayout = keyof typeof revealLayoutClasses;
+
 export function Reveal({
   children,
-  className = "",
+  layout = "default",
   delay = 0
 }: {
   children: ReactNode;
-  className?: string;
+  layout?: RevealLayout;
   delay?: number;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -35,7 +45,7 @@ export function Reveal({
   return (
     <div
       ref={ref}
-      className={`${className} pmri-scroll-reveal ${visible ? "pmri-scroll-reveal-visible" : ""}`}
+      className={`${revealLayoutClasses[layout]} pmri-scroll-reveal ${visible ? "pmri-scroll-reveal-visible" : ""}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
       {children}

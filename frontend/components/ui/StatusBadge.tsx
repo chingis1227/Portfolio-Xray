@@ -12,12 +12,11 @@ const toneClasses = {
 type StatusBadgeProps = {
   children: ReactNode;
   tone?: keyof typeof toneClasses;
-  className?: string;
 };
 
-export function StatusBadge({ children, tone = "slate", className = "" }: StatusBadgeProps) {
+export function StatusBadge({ children, tone = "slate" }: StatusBadgeProps) {
   return (
-    <span className={`inline-flex max-w-full items-center whitespace-nowrap rounded-full border px-2.5 py-1.5 text-xs font-medium leading-none tracking-[-0.005em] ${toneClasses[tone]} ${className}`}>
+    <span className={`inline-flex max-w-full items-center whitespace-nowrap rounded-full border px-2.5 py-1.5 text-xs font-medium leading-none tracking-[-0.005em] ${toneClasses[tone]}`}>
       {children}
     </span>
   );

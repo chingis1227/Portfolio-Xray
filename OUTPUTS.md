@@ -12,24 +12,19 @@ Generated outputs are evidence and deliverables, not source files, unless a task
 
 Source files define behavior. Generated files show the result of a run.
 
-Output interpretation must follow the current diagnosis-first, current-portfolio-first product boundary:
+Output interpretation must follow the current diagnosis-first, current-portfolio-first product
+boundary defined in `PRODUCT.md` and `docs/contracts/PRODUCT_FLOW_CONTRACT.md`. Older/generated
+artifacts such as Health Score, Robustness Scorecard, Selection Engine outputs, Action Plan,
+Decision Journal, macro dashboards, full candidate arenas, sensitivity/Pareto/regret, and
+PDF/report packages may exist, but they are advanced/backend/legacy/generated support unless a task
+explicitly targets them.
 
-```text
-Input portfolio
--> Portfolio Diagnosis
--> Stress Test Lab
--> Client Fit Check
--> Problem Classification
--> Candidate Launchpad
--> Portfolio Alternatives Builder
--> Candidate Generation
--> Current vs Candidate Comparison
--> Decision Verdict
--> AI Commentary / grounding
--> Monitoring / What Changed
-```
-
-Only the diagnosis-first product bundle listed below, including Client Fit context, Block 6 Builder setup, and the explicit Block 7 `candidate_generation.json` attempt artifact, is the current Core MVP product-facing output layer. Portfolio Alternatives Builder writes `portfolio_alternatives_builder.json` under `analysis_subject/` after Launchpad; it is setup state, not a generated portfolio. Candidate Generation writes one candidate attempt only and is not a rebalance recommendation. Older/generated artifacts such as Health Score, Robustness Scorecard, Selection Engine outputs, Action Plan, Decision Journal, macro dashboards, full candidate arenas, sensitivity/Pareto/regret, and PDF/report packages may exist, but they are advanced/backend/legacy/generated support unless a task explicitly targets them.
+The current product-facing output layer is the diagnosis-first product bundle: subject diagnosis and
+stress evidence under `analysis_subject/`, Client Fit context when available, Problem
+Classification, Candidate Launchpad, Builder setup, explicit Candidate Generation attempt,
+Current-vs-Candidate, Decision Verdict, AI Commentary grounding context, and light What Changed
+summary. Builder setup is not a generated portfolio. Candidate Generation is not a rebalance
+recommendation.
 
 Default execution is now site/API-first: JSON contracts and required cache are the machine-readable
 source of truth for new workflows. CSV, TXT, HTML, PNG, PDF, Markdown PDF sidecars, and CSS/visual

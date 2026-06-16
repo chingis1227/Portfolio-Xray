@@ -47,7 +47,7 @@ export function Sidebar() {
       <div>
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-pmri-border/55 bg-white/[0.035] shadow-decision">
-            <BrandMark className="h-8 w-8" />
+            <BrandMark size="sm" />
           </div>
           <div className="min-w-0">
             <p className="text-lg font-semibold tracking-[-0.025em] text-pmri-text">Portfolio MRI</p>

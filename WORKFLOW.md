@@ -131,6 +131,11 @@ Rules:
 
 Documentation sync is part of done for meaningful changes.
 
+Use the owning-doc-first rule. For each change, update the narrowest document that owns the changed
+truth. Do not update broad documents just to repeat the same detail. Update `README.md` only when a
+reader's top-level understanding changes: product purpose, Core MVP flow, common setup or runtime
+commands, current-vs-legacy orientation, or the documentation map.
+
 Update the owning docs when behavior changes:
 
 - [SPEC.md](SPEC.md): general implementation contract, workflows, inputs/outputs, behavior rules, edge cases, status matrix.
@@ -138,13 +143,16 @@ Update the owning docs when behavior changes:
 - [GLOSSARY.md](GLOSSARY.md): recurring terminology, acronyms, names, and definitions.
 - [DATA.md](DATA.md): sources, structures, data pipeline, NaN handling, FX, benchmark, risk-free, factor/macro inputs, data validation.
 - `docs/specs/*.md`: detailed behavior of a specific module.
-- [README.md](README.md): user-facing commands, setup, structure, workflows, outputs.
+- [README.md](README.md): short product-facing orientation, common setup/runtime commands, and
+  source-of-truth routing only when those top-level concepts change.
 - [ARCHITECTURE.md](ARCHITECTURE.md): module boundaries, flows, layers.
 - [AGENTS.md](AGENTS.md): agent operating instructions.
 - [TESTING.md](TESTING.md): verification strategy or required checks.
 - [WORKFLOW.md](WORKFLOW.md): task process itself.
 
-Do not duplicate long formulas or implementation details in top-level docs when an owning spec exists.
+Do not duplicate long formulas, schemas, command matrices, generated-output inventories, or
+implementation details in top-level docs when an owning spec or contract exists. Link to the owning
+document instead.
 
 For documentation migration work:
 

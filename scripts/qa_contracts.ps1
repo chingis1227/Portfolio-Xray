@@ -10,7 +10,10 @@ function Get-ProjectPython {
     if (Get-Command py -ErrorAction SilentlyContinue) {
         return @("py", "-3")
     }
-    throw "Python not found. Expected .\.venv\Scripts\python.exe or py -3."
+    if (Get-Command python -ErrorAction SilentlyContinue) {
+        return @("python")
+    }
+    throw "Python not found. Checked .\.venv\Scripts\python.exe, py -3, and python."
 }
 
 function Invoke-QaStep {

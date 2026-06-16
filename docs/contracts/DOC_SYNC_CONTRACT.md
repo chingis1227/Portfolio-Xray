@@ -34,6 +34,12 @@ Product concept documents and archived migration records guide direction and tra
 
 Any meaningful change is incomplete until the owning documentation has been checked.
 
+Use the owning-doc-first rule. Update the narrowest document that owns the changed truth, then update
+broader maps only when their own summary, routing, command, or product-orientation contract changes.
+Do not edit several broad documents just to copy the same detail. In particular, update `README.md`
+only when a reader's top-level understanding changes: product purpose, Core MVP flow, common setup
+or runtime commands, current-vs-legacy orientation, or the documentation map.
+
 A meaningful change includes changes to behavior, formulas, estimators, inputs, configs, commands, runtime modes, output folders, artifact names, JSON/CSV/TXT/HTML/PDF contracts, frontend routes, adapters, UI copy, design tokens, visual states, QA commands, source-of-truth routing, known limitations, decisions, or product boundaries.
 
 For every meaningful change, the agent must do one of the following before reporting completion:
@@ -61,14 +67,14 @@ Use this matrix to decide which documents to inspect and update. Update the narr
 
 | Change type | Primary docs to check/update | Also check/update when relevant |
 | --- | --- | --- |
-| Product flow, product boundary, Core MVP vs advanced/legacy/backlog status | `PRODUCT.md`, `SPEC.md`, `docs/contracts/PRODUCT_FLOW_CONTRACT.md`, `docs/contracts/SCREEN_CONTRACTS.md` | `README.md`, `docs/product_flow_operator_guide.md`, `docs/runtime_entrypoints.md`, `DECISIONS.md`, `CHANGELOG.md`, owning `docs/specs/*` |
-| Artifact, schema, output folder, output profile, generated-output policy, or report/package behavior | `OUTPUTS.md`, owning `docs/specs/*`, `docs/contracts/ARTIFACT_TO_SCREEN_MAP.md` | `SPEC.md`, `README.md`, `TESTING.md`, `docs/runtime_artifact_contract.md`, `docs/product_flow_operator_guide.md`, `CHANGELOG.md`, `DECISIONS.md` |
-| Screen, route, CTA, unlock state, empty/blocked state, active `reviewId` lineage, or frontend adapter behavior | `../../frontend/README.md`, `docs/contracts/SCREEN_CONTRACTS.md`, `docs/contracts/ARTIFACT_TO_SCREEN_MAP.md`, `docs/contracts/QA_CONTRACT.md` | `PRODUCT.md`, `README.md`, `docs/demo/frontend_backend_vertical_runbook.md`, `docs/contracts/PRESENTATION_LANGUAGE_RULES.md`, `docs/contracts/DESIGN_SYSTEM_CONTRACT.md`, `TESTING.md`, `CHANGELOG.md` |
-| UI copy, labels, report wording, forbidden terms, presentation language, candidate/verdict/AI boundary language | `docs/contracts/PRESENTATION_LANGUAGE_RULES.md`, `docs/contracts/SCREEN_CONTRACTS.md` | `../../frontend/README.md`, `PRODUCT.md`, `README.md`, `docs/design/portfolio_mri_design_system.md`, `docs/contracts/QA_CONTRACT.md`, `CHANGELOG.md` |
+| Product flow, product boundary, Core MVP vs advanced/legacy/backlog status | `PRODUCT.md`, `SPEC.md`, `docs/contracts/PRODUCT_FLOW_CONTRACT.md`, `docs/contracts/SCREEN_CONTRACTS.md` | `README.md` only when top-level product understanding changes; otherwise `docs/product_flow_operator_guide.md`, `docs/runtime_entrypoints.md`, `DECISIONS.md`, `CHANGELOG.md`, owning `docs/specs/*` when relevant |
+| Artifact, schema, output folder, output profile, generated-output policy, or report/package behavior | `OUTPUTS.md`, owning `docs/specs/*`, `docs/contracts/ARTIFACT_TO_SCREEN_MAP.md` | `README.md` only when common output orientation changes; otherwise `SPEC.md`, `TESTING.md`, `docs/runtime_artifact_contract.md`, `docs/product_flow_operator_guide.md`, `CHANGELOG.md`, `DECISIONS.md` when relevant |
+| Screen, route, CTA, unlock state, empty/blocked state, active `reviewId` lineage, or frontend adapter behavior | `../../frontend/README.md`, `docs/contracts/SCREEN_CONTRACTS.md`, `docs/contracts/ARTIFACT_TO_SCREEN_MAP.md`, `docs/contracts/QA_CONTRACT.md` | `README.md` only when the top-level product journey changes; otherwise `PRODUCT.md`, `docs/demo/frontend_backend_vertical_runbook.md`, `docs/contracts/PRESENTATION_LANGUAGE_RULES.md`, `docs/contracts/DESIGN_SYSTEM_CONTRACT.md`, `TESTING.md`, `CHANGELOG.md` when relevant |
+| UI copy, labels, report wording, forbidden terms, presentation language, candidate/verdict/AI boundary language | `docs/contracts/PRESENTATION_LANGUAGE_RULES.md`, `docs/contracts/SCREEN_CONTRACTS.md` | `README.md` only for top-level positioning changes; otherwise `../../frontend/README.md`, `PRODUCT.md`, `docs/design/portfolio_mri_design_system.md`, `docs/contracts/QA_CONTRACT.md`, `CHANGELOG.md` when relevant |
 | Design tokens, colors, badge taxonomy, card hierarchy, layout, CTA styling, sample/demo visuals, visual QA standard | `docs/design/portfolio_mri_design_system.md`, `docs/contracts/DESIGN_SYSTEM_CONTRACT.md` | `DESIGN.md`, `../../frontend/README.md`, `docs/contracts/SCREEN_CONTRACTS.md`, `docs/contracts/PRESENTATION_LANGUAGE_RULES.md`, `docs/contracts/QA_CONTRACT.md`, `CHANGELOG.md` |
 | QA/test workflow, package scripts, pytest routing, visual QA workflow, forbidden-term scan, docs verification | `TESTING.md`, `docs/contracts/QA_CONTRACT.md` | `../../frontend/README.md`, `docs/demo/frontend_backend_vertical_runbook.md`, `AGENTS.md` if agent/browser rules change, `WORKFLOW.md`, `CHANGELOG.md`, `DECISIONS.md` for permanent policy decisions |
 | Backend formula, metric, estimator, stress logic, optimizer behavior, data alignment, rounding, fallback, or data quality behavior | `SPEC.md`, `DATA.md`, owning `docs/specs/*`, `TESTING.md` | `OUTPUTS.md`, `README.md`, `DECISIONS.md` for methodology choices, `KNOWN_ISSUES.md` for unresolved risk, `CHANGELOG.md` for meaningful completed changes |
-| Runtime commands, CLI defaults, runtime modes, orchestration stage order, local setup commands, package scripts | `README.md`, `docs/runtime_entrypoints.md`, `WORKFLOW.md`, `TESTING.md` | `OUTPUTS.md`, `../../frontend/README.md`, runbooks under `docs/demo/` or `docs/operational_runbook.md`, `SPEC.md`, `CHANGELOG.md`, `DECISIONS.md` |
+| Runtime commands, CLI defaults, runtime modes, orchestration stage order, local setup commands, package scripts | `docs/runtime_entrypoints.md`, `WORKFLOW.md`, `TESTING.md`; `README.md` only for common setup/runtime commands | `OUTPUTS.md`, `../../frontend/README.md`, runbooks under `docs/demo/` or `docs/operational_runbook.md`, `SPEC.md`, `CHANGELOG.md`, `DECISIONS.md` when relevant |
 | Known issue, unresolved limitation, testing gap, accepted residual risk, technical debt | `KNOWN_ISSUES.md` | Active ExecPlan, `TESTING.md`, `DATA.md`, `SPEC.md`, owning `docs/specs/*`, `CHANGELOG.md` when fixed |
 | Architectural, product, methodology, QA, source-of-truth, or governance decision | `DECISIONS.md` | Active ExecPlan Decision Log, `SPEC.md`, `OUTPUTS.md`, `TESTING.md`, contracts, `CHANGELOG.md` when implemented |
 | Completed meaningful change | `CHANGELOG.md` | Owning docs from the row above, active ExecPlan Outcomes, `DECISIONS.md` if a decision was made, `KNOWN_ISSUES.md` if an issue was fixed or accepted |
@@ -77,7 +83,7 @@ Use this matrix to decide which documents to inspect and update. Update the narr
 
 ### README.md
 
-Update `README.md` when user-facing setup, common commands, product flow, runtime taxonomy, output locations, repository map, or current-vs-legacy orientation changes. Do not update it for internal helper refactors that do not affect how a user or operator understands the project.
+Update `README.md` when user-facing setup, common commands, product flow, repository map, or current-vs-legacy orientation changes at the top level. Do not update it for internal helper refactors, detailed artifact changes, full command-matrix changes, schema details, or module behavior that is already owned by a more specific document.
 
 Examples:
 
