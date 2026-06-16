@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ClientFitContextCard } from "@/components/client-fit/ClientFitContextCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { diagnosisStageChainReady, useReviewState, type ActiveReviewState } from "@/lib/reviewState";
-import type { ClientFitDisplaySummary, StagedReviewStatusResponse } from "@/lib/generated/api-types";
+import type { BuilderOverrides, ClientFitDisplaySummary, StagedReviewStatusResponse } from "@/lib/generated/api-types";
 import {
   buildHypothesisScreenModel,
   sanitizeHypothesisError,
@@ -14,6 +14,30 @@ import {
 } from "@/lib/hypothesis/hypothesisScreenModel";
 
 type JsonRecord = Record<string, unknown>;
+type BuilderMode = "capped" | "uncapped";
+type ConstraintPreset = "conservative" | "balanced" | "aggressive" | "basic_reference" | "custom" | "uncapped";
+
+type BuilderSettings = {
+  mode: BuilderMode;
+  constraintPreset: ConstraintPreset;
+  minAssetWeight: number | null;
+  maxAssetWeight: number | null;
+};
+
+const CAPPED_PRESETS: Array<{ id: ConstraintPreset; label: string; description: string; min: number | null; max: number | null }> = [
+  { id: "conservative", label: "Conservative", description: "0% to 15% per asset.", min: 0, max: 0.15 },
+  { id: "balanced", label: "Balanced", description: "0% to 20% per asset.", min: 0, max: 0.2 },
+  { id: "aggressive", label: "Aggressive", description: "0% to 30% per asset.", min: 0, max: 0.3 },
+  { id: "basic_reference", label: "Basic reference", description: "Reference test with no explicit cap.", min: null, max: null },
+  { id: "custom", label: "Custom", description: "Use the min/max fields below.", min: 0, max: 0.2 }
+];
+
+const DEFAULT_BUILDER_SETTINGS: BuilderSettings = {
+  mode: "capped",
+  constraintPreset: "balanced",
+  minAssetWeight: 0,
+  maxAssetWeight: 0.2
+};
 
 function isRecord(value: unknown): value is JsonRecord {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -61,6 +85,37 @@ async function probeLiveReviewLineage(reviewId: string) {
 
 function formatWeight(value: number) {
   return `${(value * 100).toFixed(2).replace(/\.?0+$/, "")}%`;
+}
+
+function percentInputValue(value: number | null) {
+  return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value * 10000) / 100) : "";
+}
+
+function parsePercentInput(value: string) {
+  if (!value.trim()) return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.min(100, Math.max(0, parsed)) / 100;
+}
+
+function builderSettingsKey(settings: BuilderSettings) {
+  return [
+    settings.mode,
+    settings.constraintPreset,
+    settings.minAssetWeight ?? "null",
+    settings.maxAssetWeight ?? "null"
+  ].join(":");
+}
+
+function builderOverrides(settings: BuilderSettings, methodId?: string): BuilderOverrides {
+  const overrides: BuilderOverrides = {
+    method_id: methodId as BuilderOverrides["method_id"],
+    mode: settings.mode,
+    constraint_preset: settings.constraintPreset
+  };
+  if (settings.minAssetWeight !== null) overrides.min_asset_weight = settings.minAssetWeight;
+  if (settings.maxAssetWeight !== null) overrides.max_asset_weight = settings.maxAssetWeight;
+  return overrides;
 }
 
 function sampleActiveReview(generated: boolean): ActiveReviewState {
@@ -273,6 +328,129 @@ function BulletList({ items, fallback }: { items: string[]; fallback: string }) 
   );
 }
 
+function BuilderControls({
+  settings,
+  onChange,
+  disabled
+}: {
+  settings: BuilderSettings;
+  onChange: (settings: BuilderSettings) => void;
+  disabled: boolean;
+}) {
+  const presetOptions = settings.mode === "uncapped"
+    ? [{ id: "uncapped" as const, label: "Uncapped", description: "No maximum asset weight cap." }]
+    : CAPPED_PRESETS;
+
+  function applyMode(mode: BuilderMode) {
+    if (mode === "uncapped") {
+      onChange({
+        mode: "uncapped",
+        constraintPreset: "uncapped",
+        minAssetWeight: 0,
+        maxAssetWeight: null
+      });
+      return;
+    }
+    onChange(DEFAULT_BUILDER_SETTINGS);
+  }
+
+  function applyPreset(preset: ConstraintPreset) {
+    const matched = CAPPED_PRESETS.find((item) => item.id === preset);
+    onChange({
+      ...settings,
+      constraintPreset: preset,
+      minAssetWeight: preset === "custom" ? settings.minAssetWeight : matched?.min ?? null,
+      maxAssetWeight: preset === "custom" ? settings.maxAssetWeight : matched?.max ?? null
+    });
+  }
+
+  return (
+    <div className="mt-5 rounded-2xl border border-white/10 bg-black/15 p-4">
+      <p className="pmri-label text-pmri-blueSoft">Builder setup</p>
+      <p className="mt-2 text-xs leading-5 text-pmri-muted">
+        These fields prepare one diagnostic candidate. They do not approve a rebalance or hide portfolio issues.
+      </p>
+
+      <div className="mt-4 grid gap-3">
+        <div>
+          <label htmlFor="builder-mode" className="pmri-label">Mode</label>
+          <select
+            id="builder-mode"
+            value={settings.mode}
+            disabled={disabled}
+            onChange={(event) => applyMode(event.target.value === "uncapped" ? "uncapped" : "capped")}
+            className="pmri-focus mt-1 w-full rounded-xl border border-white/10 bg-[#0f1115] px-3 py-2 text-sm text-pmri-text disabled:opacity-60"
+          >
+            <option value="capped">Capped</option>
+            <option value="uncapped">Uncapped diagnostic test</option>
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="constraint-preset" className="pmri-label">Constraint preset</label>
+          <select
+            id="constraint-preset"
+            value={settings.constraintPreset}
+            disabled={disabled || settings.mode === "uncapped"}
+            onChange={(event) => applyPreset(event.target.value as ConstraintPreset)}
+            className="pmri-focus mt-1 w-full rounded-xl border border-white/10 bg-[#0f1115] px-3 py-2 text-sm text-pmri-text disabled:opacity-60"
+          >
+            {presetOptions.map((preset) => (
+              <option key={preset.id} value={preset.id}>{preset.label}</option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs leading-5 text-pmri-muted">
+            {presetOptions.find((preset) => preset.id === settings.constraintPreset)?.description ?? "Custom cap settings."}
+          </p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label htmlFor="min-asset-weight" className="pmri-label">Min asset weight</label>
+            <div className="mt-1 flex items-center rounded-xl border border-white/10 bg-[#0f1115] px-3 py-2">
+              <input
+                id="min-asset-weight"
+                type="number"
+                min={0}
+                max={100}
+                step={0.25}
+                value={percentInputValue(settings.minAssetWeight)}
+                disabled={disabled || settings.mode === "uncapped" || settings.constraintPreset !== "custom"}
+                onChange={(event) => onChange({ ...settings, minAssetWeight: parsePercentInput(event.target.value) })}
+                className="pmri-focus w-full bg-transparent text-sm text-pmri-text outline-none disabled:opacity-60"
+              />
+              <span className="ml-2 text-xs text-pmri-muted">%</span>
+            </div>
+          </div>
+          <div>
+            <label htmlFor="max-asset-weight" className="pmri-label">Max asset weight</label>
+            <div className="mt-1 flex items-center rounded-xl border border-white/10 bg-[#0f1115] px-3 py-2">
+              <input
+                id="max-asset-weight"
+                type="number"
+                min={0}
+                max={100}
+                step={0.25}
+                value={percentInputValue(settings.maxAssetWeight)}
+                disabled={disabled || settings.mode === "uncapped" || settings.constraintPreset !== "custom"}
+                onChange={(event) => onChange({ ...settings, maxAssetWeight: parsePercentInput(event.target.value) })}
+                className="pmri-focus w-full bg-transparent text-sm text-pmri-text outline-none disabled:opacity-60"
+              />
+              <span className="ml-2 text-xs text-pmri-muted">%</span>
+            </div>
+          </div>
+        </div>
+
+        {settings.mode === "uncapped" ? (
+          <p className="rounded-xl border border-pmri-amber/25 bg-pmri-amber/10 p-3 text-xs leading-5 text-pmri-amber">
+            Uncapped mode may create concentrated portfolios. Use it only for diagnostic comparison, not as an automatic rebalance recommendation.
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function RecommendedDiagnosticTestPanel({ test }: { test?: HypothesisTestModel }) {
   if (!test) {
     return (
@@ -334,10 +512,14 @@ function RecommendedDiagnosticTestPanel({ test }: { test?: HypothesisTestModel }
 
 function HypothesisActionConsole({
   model,
+  builderSettings,
+  onBuilderSettingsChange,
   onGenerate,
   comparisonHref
 }: {
   model: HypothesisScreenModel;
+  builderSettings: BuilderSettings;
+  onBuilderSettingsChange: (settings: BuilderSettings) => void;
   onGenerate: () => void;
   comparisonHref: string;
 }) {
@@ -365,6 +547,12 @@ function HypothesisActionConsole({
           <dd className="mt-1 text-sm text-pmri-text2">{action.statusLabel}</dd>
         </div>
       </dl>
+
+      <BuilderControls
+        settings={builderSettings}
+        onChange={onBuilderSettingsChange}
+        disabled={action.state === "generating" || action.state === "blocked"}
+      />
 
       {action.candidateName ? (
         <div className="mt-5 rounded-2xl border border-pmri-positive/30 bg-pmri-positive/10 p-4">
@@ -523,6 +711,8 @@ function HypothesisWorkstation({
   model,
   clientFit,
   selectedCardId,
+  builderSettings,
+  onBuilderSettingsChange,
   onSelect,
   onGenerate,
   comparisonHref
@@ -530,6 +720,8 @@ function HypothesisWorkstation({
   model: HypothesisScreenModel;
   clientFit?: ClientFitDisplaySummary;
   selectedCardId: string | null;
+  builderSettings: BuilderSettings;
+  onBuilderSettingsChange: (settings: BuilderSettings) => void;
   onSelect: (id: string) => void;
   onGenerate: () => void;
   comparisonHref: string;
@@ -551,7 +743,13 @@ function HypothesisWorkstation({
           <PrimaryDiagnosisPanel model={model} />
           <RecommendedDiagnosticTestPanel test={model.primaryTest} />
         </main>
-        <HypothesisActionConsole model={model} onGenerate={onGenerate} comparisonHref={comparisonHref} />
+        <HypothesisActionConsole
+          model={model}
+          builderSettings={builderSettings}
+          onBuilderSettingsChange={onBuilderSettingsChange}
+          onGenerate={onGenerate}
+          comparisonHref={comparisonHref}
+        />
       </div>
       <SecondaryContextPanels model={model} clientFit={clientFit} selectedCardId={selectedCardId} onSelect={onSelect} />
     </>
@@ -559,12 +757,14 @@ function HypothesisWorkstation({
 }
 
 export default function HypothesisPage() {
-  const { activeReview, hydrated, journeyFlags, markLiveLineageUnavailable, recordBuilderSetup, recordCandidateGeneration } = useReviewState();
+  const { activeReview, clearDownstreamReviewState, hydrated, journeyFlags, markLiveLineageUnavailable, recordBuilderSetup, recordCandidateGeneration } = useReviewState();
   const [sampleMode, setSampleMode] = useState(false);
   const [sampleGenerated, setSampleGenerated] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [builderSettings, setBuilderSettings] = useState<BuilderSettings>(DEFAULT_BUILDER_SETTINGS);
   const [isGeneratingCandidate, setIsGeneratingCandidate] = useState(false);
   const [generationError, setGenerationError] = useState<string | undefined>();
+  const downstreamKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -589,6 +789,30 @@ export default function HypothesisPage() {
   useEffect(() => {
     setGenerationError(undefined);
   }, [selectedCardId, effectiveReview?.reviewId]);
+
+  useEffect(() => {
+    const key = [
+      effectiveReview?.reviewId ?? "",
+      selectedCardId ?? model.defaultSelectedCardId ?? "",
+      builderSettingsKey(builderSettings)
+    ].join("|");
+    if (downstreamKeyRef.current === null) {
+      downstreamKeyRef.current = key;
+      return;
+    }
+    if (downstreamKeyRef.current === key) return;
+    downstreamKeyRef.current = key;
+    setGenerationError(undefined);
+    if (!sampleMode) clearDownstreamReviewState();
+  }, [builderSettings, clearDownstreamReviewState, effectiveReview?.reviewId, model.defaultSelectedCardId, sampleMode, selectedCardId]);
+
+  function handleSelectCard(id: string) {
+    setSelectedCardId(id);
+  }
+
+  function handleBuilderSettingsChange(settings: BuilderSettings) {
+    setBuilderSettings(settings);
+  }
 
   async function handleGenerateCandidate() {
     if (sampleMode) {
@@ -618,7 +842,8 @@ export default function HypothesisPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           review_id: reviewId,
-          selected_card_id: cardId
+          selected_card_id: cardId,
+          overrides: builderOverrides(builderSettings, model.primaryTest?.selectedMethodId)
         })
       });
       const prepareResult = await prepareResponse.json() as unknown;
@@ -693,7 +918,9 @@ export default function HypothesisPage() {
       model={model}
       clientFit={effectiveReview?.reviewSummary?.clientFit}
       selectedCardId={selectedCardId ?? model.defaultSelectedCardId}
-      onSelect={setSelectedCardId}
+      builderSettings={builderSettings}
+      onBuilderSettingsChange={handleBuilderSettingsChange}
+      onSelect={handleSelectCard}
       onGenerate={handleGenerateCandidate}
       comparisonHref={sampleMode ? "/comparison?sample=1" : "/comparison"}
     />

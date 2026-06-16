@@ -330,6 +330,7 @@ Request model:
       "overrides": {
         "method_id": "equal_weight|risk_parity|hierarchical_risk_parity|minimum_variance|minimum_cvar|maximum_diversification",
         "mode": "capped|uncapped",
+        "constraint_preset": "conservative|balanced|aggressive|basic_reference|custom|uncapped",
         "min_asset_weight": null,
         "max_asset_weight": null
       }
@@ -337,8 +338,9 @@ Request model:
 
 Response data should include:
 
-- `builder_setup`: selected diagnosis, selected card, method, mode, success criteria, trade-off to
-  watch, skip rule, decision boundary, and generation readiness.
+- `builder_setup`: selected diagnosis, selected card, method, mode, constraint preset, min/max
+  asset weight fields, success criteria, trade-off to watch, skip rule, decision boundary, and
+  generation readiness.
 - `candidate_generation_allowed`: true only when setup is valid and the card is not monitor/data-only.
 - `next_allowed_actions`: `generate_candidate` when allowed; otherwise `resolve_data_quality`,
   `select_another_card`, or `monitor`.
@@ -373,6 +375,10 @@ Boundary: one candidate attempt only. This endpoint must not rank multiple candi
 comparison, issue a Decision Verdict, or treat the candidate as a rebalance recommendation. In
 Session 07 the normal Next.js `/api/portfolio/*` path calls this FastAPI endpoint through a
 compatibility proxy instead of launching the old script bridge.
+For the live frontend path, candidate generation forces a one-candidate factory rebuild. If the
+factory reports that the selected candidate reused an existing snapshot (`skipped_existing`), the
+candidate stage must not advertise `run_comparison` until a fresh compare-ready candidate is
+available.
 
 ### `POST /api/v1/reviews/{review_id}/comparison`
 
@@ -394,6 +400,9 @@ Response data should include:
 - `comparison`: current label, candidate label, success-criteria result, what improved, what worsened,
   what stayed similar, unavailable metrics, turnover/cost practicality when available, and materiality
   for decision review.
+- `current_vs_candidate`: the same-run display-safe Current vs Candidate artifact, including
+  `comparisons[].dimensions`, practicality, success criteria, materiality, warnings, and selected
+  candidate ids needed by the frontend to render metric rows without inventing values.
 - `client_fit`: bounded display summary for Client Fit target/status context when available.
 - `evidence_chain_context`: bounded display context tying the comparison back to the selected
   diagnosis, tested hypothesis, success criteria, trade-off to watch, candidate boundary,
@@ -404,7 +413,8 @@ Response data should include:
   evidence-insufficient verdict can be generated.
 
 Boundary: comparison explains trade-offs; it must not crown a winner, recommend a trade, or unlock
-report without Verdict.
+report without Verdict. The comparison endpoint must not mark the selected candidate row successful
+for UI purposes when that row is stale, unavailable, or missing displayable dimensions.
 
 ### `POST /api/v1/reviews/{review_id}/verdict`
 
@@ -620,9 +630,9 @@ The tested run produced an evidence-insufficient Decision Verdict after comparis
 unavailable; this is a valid Core MVP outcome, not a frontend failure.
 
 Frontend gating rule: a same-review, same-candidate comparison may unlock Verdict when it is current
-and can safely produce an evidence-insufficient verdict, even if it has no displayable comparison
-metrics. Comparison still must not recommend a trade or crown a winner; the Verdict stage owns the
-non-binding evidence-insufficient outcome.
+and can safely produce an evidence-insufficient verdict. A stale or unavailable selected-candidate
+row must not be treated as a successful comparison. Comparison still must not recommend a trade or
+crown a winner; the Verdict stage owns the non-binding evidence-insufficient outcome.
 
 ## Diagnosis interpretation Session 09 validation
 

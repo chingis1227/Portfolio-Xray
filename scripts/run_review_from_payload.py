@@ -542,6 +542,70 @@ def _assert_factory_run_scoped_to_one_candidate(factory_run_path: Path, candidat
         )
 
 
+def _selected_factory_steps(factory_run_path: Path, candidate_id: str) -> list[dict[str, Any]]:
+    if not factory_run_path.is_file():
+        return []
+    factory_doc = _read_json(factory_run_path)
+    return [
+        step
+        for step in factory_doc.get("steps") or []
+        if isinstance(step, dict) and str(step.get("candidate_id") or "").strip() == candidate_id
+    ]
+
+
+def _candidate_reused_existing_snapshot(factory_run_path: Path, candidate_id: str) -> bool:
+    return any(
+        str(step.get("status") or "").strip() == "skipped_existing"
+        for step in _selected_factory_steps(factory_run_path, candidate_id)
+    )
+
+
+def _mark_candidate_not_compare_ready(candidate_generation: dict[str, Any], *, reason: str) -> None:
+    handoff = candidate_generation.get("handoff_to_comparison")
+    if not isinstance(handoff, dict):
+        handoff = {}
+        candidate_generation["handoff_to_comparison"] = handoff
+    handoff["can_compare"] = False
+    handoff["blocked_reason"] = reason
+    handoff["reason"] = reason
+    warnings = candidate_generation.get("warnings")
+    if not isinstance(warnings, list):
+        warnings = []
+        candidate_generation["warnings"] = warnings
+    if reason not in warnings:
+        warnings.append(reason)
+
+
+def _current_vs_candidate_row(current_vs_candidate: dict[str, Any], candidate_id: str) -> dict[str, Any] | None:
+    for row in current_vs_candidate.get("comparisons") or []:
+        if isinstance(row, dict) and str(row.get("candidate_id") or "").strip() == candidate_id:
+            return row
+    return None
+
+
+def _assert_current_vs_candidate_available(current_vs_candidate: dict[str, Any], candidate_id: str) -> None:
+    row = _current_vs_candidate_row(current_vs_candidate, candidate_id)
+    if row is None:
+        raise ComparisonBridgeError(
+            "current_vs_candidate.comparisons does not contain the selected generated candidate."
+        )
+    status = str(row.get("status") or "available").strip().lower()
+    if status == "unavailable":
+        reason = str(row.get("unavailable_reason") or "unknown")
+        raise ComparisonBridgeError(
+            f"Selected candidate comparison row is unavailable: {reason}."
+        )
+    dimensions = [
+        dim
+        for dim in row.get("dimensions") or []
+        if isinstance(dim, dict) and str(dim.get("status") or "").strip().lower() == "available"
+    ]
+    if not dimensions:
+        raise ComparisonBridgeError(
+            "Selected candidate comparison row does not contain displayable dimensions."
+        )
+
+
 def generate_selected_candidate(
     *,
     review_id: str,
@@ -590,8 +654,17 @@ def generate_selected_candidate(
     )
     candidate_id = str((candidate_generation.get("candidate") or {}).get("candidate_id") or "")
     _assert_factory_run_scoped_to_one_candidate(factory_run_path, candidate_id)
+    if _candidate_reused_existing_snapshot(factory_run_path, candidate_id):
+        _mark_candidate_not_compare_ready(
+            candidate_generation,
+            reason="factory_reused_existing_candidate_snapshot",
+        )
+        write_json(output_path, candidate_generation)
 
     generation_status = str(candidate_generation.get("generation_status") or "")
+    can_compare = bool(
+        (candidate_generation.get("handoff_to_comparison") or {}).get("can_compare")
+    )
     stage_status = "completed" if generation_status == "generated" else "failed"
     return {
         "review_id": review_id,
@@ -600,9 +673,7 @@ def generate_selected_candidate(
         "selected_card_id": selected_card_id,
         "candidate_id": candidate_id,
         "generation_status": generation_status,
-        "can_compare": bool(
-            (candidate_generation.get("handoff_to_comparison") or {}).get("can_compare")
-        ),
+        "can_compare": can_compare,
         "path": display_path(output_path),
         "candidate_generation": candidate_generation,
     }
@@ -665,6 +736,7 @@ def compare_selected_candidate(
         raise ComparisonBridgeError(
             "current_vs_candidate.selected_candidate_ids does not match the selected generated candidate."
         )
+    _assert_current_vs_candidate_available(current_vs_candidate, candidate_id)
     site_bundle_path, site_bundle = write_run_site_explanation_bundle(run_dir, review_id=review_id)
 
     return {

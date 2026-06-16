@@ -321,6 +321,7 @@ export type BuilderSetupSummary = {
   builder_prefill: {
     goal?: string;
     suggested_method?: string;
+    mode?: string;
     constraint_preset?: string;
     max_asset_weight?: number | string;
     min_asset_weight?: number | string;
@@ -329,6 +330,10 @@ export type BuilderSetupSummary = {
     candidate_setup_id?: string;
     validation_status?: string;
     can_generate_candidate: boolean;
+    mode?: string;
+    constraint_preset?: string;
+    max_asset_weight?: number | string;
+    min_asset_weight?: number | string;
   };
 };
 
@@ -425,6 +430,7 @@ type ReviewStateContextValue = {
   linkCloudPortfolio: (portfolio: ActiveReviewState["cloudPortfolio"]) => void;
   loadCloudPortfolioInput: (input: { portfolioId: string; name: string; investorCurrency: string; holdings: ReviewHolding[]; versionId?: string; versionNumber?: number }) => void;
   recordBuilderSetup: (result: unknown) => void;
+  clearDownstreamReviewState: () => void;
   recordCandidateGeneration: (result: unknown) => void;
   recordComparisonResult: (result: unknown) => void;
   recordVerdictResult: (result: unknown) => void;
@@ -1723,6 +1729,20 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     } : current);
   }, []);
 
+  const clearDownstreamReviewState = useCallback(() => {
+    setActiveReview((current) => current ? {
+      ...current,
+      candidateGeneration: undefined,
+      comparisonResult: undefined,
+      verdictResult: undefined,
+      reportResult: undefined,
+      candidateReady: false,
+      comparisonReady: false,
+      verdictReady: false,
+      updatedAt: nowIso()
+    } : current);
+  }, []);
+
   const markCandidateReady = useCallback(() => {
     setActiveReview((current) => current ? {
       ...current,
@@ -2220,6 +2240,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     linkCloudPortfolio,
     loadCloudPortfolioInput,
     recordBuilderSetup,
+    clearDownstreamReviewState,
     recordCandidateGeneration,
     recordComparisonResult,
     recordVerdictResult,
@@ -2231,7 +2252,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
     markVerdictReady,
     clearActiveReview,
     journeyFlags
-  }), [activeReview, clearActiveReview, hydrated, journeyFlags, linkCloudPortfolio, loadCloudPortfolioInput, markCandidateReady, markComparisonReady, markLiveLineageUnavailable, markVerdictReady, recordBuilderSetup, recordCandidateGeneration, recordComparisonResult, recordReportResult, recordReviewError, recordStagedProgress, recordVerdictResult, saveClientFitProfile, savePortfolioInput, startStagedReview, submitPortfolioInput]);
+  }), [activeReview, clearActiveReview, clearDownstreamReviewState, hydrated, journeyFlags, linkCloudPortfolio, loadCloudPortfolioInput, markCandidateReady, markComparisonReady, markLiveLineageUnavailable, markVerdictReady, recordBuilderSetup, recordCandidateGeneration, recordComparisonResult, recordReportResult, recordReviewError, recordStagedProgress, recordVerdictResult, saveClientFitProfile, savePortfolioInput, startStagedReview, submitPortfolioInput]);
 
   return <ReviewStateContext.Provider value={value}>{children}</ReviewStateContext.Provider>;
 }
@@ -2823,6 +2844,28 @@ function compactBuilderSetup(value: unknown): BuilderSetupSummary | undefined {
   if (!selectedCardId) return undefined;
   const builderPrefill = getRecord(builder.builder_prefill);
   const candidateSetup = getRecord(builder.candidate_setup);
+  const parameters = getRecord(candidateSetup.parameters);
+  const constraints = getRecord(candidateSetup.constraints);
+  const mode = firstText(builderPrefill.mode, candidateSetup.mode, parameters.mode, constraints.mode);
+  const constraintPreset = firstText(builderPrefill.constraint_preset, candidateSetup.constraint_preset, parameters.constraint_preset, constraints.constraint_preset);
+  const maxAssetWeight = typeof builderPrefill.max_asset_weight === "number" || typeof builderPrefill.max_asset_weight === "string"
+    ? builderPrefill.max_asset_weight
+    : typeof candidateSetup.max_asset_weight === "number" || typeof candidateSetup.max_asset_weight === "string"
+      ? candidateSetup.max_asset_weight
+      : typeof parameters.max_asset_weight === "number" || typeof parameters.max_asset_weight === "string"
+        ? parameters.max_asset_weight
+        : typeof constraints.max_asset_weight === "number" || typeof constraints.max_asset_weight === "string"
+          ? constraints.max_asset_weight
+          : undefined;
+  const minAssetWeight = typeof builderPrefill.min_asset_weight === "number" || typeof builderPrefill.min_asset_weight === "string"
+    ? builderPrefill.min_asset_weight
+    : typeof candidateSetup.min_asset_weight === "number" || typeof candidateSetup.min_asset_weight === "string"
+      ? candidateSetup.min_asset_weight
+      : typeof parameters.min_asset_weight === "number" || typeof parameters.min_asset_weight === "string"
+        ? parameters.min_asset_weight
+        : typeof constraints.min_asset_weight === "number" || typeof constraints.min_asset_weight === "string"
+          ? constraints.min_asset_weight
+          : undefined;
   return {
     selected_card_id: selectedCardId,
     can_generate_candidate: builder.can_generate_candidate === true || candidateSetup.can_generate_candidate === true,
@@ -2830,14 +2873,19 @@ function compactBuilderSetup(value: unknown): BuilderSetupSummary | undefined {
     builder_prefill: {
       goal: firstText(builderPrefill.goal),
       suggested_method: firstText(builderPrefill.suggested_method) ? formatUnknownValue(firstText(builderPrefill.suggested_method)) : undefined,
-      constraint_preset: firstText(builderPrefill.constraint_preset) ? formatUnknownValue(firstText(builderPrefill.constraint_preset)) : undefined,
-      max_asset_weight: typeof builderPrefill.max_asset_weight === "number" || typeof builderPrefill.max_asset_weight === "string" ? builderPrefill.max_asset_weight : undefined,
-      min_asset_weight: typeof builderPrefill.min_asset_weight === "number" || typeof builderPrefill.min_asset_weight === "string" ? builderPrefill.min_asset_weight : undefined
+      mode: mode ? formatUnknownValue(mode) : undefined,
+      constraint_preset: constraintPreset ? formatUnknownValue(constraintPreset) : undefined,
+      max_asset_weight: maxAssetWeight,
+      min_asset_weight: minAssetWeight
     },
     candidate_setup: {
       candidate_setup_id: firstText(candidateSetup.candidate_setup_id, candidateSetup.setup_id),
       validation_status: firstText(candidateSetup.validation_status) ? formatUnknownValue(firstText(candidateSetup.validation_status)) : undefined,
-      can_generate_candidate: candidateSetup.can_generate_candidate === true
+      can_generate_candidate: candidateSetup.can_generate_candidate === true,
+      mode: mode ? formatUnknownValue(mode) : undefined,
+      constraint_preset: constraintPreset ? formatUnknownValue(constraintPreset) : undefined,
+      max_asset_weight: maxAssetWeight,
+      min_asset_weight: minAssetWeight
     }
   };
 }

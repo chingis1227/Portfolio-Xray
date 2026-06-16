@@ -1,5 +1,13 @@
 # CHANGELOG.md
 
+## 2026-06-16
+
+- Repaired and verified the live Builder-to-Report review flow. Hypothesis Builder now exposes
+  simple capped/uncapped setup controls, fresh candidate generation is guarded against stale reused
+  artifacts, Comparison receives full current-vs-candidate metric dimensions, and a one-scenario
+  browser vertical QA run reached Report with same-run candidate, comparison, verdict, and grounded
+  report evidence.
+
 ## 2026-06-15
 
 - Redesigned Hypothesis Builder around a frontend `HypothesisScreenModel` and Analyst Workstation layout. `/hypothesis` now ranks one primary diagnosis, one recommended diagnostic test, and one action console first, while Client Fit, alternative tests, and evidence/technical details stay secondary.

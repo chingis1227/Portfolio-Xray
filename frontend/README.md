@@ -136,6 +136,14 @@ product or trading system.
   artifact payloads from the FastAPI recovery envelope, and
   restores candidate/comparison/verdict/report readiness as false so stale downstream artifacts are
   not silently trusted as active state.
+- Hypothesis / Builder exposes the V1 simple setup controls from the canonical Builder contract:
+  capped or uncapped mode, constraint preset, min asset weight, and max asset weight. Changing the
+  selected hypothesis card or any Builder setup field clears downstream candidate, comparison,
+  verdict, and report readiness so old artifacts cannot remain active for a new setup.
+- Current vs Candidate Comparison uses the FastAPI `current_vs_candidate` display evidence when
+  available, including `comparisons[].dimensions`, instead of inventing metric rows from compact
+  summaries. A successful fresh candidate comparison should show real metric rows; stale or
+  unavailable comparison rows remain blocked or evidence-insufficient rather than being masked.
 - Legacy raw keys matching `pmri.reviewResult.*` are removed on hydration/write. Future raw access should go through backend artifacts addressed by `reviewId`, not permanent localStorage copies.
 - Real backend failures are persisted as `runStatus: "failed"` with a visible error state; static demo data remains clearly separate from `runMode: "real_run"`.
 

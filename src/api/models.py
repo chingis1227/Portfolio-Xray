@@ -454,6 +454,14 @@ class BuilderOverrides(StrictModel):
         | None
     ) = None
     mode: Literal["capped", "uncapped"] | None = None
+    constraint_preset: Literal[
+        "conservative",
+        "balanced",
+        "aggressive",
+        "basic_reference",
+        "custom",
+        "uncapped",
+    ] | None = None
     min_asset_weight: float | None = Field(default=None, ge=0, le=1)
     max_asset_weight: float | None = Field(default=None, ge=0, le=1)
 
@@ -468,6 +476,9 @@ class BuilderSetupSummary(StrictModel):
     selected_card_id: str | None = None
     method_id: str | None = None
     mode: str | None = None
+    constraint_preset: str | None = None
+    min_asset_weight: float | None = None
+    max_asset_weight: float | None = None
     success_criteria: list[str] = Field(default_factory=list)
     tradeoff_to_watch: str | None = None
     decision_boundary: str | None = None
@@ -539,6 +550,7 @@ class ComparisonSummary(StrictModel):
 
 class ComparisonData(StrictModel):
     comparison: ComparisonSummary = Field(default_factory=ComparisonSummary)
+    current_vs_candidate: dict[str, Any] = Field(default_factory=dict)
     evidence_chain_context: DownstreamEvidenceChainContext = Field(default_factory=DownstreamEvidenceChainContext)
     client_fit: ClientFitDisplaySummary = Field(default_factory=ClientFitDisplaySummary)
     next_allowed_actions: list[NextAction] = Field(default_factory=list)

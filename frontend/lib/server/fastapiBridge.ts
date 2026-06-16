@@ -45,6 +45,7 @@ export type StageRequest = {
   candidate_id?: unknown;
   comparison_id?: unknown;
   verdict_id?: unknown;
+  overrides?: unknown;
 };
 
 type FastApiCallResult = {
@@ -482,6 +483,22 @@ function stageBodyText(body: StageRequest, key: keyof StageRequest) {
   return typeof body[key] === "string" ? String(body[key]).trim() : "";
 }
 
+function builderOverridesFromStageRequest(body: StageRequest) {
+  const raw = isRecord(body.overrides) ? body.overrides : {};
+  const methodId = textValue(raw.method_id);
+  const mode = textValue(raw.mode);
+  const constraintPreset = textValue(raw.constraint_preset);
+  const minAssetWeight = numberValue(raw.min_asset_weight);
+  const maxAssetWeight = numberValue(raw.max_asset_weight);
+  const overrides: Record<string, unknown> = {};
+  if (methodId) overrides.method_id = methodId;
+  if (mode) overrides.mode = mode;
+  if (constraintPreset) overrides.constraint_preset = constraintPreset;
+  if (minAssetWeight !== null) overrides.min_asset_weight = minAssetWeight;
+  if (maxAssetWeight !== null) overrides.max_asset_weight = maxAssetWeight;
+  return overrides;
+}
+
 function sourceArtifactPath(body: unknown, kind: string, fallback: string) {
   const envelope = isRecord(body) ? body : {};
   const evidence = isRecord(envelope.evidence) ? envelope.evidence : {};
@@ -498,6 +515,10 @@ function publicBuilderDocumentFromFastApi(body: unknown, selectedCardId: string)
   const setup = isRecord(data.builder_setup) ? data.builder_setup : {};
   const setupId = textValue(setup.builder_setup_id);
   const methodId = textValue(setup.method_id);
+  const mode = textValue(setup.mode) || null;
+  const constraintPreset = textValue(setup.constraint_preset) || null;
+  const minAssetWeight = numberValue(setup.min_asset_weight);
+  const maxAssetWeight = numberValue(setup.max_asset_weight);
   const canGenerate = data.candidate_generation_allowed === true;
   return {
     selected_card_id: textValue(setup.selected_card_id, selectedCardId),
@@ -505,6 +526,9 @@ function publicBuilderDocumentFromFastApi(body: unknown, selectedCardId: string)
     builder_prefill: {
       source_card_id: textValue(setup.selected_card_id, selectedCardId),
       suggested_method: methodId || null,
+      constraint_preset: constraintPreset,
+      min_asset_weight: minAssetWeight,
+      max_asset_weight: maxAssetWeight,
       success_criteria: stringArray(setup.success_criteria),
       tradeoff_to_watch: textValue(setup.tradeoff_to_watch) || null,
       decision_boundary: textValue(setup.decision_boundary) || null
@@ -519,7 +543,16 @@ function publicBuilderDocumentFromFastApi(body: unknown, selectedCardId: string)
       tradeoff_to_watch: textValue(setup.tradeoff_to_watch) || null,
       decision_boundary: textValue(setup.decision_boundary) || null,
       parameters: {
-        mode: textValue(setup.mode) || null
+        mode,
+        constraint_preset: constraintPreset,
+        min_asset_weight: minAssetWeight,
+        max_asset_weight: maxAssetWeight
+      },
+      constraints: {
+        mode,
+        constraint_preset: constraintPreset,
+        min_asset_weight: minAssetWeight,
+        max_asset_weight: maxAssetWeight
       }
     }
   };
@@ -565,6 +598,10 @@ function publicCandidateGenerationFromFastApi(body: unknown, selectedCardId: str
 function publicCurrentVsCandidateFromFastApi(body: unknown, candidateId: string) {
   const data = fastApiData(body);
   const comparison = isRecord(data.comparison) ? data.comparison : {};
+  const currentVsCandidate = isRecord(data.current_vs_candidate) ? data.current_vs_candidate : {};
+  if (Array.isArray(currentVsCandidate.comparisons)) {
+    return currentVsCandidate;
+  }
   const context = isRecord(data.evidence_chain_context) ? data.evidence_chain_context : {};
   const resolvedCandidateId = candidateId || textValue(fastApiLineage(body).candidate_id);
   return {
@@ -907,7 +944,7 @@ export async function builderViaFastApi(request: Request) {
 
   const api = await callFastApi("POST", `/api/v1/reviews/${encodeURIComponent(reviewId)}/builder`, {
     selected_card_id: selectedCardId,
-    overrides: {}
+    overrides: builderOverridesFromStageRequest(body)
   });
   if (!api.ok) {
     return NextResponse.json({
@@ -950,7 +987,7 @@ export async function candidateViaFastApi(request: Request) {
   if (!builderSetupId) {
     const builderApi = await callFastApi("POST", `/api/v1/reviews/${encodeURIComponent(reviewId)}/builder`, {
       selected_card_id: selectedCardId,
-      overrides: {}
+      overrides: builderOverridesFromStageRequest(body)
     });
     if (!builderApi.ok) {
       const legacyError = legacyErrorFromFastApi(builderApi.body, "Candidate generation requires a prepared Builder setup for this review.");

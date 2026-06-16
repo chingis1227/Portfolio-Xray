@@ -257,6 +257,13 @@ def _text(*values: Any) -> str | None:
     return None
 
 
+def _float(*values: Any) -> float | None:
+    for value in values:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return float(value)
+    return None
+
+
 def _confidence(value: Any) -> Confidence:
     normalized = str(value or "").strip().lower()
     if normalized in {"high", "medium", "low"}:
@@ -2359,6 +2366,8 @@ def _builder_data(builder_doc: dict[str, Any]) -> BuilderData:
         _record(candidate_setup.get("constraints")).get("mode"),
         prefill.get("builder_mode"),
     )
+    parameters = _record(candidate_setup.get("parameters"))
+    constraints = _record(candidate_setup.get("constraints"))
     success_criteria = [
         str(item)
         for item in _list(candidate_setup.get("success_criteria") or prefill.get("success_criteria"))
@@ -2369,6 +2378,21 @@ def _builder_data(builder_doc: dict[str, Any]) -> BuilderData:
         selected_card_id=_text(builder_doc.get("selected_card_id"), candidate_setup.get("source_card_id")),
         method_id=_text(candidate_setup.get("selected_method"), prefill.get("suggested_method")),
         mode=mode,
+        constraint_preset=_text(
+            candidate_setup.get("constraint_preset"),
+            constraints.get("constraint_preset"),
+            parameters.get("constraint_preset"),
+        ),
+        min_asset_weight=_float(
+            candidate_setup.get("min_asset_weight"),
+            constraints.get("min_asset_weight"),
+            parameters.get("min_asset_weight"),
+        ),
+        max_asset_weight=_float(
+            candidate_setup.get("max_asset_weight"),
+            constraints.get("max_asset_weight"),
+            parameters.get("max_asset_weight"),
+        ),
         success_criteria=success_criteria,
         tradeoff_to_watch=_text(candidate_setup.get("tradeoff_to_watch"), prefill.get("tradeoff_to_watch")),
         decision_boundary=_text(candidate_setup.get("decision_boundary"), prefill.get("decision_boundary")),
@@ -2394,6 +2418,7 @@ def prepare_builder_setup(review_id: str, request: BuilderRequest, *, owner_id: 
             review_id=review_id,
             selected_card_id=request.selected_card_id,
             method=request.overrides.method_id,
+            constraint_preset=request.overrides.constraint_preset,
             mode=request.overrides.mode,
             min_asset_weight=request.overrides.min_asset_weight,
             max_asset_weight=request.overrides.max_asset_weight,
@@ -2546,7 +2571,7 @@ def generate_candidate_from_builder(
             result = generate_selected_candidate(
                 review_id=review_id,
                 selected_card_id=selected_card_id,
-                force=False,
+                force=True,
                 factory_execution_mode="fast",
             )
     except ReviewAccessError as exc:
@@ -2901,6 +2926,7 @@ def _comparison_data(
             unavailable_metrics=_as_text_list(row.get("unavailable_metrics"), fallback_field="field"),
             materiality=_materiality(row.get("materiality_for_decision_review")),  # type: ignore[arg-type]
         ),
+        current_vs_candidate=current_vs_candidate,
         evidence_chain_context=evidence_chain_context,
         client_fit=_client_fit_display_summary(client_fit_check),
         next_allowed_actions=["generate_verdict"] if has_row else ["test_another_hypothesis"],  # type: ignore[list-item]

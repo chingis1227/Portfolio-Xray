@@ -32,6 +32,7 @@ export interface Components {
       next_allowed_actions?: Array<"prepare_builder" | "recover_review" | "resolve_data_quality" | "generate_candidate" | "select_another_card" | "monitor" | "run_comparison" | "generate_verdict" | "generate_report" | "test_another_hypothesis" | "rerun_comparison" | "rerun_verdict">;
     };
     "BuilderOverrides": {
+      constraint_preset?: "conservative" | "balanced" | "aggressive" | "basic_reference" | "custom" | "uncapped" | null;
       max_asset_weight?: number | null;
       method_id?: "equal_weight" | "risk_parity" | "hierarchical_risk_parity" | "minimum_variance" | "minimum_cvar" | "maximum_diversification" | null;
       min_asset_weight?: number | null;
@@ -58,9 +59,12 @@ export interface Components {
     };
     "BuilderSetupSummary": {
       builder_setup_id?: string | null;
+      constraint_preset?: string | null;
       decision_boundary?: string | null;
       generation_readiness?: "ready" | "blocked" | "unknown";
+      max_asset_weight?: number | null;
       method_id?: string | null;
+      min_asset_weight?: number | null;
       mode?: string | null;
       selected_card_id?: string | null;
       success_criteria?: Array<string>;
@@ -131,6 +135,9 @@ export interface Components {
     "ComparisonData": {
       client_fit?: Components["schemas"]["ClientFitDisplaySummary"];
       comparison?: Components["schemas"]["ComparisonSummary"];
+      current_vs_candidate?: {
+      [key: string]: unknown;
+    };
       evidence_chain_context?: Components["schemas"]["DownstreamEvidenceChainContext"];
       next_allowed_actions?: Array<"prepare_builder" | "recover_review" | "resolve_data_quality" | "generate_candidate" | "select_another_card" | "monitor" | "run_comparison" | "generate_verdict" | "generate_report" | "test_another_hypothesis" | "rerun_comparison" | "rerun_verdict">;
     };

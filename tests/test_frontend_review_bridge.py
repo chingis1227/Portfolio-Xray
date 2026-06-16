@@ -776,6 +776,37 @@ def test_generate_selected_candidate_uses_run_local_paths_and_one_candidate(
     assert not (run_dir / "decision_verdict.json").exists()
 
 
+def test_generate_selected_candidate_reused_factory_step_cannot_compare(
+    tmp_path: Path,
+) -> None:
+    review_id, run_dir = _review_dir_with_selected_builder(tmp_path)
+
+    def fake_generator(**kwargs):
+        document = _candidate_generation_document()
+        kwargs["output_path"].write_text(json.dumps(document), encoding="utf-8")
+        _write_json(
+            run_dir / "candidate_factory_run.json",
+            {"steps": [{"candidate_id": "minimum_variance", "status": "skipped_existing"}]},
+        )
+        return document
+
+    result = bridge.generate_selected_candidate(
+        review_id=review_id,
+        selected_card_id="card_a",
+        base_dir=tmp_path,
+        generator=fake_generator,
+    )
+
+    assert result["status"] == "completed"
+    assert result["generation_status"] == "generated"
+    assert result["can_compare"] is False
+    handoff = result["candidate_generation"]["handoff_to_comparison"]
+    assert handoff["can_compare"] is False
+    assert handoff["blocked_reason"] == "factory_reused_existing_candidate_snapshot"
+    saved = json.loads((run_dir / "candidate_generation.json").read_text(encoding="utf-8"))
+    assert saved["handoff_to_comparison"]["can_compare"] is False
+
+
 def test_generate_selected_candidate_rejects_mismatched_builder_lineage(tmp_path: Path) -> None:
     review_id, run_dir = _review_dir_with_selected_builder(tmp_path)
     builder_path = run_dir / "analysis_subject" / "portfolio_alternatives_builder.json"
@@ -934,7 +965,13 @@ def test_compare_selected_candidate_writes_run_local_block8_outputs(
                 "view_mode": "one_candidate",
                 "selected_candidate_ids": ["minimum_variance"],
                 "requested_candidate_ids": ["minimum_variance"],
-                "comparisons": [{"candidate_id": "minimum_variance"}],
+                "comparisons": [
+                    {
+                        "candidate_id": "minimum_variance",
+                        "status": "available",
+                        "dimensions": [{"field": "vol_annual", "status": "available"}],
+                    }
+                ],
                 "warnings": [],
             },
         )
@@ -965,6 +1002,58 @@ def test_compare_selected_candidate_writes_run_local_block8_outputs(
     assert call["candidate_generation"]["candidate"]["candidate_id"] == "minimum_variance"
     assert call["factory_run"]["steps"][0]["candidate_id"] == "minimum_variance"
     assert not (run_dir / "decision_verdict.json").exists()
+
+
+def test_compare_selected_candidate_rejects_stale_unavailable_comparison_row(
+    tmp_path: Path,
+) -> None:
+    review_id, run_dir = _review_dir_with_selected_builder(tmp_path)
+    _write_json(run_dir / "candidate_generation.json", _candidate_generation_document())
+    _write_json(
+        run_dir / "candidate_factory_run.json",
+        {"steps": [{"candidate_id": "minimum_variance", "status": "succeeded"}]},
+    )
+
+    def fake_config_loader(path: Path):
+        return SimpleNamespace(output_dir_final=run_dir.as_posix())
+
+    def fake_comparison_writer(cfg, *, project_root, candidate_ids, candidate_generation, factory_run, **kwargs):
+        _write_json(
+            run_dir / "candidate_comparison.json",
+            {"schema_version": "candidate_comparison_v1"},
+        )
+        _write_json(
+            run_dir / "current_vs_candidate.json",
+            {
+                "schema_version": "current_vs_candidate_v1",
+                "comparison_status": "unavailable",
+                "view_mode": "one_candidate",
+                "selected_candidate_ids": ["minimum_variance"],
+                "requested_candidate_ids": ["minimum_variance"],
+                "comparisons": [
+                    {
+                        "candidate_id": "minimum_variance",
+                        "status": "unavailable",
+                        "unavailable_reason": "stale_snapshot_analysis_end",
+                        "dimensions": [],
+                    }
+                ],
+                "warnings": ["stale_snapshot_analysis_end:2026-04-30!=2026-05-15"],
+            },
+        )
+        return {
+            "candidate_comparison_json": run_dir / "candidate_comparison.json",
+            "current_vs_candidate_json": run_dir / "current_vs_candidate.json",
+        }
+
+    with pytest.raises(bridge.ComparisonBridgeError, match="stale_snapshot_analysis_end"):
+        bridge.compare_selected_candidate(
+            review_id=review_id,
+            selected_card_id="card_a",
+            base_dir=tmp_path,
+            config_loader=fake_config_loader,
+            comparison_writer=fake_comparison_writer,
+        )
 
 
 def test_compare_selected_candidate_rejects_mismatched_candidate_generation_lineage(

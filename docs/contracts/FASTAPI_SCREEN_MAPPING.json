@@ -164,7 +164,7 @@
       ],
       "screen_mapping_status": "current",
       "screen_contract_section": "Hypothesis Builder",
-      "mapping_note": "Builder setup is setup-only. It may enable Generate candidate but must not display weights, comparison, or a verdict."
+      "mapping_note": "Builder setup is setup-only. It may receive method, capped/uncapped mode, constraint preset, and min/max asset-weight overrides. It may enable Generate candidate but must not display weights, comparison, or a verdict."
     },
     {
       "operation_id": "generateCandidate",
@@ -199,6 +199,7 @@
       "public_data_fields": [
         "client_fit",
         "comparison",
+        "current_vs_candidate",
         "evidence_chain_context",
         "next_allowed_actions"
       ],
@@ -209,7 +210,7 @@
       ],
       "screen_mapping_status": "current",
       "screen_contract_section": "Current vs Candidate Comparison",
-      "mapping_note": "Comparison is trade-off evidence and may unlock Verdict; it carries bounded diagnosis-to-hypothesis context and bounded Client Fit target context, but must not crown a winner or issue action advice. Client Fit is exposed only as a bounded display summary, not as raw client_fit_check.json."
+      "mapping_note": "Comparison is trade-off evidence and may unlock Verdict; it carries bounded diagnosis-to-hypothesis context, bounded Client Fit target context, and the same-run current_vs_candidate display artifact including dimensions for metric rows. It must not crown a winner or issue action advice. Client Fit is exposed only as a bounded display summary, not as raw client_fit_check.json."
     },
     {
       "operation_id": "generateVerdict",

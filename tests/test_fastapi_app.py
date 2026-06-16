@@ -741,6 +741,7 @@ def test_generate_candidate_runs_adapter_and_returns_public_envelope(
         assert kwargs["review_id"] == review_id
         assert kwargs["selected_card_id"] == "launchpad_01_reduce_concentration"
         assert kwargs["factory_execution_mode"] == "fast"
+        assert kwargs["force"] is True
         result = {
             "review_id": review_id,
             "status": "completed",
@@ -881,6 +882,7 @@ def _current_vs_candidate_doc() -> dict:
                 "unavailable_metrics": [{"field": "turnover"}],
                 "success_criteria_result": {"overall_status": "met"},
                 "materiality_for_decision_review": {"status": "review_candidate"},
+                "dimensions": [{"field": "vol_annual", "status": "available"}],
             }
         ],
         "warnings": [],
@@ -941,6 +943,9 @@ def test_run_comparison_runs_adapter_and_returns_public_envelope(
     assert body["data"]["comparison"]["success_criteria_result"] == "passed"
     assert body["data"]["comparison"]["materiality"] == "material"
     assert body["data"]["comparison"]["what_improved"] == ["Concentration improved"]
+    assert body["data"]["current_vs_candidate"]["comparisons"][0]["dimensions"] == [
+        {"field": "vol_annual", "status": "available"}
+    ]
     assert body["data"]["evidence_chain_context"]["selected_diagnosis_id"] == "high_concentration"
     assert body["data"]["evidence_chain_context"]["tested_hypothesis"] == (
         "Test whether equal weighting reduces concentration."
