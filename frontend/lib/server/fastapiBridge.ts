@@ -536,6 +536,9 @@ function publicBuilderDocumentFromFastApi(body: unknown, selectedCardId: string)
   const minAssetWeight = numberValue(setup.min_asset_weight);
   const maxAssetWeight = numberValue(setup.max_asset_weight);
   const canGenerate = data.candidate_generation_allowed === true;
+  const clientFitContext = isRecord(setup.client_fit_context) ? setup.client_fit_context : undefined;
+  const clientFitTestCriteria = isRecord(setup.client_fit_test_criteria) ? setup.client_fit_test_criteria : undefined;
+  const clientFitOptimizerBoundary = textValue(setup.client_fit_optimizer_boundary) || null;
   return {
     selected_card_id: textValue(setup.selected_card_id, selectedCardId),
     can_generate_candidate: canGenerate,
@@ -547,7 +550,10 @@ function publicBuilderDocumentFromFastApi(body: unknown, selectedCardId: string)
       max_asset_weight: maxAssetWeight,
       success_criteria: stringArray(setup.success_criteria),
       tradeoff_to_watch: textValue(setup.tradeoff_to_watch) || null,
-      decision_boundary: textValue(setup.decision_boundary) || null
+      decision_boundary: textValue(setup.decision_boundary) || null,
+      client_fit_context: clientFitContext,
+      client_fit_test_criteria: clientFitTestCriteria,
+      client_fit_optimizer_boundary: clientFitOptimizerBoundary
     },
     candidate_setup: {
       candidate_setup_id: setupId,
@@ -558,6 +564,9 @@ function publicBuilderDocumentFromFastApi(body: unknown, selectedCardId: string)
       success_criteria: stringArray(setup.success_criteria),
       tradeoff_to_watch: textValue(setup.tradeoff_to_watch) || null,
       decision_boundary: textValue(setup.decision_boundary) || null,
+      client_fit_context: clientFitContext,
+      client_fit_test_criteria: clientFitTestCriteria,
+      client_fit_optimizer_boundary: clientFitOptimizerBoundary,
       parameters: {
         mode,
         constraint_preset: constraintPreset,
@@ -1019,6 +1028,21 @@ export async function builderViaFastApi(request: Request) {
   const builderLineageErrors = fastApiLineageErrors(api.body, { reviewId, selectedCardId });
   if (builderLineageErrors.length) {
     return fastApiLineageMismatchResponse("builder_setup", { reviewId, selectedCardId }, builderLineageErrors);
+  }
+  const builderData = fastApiData(api.body);
+  const builderSetup: Record<string, unknown> = isRecord(builderData.builder_setup) ? builderData.builder_setup : {};
+  const setupSelectedCardId = textValue(builderSetup.selected_card_id);
+  const lineageBuilderSetupId = textValue(fastApiLineage(api.body).builder_setup_id);
+  const setupBuilderSetupId = textValue(builderSetup.builder_setup_id);
+  const builderSetupErrors: string[] = [];
+  if (setupSelectedCardId && setupSelectedCardId !== selectedCardId) {
+    builderSetupErrors.push(`data.builder_setup.selected_card_id expected ${selectedCardId} but received ${setupSelectedCardId}.`);
+  }
+  if (lineageBuilderSetupId && setupBuilderSetupId && setupBuilderSetupId !== lineageBuilderSetupId) {
+    builderSetupErrors.push(`data.builder_setup.builder_setup_id expected ${lineageBuilderSetupId} but received ${setupBuilderSetupId}.`);
+  }
+  if (builderSetupErrors.length) {
+    return fastApiLineageMismatchResponse("builder_setup", { reviewId, selectedCardId }, builderSetupErrors);
   }
 
   return NextResponse.json({

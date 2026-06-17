@@ -482,6 +482,9 @@ class BuilderSetupSummary(StrictModel):
     success_criteria: list[str] = Field(default_factory=list)
     tradeoff_to_watch: str | None = None
     decision_boundary: str | None = None
+    client_fit_context: dict[str, Any] | None = None
+    client_fit_test_criteria: dict[str, Any] | None = None
+    client_fit_optimizer_boundary: str | None = None
     generation_readiness: Literal["ready", "blocked", "unknown"] = "unknown"
 
 

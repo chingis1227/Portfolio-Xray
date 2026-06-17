@@ -2404,6 +2404,10 @@ def _builder_data(builder_doc: dict[str, Any]) -> BuilderData:
         for item in _list(candidate_setup.get("success_criteria") or prefill.get("success_criteria"))
         if str(item).strip()
     ]
+    client_fit_context = _record(candidate_setup.get("client_fit_context") or prefill.get("client_fit_context"))
+    client_fit_test_criteria = _record(
+        candidate_setup.get("client_fit_test_criteria") or prefill.get("client_fit_test_criteria")
+    )
     builder_setup = BuilderSetupSummary(
         builder_setup_id=_text(candidate_setup.get("candidate_setup_id"), prefill.get("builder_prefill_id")),
         selected_card_id=_text(builder_doc.get("selected_card_id"), candidate_setup.get("source_card_id")),
@@ -2427,6 +2431,12 @@ def _builder_data(builder_doc: dict[str, Any]) -> BuilderData:
         success_criteria=success_criteria,
         tradeoff_to_watch=_text(candidate_setup.get("tradeoff_to_watch"), prefill.get("tradeoff_to_watch")),
         decision_boundary=_text(candidate_setup.get("decision_boundary"), prefill.get("decision_boundary")),
+        client_fit_context=client_fit_context or None,
+        client_fit_test_criteria=client_fit_test_criteria or None,
+        client_fit_optimizer_boundary=_text(
+            candidate_setup.get("client_fit_optimizer_boundary"),
+            prefill.get("client_fit_optimizer_boundary"),
+        ),
         generation_readiness=readiness,  # type: ignore[arg-type]
     )
     next_allowed = ["generate_candidate"] if can_generate else ["select_another_card"]

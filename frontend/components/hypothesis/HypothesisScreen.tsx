@@ -42,14 +42,6 @@ const DEFAULT_BUILDER_SETTINGS: BuilderSettings = {
   maxAssetWeight: 0.2
 };
 
-const CLIENT_FIT_TO_BUILDER_PRESET: Record<string, ConstraintPreset> = {
-  ultra_conservative: "conservative",
-  conservative: "conservative",
-  balanced: "balanced",
-  growth: "aggressive",
-  aggressive: "aggressive"
-};
-
 function isRecord(value: unknown): value is JsonRecord {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -133,13 +125,6 @@ function settingsForConstraintPreset(preset: ConstraintPreset): BuilderSettings 
     minAssetWeight: matched?.min ?? null,
     maxAssetWeight: matched?.max ?? null
   };
-}
-
-function builderSettingsForClientFit(activeReview?: ActiveReviewState): BuilderSettings {
-  const presetId = optionalText(activeReview?.clientFitProfile?.preset_id)
-    ?? optionalText(activeReview?.reviewSummary?.clientFit?.profile_label);
-  const preset = presetId ? CLIENT_FIT_TO_BUILDER_PRESET[presetId] : undefined;
-  return preset ? settingsForConstraintPreset(preset) : DEFAULT_BUILDER_SETTINGS;
 }
 
 function formatGenerationError(value: unknown, fallback: string) {
@@ -832,7 +817,7 @@ export function HypothesisScreen() {
 
   useEffect(() => {
     if (sampleMode || !effectiveReview?.reviewId) return;
-    setBuilderSettings(builderSettingsForClientFit(effectiveReview));
+    setBuilderSettings(DEFAULT_BUILDER_SETTINGS);
   }, [effectiveReview?.reviewId, sampleMode]);
 
   useEffect(() => {

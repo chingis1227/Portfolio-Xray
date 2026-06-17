@@ -80,10 +80,10 @@ Constraint presets:
 | `custom` | user field | user field | capped |
 | `uncapped` | 0% | null | uncapped |
 
-Frontend simple mode may choose the initial capped preset from the saved Client Fit profile family:
-`ultra_conservative` and `conservative` map to the Conservative Builder preset, `balanced` maps to
-Balanced, and `growth` / `aggressive` map to Aggressive. This is only a UI starting point. Client
-Fit targets still do not become optimizer objectives, suitability approval, or hidden mandates.
+Frontend simple mode starts from the neutral default Builder preset unless the user explicitly edits
+the setup. The saved Client Fit profile family must not choose the initial constraint preset, max
+asset weight, min asset weight, method, mode, optimizer objective, or hidden mandate. Client Fit
+targets remain visible only as non-binding context and comparison success criteria.
 
 ## Request Contract
 

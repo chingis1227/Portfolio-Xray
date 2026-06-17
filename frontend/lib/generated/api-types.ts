@@ -59,6 +59,13 @@ export interface Components {
     };
     "BuilderSetupSummary": {
       builder_setup_id?: string | null;
+      client_fit_context?: {
+      [key: string]: unknown;
+    } | null;
+      client_fit_optimizer_boundary?: string | null;
+      client_fit_test_criteria?: {
+      [key: string]: unknown;
+    } | null;
       constraint_preset?: string | null;
       decision_boundary?: string | null;
       generation_readiness?: "ready" | "blocked" | "unknown";

@@ -16,9 +16,10 @@
   metrics are not available yet. Block 8 can now show degraded weight-only concentration/turnover
   evidence from same-run generated weights instead of surfacing an opaque unavailable comparison row.
 - Fixed Hypothesis Builder constraint handling. Builder numeric min/max fields are now directly
-  editable after preset selection, the initial capped preset follows the saved Client Fit profile
-  family, infeasible caps are blocked before Candidate/Comparison, and Block 7 rejects or prevents
-  generated weights that violate the visible Builder max weight.
+  editable after preset selection, infeasible caps are blocked before Candidate/Comparison, and
+  Block 7 rejects or prevents generated weights that violate the visible Builder max weight. The
+  initial setup now stays neutral instead of deriving hidden defaults from the saved Client Fit
+  profile.
 - Repaired and verified the live Builder-to-Report review flow. Hypothesis Builder now exposes
   simple capped/uncapped setup controls, fresh candidate generation is guarded against stale reused
   artifacts, Comparison receives full current-vs-candidate metric dimensions, and a one-scenario

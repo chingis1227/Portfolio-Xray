@@ -137,13 +137,13 @@ product or trading system.
   restores candidate/comparison/verdict/report readiness as false so stale downstream artifacts are
   not silently trusted as active state.
 - Hypothesis / Builder exposes the V1 simple setup controls from the canonical Builder contract:
-  capped or uncapped mode, constraint preset, min asset weight, and max asset weight. The default
-  capped preset follows the saved Client Fit profile family where available (ultra conservative and
-  conservative -> Conservative, balanced -> Balanced, growth and aggressive -> Aggressive). Presets
-  fill the numeric fields, but the user can still type min/max percentages directly; editing a
-  numeric field switches the setup to Custom. Infeasible caps, such as a max weight too low to fill
-  100% across the current holdings, block candidate generation with a user-facing explanation and do
-  not unlock Comparison.
+  capped or uncapped mode, constraint preset, min asset weight, and max asset weight. The initial
+  setup is neutral and must not be derived from the saved Client Fit profile; Client Fit remains
+  non-binding context and may only appear as visible test criteria outside optimizer parameters or
+  constraints. Presets fill the numeric fields, but the user can still type min/max percentages
+  directly; editing a numeric field switches the setup to Custom. Infeasible caps, such as a max
+  weight too low to fill 100% across the current holdings, block candidate generation with a
+  user-facing explanation and do not unlock Comparison.
   Changing the selected hypothesis card or any Builder setup field clears downstream candidate,
   comparison, verdict, and report readiness so old artifacts cannot remain active for a new setup.
 - Current vs Candidate Comparison uses the FastAPI `current_vs_candidate` display evidence when

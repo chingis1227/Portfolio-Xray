@@ -646,6 +646,19 @@ def _fake_builder_document() -> dict:
             "success_criteria": ["Reduce top holding concentration."],
             "tradeoff_to_watch": "Return drag.",
             "decision_boundary": "Decision Verdict decides; this is not a recommendation.",
+            "client_fit_context": {"client_fit_status": "watch", "profile_label": "Balanced"},
+            "client_fit_test_criteria": {
+                "schema_version": "builder_client_fit_test_criteria_v1",
+                "client_fit_status": "watch",
+                "target_rows": [
+                    {
+                        "usage": "display_test_criterion",
+                        "dimension": "worst_stress_loss_vs_limit",
+                        "criterion_en": "Compare worst stress loss against the stated maximum temporary loss.",
+                    }
+                ],
+            },
+            "client_fit_optimizer_boundary": "Client Fit targets are display test criteria, not optimizer constraints.",
         },
         "candidate_setup": {
             "candidate_setup_id": "candidate_setup_builder_prefill_launchpad_01_reduce_concentration",
@@ -658,6 +671,19 @@ def _fake_builder_document() -> dict:
             "success_criteria": ["Reduce top holding concentration."],
             "tradeoff_to_watch": "Return drag.",
             "decision_boundary": "Decision Verdict decides; this is not a recommendation.",
+            "client_fit_context": {"client_fit_status": "watch", "profile_label": "Balanced"},
+            "client_fit_test_criteria": {
+                "schema_version": "builder_client_fit_test_criteria_v1",
+                "client_fit_status": "watch",
+                "target_rows": [
+                    {
+                        "usage": "display_test_criterion",
+                        "dimension": "worst_stress_loss_vs_limit",
+                        "criterion_en": "Compare worst stress loss against the stated maximum temporary loss.",
+                    }
+                ],
+            },
+            "client_fit_optimizer_boundary": "Client Fit targets are display test criteria, not optimizer constraints.",
             "is_rebalance_recommendation": False,
         },
         "validation": {
@@ -720,6 +746,18 @@ def test_prepare_builder_runs_adapter_and_returns_public_envelope(
     assert body["data"]["next_allowed_actions"] == ["generate_candidate"]
     assert body["data"]["builder_setup"]["method_id"] == "equal_weight"
     assert body["data"]["builder_setup"]["generation_readiness"] == "ready"
+    assert body["data"]["builder_setup"]["client_fit_context"]["client_fit_status"] == "watch"
+    assert (
+        body["data"]["builder_setup"]["client_fit_test_criteria"]["target_rows"][0]["usage"]
+        == "display_test_criterion"
+    )
+    assert "not optimizer constraints" in body["data"]["builder_setup"]["client_fit_optimizer_boundary"]
+    assert "client_fit_test_criteria" not in json.dumps(
+        _fake_builder_document()["candidate_setup"]["parameters"]
+    )
+    assert "client_fit_test_criteria" not in json.dumps(
+        _fake_builder_document()["candidate_setup"]["constraints"]
+    )
     assert body["evidence"]["source_artifacts"][0]["kind"] == "portfolio_alternatives_builder"
     assert "D:\\" not in json.dumps(body)
 

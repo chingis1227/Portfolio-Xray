@@ -347,6 +347,131 @@ test("builder prepare route returns legacy-compatible setup after FastAPI succes
   });
 });
 
+test("builder prepare route rejects FastAPI selected-card lineage mismatch before trusting setup", async () => {
+  const route = loadRoute();
+
+  await withMockFetch(async () => Response.json(fastApiEnvelope({
+    review_id: "frontend_review_builder_lineage",
+    lineage: {
+      review_id: "frontend_review_builder_lineage",
+      selected_card_id: "stale_card",
+      builder_setup_id: "candidate_setup_stale"
+    },
+    data: {
+      candidate_generation_allowed: true,
+      builder_setup: {
+        builder_setup_id: "candidate_setup_stale",
+        selected_card_id: "stale_card",
+        method_id: "equal_weight"
+      }
+    }
+  })), async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_builder_lineage",
+      selected_card_id: "card_equal_weight"
+    })));
+
+    assert.equal(result.status, 409);
+    assert.equal(result.body.stage, "builder_setup");
+    assert.equal(result.body.review_id, "frontend_review_builder_lineage");
+    assert.equal(result.body.selected_card_id, "card_equal_weight");
+    assert.equal(result.body.portfolio_alternatives_builder, undefined);
+    assert.equal(result.body.fastapi_envelope, undefined);
+  });
+});
+
+test("builder prepare route rejects stale builder setup body even when lineage ids look valid", async () => {
+  const route = loadRoute();
+
+  await withMockFetch(async () => Response.json(fastApiEnvelope({
+    review_id: "frontend_review_builder_body_lineage",
+    lineage: {
+      review_id: "frontend_review_builder_body_lineage",
+      selected_card_id: "card_min_cvar",
+      builder_setup_id: "builder_setup_active"
+    },
+    data: {
+      candidate_generation_allowed: true,
+      builder_setup: {
+        builder_setup_id: "builder_setup_stale",
+        selected_card_id: "stale_card",
+        method_id: "equal_weight"
+      }
+    }
+  })), async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_builder_body_lineage",
+      selected_card_id: "card_min_cvar"
+    })));
+
+    assert.equal(result.status, 409);
+    assert.equal(result.body.stage, "builder_setup");
+    assert.deepEqual(result.body.details, [
+      "data.builder_setup.selected_card_id expected card_min_cvar but received stale_card.",
+      "data.builder_setup.builder_setup_id expected builder_setup_active but received builder_setup_stale."
+    ]);
+    assert.equal(result.body.portfolio_alternatives_builder, undefined);
+  });
+});
+
+test("builder prepare public envelope keeps Client Fit context out of optimizer parameters and constraints", async () => {
+  const route = loadRoute();
+  const clientFitCriteria = {
+    client_fit_status: "watch",
+    target_rows: [{ usage: "display_test_criterion", dimension_label: "Worst stress loss limit" }]
+  };
+
+  await withMockFetch(async () => Response.json(fastApiEnvelope({
+    review_id: "frontend_review_builder_client_fit",
+    lineage: {
+      review_id: "frontend_review_builder_client_fit",
+      selected_card_id: "card_min_cvar",
+      builder_setup_id: "builder_setup_min_cvar"
+    },
+    data: {
+      candidate_generation_allowed: true,
+      builder_setup: {
+        builder_setup_id: "builder_setup_min_cvar",
+        selected_card_id: "card_min_cvar",
+        method_id: "minimum_cvar",
+        generation_readiness: "ready",
+        success_criteria: [
+          "Lower worst stress loss.",
+          "Compare worst stress loss against the stated maximum temporary loss."
+        ],
+        client_fit_context: { client_fit_status: "watch", profile_label: "Balanced" },
+        client_fit_test_criteria: clientFitCriteria,
+        client_fit_optimizer_boundary: "Client Fit criteria are display test criteria, not optimizer constraints.",
+        parameters: {
+          method_id: "minimum_cvar",
+          client_fit_test_criteria: clientFitCriteria
+        },
+        constraints: {
+          target_vol_range: { min: 0.07, max: 0.1 },
+          client_fit_test_criteria: clientFitCriteria
+        }
+      }
+    }
+  })), async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_builder_client_fit",
+      selected_card_id: "card_min_cvar"
+    })));
+
+    assert.equal(result.status, 200);
+    const prefill = result.body.portfolio_alternatives_builder.builder_prefill;
+    const setup = result.body.portfolio_alternatives_builder.candidate_setup;
+    assert.deepEqual(prefill.client_fit_test_criteria, clientFitCriteria);
+    assert.match(prefill.client_fit_optimizer_boundary, /not optimizer constraints/i);
+    assert.deepEqual(setup.client_fit_test_criteria, clientFitCriteria);
+    assert.match(setup.client_fit_optimizer_boundary, /not optimizer constraints/i);
+    assert.equal(setup.parameters.client_fit_test_criteria, undefined);
+    assert.equal(setup.parameters.target_vol_range, undefined);
+    assert.equal(setup.constraints.client_fit_test_criteria, undefined);
+    assert.equal(setup.constraints.target_vol_range, undefined);
+  });
+});
+
 test("staged safe error formatter includes code, stage, and retry guidance", () => {
   const { stagedSafeErrorMessage } = loadTsModule(stagedSafeErrorPath);
 
@@ -1263,6 +1388,65 @@ test("Hypothesis screen model blocks data-quality paths and keeps Client Fit con
   assert.match(sanitized.userError, /Supporting data service is unavailable/);
   assert.doesNotMatch(sanitized.userError, /uvicorn|127\.0\.0\.1|FastAPI/);
   assert.match(sanitized.developerError, /uvicorn/);
+});
+
+test("Hypothesis screen model defaults to one actionable Launchpad card and blocks monitor paths", () => {
+  const { buildHypothesisScreenModel } = loadTsModule(hypothesisScreenModelPath);
+  const actionable = {
+    card_id: "launchpad_01_improve_crisis_resilience",
+    title: "Improve Crisis Resilience",
+    goal: "Improve crisis resilience",
+    hypothesis_to_test: "Test whether crisis resilience improves.",
+    card_type: "targeted_hypothesis_test",
+    source_problem_label: "Weak crisis resilience",
+    suggested_methods: [{ candidate_method_id: "minimum_cvar", method_role: "targeted_hypothesis" }],
+    default_method: "minimum_cvar",
+    success_criteria: ["Lower worst stress loss."],
+    tradeoff_to_watch: "Lower tail loss vs lower expected return.",
+    decision_boundary: "This is not a rebalance recommendation.",
+    is_rebalance_recommendation: false,
+    generates_portfolio: false
+  };
+  const monitor = {
+    card_id: "launchpad_02_evidence_insufficient_monitor",
+    title: "Monitor data quality",
+    goal: "Do not act yet",
+    hypothesis_to_test: "Resolve data quality before testing candidates.",
+    card_type: "monitor_or_data_step",
+    source_problem_label: "Evidence quality requires review",
+    suggested_methods: [],
+    default_method: undefined,
+    success_criteria: ["Resolve data-quality blockers."],
+    decision_boundary: "This is not a rebalance recommendation.",
+    is_rebalance_recommendation: false,
+    generates_portfolio: false
+  };
+
+  const defaultModel = buildHypothesisScreenModel({ activeReview: mockHypothesisReview([monitor, actionable]) });
+  const monitorModel = buildHypothesisScreenModel({
+    activeReview: mockHypothesisReview([monitor, actionable]),
+    selectedCardId: monitor.card_id
+  });
+
+  assert.equal(defaultModel.defaultSelectedCardId, actionable.card_id);
+  assert.equal(defaultModel.primaryTest.cardId, actionable.card_id);
+  assert.equal(defaultModel.primaryTest.canGenerate, true);
+  assert.equal(defaultModel.monitorOrDataTests[0].cardId, monitor.card_id);
+  assert.equal(monitorModel.primaryTest.cardId, monitor.card_id);
+  assert.equal(monitorModel.primaryTest.canGenerate, false);
+  assert.equal(monitorModel.action.state, "blocked");
+  assert.match(monitorModel.action.disabledReason, /monitoring or data review/i);
+});
+
+test("Hypothesis Builder defaults are not derived from Client Fit profile constraints", () => {
+  const source = fs.readFileSync(hypothesisScreenPath, "utf8");
+  const resetBuilderDefaults = /setBuilderSettings\(DEFAULT_BUILDER_SETTINGS\)/;
+
+  assert.doesNotMatch(source, /CLIENT_FIT_TO_BUILDER_PRESET|builderSettingsForClientFit/);
+  assert.doesNotMatch(source, /clientFitProfile\?\.preset_id[\s\S]{0,240}constraintPreset/);
+  assert.doesNotMatch(source, /reviewSummary\?\.clientFit\?\.profile_label[\s\S]{0,240}constraintPreset/);
+  assert.match(source, resetBuilderDefaults);
+  assert.match(source, /ClientFitContextCard/);
 });
 
 test("site explanation presenter strips raw provenance from the public display model", () => {
