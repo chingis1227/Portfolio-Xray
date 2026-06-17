@@ -81,6 +81,10 @@ Each `what_changed_lines[]` item contains:
 - `retest_trigger`
 
 Evidence references must point to existing source artifacts and field paths.
+Those raw artifact names and field paths are provenance, not public copy. Product-facing
+`message` values must use user-facing monitoring/evidence language and must not expose `.json`
+artifact names, raw field-path labels, absolute/local paths, tracebacks, trade instructions,
+or suitability/approval wording.
 
 Implemented categories include:
 

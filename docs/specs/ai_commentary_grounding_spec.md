@@ -301,6 +301,9 @@ The produced context must preserve the guardrails `does_not_execute_trades`,
 Monitoring is integrated later in the product flow. If `monitoring_diff.json`
 is not available at context build time, future commentary must state monitoring
 context is absent instead of inventing a "what changed" narrative.
+When `monitoring_diff_v1` is available, AI Commentary grounding uses its `diff_status`
+field. It must not look for legacy or non-schema `change_status` fields, and it must not
+emit placeholder text such as a `None` monitoring status.
 
 ## Non-goals
 

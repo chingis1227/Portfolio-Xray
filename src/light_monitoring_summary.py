@@ -70,7 +70,7 @@ def _profile_change_lines(
             _append_line(
                 lines,
                 category="evidence_gap",
-                message="Primary profile change evidence is degraded; review monitoring_diff.json before interpreting changes.",
+                message="Primary profile change evidence is degraded; review monitoring evidence before interpreting changes.",
                 evidence_refs=[
                     {"artifact": "monitoring_diff.json", "field_path": "diff_status"},
                     {"artifact": "monitoring_diff.json", "field_path": f"profile_changes.{primary_profile_id}"},
@@ -175,7 +175,7 @@ def _decision_lines(
         _append_line(
             lines,
             category="review_trigger",
-            message="Current monitoring indicates the decision package should be reviewed; this does not execute trades.",
+            message="Current monitoring indicates the decision package should be reviewed; this does not take implementation action.",
             evidence_refs=[
                 {"artifact": "monitoring_diff.json", "field_path": "rebalance_trigger"},
                 {"artifact": "decision_verdict.json", "field_path": "verdict_id"},
@@ -261,9 +261,9 @@ def build_what_changed_summary(
         lines.extend(profile_lines)
         triggers.extend(profile_triggers)
 
-    decision_lines, decision_triggers = _decision_lines(monitoring_diff, decision_verdict)
-    lines.extend(decision_lines)
-    triggers.extend(decision_triggers)
+        decision_lines, decision_triggers = _decision_lines(monitoring_diff, decision_verdict)
+        lines.extend(decision_lines)
+        triggers.extend(decision_triggers)
 
     source_warnings = monitoring_diff.get("warnings")
     if isinstance(source_warnings, list):

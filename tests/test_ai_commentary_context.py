@@ -411,6 +411,42 @@ def test_ai_commentary_context_supports_blocked_builder_client_explanation() -> 
     assert journal["selected_candidate"]["can_generate_candidate"] is False
 
 
+def test_ai_commentary_context_uses_monitoring_diff_status_without_fake_none_text() -> None:
+    doc = build_ai_commentary_context(
+        comparison=None,
+        current_vs_candidate={"schema_version": "current_vs_candidate_v1", "comparisons": []},
+        selection=None,
+        decision_verdict={
+            "schema_version": "decision_verdict_v1",
+            "verdict_id": "no_material_rebalance_recommended",
+            "reviewed_candidate_id": "equal_weight",
+            "rationale_summary": "Decision-support verdict remains bounded.",
+        },
+        candidate_generation={
+            "generation_status": "generated",
+            "selected_card_id": "card_equal_weight",
+            "candidate": {"candidate_id": "equal_weight"},
+        },
+        monitoring_diff={
+            "schema_version": "monitoring_diff_v1",
+            "diff_status": "no_prior_snapshot",
+            "summary_plain_en": "First stored monitoring snapshot.",
+        },
+    )
+
+    monitoring_refs = [
+        ref for ref in doc["evidence_references"] if ref["artifact"] == "monitoring_diff.json"
+    ]
+    assert monitoring_refs
+    assert {ref["field_path"] for ref in monitoring_refs} == {"diff_status"}
+    draft_text = " ".join(
+        sentence["text"] for sentence in doc["client_explanation_draft"]["sentences"]
+    )
+    assert "Monitoring baseline is stored" in draft_text
+    assert "Monitoring change status is None" not in draft_text
+    assert "change_status" not in json.dumps(doc)
+
+
 def test_ai_commentary_context_warns_on_missing_required_sources() -> None:
     doc = build_ai_commentary_context(
         comparison=None,

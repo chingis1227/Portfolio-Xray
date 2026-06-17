@@ -1051,8 +1051,8 @@ def _monitoring_refs(monitoring_diff: dict[str, Any] | None) -> list[dict[str, A
     _append_reference(
         refs,
         artifact="monitoring_diff.json",
-        field_path="change_status",
-        value=monitoring_diff.get("change_status"),
+        field_path="diff_status",
+        value=monitoring_diff.get("diff_status"),
     )
     return refs
 
@@ -1574,17 +1574,26 @@ def _next_review_sentence(
     portfolio_alternatives_builder: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
     if isinstance(monitoring_diff, Mapping):
-        status = monitoring_diff.get("change_status")
+        status = _safe_text(monitoring_diff.get("diff_status")) or "unavailable"
+        if status == "no_prior_snapshot":
+            text = "Monitoring baseline is stored; no prior comparable snapshot is available yet."
+        elif status == "diff_available":
+            text = "Monitoring diff evidence is available for the current review."
+        elif status == "diff_degraded":
+            text = "Monitoring diff evidence is degraded; treat What Changed as limited."
+        else:
+            text = "Monitoring diff status is unavailable."
         return _sentence(
             "next_review_trigger",
-            f"Monitoring change status is {status}.",
+            text,
             [
                 _brief_ref(
                     artifact="monitoring_diff.json",
-                    field_path="change_status",
+                    field_path="diff_status",
                     value=status,
                 )
             ],
+            evidence_status="available" if status in {"no_prior_snapshot", "diff_available"} else "limited",
         )
     prefill = (
         portfolio_alternatives_builder.get("builder_prefill")
@@ -1913,7 +1922,7 @@ def build_ai_commentary_context(
             ),
             "monitoring_next": "Use monitoring_diff.json only when available; otherwise state that monitoring context is absent.",
             "monitoring_trigger": (
-                "Use monitoring_diff.json change_status and related fields only when available; otherwise state "
+                "Use monitoring diff status and related fields only when available; otherwise state "
                 "that no monitoring trigger evidence was provided."
             ),
             "light_decision_journal": (
