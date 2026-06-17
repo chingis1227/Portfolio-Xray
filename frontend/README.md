@@ -35,6 +35,10 @@ product or trading system.
 - `app/` contains the public landing page, the required email sign-in step, the short onboarding flow, the platform route screens,
   and API route compatibility handlers. The root route now renders the public landing page instead
   of redirecting directly into an internal product step.
+- `components/layout/AppShell.tsx` keeps the platform sidebar and main content shell stable across
+  internal route changes. Public/onboarding pages may still use route-level reveal animation, but
+  platform screen changes should avoid a shell-level fade/remount that makes sidebar navigation feel
+  like a double flash.
 - `app/api/portfolio/*` routes are compatibility proxies over the local FastAPI v1 API. They keep
   the current screen-facing response shape while FastAPI runs the Python review stages and enforces
   typed request/response contracts. The proxy layer is deployment-safe for Edge-style route

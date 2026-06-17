@@ -46,18 +46,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Sidebar />
         <div className="min-w-0 flex-1">
           {hideTopJourneyProgress ? null : <TopJourneyProgress />}
-          <AnimatePresence mode="wait">
-            <motion.main
-              key={pathname}
-              className="mx-auto w-full max-w-[1440px] px-4 py-8 md:px-8 lg:px-10"
-              initial={reduceMotion ? false : "initial"}
-              animate={reduceMotion ? undefined : "animate"}
-              exit={reduceMotion ? undefined : "exit"}
-              variants={reduceMotion ? undefined : pageVariants}
-            >
-              {children}
-            </motion.main>
-          </AnimatePresence>
+          <main className="mx-auto w-full max-w-[1440px] px-4 py-8 md:px-8 lg:px-10">
+            {children}
+          </main>
         </div>
       </div>
     </div>

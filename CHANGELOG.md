@@ -2,6 +2,8 @@
 
 ## 2026-06-17
 
+- Removed the shell-level fade/remount animation from internal platform route changes so sidebar
+  navigation no longer produces a double-flash effect between review screens.
 - Polished Portfolio MRI interaction details: status badges now use evidence-dot treatments, the platform sidebar has stronger active-step outlines with compact emblems, and primary/compact controls get a restrained tactile pressed state.
 - Removed repeated frontend boundary/disclaimer callouts from the main review screens and removed the sticky top journey status rail so the visible step context lives inside each screen hero.
 - Brightened the frontend Steel Blue action palette and primary CTA gradient so Run Diagnosis and other main buttons read more clearly against the dark interface while keeping contrast-accessible dark CTA text.
