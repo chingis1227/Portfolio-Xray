@@ -604,6 +604,11 @@ candidate, then writes `current_vs_candidate.json`. It must not write or refresh
 `ai_commentary_context.json`. Existing downstream files are treated as stale downstream artifacts and
 are disclosed in `current_vs_candidate.json` instead of being loaded as current evidence.
 
+Frontend/FastAPI consumers must require displayable selected-candidate evidence before unlocking
+Verdict. A summary-only response, missing `current_vs_candidate.comparisons[]`, an unavailable row,
+or rows without displayable dimensions must remain blocked/partial and must not be converted into
+synthetic metric rows.
+
 ## Legacy Artifacts
 
 | File | Producer | V1 status |

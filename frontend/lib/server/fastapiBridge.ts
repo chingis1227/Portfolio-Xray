@@ -623,41 +623,41 @@ function publicCandidateGenerationFromFastApi(body: unknown, selectedCardId: str
 
 function publicCurrentVsCandidateFromFastApi(body: unknown, candidateId: string) {
   const data = fastApiData(body);
-  const comparison = isRecord(data.comparison) ? data.comparison : {};
   const currentVsCandidate = isRecord(data.current_vs_candidate) ? data.current_vs_candidate : {};
   if (Array.isArray(currentVsCandidate.comparisons)) {
     return currentVsCandidate;
   }
-  const context = isRecord(data.evidence_chain_context) ? data.evidence_chain_context : {};
   const resolvedCandidateId = candidateId || textValue(fastApiLineage(body).candidate_id);
   return {
-    comparison_status: textValue(comparison.candidate_label) ? "available" : "partial",
+    comparison_status: "partial",
     view_mode: "current_vs_candidate",
     selected_candidate_ids: resolvedCandidateId ? [resolvedCandidateId] : [],
     baseline: {
-      display_name: textValue(comparison.current_label, "Current portfolio")
+      display_name: "Current portfolio"
     },
-    comparisons: [
-      {
-        candidate_id: resolvedCandidateId,
-        display_name: textValue(comparison.candidate_label, resolvedCandidateId),
-        candidate_label: textValue(comparison.candidate_label, resolvedCandidateId),
-        hypothesis_to_test: textValue(context.tested_hypothesis),
-        success_criteria_result: {
-          overall_status: textValue(comparison.success_criteria_result, "unknown")
-        },
-        what_improved: stringArray(comparison.what_improved),
-        what_worsened: stringArray(comparison.what_worsened),
-        what_stayed_similar: stringArray(comparison.what_stayed_similar),
-        unavailable_metrics: stringArray(comparison.unavailable_metrics).map((field) => ({ field })),
-        materiality_for_decision_review: {
-          status: textValue(comparison.materiality, "unknown")
-        },
-        source_artifacts: stringArray(context.source_artifacts)
-      }
-    ],
-    warnings: stringArray((isRecord(body) ? body : {}).warnings)
+    comparisons: [],
+    warnings: [
+      ...stringArray((isRecord(body) ? body : {}).warnings),
+      "Comparison evidence was partial because the public current-vs-candidate rows were not available."
+    ]
   };
+}
+
+function currentVsCandidateHasDisplayableEvidence(currentVsCandidate: unknown, candidateId: string) {
+  const doc = isRecord(currentVsCandidate) ? currentVsCandidate : {};
+  const rows = Array.isArray(doc.comparisons) ? doc.comparisons.filter(isRecord) : [];
+  const row = candidateId ? rows.find((item) => textValue(item.candidate_id) === candidateId) : rows[0];
+  if (!row) return false;
+  const dimensions = Array.isArray(row.dimensions) ? row.dimensions.filter(isRecord) : [];
+  return dimensions.some((dimension) => {
+    const status = textValue(dimension.status).toLowerCase();
+    if (["unavailable", "not_available", "missing", "unknown"].includes(status)) return false;
+    const direction = textValue(dimension.direction).toLowerCase();
+    return dimension.baseline_value != null
+      || dimension.candidate_value != null
+      || dimension.delta != null
+      || (Boolean(direction) && direction !== "unknown");
+  });
 }
 
 function publicDecisionVerdictFromFastApi(body: unknown) {
@@ -1166,6 +1166,8 @@ export async function comparisonViaFastApi(request: Request) {
   }
 
   const comparisonId = textValue(fastApiLineage(api.body).comparison_id, `current_vs_candidate:${candidateId}`);
+  const currentVsCandidate = publicCurrentVsCandidateFromFastApi(api.body, candidateId);
+  const hasDisplayableEvidence = currentVsCandidateHasDisplayableEvidence(currentVsCandidate, candidateId);
   const paths = {
     candidate_comparison: sourceArtifactPath(api.body, "candidate_comparison", artifactPath(reviewId, "candidate_comparison.json")),
     current_vs_candidate: sourceArtifactPath(api.body, "current_vs_candidate", artifactPath(reviewId, "current_vs_candidate.json")),
@@ -1173,14 +1175,14 @@ export async function comparisonViaFastApi(request: Request) {
   };
   return NextResponse.json({
     review_id: reviewId,
-    status: "completed",
+    status: hasDisplayableEvidence ? "completed" : "blocked",
     stage: "current_vs_candidate",
     selected_card_id: textValue(fastApiLineage(api.body).selected_card_id, selectedCardId),
     candidate_id: textValue(fastApiLineage(api.body).candidate_id, candidateId),
     comparison_id: comparisonId,
     fastapi_envelope: api.body,
     paths,
-    current_vs_candidate: publicCurrentVsCandidateFromFastApi(api.body, candidateId)
+    current_vs_candidate: currentVsCandidate
   });
 }
 

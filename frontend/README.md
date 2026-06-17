@@ -148,8 +148,9 @@ product or trading system.
   comparison, verdict, and report readiness so old artifacts cannot remain active for a new setup.
 - Current vs Candidate Comparison uses the FastAPI `current_vs_candidate` display evidence when
   available, including `comparisons[].dimensions`, instead of inventing metric rows from compact
-  summaries. A successful fresh candidate comparison should show real metric rows; stale or
-  unavailable comparison rows remain blocked or evidence-insufficient rather than being masked.
+  summaries. Summary-only, stale, unavailable, or dimension-less comparison evidence remains
+  blocked or partial and must not unlock Verdict. A successful fresh candidate comparison should
+  show real metric rows rather than masked fallback facts.
 - Comparison owns generated candidate weights. Hypothesis may show generation status, but the
   weight table is displayed next to the current allocation on Comparison so the user reviews the
   candidate in the same place where trade-off evidence is produced.

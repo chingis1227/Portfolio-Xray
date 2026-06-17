@@ -2974,6 +2974,30 @@ def _comparison_data(
     )
 
 
+def _comparison_has_displayable_evidence(current_vs_candidate: dict[str, Any], candidate_id: str | None) -> bool:
+    rows = [_record(item) for item in _list(current_vs_candidate.get("comparisons"))]
+    if candidate_id:
+        row = next((item for item in rows if _text(item.get("candidate_id")) == candidate_id), {})
+    else:
+        row = rows[0] if rows else {}
+    if not row:
+        return False
+    dimensions = [_record(item) for item in _list(row.get("dimensions"))]
+    for dimension in dimensions:
+        status = str(dimension.get("status") or "").strip().lower()
+        if status in {"unavailable", "not_available", "missing", "unknown"}:
+            continue
+        direction = str(dimension.get("direction") or "").strip().lower()
+        if (
+            dimension.get("baseline_value") is not None
+            or dimension.get("candidate_value") is not None
+            or dimension.get("delta") is not None
+            or (bool(direction) and direction != "unknown")
+        ):
+            return True
+    return False
+
+
 def run_current_vs_candidate(
     review_id: str,
     request: CandidateIdRequest,
@@ -3056,6 +3080,9 @@ def run_current_vs_candidate(
     )
     candidate_id = _text(result.get("candidate_id"), request.candidate_id)
     comparison_id = data.comparison.comparison_id
+    has_displayable_evidence = _comparison_has_displayable_evidence(current_vs_candidate, candidate_id)
+    if not has_displayable_evidence:
+        data.next_allowed_actions = ["test_another_hypothesis"]  # type: ignore[list-item]
     refs = [
         _stage_artifact_ref(
             "candidate_generation",
@@ -3079,13 +3106,29 @@ def run_current_vs_candidate(
         ),
     ]
     warnings = [str(item) for item in _list(current_vs_candidate.get("warnings")) if str(item).strip()]
-    _try_update_staged_downstream_success(review_id, "comparison")
+    safe_error = None
+    if has_displayable_evidence:
+        _try_update_staged_downstream_success(review_id, "comparison")
+    else:
+        safe_error = _safe_error(
+            code="comparison_unavailable",
+            message="Current-vs-candidate comparison did not produce displayable evidence for the selected candidate.",
+            user_action="return_to_hypothesis",
+            retryable=False,
+        )
+        _try_update_staged_downstream_problem(
+            review_id,
+            "comparison",
+            blocked=True,
+            message=safe_error.message,
+            retryable=False,
+        )
     return 200, ComparisonResponse(
         api_version=API_VERSION,
         schema_version=COMPARISON_SCHEMA_VERSION,
         review_id=review_id,
         stage="comparison",
-        status="ok" if data.comparison.candidate_label else "partial",
+        status="ok" if has_displayable_evidence else "blocked",
         lineage=ApiLineage(
             review_id=review_id,
             selected_card_id=selected_card_id,
@@ -3094,8 +3137,12 @@ def run_current_vs_candidate(
         ),
         data=data,
         warnings=warnings,
-        safe_error=None,
-        evidence=ApiEvidence(source_artifacts=refs, data_quality="ok", confidence="medium"),
+        safe_error=safe_error,
+        evidence=ApiEvidence(
+            source_artifacts=refs,
+            data_quality="ok" if has_displayable_evidence else "partial",
+            confidence="medium" if has_displayable_evidence else "low",
+        ),
     )
 
 

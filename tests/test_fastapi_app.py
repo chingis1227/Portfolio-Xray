@@ -1105,7 +1105,16 @@ def _current_vs_candidate_doc() -> dict:
                 "unavailable_metrics": [{"field": "turnover"}],
                 "success_criteria_result": {"overall_status": "met"},
                 "materiality_for_decision_review": {"status": "review_candidate"},
-                "dimensions": [{"field": "vol_annual", "status": "available"}],
+                "dimensions": [
+                    {
+                        "field": "vol_annual",
+                        "status": "available",
+                        "baseline_value": 0.18,
+                        "candidate_value": 0.14,
+                        "delta": -0.04,
+                        "direction": "improved",
+                    }
+                ],
             }
         ],
         "warnings": [],
@@ -1167,7 +1176,14 @@ def test_run_comparison_runs_adapter_and_returns_public_envelope(
     assert body["data"]["comparison"]["materiality"] == "material"
     assert body["data"]["comparison"]["what_improved"] == ["Concentration improved"]
     assert body["data"]["current_vs_candidate"]["comparisons"][0]["dimensions"] == [
-        {"field": "vol_annual", "status": "available"}
+        {
+            "field": "vol_annual",
+            "status": "available",
+            "baseline_value": 0.18,
+            "candidate_value": 0.14,
+            "delta": -0.04,
+            "direction": "improved",
+        }
     ]
     assert body["data"]["evidence_chain_context"]["selected_diagnosis_id"] == "high_concentration"
     assert body["data"]["evidence_chain_context"]["tested_hypothesis"] == (
@@ -1194,6 +1210,128 @@ def test_run_comparison_runs_adapter_and_returns_public_envelope(
         "current_vs_candidate.json",
         "candidate_comparison.json",
     }
+
+
+def test_run_comparison_blocks_when_no_displayable_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    review_id = "frontend_review_fastapi_compare_unavailable"
+    run_dir = tmp_path / review_id
+    run_dir.mkdir()
+    _write_candidate_generation(run_dir)
+
+    unavailable_doc = _current_vs_candidate_doc()
+    unavailable_doc["comparison_status"] = "partial"
+    unavailable_doc["comparisons"][0]["dimensions"] = [
+        {"field": "tracking_error", "status": "available"},
+        {"field": "sharpe", "status": "available", "direction": "unknown"},
+        {
+            "field": "vol_annual",
+            "status": "unavailable",
+            "direction": "unknown",
+            "baseline_value": None,
+            "candidate_value": None,
+            "delta": None,
+            "unavailable_reason": "Candidate snapshot metrics were not available.",
+        }
+    ]
+    unavailable_doc["comparisons"][0]["what_improved"] = []
+    unavailable_doc["comparisons"][0]["what_worsened"] = []
+    unavailable_doc["comparisons"][0]["success_criteria_result"] = {"overall_status": "unavailable"}
+    unavailable_doc["comparisons"][0]["materiality_for_decision_review"] = {"status": "unknown"}
+
+    def fake_compare_selected_candidate(**kwargs):
+        result = {
+            "review_id": review_id,
+            "status": "completed",
+            "stage": "current_vs_candidate",
+            "selected_card_id": "launchpad_01_reduce_concentration",
+            "candidate_id": "equal_weight",
+            "paths": {
+                "candidate_comparison": f"runs/{review_id}/candidate_comparison.json",
+                "current_vs_candidate": f"runs/{review_id}/current_vs_candidate.json",
+            },
+            "current_vs_candidate": unavailable_doc,
+        }
+        (run_dir / "current_vs_candidate.json").write_text(json.dumps(unavailable_doc), encoding="utf-8")
+        (run_dir / "candidate_comparison.json").write_text(json.dumps({"status": "partial"}), encoding="utf-8")
+        return result
+
+    monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
+    monkeypatch.setattr(review_service, "compare_selected_candidate", fake_compare_selected_candidate)
+    _write_staged_state_for_test(run_dir, review_id, current_stage="comparison")
+
+    response = _request(
+        "POST",
+        f"/api/v1/reviews/{review_id}/comparison",
+        json_body={"candidate_id": "equal_weight"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["stage"] == "comparison"
+    assert body["status"] == "blocked"
+    assert body["safe_error"]["code"] == "comparison_unavailable"
+    assert body["data"]["next_allowed_actions"] == ["test_another_hypothesis"]
+    assert body["data"]["comparison"]["success_criteria_result"] == "unavailable"
+    assert body["data"]["comparison"]["materiality"] == "unknown"
+    assert body["evidence"]["data_quality"] == "partial"
+    staged_state = json.loads((run_dir / "review_state.json").read_text(encoding="utf-8"))
+    assert staged_state["stages"]["comparison"]["status"] == "blocked"
+    assert staged_state["stages"]["verdict"]["status"] == "pending"
+    assert staged_state["current_stage"] == "comparison"
+
+
+def test_run_comparison_requires_selected_candidate_display_row(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    review_id = "frontend_review_fastapi_compare_stale_row"
+    run_dir = tmp_path / review_id
+    run_dir.mkdir()
+    _write_candidate_generation(run_dir)
+
+    stale_row_doc = _current_vs_candidate_doc()
+    stale_row_doc["selected_candidate_ids"] = ["equal_weight"]
+    stale_row_doc["comparisons"][0]["candidate_id"] = "stale_candidate"
+    stale_row_doc["comparisons"][0]["display_name"] = "Stale Candidate"
+
+    def fake_compare_selected_candidate(**kwargs):
+        result = {
+            "review_id": review_id,
+            "status": "completed",
+            "stage": "current_vs_candidate",
+            "selected_card_id": "launchpad_01_reduce_concentration",
+            "candidate_id": "equal_weight",
+            "paths": {
+                "candidate_comparison": f"runs/{review_id}/candidate_comparison.json",
+                "current_vs_candidate": f"runs/{review_id}/current_vs_candidate.json",
+            },
+            "current_vs_candidate": stale_row_doc,
+        }
+        (run_dir / "current_vs_candidate.json").write_text(json.dumps(stale_row_doc), encoding="utf-8")
+        (run_dir / "candidate_comparison.json").write_text(json.dumps({"status": "ok"}), encoding="utf-8")
+        return result
+
+    monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
+    monkeypatch.setattr(review_service, "compare_selected_candidate", fake_compare_selected_candidate)
+    _write_staged_state_for_test(run_dir, review_id, current_stage="comparison")
+
+    response = _request(
+        "POST",
+        f"/api/v1/reviews/{review_id}/comparison",
+        json_body={"candidate_id": "equal_weight"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "blocked"
+    assert body["lineage"]["candidate_id"] == "equal_weight"
+    assert body["data"]["current_vs_candidate"]["comparisons"][0]["candidate_id"] == "stale_candidate"
+    assert body["data"]["next_allowed_actions"] == ["test_another_hypothesis"]
+    assert body["safe_error"]["code"] == "comparison_unavailable"
+    staged_state = json.loads((run_dir / "review_state.json").read_text(encoding="utf-8"))
+    assert staged_state["stages"]["comparison"]["status"] == "blocked"
+    assert staged_state["stages"]["verdict"]["status"] == "pending"
 
 
 def test_generate_verdict_runs_adapter_and_returns_public_envelope(

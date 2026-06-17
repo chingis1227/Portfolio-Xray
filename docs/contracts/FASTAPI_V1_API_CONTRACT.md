@@ -409,12 +409,19 @@ Response data should include:
   recommendation boundary, and source artifact roles.
 - `lineage`: must prove the comparison belongs to the same review, selected card, Builder setup, and
   candidate.
-- `next_allowed_actions`: `generate_verdict` when comparison is current or when a safe
-  evidence-insufficient verdict can be generated.
+- `next_allowed_actions`: `generate_verdict` only when the comparison is same-run, current, and has
+  displayable selected-candidate evidence. Missing, stale, unavailable, or summary-only comparison
+  evidence must keep the stage `blocked`/`partial` and route back to Hypothesis or another safe
+  recovery action instead of unlocking Verdict.
+
+Displayable selected-candidate evidence means the public `current_vs_candidate.comparisons[]` entry
+for the requested candidate id exists and has at least one dimension whose status is not unavailable
+and whose baseline value, candidate value, delta, or non-`unknown` direction is present. A different
+candidate row must not satisfy this gate.
 
 Boundary: comparison explains trade-offs; it must not crown a winner, recommend a trade, or unlock
 report without Verdict. The comparison endpoint must not mark the selected candidate row successful
-for UI purposes when that row is stale, unavailable, or missing displayable dimensions.
+for UI purposes when that row is stale, unavailable, summary-only, or missing displayable dimensions.
 
 ### `POST /api/v1/reviews/{review_id}/verdict`
 

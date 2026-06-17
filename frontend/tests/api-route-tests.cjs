@@ -217,6 +217,71 @@ function fastApiCandidateEnvelope(overrides = {}) {
   });
 }
 
+function fastApiComparisonEnvelope(overrides = {}) {
+  return fastApiEnvelope({
+    schema_version: "current_vs_candidate_v1",
+    review_id: "frontend_review_comparison",
+    stage: "comparison",
+    status: "ok",
+    lineage: {
+      review_id: "frontend_review_comparison",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight",
+      comparison_id: "current_vs_candidate:equal_weight"
+    },
+    data: {
+      comparison: {
+        comparison_id: "current_vs_candidate:equal_weight",
+        candidate_label: "Equal Weight",
+        success_criteria_result: "passed",
+        materiality: "material",
+        what_improved: ["Top holding concentration is lower."],
+        what_worsened: ["Turnover should be reviewed."],
+        what_stayed_similar: ["Broad market exposure remains."],
+        unavailable_metrics: []
+      },
+      current_vs_candidate: {
+        comparison_status: "available",
+        view_mode: "one_candidate",
+        selected_candidate_ids: ["equal_weight"],
+        baseline: { display_name: "Current portfolio" },
+        comparisons: [
+          {
+            candidate_id: "equal_weight",
+            display_name: "Equal Weight",
+            dimensions: [
+              {
+                field: "weight_top1_weight_pct",
+                label: "Largest holding weight",
+                baseline_value: 0.45,
+                candidate_value: 0.25,
+                delta: -0.2,
+                direction: "improved",
+                status: "available"
+              }
+            ],
+            success_criteria_result: { overall_status: "met" },
+            materiality_for_decision_review: { status: "review_candidate" },
+            what_improved: [{ label: "Top holding concentration is lower." }],
+            what_worsened: [{ label: "Turnover should be reviewed." }],
+            what_stayed_similar: [{ label: "Broad market exposure remains." }],
+            unavailable_metrics: []
+          }
+        ]
+      },
+      next_allowed_actions: ["generate_verdict"]
+    },
+    evidence: {
+      source_artifacts: [
+        { kind: "current_vs_candidate", ref: "runs/frontend_review_comparison/current_vs_candidate.json", scope: "run_local", raw_path_exposed: false }
+      ],
+      data_quality: "ok",
+      confidence: "medium"
+    },
+    ...overrides
+  });
+}
+
 function completedClientFit(overrides = {}) {
   return {
     preset_id: "balanced",
@@ -2687,6 +2752,155 @@ test("candidate generation readiness requires completed, generated, compare-read
     canCompare: true
   }), false);
   assert.equal(isCompareReadyCandidateGeneration(undefined), false);
+});
+
+test("comparison route maps displayable public envelope without unsafe paths", async () => {
+  const route = loadRoute({ routePath: comparisonGenerateRoutePath });
+
+  await withMockFetch(async (url, options) => {
+    assertSignedFastApiHeaders(options);
+    assert.match(String(url), /\/api\/v1\/reviews\/frontend_review_comparison\/comparison$/);
+    assert.equal(options.method, "POST");
+    assert.deepEqual(JSON.parse(options.body), {
+      candidate_id: "equal_weight"
+    });
+    return Response.json(fastApiComparisonEnvelope());
+  }, async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_comparison",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight"
+    }, "http://localhost/api/portfolio/comparison/generate")));
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.status, "completed");
+    assert.equal(result.body.stage, "current_vs_candidate");
+    assert.equal(result.body.review_id, "frontend_review_comparison");
+    assert.equal(result.body.selected_card_id, "card_equal_weight");
+    assert.equal(result.body.candidate_id, "equal_weight");
+    assert.equal(result.body.comparison_id, "current_vs_candidate:equal_weight");
+    assert.equal(result.body.current_vs_candidate.comparisons[0].candidate_id, "equal_weight");
+    assert.deepEqual(result.body.current_vs_candidate.comparisons[0].dimensions[0], {
+      field: "weight_top1_weight_pct",
+      label: "Largest holding weight",
+      baseline_value: 0.45,
+      candidate_value: 0.25,
+      delta: -0.2,
+      direction: "improved",
+      status: "available"
+    });
+    assert.doesNotMatch(JSON.stringify(result.body), /[A-Z]:[\\/]/);
+    assert.doesNotMatch(JSON.stringify(result.body), /Traceback|portfolio_weights\.yml/);
+  });
+});
+
+test("comparison route does not synthesize display rows from summary-only FastAPI data", async () => {
+  const route = loadRoute({ routePath: comparisonGenerateRoutePath });
+
+  await withMockFetch(async () => Response.json(fastApiComparisonEnvelope({
+    data: {
+      comparison: {
+        comparison_id: "current_vs_candidate:equal_weight",
+        candidate_label: "Equal Weight",
+        success_criteria_result: "passed",
+        materiality: "material",
+        what_improved: ["Summary-only improvement should not become a display row."]
+      },
+      next_allowed_actions: ["generate_verdict"]
+    }
+  })), async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_comparison",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight"
+    }, "http://localhost/api/portfolio/comparison/generate")));
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.status, "blocked");
+    assert.equal(result.body.stage, "current_vs_candidate");
+    assert.equal(result.body.current_vs_candidate.comparison_status, "partial");
+    assert.deepEqual(result.body.current_vs_candidate.comparisons, []);
+    assert.match(result.body.current_vs_candidate.warnings.join(" "), /public current-vs-candidate rows were not available/);
+  });
+});
+
+test("comparison route blocks dimensions without displayable values or direction", async () => {
+  const route = loadRoute({ routePath: comparisonGenerateRoutePath });
+
+  await withMockFetch(async () => Response.json(fastApiComparisonEnvelope({
+    data: {
+      current_vs_candidate: {
+        comparison_status: "available",
+        view_mode: "one_candidate",
+        selected_candidate_ids: ["equal_weight"],
+        comparisons: [
+          {
+            candidate_id: "equal_weight",
+            display_name: "Equal Weight",
+            dimensions: [
+              { field: "vol_annual", status: "available" },
+              { field: "sharpe", status: "available", direction: "unknown" }
+            ],
+            success_criteria_result: { overall_status: "unknown" },
+            materiality_for_decision_review: { status: "unknown" }
+          }
+        ]
+      },
+      next_allowed_actions: ["generate_verdict"]
+    }
+  })), async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_comparison",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight"
+    }, "http://localhost/api/portfolio/comparison/generate")));
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.status, "blocked");
+    assert.equal(result.body.current_vs_candidate.comparisons[0].candidate_id, "equal_weight");
+  });
+});
+
+test("comparison route requires displayable evidence for the requested candidate row", async () => {
+  const route = loadRoute({ routePath: comparisonGenerateRoutePath });
+
+  await withMockFetch(async () => Response.json(fastApiComparisonEnvelope({
+    data: {
+      current_vs_candidate: {
+        comparison_status: "available",
+        view_mode: "one_candidate",
+        selected_candidate_ids: ["equal_weight"],
+        comparisons: [
+          {
+            candidate_id: "stale_candidate",
+            display_name: "Stale Candidate",
+            dimensions: [
+              {
+                field: "weight_top1_weight_pct",
+                status: "available",
+                baseline_value: 0.45,
+                candidate_value: 0.25,
+                delta: -0.2,
+                direction: "improved"
+              }
+            ]
+          }
+        ]
+      },
+      next_allowed_actions: ["generate_verdict"]
+    }
+  })), async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_comparison",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight"
+    }, "http://localhost/api/portfolio/comparison/generate")));
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.status, "blocked");
+    assert.equal(result.body.candidate_id, "equal_weight");
+    assert.equal(result.body.current_vs_candidate.comparisons[0].candidate_id, "stale_candidate");
+  });
 });
 
 test("comparison route rejects FastAPI lineage for a different candidate before trusting comparison evidence", async () => {
