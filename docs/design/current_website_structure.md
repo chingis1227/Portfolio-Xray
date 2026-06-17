@@ -24,55 +24,57 @@ The shortcut is allowed for local preview while email sign-in is still being sta
 
 ## Global visual frame
 
-Public routes (`/` and `/onboarding/*`) do not show the platform navigation dock or top journey rail. They use a dark graphite premium-fintech stage with soft radial atmosphere, glass panels, rounded device previews, white primary CTAs on the landing page, and restrained steel-blue evidence accents.
+Public routes (`/` and `/onboarding/*`) do not show the platform sidebar or top journey rail. They use a dark graphite background, radial atmospheric gradients, moving-grid accents, rounded cards, and blue CTAs.
 
 Platform routes show:
 
-- a fixed bottom glass journey dock instead of the former left sidebar;
-- a separate compact `Workspace` dock control and optional account control on wider screens;
-- gated journey dock with 8 steps: Portfolio, Diagnosis, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report;
+- left sidebar brand block: `Portfolio MRI` / `Investment Decision Room`;
+- account navigation entry for `Workspace` outside the 8-step review rail;
+- gated journey rail with 8 steps: Portfolio, Diagnosis, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report;
 - no sticky top journey rail on redesigned analytical routes; compact step context appears inside `VerdictHero`;
 - verdict-first page hero on redesigned analytical routes;
-- content cards, tables, badges, and locked states above the dock with extra bottom padding.
+- content cards, tables, badges, and locked states.
 
 ## `/` Landing
 
-Role: public product page that explains Portfolio MRI before the platform opens. The current landing uses a dark diagnostic-cockpit presentation inspired by premium investment software references, adapted to Portfolio MRI boundaries rather than copied as a trading terminal.
+Role: public product page that explains Portfolio MRI before the platform opens.
 
 Block order:
 
 1. Header navigation
-   - Brand: `Portfolio MRI` / `Diagnosis-first decision room`.
-   - Links: `Diagnosis`, `Stress Lab`, `Decision`, `Report`.
+   - Brand: `Portfolio MRI` / `Investment Decision Room`.
+   - Links: `Problem`, `How it works`, `Architecture`, `Precision`.
    - CTA: `Enter Platform` to `/onboarding/sign-in`.
 
 2. Hero
-   - Eyebrow: `Current portfolio first. Candidate second.`
-   - H1: `Diagnose the portfolio before you change it.`
-   - Body: `Portfolio MRI turns holdings into stress-tested decision evidence, then tests one candidate path only when the diagnosis supports it.`
-   - CTAs: `Enter Platform`, `See the evidence chain`.
-   - Three compact proof tiles: diagnosis starts the run, one candidate test path, zero trade instructions.
-   - Right-side product preview: portfolio value chart, diagnosis metrics, morning diagnosis card, and evidence feed.
+   - Eyebrow: `PORTFOLIO MRI`.
+   - Label: `PORTFOLIO DIAGNOSTICS & INVESTMENT DECISION-SUPPORT SYSTEM`.
+   - H1: `Diagnose portfolio risk before you rebalance.`
+   - Body: `Portfolio MRI turns current holdings into stress-tested decision evidence before any alternative is considered.`
+   - CTAs: `Enter Platform`, `See how it works ?`.
+   - Trust chips: `Current portfolio first`, `Stress-tested evidence`, `Candidate tests, not orders`.
 
-3. Floating dock preview
-   - Glass pill with six canonical flow numbers.
-   - Demonstrates the product navigation language without replacing the actual platform dock.
+3. Problem section
+   - H2: `TOO MANY TICKERS. TOO LITTLE DIAGNOSIS.`
+   - Explains that a list of ETFs, funds, stocks, and cash is not a diagnosis.
+   - Bullets: no allocation logic, no hidden concentration view, no stress evidence before changing, no framework to defend a decision.
 
-4. Diagnosis architecture
-   - H2: `A calm evidence chain, not a dashboard wall.`
-   - Feature cards: Current portfolio first, Diagnosis before action, One candidate hypothesis, Grounded commentary, Client Fit context, Monitoring posture.
+4. Workflow section
+   - H2: `FROM RAW HOLDINGS TO A DEFENSIBLE DECISION PATH.`
+   - Shows five high-level cards: Input, Diagnosis, Stress Lab, Client Fit, Verdict.
+   - This is a public explanation, not the full platform sidebar.
 
-5. Canonical flow
-   - H2: `From input to verdict with no hidden leap.`
-   - Shows six explanation rows: Input Portfolio, Portfolio Diagnosis, Stress Test Lab, Client Fit Check, Candidate Launchpad, Decision Verdict.
+5. Architecture section
+   - H2: `DIAGNOSIS ARCHITECTURE, NOT AN OPTIMIZER COCKPIT.`
+   - Cards: Portfolio Diagnosis, Stress Test Lab, Problem Classification, Candidate Launchpad, Current vs Candidate, Grounded Report.
 
-6. Decision boundary section
-   - H2: `The verdict explains support, trade-offs, and limits.`
-   - Copy states that Client Fit is not approval and candidate output is testable, not executable.
+6. Precision section
+   - H2: `BUILT FOR PRECISION.`
+   - Stats/cards: `Current first`, `1 path`, `Run-local`, `Non-binding`.
 
 7. Final CTA
-   - H2: `Open the decision room.`
-   - Copy says the user signs in, enters tickers and weights, and starts with current-portfolio diagnosis.
+   - H2: `OPEN THE DECISION ROOM.`
+   - Copy says the user signs in, answers setup questions, then enters tickers and weights.
    - CTA: `Enter Platform`.
 
 ## `/onboarding/sign-in`
