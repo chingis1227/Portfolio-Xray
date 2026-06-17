@@ -171,6 +171,20 @@ function fastApiEnvelope(overrides = {}) {
   };
 }
 
+function completedClientFit(overrides = {}) {
+  return {
+    preset_id: "balanced",
+    source: "questionnaire",
+    source_quality: "medium",
+    source_quality_reason: "Questionnaire confirmed.",
+    horizon_years: 7,
+    target_return_range: { min: 0.05, max: 0.07 },
+    target_vol_range: { min: 0.07, max: 0.10 },
+    target_max_drawdown_pct: -0.20,
+    ...overrides
+  };
+}
+
 function fastApiReportEnvelope(overrides = {}) {
   return fastApiEnvelope({
     schema_version: "report_grounding_v1",
@@ -391,7 +405,8 @@ test("diagnosis route maps instrument and cash rows into the staged FastAPI crea
         holdings: [
           { type: "instrument", ticker: "SPY", weight: 80 },
           { type: "cash", currency: "USD", weight: 20 }
-        ]
+        ],
+        client_fit: completedClientFit()
       }, "http://localhost/api/portfolio/diagnose")));
 
       assert.equal(result.status, 200);
@@ -408,6 +423,7 @@ test("diagnosis route maps instrument and cash rows into the staged FastAPI crea
             { type: "cash", currency: "USD", weight_pct: 20 }
           ]
         },
+        client_fit: completedClientFit(),
         options: {
           mode: "diagnosis_only",
           output_profile: "site_api",
@@ -427,16 +443,7 @@ test("diagnosis route forwards completed Client Fit profile into the staged Fast
   const calls = [];
   const route = loadRoute({ routePath: diagnoseRoutePath });
 
-  const clientFit = {
-    preset_id: "balanced",
-    source: "questionnaire",
-    source_quality: "medium",
-    source_quality_reason: "Questionnaire confirmed.",
-    horizon_years: 7,
-    target_return_range: { min: 0.05, max: 0.07 },
-    target_vol_range: { min: 0.07, max: 0.10 },
-    target_max_drawdown_pct: -0.20
-  };
+  const clientFit = completedClientFit();
 
   await withMockFetch(async (url, options) => {
     calls.push({ url, options });
@@ -493,7 +500,8 @@ test("diagnosis route maps sample mode to deterministic staged demo QA mode", as
       holdings: [
         { type: "instrument", ticker: "SPY", weight: 70 },
         { type: "cash", currency: "USD", weight: 30 }
-      ]
+      ],
+      client_fit: completedClientFit()
     }, "http://localhost/api/portfolio/diagnose")));
 
     assert.equal(result.status, 200);
@@ -504,6 +512,226 @@ test("diagnosis route maps sample mode to deterministic staged demo QA mode", as
       mode: "diagnosis_only",
       output_profile: "site_api",
       sample_mode: true
+    });
+  });
+});
+
+test("diagnosis route accepts EUR portfolio input and tolerance-safe weights", async () => {
+  const calls = [];
+  const route = loadRoute({ routePath: diagnoseRoutePath });
+
+  await withMockFetch(async (url, options) => {
+    calls.push({ url, options });
+    return Response.json({
+      api_version: "v1",
+      schema_version: "review_started_v1",
+      review_id: "frontend_review_eur",
+      stage: "diagnosis",
+      status: "running",
+      current_stage: "input",
+      mode: "live",
+      warnings: [],
+      safe_error: null
+    });
+  }, async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      investor_currency: "EUR",
+      holdings: [
+        { type: "instrument", ticker: "SPY", weight: 33.33 },
+        { type: "instrument", ticker: "BND", weight: 33.33 },
+        { type: "cash", currency: "EUR", weight: 33.34 }
+      ],
+      client_fit: completedClientFit()
+    }, "http://localhost/api/portfolio/diagnose")));
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.review_id, "frontend_review_eur");
+    assert.equal(calls.length, 1);
+    assert.deepEqual(JSON.parse(calls[0].options.body).portfolio, {
+      investor_currency: "EUR",
+      holdings: [
+        { type: "instrument", ticker: "SPY", weight_pct: 33.33 },
+        { type: "instrument", ticker: "BND", weight_pct: 33.33 },
+        { type: "cash", currency: "EUR", weight_pct: 33.34 }
+      ]
+    });
+  });
+});
+
+[
+  {
+    name: "lower tolerance boundary",
+    reviewId: "frontend_review_weight_9999",
+    holdings: [
+      { type: "instrument", ticker: "SPY", weight: 70 },
+      { type: "cash", currency: "USD", weight: 29.99 }
+    ],
+    expectedHoldings: [
+      { type: "instrument", ticker: "SPY", weight_pct: 70 },
+      { type: "cash", currency: "USD", weight_pct: 29.99 }
+    ]
+  },
+  {
+    name: "upper tolerance boundary",
+    reviewId: "frontend_review_weight_10001",
+    holdings: [
+      { type: "instrument", ticker: "SPY", weight: 70 },
+      { type: "cash", currency: "USD", weight: 30.01 }
+    ],
+    expectedHoldings: [
+      { type: "instrument", ticker: "SPY", weight_pct: 70 },
+      { type: "cash", currency: "USD", weight_pct: 30.01 }
+    ]
+  }
+].forEach(({ name, reviewId, holdings, expectedHoldings }) => {
+  test(`diagnosis route accepts ${name} without normalizing weights`, async () => {
+    const calls = [];
+    const route = loadRoute({ routePath: diagnoseRoutePath });
+
+    await withMockFetch(async (url, options) => {
+      calls.push({ url, options });
+      return Response.json({
+        api_version: "v1",
+        schema_version: "review_started_v1",
+        review_id: reviewId,
+        stage: "diagnosis",
+        status: "running",
+        current_stage: "input",
+        mode: "live",
+        warnings: [],
+        safe_error: null
+      });
+    }, async () => {
+      const result = await responseJson(await route.POST(makeJsonRequest({
+        investor_currency: "USD",
+        holdings,
+        client_fit: completedClientFit()
+      }, "http://localhost/api/portfolio/diagnose")));
+
+      assert.equal(result.status, 200);
+      assert.equal(result.body.review_id, reviewId);
+      assert.equal(calls.length, 1);
+      assert.deepEqual(JSON.parse(calls[0].options.body).portfolio.holdings, expectedHoldings);
+    });
+  });
+});
+
+const validDiagnosisPayload = () => ({
+  investor_currency: "USD",
+  holdings: [
+    { type: "instrument", ticker: "SPY", weight: 70 },
+    { type: "cash", currency: "USD", weight: 30 }
+  ],
+  client_fit: completedClientFit()
+});
+
+[
+  {
+    name: "missing investor currency",
+    payload: { ...validDiagnosisPayload(), investor_currency: "" },
+    expectedDetails: ["investor_currency is required."]
+  },
+  {
+    name: "unsupported investor currency",
+    payload: { ...validDiagnosisPayload(), investor_currency: "GBP" },
+    expectedDetails: ["investor_currency must be USD or EUR."]
+  },
+  {
+    name: "invalid cash currency",
+    payload: {
+      ...validDiagnosisPayload(),
+      holdings: [
+        { type: "instrument", ticker: "SPY", weight: 70 },
+        { type: "cash", currency: "GBP", weight: 30 }
+      ]
+    },
+    expectedDetails: ["holding[1] cash currency must be USD or EUR."]
+  },
+  {
+    name: "weights below tolerance",
+    payload: {
+      ...validDiagnosisPayload(),
+      holdings: [
+        { type: "instrument", ticker: "SPY", weight: 70 },
+        { type: "cash", currency: "USD", weight: 29.98 }
+      ]
+    },
+    expectedDetails: ["Total weight must equal 100 within 0.01; got 99.98."]
+  },
+  {
+    name: "weights above tolerance",
+    payload: {
+      ...validDiagnosisPayload(),
+      holdings: [
+        { type: "instrument", ticker: "SPY", weight: 70 },
+        { type: "cash", currency: "USD", weight: 30.02 }
+      ]
+    },
+    expectedDetails: ["Total weight must equal 100 within 0.01; got 100.02."]
+  },
+  {
+    name: "duplicate instrument tickers",
+    payload: {
+      ...validDiagnosisPayload(),
+      holdings: [
+        { type: "instrument", ticker: "SPY", weight: 50 },
+        { type: "instrument", ticker: "spy", weight: 50 }
+      ]
+    },
+    expectedDetails: ["holding[1] duplicates ticker SPY."]
+  },
+  {
+    name: "duplicate cash currencies",
+    payload: {
+      ...validDiagnosisPayload(),
+      holdings: [
+        { type: "cash", currency: "USD", weight: 40 },
+        { type: "cash", currency: "usd", weight: 60 }
+      ]
+    },
+    expectedDetails: ["holding[1] duplicates cash currency USD."]
+  },
+  {
+    name: "missing Client Fit",
+    payload: (() => {
+      const payload = validDiagnosisPayload();
+      delete payload.client_fit;
+      return payload;
+    })(),
+    expectedDetails: ["client_fit is required for web diagnosis."]
+  },
+  {
+    name: "missing Client Fit source",
+    payload: { ...validDiagnosisPayload(), client_fit: completedClientFit({ source: "missing" }) },
+    expectedDetails: [
+      "The web diagnosis requires a completed Client Fit profile."
+    ]
+  },
+  {
+    name: "missing Client Fit quality",
+    payload: { ...validDiagnosisPayload(), client_fit: completedClientFit({ source_quality: "missing" }) },
+    expectedDetails: [
+      "The web diagnosis requires a completed Client Fit profile."
+    ]
+  }
+].forEach(({ name, payload, expectedDetails }) => {
+  test(`diagnosis route rejects ${name} before calling FastAPI`, async () => {
+    const route = loadRoute({ routePath: diagnoseRoutePath });
+
+    await withMockFetch(async () => {
+      throw new Error("fetch was not expected");
+    }, async () => {
+      const result = await responseJson(await route.POST(makeJsonRequest(payload, "http://localhost/api/portfolio/diagnose")));
+
+      assert.equal(result.status, 400);
+      assert.equal(result.body.status, "failed");
+      assert.equal(result.body.error, "Portfolio input validation failed.");
+      for (const expectedDetail of expectedDetails) {
+        assert.ok(
+          result.body.details.includes(expectedDetail),
+          `Expected details to include "${expectedDetail}", got ${JSON.stringify(result.body.details)}`
+        );
+      }
     });
   });
 });
@@ -519,7 +747,8 @@ test("diagnosis route reports frontend backend version mismatch when staged Fast
       holdings: [
         { type: "instrument", ticker: "SPY", weight: 80 },
         { type: "cash", currency: "USD", weight: 20 }
-      ]
+      ],
+      client_fit: completedClientFit()
     }, "http://localhost/api/portfolio/diagnose")));
 
     assert.equal(result.status, 502);
@@ -658,6 +887,19 @@ test("Portfolio Input does not keep showing diagnosis loading after the diagnosi
   assert.match(source, /diagnosisStageChainReady\(stagedProgress\)/);
   assert.match(source, /isRunningDiagnosis\s*&&\s*!diagnosisChainIsReady/);
   assert.doesNotMatch(source, /\|\|\s*stagedProgress\.status\s*===\s*"partial"\s*\)\s*\)\s*;/);
+});
+
+test("Portfolio Input keeps Run diagnosis disabled until validation and Client Fit are ready", () => {
+  const source = fs.readFileSync(portfolioInputTablePath, "utf8");
+
+  assert.match(source, /const WEIGHT_TOLERANCE = 0\.01/);
+  assert.match(source, /const MIN_VALID_HOLDINGS = 2/);
+  assert.match(source, /const clientProfileReady = Boolean\(activeReview\?\.clientFitProfile\)/);
+  assert.match(source, /validHoldingCount >= MIN_VALID_HOLDINGS/);
+  assert.match(source, /weightsAddTo100/);
+  assert.match(source, /clientProfileReady/);
+  assert.match(source, /disabled=\{!ready \|\| isRunningDiagnosis\}/);
+  assert.doesNotMatch(source, /SPY:40|QQQ:20|BND:20|GLD:10/);
 });
 
 test("active review state advances downstream staged progress after explicit stage actions", () => {

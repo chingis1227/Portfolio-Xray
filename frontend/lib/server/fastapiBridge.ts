@@ -4,6 +4,7 @@ import { legacyErrorFromFastApi, scrubForClient } from "@/lib/server/fastapi/err
 
 const FASTAPI_TIMEOUT_MS = 15 * 60 * 1000;
 const WEIGHT_TOLERANCE = 0.01;
+const WEIGHT_TOLERANCE_EPSILON = 1e-9;
 
 const path = {
   basename(value: string) {
@@ -211,7 +212,9 @@ function validateClientFitRange(value: unknown, fieldName: string, errors: strin
 }
 
 function validateClientFitPayload(value: unknown): { clientFit?: Record<string, unknown>; clientFitErrors: string[] } {
-  if (value === undefined || value === null) return { clientFitErrors: [] };
+  if (value === undefined || value === null) {
+    return { clientFitErrors: ["client_fit is required for web diagnosis."] };
+  }
   const clientFitErrors: string[] = [];
   if (!isRecord(value)) return { clientFitErrors: ["client_fit must be an object."] };
 
@@ -336,6 +339,7 @@ function validatePortfolioPayload(body: PortfolioPayload): { payload?: Validated
   if (body.holdings.length < 2) errors.push("At least 2 holdings are required.");
 
   const holdings: ValidatedHolding[] = [];
+  const holdingKeys = new Set<string>();
   let totalWeight = 0;
 
   body.holdings.forEach((rawHolding, index) => {
@@ -357,6 +361,12 @@ function validatePortfolioPayload(body: PortfolioPayload): { payload?: Validated
         errors.push(`holding[${index}] instrument row requires ticker.`);
         return;
       }
+      const holdingKey = `instrument:${ticker}`;
+      if (holdingKeys.has(holdingKey)) {
+        errors.push(`holding[${index}] duplicates ticker ${ticker}.`);
+        return;
+      }
+      holdingKeys.add(holdingKey);
       holdings.push({ type: "instrument", ticker, weight });
       return;
     }
@@ -371,6 +381,12 @@ function validatePortfolioPayload(body: PortfolioPayload): { payload?: Validated
         errors.push(`holding[${index}] cash currency must be USD or EUR.`);
         return;
       }
+      const holdingKey = `cash:${currency}`;
+      if (holdingKeys.has(holdingKey)) {
+        errors.push(`holding[${index}] duplicates cash currency ${currency}.`);
+        return;
+      }
+      holdingKeys.add(holdingKey);
       holdings.push({ type: "cash", currency, weight });
       return;
     }
@@ -378,7 +394,7 @@ function validatePortfolioPayload(body: PortfolioPayload): { payload?: Validated
     errors.push(`holding[${index}].type must be "instrument" or "cash".`);
   });
 
-  if (Math.abs(totalWeight - 100) > WEIGHT_TOLERANCE) {
+  if (Math.abs(totalWeight - 100) - WEIGHT_TOLERANCE > WEIGHT_TOLERANCE_EPSILON) {
     errors.push(`Total weight must equal 100 within ${WEIGHT_TOLERANCE}; got ${totalWeight}.`);
   }
 
