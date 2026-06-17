@@ -1958,7 +1958,8 @@ test("Diagnosis page uses the compact display model instead of the standalone ex
   assert.match(diagnosisPanel, /EvidenceSummary/);
   assert.match(diagnosisPanel, /MetricMatrix/);
   assert.match(diagnosisPanel, /<details id="advanced-diagnostics"/);
-  assert.match(diagnosisPanel, /Advanced diagnostics and technical evidence/);
+  assert.match(diagnosisPanel, /Advanced diagnostics/);
+  assert.doesNotMatch(diagnosisPanel, /Technical evidence|Data limitations to review/);
   assert.match(diagnosisPanel, /Full portfolio x-ray detail/);
   assert.match(diagnosisPanel, /Historical diagnostic window/);
   assert.match(diagnosisPanel, /href="\/evidence"/);

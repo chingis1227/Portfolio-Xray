@@ -160,7 +160,7 @@ function AdvancedDiagnostics({ model, xraySummary }: { model: ReturnType<typeof 
   return (
     <details id="advanced-diagnostics" className="pmri-card rounded-3xl p-5 md:p-6">
       <summary className="pmri-focus cursor-pointer list-none rounded-2xl border border-pmri-border/55 bg-white/[0.024] px-4 py-3 text-sm font-semibold text-pmri-text transition hover:border-pmri-blue/45">
-        Advanced diagnostics and technical evidence
+        Advanced diagnostics
       </summary>
       <div className="mt-5 space-y-5">
         {model.advancedMetrics.length ? (
@@ -168,24 +168,6 @@ function AdvancedDiagnostics({ model, xraySummary }: { model: ReturnType<typeof 
             <h3 className="text-sm font-semibold text-pmri-text">Professional metrics</h3>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {model.advancedMetrics.map((metric) => <MetricCard key={metric.label} metric={metric} />)}
-            </div>
-          </section>
-        ) : null}
-
-        {model.technicalEvidence.length ? (
-          <section className="rounded-2xl border border-pmri-border/60 bg-white/[0.018] p-4">
-            <h3 className="text-sm font-semibold text-pmri-text">Technical evidence</h3>
-            <div className="mt-3 space-y-2">
-              {model.technicalEvidence.map((item) => <p key={item} className="text-sm leading-6 text-pmri-text2">- {item}</p>)}
-            </div>
-          </section>
-        ) : null}
-
-        {model.limitations.length ? (
-          <section className="rounded-2xl border border-pmri-border/60 bg-white/[0.018] p-4">
-            <h3 className="text-sm font-semibold text-pmri-text">Data limitations to review</h3>
-            <div className="mt-3 space-y-2">
-              {model.limitations.map((item) => <p key={item} className="text-sm leading-6 text-pmri-text2">- {item}</p>)}
             </div>
           </section>
         ) : null}
