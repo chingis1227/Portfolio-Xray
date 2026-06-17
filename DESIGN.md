@@ -112,7 +112,7 @@ Onboarding routes are public-frame screens without the platform sidebar. Canonic
 
 Platform routes use:
 
-- a quieter left sidebar with 8 gated journey steps;
+- a quieter left sidebar with 8 gated journey steps, compact letter emblems, and a clear outlined active pill;
 - a sticky compact step context rail instead of a full horizontal journey stepper on redesigned routes;
 - a verdict-first page hero on redesigned analytical routes;
 - dark cards and panels;
@@ -153,11 +153,11 @@ Portfolio Diagnosis uses a diagnosis-first simplification pattern: one dominant 
 
 ### Motion and micro-interactions
 
-Motion should make the decision room feel calmer and more legible, not flashier. Use Framer Motion for route fades, section reveals, active-rail movement, onboarding question changes, and selected/hovered decision surfaces where the motion clarifies hierarchy or state. Prefer opacity and transform with restrained spring physics, keep stagger timing subtle, and always respect reduced-motion preferences. Do not add decorative movement that competes with portfolio evidence, stress results, Client Fit boundaries, candidate trade-offs, or verdict language.
+Motion should make the decision room feel calmer and more legible, not flashier. Use Framer Motion for route fades, section reveals, active-rail movement, onboarding question changes, and selected/hovered decision surfaces where the motion clarifies hierarchy or state. Prefer opacity and transform with restrained spring physics, keep stagger timing subtle, and always respect reduced-motion preferences. Pressed CTAs and compact control pills may use a small tactile scale/translate response. Do not add decorative movement that competes with portfolio evidence, stress results, Client Fit boundaries, candidate trade-offs, or verdict language.
 
 ### Badges
 
-Badges must communicate evidence-backed state. Do not use badges as decoration. One primary badge per card header is preferred. Do not repeat generic evidence badges such as `Evidence available` across every Diagnosis fact; use one global data-coverage state and reserve per-row badges for material risk or review state.
+Badges must communicate evidence-backed state. Do not use badges as decoration. One primary badge per card header is preferred. Do not repeat generic evidence badges such as `Evidence available` across every Diagnosis fact; use one global data-coverage state and reserve per-row badges for material risk or review state. Blue, amber, and red badges use a small colored signal dot plus subdued glow; slate and ivory/neutral badges stay quieter.
 
 ### CTAs
 

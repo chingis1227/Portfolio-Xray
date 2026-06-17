@@ -14,7 +14,7 @@ import type { JourneyStepStatus } from "@/lib/types";
 function statusClasses(status: JourneyStepStatus) {
   switch (status) {
     case "active":
-      return "border-pmri-blue/22 bg-pmri-blue/[0.055] text-pmri-text shadow-[inset_2px_0_0_rgba(168,189,211,0.42)]";
+      return "border-white/62 bg-white/[0.052] text-pmri-text shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_34px_rgba(0,0,0,0.28),0_0_0_1px_rgba(110,168,215,0.10)]";
     case "completed":
       return "border-transparent text-pmri-text2/85 hover:border-pmri-border/55 hover:bg-white/[0.028]";
     case "available":
@@ -24,18 +24,29 @@ function statusClasses(status: JourneyStepStatus) {
   }
 }
 
-function dotClasses(status: JourneyStepStatus) {
+function iconClasses(status: JourneyStepStatus) {
   switch (status) {
     case "active":
-      return "bg-pmri-blue";
+      return "border-white/28 bg-pmri-blue/[0.11] text-pmri-blueSoft shadow-[0_0_18px_rgba(110,168,215,0.16)]";
     case "completed":
-      return "bg-pmri-muted/55";
+      return "border-pmri-borderSoft/55 bg-white/[0.035] text-pmri-text2";
     case "available":
-      return "bg-pmri-border";
+      return "border-pmri-border/70 bg-white/[0.025] text-pmri-muted";
     case "locked":
-      return "bg-pmri-border/35";
+      return "border-pmri-border/40 bg-black/10 text-pmri-muted/45";
   }
 }
+
+const stepIcons: Record<string, string> = {
+  "portfolio-input": "P",
+  diagnosis: "D",
+  evidence: "S",
+  "client-fit": "F",
+  hypothesis: "H",
+  comparison: "C",
+  verdict: "V",
+  report: "R"
+};
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -77,11 +88,13 @@ export function Sidebar() {
       <nav className="mt-8 space-y-1.5" aria-label="Portfolio MRI account navigation">
         <Link
           href="/workspace"
-          className={`pmri-focus pmri-nav-text group flex w-full items-center justify-between rounded-2xl border px-3.5 py-3 text-left transition ${pathname.startsWith("/workspace") ? "border-pmri-blue/22 bg-pmri-blue/[0.055] text-pmri-text shadow-[inset_2px_0_0_rgba(168,189,211,0.42)]" : "border-transparent text-pmri-text2 hover:border-pmri-border/70 hover:bg-white/[0.035]"}`}
+          className={`pmri-focus pmri-nav-text group flex w-full items-center justify-between rounded-2xl border px-3.5 py-3 text-left transition ${pathname.startsWith("/workspace") ? "border-white/62 bg-white/[0.052] text-pmri-text shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_34px_rgba(0,0,0,0.28),0_0_0_1px_rgba(110,168,215,0.10)]" : "border-transparent text-pmri-text2 hover:border-pmri-border/70 hover:bg-white/[0.035]"}`}
           onClick={() => setLockMessage(null)}
         >
           <span className="flex min-w-0 items-center gap-3">
-            <span className={`h-2 w-2 rounded-full ${pathname.startsWith("/workspace") ? "bg-pmri-blue" : "bg-pmri-border"}`} />
+            <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-xl border text-[11px] font-semibold ${pathname.startsWith("/workspace") ? "border-white/28 bg-pmri-blue/[0.11] text-pmri-blueSoft shadow-[0_0_18px_rgba(110,168,215,0.16)]" : "border-pmri-border/70 bg-white/[0.025] text-pmri-muted"}`} aria-hidden="true">
+              W
+            </span>
             <span className="truncate">Workspace</span>
           </span>
         </Link>
@@ -99,7 +112,9 @@ export function Sidebar() {
           const content = (
             <>
               <span className="flex min-w-0 items-center gap-3">
-                <motion.span layout className={`h-2 w-2 rounded-full ${dotClasses(step.status)}`} transition={pmriSpring} />
+                <motion.span layout className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-xl border text-[11px] font-semibold ${iconClasses(step.status)}`} transition={pmriSpring} aria-hidden="true">
+                  {stepIcons[step.id] ?? step.shortLabel.slice(0, 1)}
+                </motion.span>
                 <span className="truncate">{step.shortLabel}</span>
               </span>
               <span className="flex items-center gap-2">
@@ -115,7 +130,7 @@ export function Sidebar() {
               {step.status === "locked" ? (
                 <motion.button
                   type="button"
-                  className={className}
+                  className={`${className} relative overflow-hidden`}
                   aria-disabled="true"
                   onClick={() => setLockMessage(step.lockReason)}
                   {...(reduceMotion ? {} : buttonMotion)}
@@ -131,7 +146,7 @@ export function Sidebar() {
                   {step.status === "active" ? (
                     <motion.span
                       layoutId="sidebar-active-step"
-                      className="absolute inset-0 rounded-2xl bg-pmri-blue/[0.035]"
+                      className="absolute inset-0 rounded-2xl bg-[linear-gradient(135deg,rgba(236,239,243,0.055),rgba(110,168,215,0.035)_46%,rgba(255,255,255,0.018))]"
                       transition={pmriSpring}
                       aria-hidden="true"
                     />
