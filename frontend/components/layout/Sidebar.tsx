@@ -11,6 +11,104 @@ import { useSupabaseAuth } from "@/lib/supabase/auth";
 import { buttonMotion, listContainerVariants, listItemVariants, pmriSpring } from "@/components/ui/motion";
 import type { JourneyStepStatus } from "@/lib/types";
 
+type SidebarIconProps = {
+  className?: string;
+};
+
+function WorkspaceIcon({ className }: SidebarIconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="4" y="4" width="16" height="16" rx="1.8" />
+      <path d="M11 4v16" />
+      <path d="M15 9h5" />
+    </svg>
+  );
+}
+
+function PortfolioIcon({ className }: SidebarIconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3v18" />
+      <path d="M12 12h9" />
+    </svg>
+  );
+}
+
+function DiagnosisIcon({ className }: SidebarIconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="4" y="4" width="16" height="16" rx="2.4" fill="currentColor" />
+      <path d="M8 15v-3.5M12 15V8.5M16 15v-5" stroke="rgb(5 8 12)" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="8" cy="9" r="1" fill="rgb(5 8 12)" />
+      <circle cx="16" cy="7" r="1" fill="rgb(5 8 12)" />
+    </svg>
+  );
+}
+
+function StressLabIcon({ className }: SidebarIconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 3h4" />
+      <path d="M12 3v6.5" />
+      <path d="M8.3 21h7.4c2 0 3.2-2.2 2.1-3.9L14 11.5V9.5h-4v2L6.2 17.1C5.1 18.8 6.3 21 8.3 21Z" />
+      <path d="M8.5 16h7" />
+    </svg>
+  );
+}
+
+function ClientFitIcon({ className }: SidebarIconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3.5 19c.8-3.4 3-5 5.5-5s4.7 1.6 5.5 5" />
+      <circle cx="16.5" cy="9.5" r="2.5" />
+      <path d="M15 14.2c2.3.2 4.1 1.7 4.8 4.8" />
+    </svg>
+  );
+}
+
+function HypothesisIcon({ className }: SidebarIconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 14.8a6 6 0 1 1 8 0c-1 .8-1.5 1.8-1.5 3.2h-5c0-1.4-.5-2.4-1.5-3.2Z" />
+      <path d="M9.5 21h5" />
+    </svg>
+  );
+}
+
+function ComparisonIcon({ className }: SidebarIconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 17h10" />
+      <path d="m8 13-4 4 4 4" />
+      <path d="M20 7H10" />
+      <path d="m16 3 4 4-4 4" />
+      <path d="M14 12h-4" />
+    </svg>
+  );
+}
+
+function VerdictIcon({ className }: SidebarIconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8.5 12.2 2.2 2.2 4.8-5" />
+    </svg>
+  );
+}
+
+function ReportIcon({ className }: SidebarIconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M7 3h7l4 4v14H7z" />
+      <path d="M14 3v5h4" />
+      <path d="M10 13h5" />
+      <path d="M10 17h4" />
+    </svg>
+  );
+}
+
 function statusClasses(status: JourneyStepStatus) {
   switch (status) {
     case "active":
@@ -27,25 +125,25 @@ function statusClasses(status: JourneyStepStatus) {
 function iconClasses(status: JourneyStepStatus) {
   switch (status) {
     case "active":
-      return "border-white/28 bg-pmri-blue/[0.11] text-pmri-blueSoft shadow-[0_0_18px_rgba(110,168,215,0.16)]";
+      return "text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.18)]";
     case "completed":
-      return "border-pmri-borderSoft/55 bg-white/[0.035] text-pmri-text2";
+      return "text-pmri-blueSoft";
     case "available":
-      return "border-pmri-border/70 bg-white/[0.025] text-pmri-muted";
+      return "text-pmri-blueSoft/90";
     case "locked":
-      return "border-pmri-border/40 bg-black/10 text-pmri-muted/45";
+      return "text-pmri-muted/45";
   }
 }
 
-const stepIcons: Record<string, string> = {
-  "portfolio-input": "P",
-  diagnosis: "D",
-  evidence: "S",
-  "client-fit": "F",
-  hypothesis: "H",
-  comparison: "C",
-  verdict: "V",
-  report: "R"
+const stepIcons: Record<string, (props: SidebarIconProps) => JSX.Element> = {
+  "portfolio-input": PortfolioIcon,
+  diagnosis: DiagnosisIcon,
+  evidence: StressLabIcon,
+  "client-fit": ClientFitIcon,
+  hypothesis: HypothesisIcon,
+  comparison: ComparisonIcon,
+  verdict: VerdictIcon,
+  report: ReportIcon
 };
 
 export function Sidebar() {
@@ -92,8 +190,8 @@ export function Sidebar() {
           onClick={() => setLockMessage(null)}
         >
           <span className="flex min-w-0 items-center gap-3">
-            <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-xl border text-[11px] font-semibold ${pathname.startsWith("/workspace") ? "border-white/28 bg-pmri-blue/[0.11] text-pmri-blueSoft shadow-[0_0_18px_rgba(110,168,215,0.16)]" : "border-pmri-border/70 bg-white/[0.025] text-pmri-muted"}`} aria-hidden="true">
-              W
+            <span className={`flex h-6 w-6 shrink-0 items-center justify-center ${pathname.startsWith("/workspace") ? "text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.18)]" : "text-pmri-blueSoft/90"}`} aria-hidden="true">
+              <WorkspaceIcon className="h-5 w-5" />
             </span>
             <span className="truncate">Workspace</span>
           </span>
@@ -109,16 +207,14 @@ export function Sidebar() {
         animate={reduceMotion ? undefined : "visible"}
       >
         {steps.map((step) => {
+          const Icon = stepIcons[step.id] ?? ReportIcon;
           const content = (
             <>
               <span className="flex min-w-0 items-center gap-3">
-                <motion.span layout className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-xl border text-[11px] font-semibold ${iconClasses(step.status)}`} transition={pmriSpring} aria-hidden="true">
-                  {stepIcons[step.id] ?? step.shortLabel.slice(0, 1)}
+                <motion.span layout className={`flex h-6 w-6 shrink-0 items-center justify-center ${iconClasses(step.status)}`} transition={pmriSpring} aria-hidden="true">
+                  <Icon className="h-5 w-5" />
                 </motion.span>
                 <span className="truncate">{step.shortLabel}</span>
-              </span>
-              <span className="flex items-center gap-2">
-                <span className="data-figure text-[11px] text-pmri-muted/75">0{step.index + 1}</span>
               </span>
             </>
           );
