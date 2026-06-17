@@ -32,7 +32,7 @@ The product must present candidates as diagnostic tests and verdicts as non-bind
 
 ## Current Visual Language
 
-The implemented frontend uses a near-black graphite decision-room style with cool slate surfaces, restrained blue action accents, muted semantic statuses, large rounded cards, subtle glass rails, and controlled depth.
+The implemented frontend uses a near-black graphite decision-room style with cool slate surfaces, restrained steel-blue evidence accents, muted semantic statuses, large rounded cards, floating glass navigation, and controlled depth. The public landing now uses a premium-fintech diagnostic cockpit language: dark stage, glass device preview, compact evidence feed, white primary CTA, and a dock preview inspired by modern investment interfaces while preserving Portfolio MRI's diagnosis-first boundaries.
 
 The atmosphere should feel:
 
@@ -40,8 +40,9 @@ The atmosphere should feel:
 - precise;
 - calm;
 - premium dark;
+- current-portfolio-first;
 - client-ready;
-- analytical without looking like a terminal.
+- analytical without looking like a trading terminal.
 
 Avoid:
 
@@ -87,7 +88,7 @@ Use color sparsely. Most pixels should remain graphite, slate, and readable whit
 
 ## Typography
 
-Current implementation uses a modern sans stack through `--font-pmri-sans`, with Inter/Manrope/Helvetica Neue fallbacks. Numeric values use tabular-number styling through `.data-figure`.
+Current implementation uses Manrope through `--font-pmri-sans`, with Helvetica Neue and Arial fallbacks. Numeric values use tabular-number styling through `.data-figure`.
 
 Rules:
 
@@ -102,7 +103,7 @@ Rules:
 
 ### Public landing
 
-The landing page is public and does not show the platform sidebar or top journey rail. It uses a large centered hero, moving-grid atmosphere, dark sections, reveal animation, rounded CTA buttons, and structured blocks for problem, workflow, architecture, precision, and final CTA.
+The landing page is public and does not show the platform dock or top journey rail. It uses an asymmetric hero, premium-fintech glass cockpit preview, compact diagnosis metrics, a dock preview, reveal animation, rounded white primary CTAs, and structured blocks for diagnosis architecture, canonical flow, decision boundary, and final CTA.
 
 ### Onboarding
 
@@ -112,7 +113,8 @@ Onboarding routes are public-frame screens without the platform sidebar. Canonic
 
 Platform routes use:
 
-- a quieter left sidebar with 8 gated journey steps, compact letter emblems, and a clear outlined active pill;
+- a fixed bottom floating glass dock with 8 gated journey steps and icon emblems;
+- a separate Workspace dock control and optional account control on wider screens;
 - a sticky compact step context rail instead of a full horizontal journey stepper on redesigned routes;
 - a verdict-first page hero on redesigned analytical routes;
 - dark cards and panels;

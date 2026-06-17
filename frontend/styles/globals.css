@@ -1,4 +1,4 @@
-﻿@tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -20,7 +20,7 @@
   --pmri-warning: var(--pmri-amber-gold);
   --pmri-risk: var(--pmri-copper-red);
   --pmri-premium-accent: #b6c0cb;
-  --pmri-font-sans: var(--font-pmri-sans, Inter, Manrope, "Helvetica Neue", Arial, sans-serif);
+  --pmri-font-sans: var(--font-pmri-sans, Manrope, "Helvetica Neue", Arial, sans-serif);
   --pmri-font-mono: var(--font-pmri-mono, "SF Mono", "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
   --pmri-heading-weight: 500;
   --pmri-section-heading-weight: 600;
@@ -601,5 +601,61 @@ a.pmri-focus:active,
 
   .pmri-moving-grid {
     animation: none;
+  }
+}
+
+.pmri-app-stage {
+  position: relative;
+  overflow-x: clip;
+  background:
+    radial-gradient(circle at 50% -12%, rgba(236, 239, 243, 0.08), transparent 26%),
+    radial-gradient(circle at 78% 10%, rgba(110, 168, 215, 0.09), transparent 31%),
+    radial-gradient(circle at 8% 38%, rgba(195, 161, 95, 0.045), transparent 28%),
+    linear-gradient(180deg, #08090b 0%, #0a0b0d 42%, #07080a 100%);
+}
+
+.pmri-app-stage::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.016) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent 76%);
+  opacity: 0.55;
+}
+
+.pmri-device-frame {
+  transform: perspective(1100px) rotateX(2deg) rotateY(-4deg);
+  transform-origin: center;
+}
+
+.pmri-asteroid {
+  background:
+    radial-gradient(circle at 34% 28%, rgba(236, 239, 243, 0.62), transparent 6%),
+    radial-gradient(circle at 58% 44%, rgba(110, 168, 215, 0.28), transparent 12%),
+    radial-gradient(circle at 44% 62%, rgba(195, 161, 95, 0.18), transparent 11%),
+    radial-gradient(circle at 50% 50%, rgba(116, 121, 130, 0.62), rgba(48, 51, 58, 0.46) 42%, transparent 68%);
+  filter: contrast(1.2) saturate(0.72);
+  box-shadow:
+    inset 28px -36px 74px rgba(0, 0, 0, 0.68),
+    inset -18px 22px 60px rgba(255, 255, 255, 0.08),
+    0 40px 120px rgba(0, 0, 0, 0.42);
+}
+
+.pmri-asteroid::after {
+  content: "";
+  position: absolute;
+  inset: 18%;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  filter: blur(1px);
+}
+
+@media (max-width: 1023px) {
+  .pmri-device-frame {
+    transform: none;
   }
 }

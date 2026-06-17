@@ -1,4 +1,4 @@
-﻿import type { Config } from "tailwindcss";
+import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: [
@@ -34,7 +34,7 @@ const config: Config = {
         }
       },
       fontFamily: {
-        sans: ["var(--font-pmri-sans)", "Inter", "Manrope", "\"Helvetica Neue\"", "Arial", "sans-serif"],
+        sans: ["var(--font-pmri-sans)", "Manrope", "\"Helvetica Neue\"", "Arial", "sans-serif"],
         mono: ["var(--font-pmri-mono)", "SF Mono", "Roboto Mono", "ui-monospace", "SFMono-Regular", "monospace"]
       },
       boxShadow: {

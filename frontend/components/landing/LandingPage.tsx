@@ -2,231 +2,278 @@ import Link from "next/link";
 import { BrandMark } from "@/components/onboarding/BrandMark";
 import { Reveal } from "@/components/onboarding/Reveal";
 
-const problemBullets = [
-  "No clear allocation logic",
-  "No view of hidden concentration",
-  "No stress evidence before changing",
-  "No framework to defend a decision"
-];
-
-const workflow = [
-  {
-    number: "01",
-    title: "Input",
-    text: "Enter the portfolio as it stands today: tickers, weights, currency, and cash."
-  },
-  {
-    number: "02",
-    title: "Diagnosis",
-    text: "Diagnose exposures, concentration, risk contributors, and structural weak points in the current portfolio."
-  },
-  {
-    number: "03",
-    title: "Stress Lab",
-    text: "Replay stress scenarios and identify what hurts, what helps, and where protection is missing."
-  },
-  {
-    number: "04",
-    title: "Client Fit",
-    text: "Compare the evidence against the stated profile in plain language."
-  },
-  {
-    number: "05",
-    title: "Verdict",
-    text: "Test one candidate hypothesis and get a grounded, non-binding decision-support verdict."
-  }
-];
-
-const architecture = [
-  ["Portfolio Diagnosis", "Composition, factor sensitivity, hidden exposure, risk budget, and weakness map."],
-  ["Stress Test Lab", "Synthetic and historical pressure tests with helped/hurt evidence and hedge-gap context."],
-  ["Problem Classification", "Turns evidence into a diagnosis before any candidate portfolio is tested."],
-  ["Candidate Launchpad", "Suggests one diagnostic test path from the actual problem, not from generic optimization."],
-  ["Current vs Candidate", "Shows what improves, what worsens, what is neutral, and what remains unclear."],
-  ["Grounded Report", "Client-ready commentary tied to run-local evidence and explicit limitations."]
-];
-
-const precisionStats = [
-  ["Current first", "Diagnosis begins with the existing portfolio."],
-  ["1 path", "One hypothesis is tested at a time."],
-  ["Run-local", "Evidence is tied to the active review chain."],
-  ["Non-binding", "Verdict frames support, not orders."]
-];
-
 const platformEntryHref = "/onboarding/sign-in";
+
+const navItems = [
+  ["Diagnosis", "#diagnosis"],
+  ["Stress Lab", "#stress"],
+  ["Decision", "#decision"],
+  ["Report", "#report"]
+];
+
+const metrics = [
+  ["Concentration", "High", "36% in two drivers"],
+  ["Stress loss", "-18.4%", "Rate shock scenario"],
+  ["Client Fit", "Watch", "Drawdown tolerance gap"]
+];
+
+const feed = [
+  ["Portfolio Diagnosis", "Risk is concentrated before the candidate stage begins."],
+  ["Stress Test Lab", "Inflation shock and liquidity stress both expose the same weakness."],
+  ["Candidate Launchpad", "One diagnostic test is ready: reduce concentration while preserving intent."]
+];
+
+const featureGrid = [
+  ["Current portfolio first", "The system starts with actual holdings, weights, currency, and cash before any alternative is shown."],
+  ["Diagnosis before action", "Concentration, risk contribution, hidden exposure, and stress behavior are explained in one evidence chain."],
+  ["One candidate hypothesis", "Portfolio MRI tests a candidate as a diagnostic path, not as an automatic recommendation."],
+  ["Grounded commentary", "Verdicts and reports stay tied to run-local evidence, limits, and non-binding decision support."],
+  ["Client Fit context", "Profile constraints are visible context, not suitability approval or a reason to hide material issues."],
+  ["Monitoring posture", "The product keeps the user focused on what changed and why it matters after the review."]
+];
+
+const steps = [
+  ["01", "Input Portfolio", "Enter the portfolio as it stands today."],
+  ["02", "Portfolio Diagnosis", "Find the structure and weak points."],
+  ["03", "Stress Test Lab", "Replay pressure before proposing a fix."],
+  ["04", "Client Fit Check", "Add profile context without turning it into approval."],
+  ["05", "Candidate Launchpad", "Choose one testable path from the diagnosis."],
+  ["06", "Decision Verdict", "Compare evidence and produce a bounded verdict."]
+];
+
+function MiniChart() {
+  return (
+    <div className="relative h-52 overflow-hidden rounded-[1.6rem] border border-white/[0.07] bg-black/40 p-5">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_24%,rgba(110,168,215,0.16),transparent_42%)]" />
+      <div className="relative flex items-start justify-between">
+        <div>
+          <p className="data-figure text-3xl font-semibold tracking-[-0.06em] text-pmri-text">$130,067</p>
+          <p className="mt-1 text-xs text-pmri-muted">Current portfolio value</p>
+        </div>
+        <span className="rounded-full border border-pmri-amber/24 bg-pmri-amber/10 px-3 py-1 text-xs font-semibold text-pmri-amber">Watch</span>
+      </div>
+      <svg className="relative mt-8 h-20 w-full" viewBox="0 0 520 120" aria-hidden="true">
+        <path d="M4 84 C 54 72, 74 62, 118 70 S 177 102, 215 74 S 272 37, 314 48 S 383 80, 430 38 S 490 20, 516 28" fill="none" stroke="rgba(110,168,215,0.9)" strokeLinecap="round" strokeWidth="3" />
+        <path d="M4 98 C 62 86, 102 78, 156 86 S 238 108, 306 84 S 388 70, 516 66" fill="none" stroke="rgba(236,231,220,0.42)" strokeLinecap="round" strokeWidth="2" />
+        <path d="M4 108 L516 108" stroke="rgba(255,255,255,0.08)" strokeDasharray="6 8" />
+      </svg>
+      <div className="relative mt-3 flex gap-4 text-xs text-pmri-muted">
+        <span>Current</span>
+        <span className="text-pmri-blueSoft">Stress adjusted</span>
+        <span>Reference</span>
+      </div>
+    </div>
+  );
+}
+
+function ProductPreview() {
+  return (
+    <div className="pmri-device-frame relative mx-auto w-full max-w-5xl rounded-[2.1rem] border border-white/[0.09] bg-black/70 p-3 shadow-[0_40px_120px_rgba(0,0,0,0.62)]">
+      <div className="overflow-hidden rounded-[1.65rem] border border-white/[0.08] bg-[linear-gradient(135deg,rgba(18,20,24,0.96),rgba(5,6,8,0.96))]">
+        <div className="flex items-center gap-2 border-b border-white/[0.06] px-5 py-3">
+          <span className="h-2.5 w-2.5 rounded-full bg-pmri-risk" />
+          <span className="h-2.5 w-2.5 rounded-full bg-pmri-amber" />
+          <span className="h-2.5 w-2.5 rounded-full bg-pmri-blue" />
+          <span className="ml-4 text-xs font-medium text-pmri-muted">Portfolio MRI Decision Room</span>
+        </div>
+        <div className="grid gap-4 p-4 lg:grid-cols-[1.08fr_0.92fr]">
+          <div className="space-y-4">
+            <MiniChart />
+            <div className="grid gap-3 sm:grid-cols-3">
+              {metrics.map(([label, value, caption]) => (
+                <div key={label} className="rounded-[1.25rem] border border-white/[0.07] bg-white/[0.035] p-4">
+                  <p className="text-xs text-pmri-muted">{label}</p>
+                  <p className="data-figure mt-2 text-2xl font-semibold text-pmri-text">{value}</p>
+                  <p className="mt-2 text-xs leading-5 text-pmri-muted">{caption}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div className="rounded-[1.45rem] border border-white/[0.1] bg-[linear-gradient(145deg,rgba(255,255,255,0.09),rgba(255,255,255,0.025))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+              <div className="flex items-center justify-between gap-3">
+                <span className="rounded-full bg-white/[0.08] px-3 py-1 text-xs font-semibold text-pmri-text2">Morning diagnosis</span>
+                <span className="text-xs text-pmri-muted">Run-local evidence</span>
+              </div>
+              <p className="mt-5 text-base font-semibold leading-7 text-pmri-text">
+                The portfolio is not failing because expected return is unknown. It is exposed because the same holdings drive concentration, stress loss, and Client Fit tension.
+              </p>
+            </div>
+            {feed.map(([title, text]) => (
+              <div key={title} className="rounded-[1.35rem] border border-white/[0.065] bg-black/35 p-5">
+                <p className="text-sm font-semibold text-pmri-text2">{title}</p>
+                <p className="mt-2 text-sm leading-6 text-pmri-muted">{text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FloatingDockPreview() {
+  return (
+    <div className="mx-auto mt-8 flex max-w-3xl items-center justify-center rounded-[2.2rem] border border-white/[0.1] bg-[linear-gradient(180deg,rgba(65,67,72,0.74),rgba(28,29,33,0.72))] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-2xl">
+      {steps.slice(0, 6).map(([number, title], index) => (
+        <div key={title} className={`flex h-12 w-12 items-center justify-center rounded-[1.15rem] border text-xs font-semibold transition md:h-14 md:w-14 ${index === 1 ? "border-white/28 bg-white/[0.16] text-pmri-text" : "border-transparent text-pmri-muted"}`} title={title}>
+          {number}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function LandingPage() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-pmri-bg text-pmri-text">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_6%,rgba(96,165,250,0.13),transparent_24%),radial-gradient(circle_at_12%_14%,rgba(170,183,198,0.075),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.035),transparent_42%)]" />
+    <main className="relative min-h-[100dvh] overflow-hidden bg-pmri-bg text-pmri-text">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_-10%,rgba(236,239,243,0.13),transparent_26%),radial-gradient(circle_at_78%_12%,rgba(110,168,215,0.13),transparent_28%),radial-gradient(circle_at_12%_34%,rgba(195,161,95,0.07),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.035),transparent_38%)]" />
+      <div className="pmri-asteroid pointer-events-none absolute left-1/2 top-[-160px] h-[420px] w-[420px] -translate-x-1/2 rounded-full opacity-50 blur-[0.2px]" />
 
-      <header className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-6 md:px-8">
+      <header className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-5 md:px-8">
         <Link href="/" className="pmri-focus flex items-center gap-3 rounded-full">
-          <BrandMark size="md" />
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.09] bg-white/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+            <BrandMark size="sm" />
+          </span>
           <div>
             <p className="text-sm font-semibold tracking-[-0.025em] text-pmri-text">Portfolio MRI</p>
-            <p className="text-xs text-pmri-muted">Investment Decision Room</p>
+            <p className="text-xs text-pmri-muted">Diagnosis-first decision room</p>
           </div>
         </Link>
         <nav className="hidden items-center gap-6 text-sm text-pmri-muted md:flex" aria-label="Landing navigation">
-          <a href="#problem" className="transition hover:text-pmri-text">Problem</a>
-          <a href="#workflow" className="transition hover:text-pmri-text">How it works</a>
-          <a href="#architecture" className="transition hover:text-pmri-text">Architecture</a>
-          <a href="#precision" className="transition hover:text-pmri-text">Precision</a>
-          <Link href={platformEntryHref} className="pmri-focus rounded-full border border-pmri-blue/35 px-5 py-2.5 font-semibold text-pmri-text transition hover:border-pmri-blue/60 hover:bg-pmri-blue/[0.08]">
+          {navItems.map(([label, href]) => (
+            <a key={href} href={href} className="transition hover:text-pmri-text">{label}</a>
+          ))}
+          <Link href={platformEntryHref} className="pmri-focus rounded-full bg-white px-5 py-2.5 font-semibold text-black transition hover:bg-pmri-text2">
             Enter Platform
           </Link>
         </nav>
       </header>
 
-      <section className="relative z-10 mx-auto flex min-h-[calc(100vh-88px)] w-full max-w-7xl flex-col items-center justify-center px-5 pb-24 pt-10 text-center md:px-8">
-        <div className="pointer-events-none absolute inset-x-[-16vw] bottom-[-230px] h-[620px] border-y border-pmri-blue/10 opacity-80 pmri-moving-grid" />
-        <Reveal layout="hero">
-          <p className="data-figure text-4xl font-semibold tracking-[0.45em] text-pmri-blueSoft drop-shadow-[0_0_18px_rgba(96,165,250,0.25)] md:text-6xl">
-            PORTFOLIO MRI
+      <section className="relative z-10 mx-auto grid min-h-[calc(100dvh-86px)] w-full max-w-7xl items-center gap-12 px-5 pb-20 pt-8 md:px-8 lg:grid-cols-[0.9fr_1.1fr]">
+        <Reveal>
+          <p className="inline-flex rounded-full border border-white/[0.08] bg-white/[0.045] px-4 py-2 text-xs font-semibold text-pmri-text2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+            Current portfolio first. Candidate second.
           </p>
-          <p className="mt-5 text-xs font-medium uppercase tracking-[0.55em] text-pmri-muted">
-            Portfolio diagnostics & investment decision-support system
-          </p>
-          <h1 className="mx-auto mt-8 max-w-6xl text-5xl font-semibold leading-[0.98] tracking-[-0.055em] text-pmri-text md:text-7xl lg:text-8xl">
-            Diagnose portfolio risk before you rebalance.
+          <h1 className="mt-7 max-w-4xl text-5xl font-semibold leading-[0.96] tracking-[-0.065em] text-pmri-text md:text-7xl lg:text-8xl">
+            Diagnose the portfolio before you change it.
           </h1>
-          <p className="mx-auto mt-7 max-w-3xl text-lg leading-8 text-pmri-text2 md:text-xl">
-            Portfolio MRI turns current holdings into stress-tested decision evidence before any alternative is considered.
+          <p className="mt-7 max-w-2xl text-lg leading-8 text-pmri-text2 md:text-xl">
+            Portfolio MRI turns holdings into stress-tested decision evidence, then tests one candidate path only when the diagnosis supports it.
           </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link href={platformEntryHref} className="pmri-focus pmri-primary-action inline-flex items-center justify-center rounded-full px-8 py-3.5 text-sm font-semibold transition">
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link href={platformEntryHref} className="pmri-focus inline-flex items-center justify-center rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-black transition hover:bg-pmri-text2">
               Enter Platform
             </Link>
-            <a href="#workflow" className="pmri-focus inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-pmri-blueSoft transition hover:text-pmri-text">
-              See how it works ↓
+            <a href="#diagnosis" className="pmri-focus inline-flex items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.035] px-6 py-3.5 text-sm font-semibold text-pmri-text2 transition hover:border-white/25 hover:bg-white/[0.06] hover:text-pmri-text">
+              See the evidence chain
             </a>
           </div>
-          <div className="mx-auto mt-10 flex max-w-3xl flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-pmri-muted">
-            <span>Current portfolio first</span>
-            <span className="text-pmri-blueSoft">•</span>
-            <span>Stress-tested evidence</span>
-            <span className="text-pmri-blueSoft">•</span>
-            <span>Candidate tests, not orders</span>
+          <div className="mt-10 grid max-w-2xl grid-cols-3 gap-3 text-left">
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4">
+              <p className="data-figure text-2xl font-semibold text-pmri-text">01</p>
+              <p className="mt-1 text-xs text-pmri-muted">Diagnosis starts the run</p>
+            </div>
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4">
+              <p className="data-figure text-2xl font-semibold text-pmri-text">1</p>
+              <p className="mt-1 text-xs text-pmri-muted">Candidate test path</p>
+            </div>
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4">
+              <p className="data-figure text-2xl font-semibold text-pmri-text">0</p>
+              <p className="mt-1 text-xs text-pmri-muted">Trade instructions</p>
+            </div>
+          </div>
+        </Reveal>
+        <Reveal delay={120}>
+          <ProductPreview />
+        </Reveal>
+      </section>
+
+      <FloatingDockPreview />
+
+      <section id="diagnosis" className="relative z-10 mx-auto max-w-7xl px-5 py-24 md:px-8">
+        <Reveal layout="centered">
+          <p className="pmri-label text-pmri-blueSoft">Diagnosis architecture</p>
+          <h2 className="mx-auto mt-4 max-w-4xl text-4xl font-semibold leading-[1.02] tracking-[-0.05em] text-pmri-text md:text-6xl">
+            A calm evidence chain, not a dashboard wall.
+          </h2>
+          <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-pmri-text2">
+            Each screen answers one decision question and keeps legacy optimizer artifacts away from the primary user journey.
+          </p>
+        </Reveal>
+        <div className="mt-14 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {featureGrid.map(([title, text], index) => (
+            <Reveal key={title} delay={index * 55}>
+              <article className="pmri-card pmri-interactive-card min-h-48 rounded-[1.7rem] p-6">
+                <h3 className="text-xl font-semibold tracking-[-0.035em] text-pmri-text">{title}</h3>
+                <p className="mt-4 text-sm leading-7 text-pmri-muted">{text}</p>
+              </article>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      <section id="stress" className="relative z-10 border-y border-white/[0.06] bg-white/[0.025] px-5 py-24 md:px-8">
+        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1.2fr]">
+          <Reveal>
+            <p className="pmri-label text-pmri-blueSoft">Canonical flow</p>
+            <h2 className="mt-4 text-4xl font-semibold leading-[1.03] tracking-[-0.05em] text-pmri-text md:text-6xl">
+              From input to verdict with no hidden leap.
+            </h2>
+            <p className="mt-6 text-lg leading-8 text-pmri-text2">
+              The user moves through diagnosis, stress evidence, Client Fit context, one candidate hypothesis, comparison, and bounded commentary.
+            </p>
+          </Reveal>
+          <div className="grid gap-3">
+            {steps.map(([number, title, text], index) => (
+              <Reveal key={title} delay={index * 55}>
+                <div className="flex items-center gap-5 rounded-[1.5rem] border border-white/[0.07] bg-black/30 p-5">
+                  <span className="data-figure flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/[0.09] bg-white/[0.045] text-sm font-semibold text-pmri-text2">{number}</span>
+                  <div>
+                    <h3 className="text-lg font-semibold tracking-[-0.03em] text-pmri-text">{title}</h3>
+                    <p className="mt-1 text-sm leading-6 text-pmri-muted">{text}</p>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="decision" className="relative z-10 mx-auto max-w-7xl px-5 py-24 md:px-8">
+        <Reveal>
+          <div className="rounded-[2rem] border border-white/[0.09] bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.025)_44%,rgba(0,0,0,0.32))] p-8 shadow-[0_32px_90px_rgba(0,0,0,0.45)] md:p-12">
+            <div className="grid gap-10 lg:grid-cols-[1fr_0.8fr] lg:items-end">
+              <div>
+                <p className="pmri-label text-pmri-blueSoft">Non-binding by design</p>
+                <h2 className="mt-4 max-w-3xl text-4xl font-semibold leading-[1.02] tracking-[-0.05em] text-pmri-text md:text-6xl">
+                  The verdict explains support, trade-offs, and limits.
+                </h2>
+                <p className="mt-6 max-w-2xl text-lg leading-8 text-pmri-text2">
+                  Portfolio MRI does not present Client Fit as approval and does not hide material problems because a profile field is missing or favorable.
+                </p>
+              </div>
+              <div className="rounded-[1.6rem] border border-white/[0.08] bg-black/35 p-5">
+                <p className="text-sm font-semibold text-pmri-text">Decision verdict</p>
+                <p className="mt-4 text-3xl font-semibold tracking-[-0.05em] text-pmri-text">Testable, not executable.</p>
+                <p className="mt-4 text-sm leading-7 text-pmri-muted">
+                  The candidate is framed as evidence to review with known limitations, not as a trade order.
+                </p>
+              </div>
+            </div>
           </div>
         </Reveal>
       </section>
 
-      <section id="problem" className="relative z-10 border-y border-pmri-border/40 bg-pmri-secondary/45 px-5 py-24 md:px-8">
-        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.95fr_1.05fr]">
-          <Reveal>
-            <h2 className="text-4xl font-semibold uppercase leading-[1.05] tracking-[-0.045em] text-pmri-text md:text-6xl">
-              Too many tickers. Too little diagnosis.
-            </h2>
-            <div className="mt-8 h-1 w-24 rounded-full bg-pmri-blueSoft" />
-            <p className="mt-8 max-w-2xl text-lg leading-8 text-pmri-text2">
-              Many investors hold a collection of ETFs, funds, stocks, and cash and call it a portfolio. But a list of products does not explain concentration, interaction, stress behavior, or what would make a change worth testing.
+      <section id="report" className="relative z-10 px-5 pb-28 md:px-8">
+        <Reveal layout="centered">
+          <div className="mx-auto max-w-4xl text-center">
+            <p className="pmri-label text-pmri-blueSoft">Ready to inspect your portfolio</p>
+            <h2 className="mt-4 text-4xl font-semibold leading-[1.02] tracking-[-0.05em] text-pmri-text md:text-6xl">Open the decision room.</h2>
+            <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-pmri-text2">
+              Sign in, enter tickers and weights, then let the product diagnose the current portfolio before it tests any alternative.
             </p>
-          </Reveal>
-          <Reveal delay={120} layout="stack">
-            <div className="grid gap-4">
-              {problemBullets.map((item) => (
-                <div key={item} className="flex items-center gap-4 rounded-2xl border border-pmri-border/45 bg-white/[0.02] px-5 py-4">
-                  <span className="h-2 w-2 rotate-45 bg-pmri-blueSoft shadow-[0_0_18px_rgba(96,165,250,0.55)]" aria-hidden="true" />
-                  <span className="font-medium text-pmri-text2">{item}</span>
-                </div>
-              ))}
-            </div>
-            <p className="rounded-3xl border border-pmri-blue/20 bg-pmri-blue/[0.055] p-6 text-lg leading-8 text-pmri-text2">
-              The result: portfolios built on narrative, not evidence. Portfolio MRI gives the current portfolio a structured diagnostic chain before any alternative is considered.
-            </p>
-          </Reveal>
-        </div>
-      </section>
-
-      <section id="workflow" className="relative z-10 px-5 py-24 md:px-8">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(96,165,250,0.08),transparent_28%)]" />
-        <div className="relative mx-auto max-w-7xl">
-          <Reveal layout="centered">
-            <p className="pmri-label text-pmri-blueSoft">How it works</p>
-            <h2 className="mx-auto mt-4 max-w-6xl text-4xl font-semibold uppercase leading-[1.02] tracking-[-0.045em] text-pmri-text md:text-6xl">
-              From raw holdings to a defensible decision path.
-            </h2>
-            <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-pmri-text2">
-              The platform is not a dashboard wall. It is a guided sequence from input to diagnosis, evidence, one testable hypothesis, comparison, verdict, and report.
-            </p>
-          </Reveal>
-          <div className="mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-5">
-            {workflow.map((item, index) => (
-              <Reveal key={item.number} delay={index * 85}>
-                <article className="pmri-card pmri-interactive-card flex min-h-[310px] flex-col rounded-3xl p-6 text-center">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-pmri-blue/35 bg-pmri-blue/[0.075] data-figure text-sm text-pmri-blueSoft">
-                    {item.number}
-                  </div>
-                  <h3 className="mt-7 text-xl font-semibold uppercase tracking-[0.08em] text-pmri-text">{item.title}</h3>
-                  <p className="mt-5 text-sm leading-7 text-pmri-text2">{item.text}</p>
-                </article>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="architecture" className="relative z-10 overflow-hidden border-y border-pmri-border/40 bg-pmri-secondary/55 px-5 py-24 md:px-8">
-        <div className="pointer-events-none absolute right-[-14%] top-[-12%] h-[560px] w-[560px] rounded-full border border-pmri-blue/10 bg-[radial-gradient(circle,rgba(96,165,250,0.13),transparent_60%)]" />
-        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.82fr_1.18fr]">
-          <Reveal>
-            <p className="pmri-label text-pmri-blueSoft">One system. One evidence chain.</p>
-            <h2 className="mt-4 text-4xl font-semibold uppercase leading-[1.04] tracking-[-0.045em] text-pmri-text md:text-6xl">
-              Diagnosis architecture, not an optimizer cockpit.
-            </h2>
-            <p className="mt-7 text-lg leading-8 text-pmri-text2">
-              Portfolio MRI connects diagnosis evidence, stress behavior, Client Fit context, candidate testing, comparison, verdict, and grounded commentary into one portfolio-first workflow.
-            </p>
-          </Reveal>
-          <div className="grid gap-4 md:grid-cols-2">
-            {architecture.map(([title, text], index) => (
-              <Reveal key={title} delay={index * 70}>
-                <article className="rounded-3xl border border-pmri-border/55 bg-white/[0.025] p-6 transition hover:border-pmri-blue/30 hover:bg-white/[0.04]">
-                  <h3 className="text-lg font-semibold tracking-[-0.025em] text-pmri-text">{title}</h3>
-                  <p className="mt-3 text-sm leading-7 text-pmri-muted">{text}</p>
-                </article>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="precision" className="relative z-10 px-5 py-24 md:px-8">
-        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1fr_0.9fr]">
-          <Reveal>
-            <h2 className="text-4xl font-semibold uppercase tracking-[-0.045em] text-pmri-text md:text-6xl">
-              Built for precision.
-            </h2>
-            <div className="mt-10 grid overflow-hidden rounded-3xl border border-pmri-border/50 bg-white/[0.018] md:grid-cols-2">
-              {precisionStats.map(([value, label]) => (
-                <div key={value} className="border-b border-r border-pmri-border/40 p-8 text-center last:border-r-0 md:[&:nth-child(2n)]:border-r-0 md:[&:nth-child(n+3)]:border-b-0">
-                  <p className="data-figure text-4xl font-semibold tracking-[-0.04em] text-pmri-blueSoft drop-shadow-[0_0_18px_rgba(96,165,250,0.28)]">{value}</p>
-                  <p className="mt-2 text-sm leading-6 text-pmri-muted">{label}</p>
-                </div>
-              ))}
-            </div>
-          </Reveal>
-          <Reveal delay={120} layout="centeredColumn">
-            <p className="text-xl leading-9 text-pmri-text2">
-              Every screen is designed to answer a decision question: what did we receive, what is the diagnosis, what evidence supports it, what hypothesis is being tested, what changed, and whether the evidence is strong enough for a non-binding verdict.
-            </p>
-            <p className="mt-6 text-sm leading-7 text-pmri-muted">
-              The product keeps generated artifacts, stale runs, legacy optimizer outputs, and technical diagnostics separated from the current user-facing decision path.
-            </p>
-          </Reveal>
-        </div>
-      </section>
-
-      <section className="relative z-10 px-5 pb-24 md:px-8">
-        <Reveal>
-          <div className="mx-auto max-w-5xl rounded-[2rem] border border-pmri-blue/20 bg-[linear-gradient(135deg,rgba(59,130,246,0.16),rgba(255,255,255,0.025)_38%,rgba(16,17,20,0.9))] p-8 text-center shadow-decision md:p-12">
-            <p className="pmri-label text-pmri-blueSoft">Ready to inspect your portfolio...</p>
-            <h2 className="mt-3 text-4xl font-semibold uppercase tracking-[-0.045em] text-pmri-text md:text-6xl">Open the decision room.</h2>
-            <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-pmri-text2">
-              Sign in, answer the short setup questions, then enter your tickers and weights. The system starts with diagnosis, not a trade instruction.
-            </p>
-            <Link href={platformEntryHref} className="pmri-focus pmri-primary-action mt-8 inline-flex items-center justify-center rounded-full px-8 py-3.5 text-sm font-semibold transition">
+            <Link href={platformEntryHref} className="pmri-focus mt-8 inline-flex items-center justify-center rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-black transition hover:bg-pmri-text2">
               Enter Platform
             </Link>
           </div>

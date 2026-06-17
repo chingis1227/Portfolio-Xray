@@ -1,16 +1,16 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Inter, Roboto_Mono } from "next/font/google";
+import { Manrope, Roboto_Mono } from "next/font/google";
 import "../styles/globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 import { ReviewStateProvider } from "@/lib/reviewState";
 import { SupabaseAuthProvider } from "@/lib/supabase/auth";
 import { SupabasePersistenceProvider } from "@/lib/supabase/persistence";
 
-const interSans = Inter({
+const pmriSans = Manrope({
   subsets: ["latin"],
   display: "swap",
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
   variable: "--font-pmri-sans"
 });
 
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${interSans.variable} ${robotoMono.variable}`}>
+    <html lang="en" className={`${pmriSans.variable} ${robotoMono.variable}`}>
       <body>
         <SupabaseAuthProvider>
           <SupabasePersistenceProvider>
@@ -40,4 +40,3 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     </html>
   );
 }
-
