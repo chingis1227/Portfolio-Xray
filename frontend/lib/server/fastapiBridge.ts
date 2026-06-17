@@ -815,6 +815,51 @@ function sanitizeRecoveredReviewResult(value: unknown, reviewId: string) {
   };
 }
 
+function sanitizeRecoveryEnvelope(value: unknown) {
+  if (!isRecord(value)) return value;
+  const recoverableKeys = [
+    "portfolio_xray",
+    "stress_report",
+    "run_metadata",
+    "output_manifest",
+    "problem_classification",
+    "candidate_launchpad",
+    "portfolio_alternatives_builder",
+    "ai_commentary_context",
+    "site_explanation_bundle"
+  ];
+  const data = isRecord(value.data) ? value.data : {};
+  const artifactPayloads = isRecord(data.artifact_payloads) ? data.artifact_payloads : {};
+  const allowedArtifactPayloads = Object.fromEntries(
+    Object.entries(artifactPayloads).filter(([key]) => recoverableKeys.includes(key))
+  );
+  const sanitizedData: Record<string, unknown> = {
+    ...data,
+    artifact_payloads: allowedArtifactPayloads
+  };
+  if (Array.isArray(data.artifact_refs)) {
+    sanitizedData.artifact_refs = data.artifact_refs.filter((item) => (
+      isRecord(item) && recoverableKeys.includes(textValue(item.kind))
+    ));
+  }
+
+  const evidence = isRecord(value.evidence) ? value.evidence : undefined;
+  const sanitizedEvidence = evidence && Array.isArray(evidence.source_artifacts)
+    ? {
+      ...evidence,
+      source_artifacts: evidence.source_artifacts.filter((item) => (
+        isRecord(item) && recoverableKeys.includes(textValue(item.kind))
+      ))
+    }
+    : value.evidence;
+
+  return {
+    ...value,
+    data: sanitizedData,
+    evidence: sanitizedEvidence
+  };
+}
+
 function artifactRefsToPathMap(refs: unknown) {
   const pathEntries = Array.isArray(refs)
     ? refs
@@ -915,13 +960,14 @@ export async function recoverViaFastApi(reviewIdInput: unknown) {
     return fastApiLineageMismatchResponse("review_recovery", { reviewId }, recoveryLineageErrors);
   }
 
-  const sanitized = recoveredReviewResultFromFastApi(api.body, reviewId);
+  const sanitizedEnvelope = sanitizeRecoveryEnvelope(api.body);
+  const sanitized = recoveredReviewResultFromFastApi(sanitizedEnvelope, reviewId);
   if (!sanitized) return jsonError("FastAPI did not return recoverable review data for this review_id.", 409);
   return NextResponse.json({
     status: "completed",
     stage: "review_recovery",
     review_id: reviewId,
-    fastapi_envelope: api.body,
+    fastapi_envelope: sanitizedEnvelope,
     recovery: {
       source: "fastapi_v1_review_recovery",
       restored_active_stages: ["diagnosis", "evidence", "hypothesis_setup"],

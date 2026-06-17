@@ -109,7 +109,16 @@ def test_get_staged_review_status_returns_safe_public_state(
         "completed_at": "2026-06-14T08:00:01Z",
         "artifact_refs": ["D:\\secret\\portfolio_xray.json", "analysis_subject/stress_report.json"],
     }
-    state["artifacts"] = {"portfolio_xray": "D:\\secret\\portfolio_xray.json"}
+    state["stages"]["candidate"] = {
+        "status": "pending",
+        "started_at": None,
+        "completed_at": None,
+        "artifact_refs": ["D:\\secret\\candidate_generation.json"],
+    }
+    state["artifacts"] = {
+        "portfolio_xray": "D:\\secret\\portfolio_xray.json",
+        "current_vs_candidate": "D:\\secret\\current_vs_candidate.json",
+    }
     review_service._write_staged_state(run_dir, state)
 
     monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
@@ -123,7 +132,10 @@ def test_get_staged_review_status_returns_safe_public_state(
     assert body["status"] == "partial"
     assert body["current_stage"] == "candidate"
     assert body["stages"]["xray"]["artifact_refs"][0] == "logical://xray"
+    assert body["stages"]["candidate"]["status"] == "pending"
+    assert body["stages"]["candidate"]["artifact_refs"][0] == "logical://candidate"
     assert body["artifacts"]["portfolio_xray"] == "logical://portfolio_xray"
+    assert body["artifacts"]["current_vs_candidate"] == "logical://current_vs_candidate"
     serialized = json.dumps(body)
     assert "Traceback" not in serialized
     assert not re.search(r"[A-Z]:[\\/]", serialized)

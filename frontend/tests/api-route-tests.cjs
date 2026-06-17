@@ -469,6 +469,45 @@ test("diagnosis route forwards completed Client Fit profile into the staged Fast
   });
 });
 
+test("diagnosis route maps sample mode to deterministic staged demo QA mode", async () => {
+  const calls = [];
+  const route = loadRoute({ routePath: diagnoseRoutePath });
+
+  await withMockFetch(async (url, options) => {
+    calls.push({ url, options });
+    return Response.json({
+      api_version: "v1",
+      schema_version: "review_started_v1",
+      review_id: "frontend_review_demo_mode",
+      stage: "diagnosis",
+      status: "running",
+      current_stage: "input",
+      mode: "demo_qa",
+      warnings: [],
+      safe_error: null
+    });
+  }, async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      investor_currency: "USD",
+      mode: "sample_demo",
+      holdings: [
+        { type: "instrument", ticker: "SPY", weight: 70 },
+        { type: "cash", currency: "USD", weight: 30 }
+      ]
+    }, "http://localhost/api/portfolio/diagnose")));
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.review_id, "frontend_review_demo_mode");
+    assert.equal(result.body.mode, "demo_qa");
+    assert.equal(calls.length, 1);
+    assert.deepEqual(JSON.parse(calls[0].options.body).options, {
+      mode: "diagnosis_only",
+      output_profile: "site_api",
+      sample_mode: true
+    });
+  });
+});
+
 test("diagnosis route reports frontend backend version mismatch when staged FastAPI route is missing", async () => {
   const route = loadRoute({ routePath: diagnoseRoutePath });
 
@@ -522,10 +561,51 @@ test("staged review status route proxies to the FastAPI status endpoint", async 
     assert.equal(result.status, 200);
     assert.equal(result.body.schema_version, "review_state_v1");
     assert.equal(result.body.review_id, "frontend_review_status");
+    assert.equal(result.body.status, "partial");
+    assert.equal(result.body.current_stage, "candidate");
+    assert.equal(result.body.mode, "live");
+    assert.equal(result.body.stages.input.status, "completed");
+    assert.equal(result.body.stages.xray.artifact_refs[0], "analysis_subject/portfolio_xray.json");
+    assert.equal(result.body.artifacts.portfolio_xray, "analysis_subject/portfolio_xray.json");
+    assert.equal(result.body.provider_status.source, "live_provider");
     assert.equal(calls.length, 1);
     assert.match(calls[0].url, /\/api\/v1\/reviews\/frontend_review_status\/status$/);
     assert.equal(calls[0].options.method, "GET");
     assertSignedFastApiHeaders(calls[0].options);
+  });
+});
+
+test("staged review status route rejects FastAPI status from a different review", async () => {
+  const route = loadRoute({ routePath: reviewStatusRoutePath });
+
+  await withMockFetch(async (url, options) => {
+    assert.match(url, /\/api\/v1\/reviews\/frontend_review_status_a\/status$/);
+    assert.equal(options.method, "GET");
+    return Response.json({
+      api_version: "v1",
+      schema_version: "review_state_v1",
+      review_id: "frontend_review_status_b",
+      stage: "diagnosis",
+      status: "running",
+      current_stage: "data_load",
+      mode: "live",
+      stages: {},
+      artifacts: {},
+      provider_status: { source: "live_provider", freshness: "pending", message: "Live mode uses the normal market-data provider path." },
+      warnings: [],
+      safe_error: null,
+      created_at: null,
+      updated_at: null
+    });
+  }, async () => {
+    const result = await responseJson(await route.GET(new Request("http://localhost/api/portfolio/review/status?reviewId=frontend_review_status_a")));
+
+    assert.equal(result.status, 409);
+    assert.equal(result.body.status, "failed");
+    assert.equal(result.body.stage, "staged_review_status");
+    assert.match(result.body.error, /lineage did not match/);
+    assert.match(result.body.details.join(" "), /review_id mismatch/);
+    assert.equal(result.body.review_id, "frontend_review_status_a");
   });
 });
 
@@ -1078,7 +1158,7 @@ test("Diagnosis page uses the compact display model instead of the standalone ex
   assert.match(diagnosisScreen, /siteExplanation/);
   assert.match(diagnosisPanel, /buildDiagnosisDisplayModel/);
   assert.match(diagnosisPanel, /Advanced diagnostics and technical evidence/);
-  assert.match(diagnosisPanel, /How the current portfolio behaved historically/);
+  assert.match(diagnosisPanel, /Historical diagnostic window/);
   assert.doesNotMatch(diagnosisPanel, /Evidence available/);
   assert.doesNotMatch(diagnosisPanel, /Rolling charts are not shown/);
 });
@@ -1249,6 +1329,134 @@ test("review recovery route uses FastAPI readiness and returns only safe run-loc
   });
 });
 
+test("review recovery route drops downstream artifact payloads from recovered active state", async () => {
+  const route = loadRoute({ routePath: reviewRecoverRoutePath });
+
+  await withMockFetch(async () => Response.json(fastApiEnvelope({
+    review_id: "frontend_review_recover_stale_downstream",
+    stage: "recovery",
+    lineage: { review_id: "frontend_review_recover_stale_downstream" },
+    data: {
+      review_summary: {
+        investor_currency: "USD"
+      },
+      artifact_payloads: {
+        portfolio_xray: { schema_version: "portfolio_xray_v2", current_portfolio_only: true },
+        stress_report: { schema_version: "stress_report_v1" },
+        problem_classification: { primary_diagnosis: "Concentration" },
+        candidate_launchpad: { cards: [{ card_id: "card_equal_weight" }] },
+        portfolio_alternatives_builder: {
+          selected_card_id: "card_equal_weight",
+          candidate_setup: { candidate_setup_id: "candidate_setup_card_equal_weight" }
+        },
+        candidate_generation: { candidate_id: "stale_candidate" },
+        current_vs_candidate: { candidate_id: "stale_candidate" },
+        decision_verdict: { verdict_id: "stale_verdict" },
+        report: { report_id: "stale_report" }
+      },
+      artifact_refs: [
+        { kind: "portfolio_xray", ref: "runs/frontend_review_recover_stale_downstream/analysis_subject/portfolio_xray.json", scope: "analysis_subject", raw_path_exposed: false },
+        { kind: "candidate_generation", ref: "runs/frontend_review_recover_stale_downstream/candidate_generation.json", scope: "run", raw_path_exposed: false },
+        { kind: "current_vs_candidate", ref: "runs/frontend_review_recover_stale_downstream/current_vs_candidate.json", scope: "run", raw_path_exposed: false },
+        { kind: "decision_verdict", ref: "runs/frontend_review_recover_stale_downstream/decision_verdict.json", scope: "run", raw_path_exposed: false },
+        { kind: "report", ref: "runs/frontend_review_recover_stale_downstream/report.json", scope: "run", raw_path_exposed: false }
+      ],
+      downstream_artifacts_restored_as_active: false,
+      restored_active_stages: ["diagnosis", "evidence", "hypothesis_setup"]
+    },
+    evidence: {
+      source_artifacts: [
+        { kind: "portfolio_xray", ref: "runs/frontend_review_recover_stale_downstream/analysis_subject/portfolio_xray.json", scope: "analysis_subject", raw_path_exposed: false },
+        { kind: "current_vs_candidate", ref: "runs/frontend_review_recover_stale_downstream/current_vs_candidate.json", scope: "run", raw_path_exposed: false }
+      ],
+      data_quality: "ok",
+      confidence: "medium"
+    }
+  })), async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_recover_stale_downstream"
+    })));
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.recovery.downstream_artifacts_restored_as_active, false);
+    assert.deepEqual(result.body.recovery.restored_active_stages, ["diagnosis", "evidence", "hypothesis_setup"]);
+    assert.deepEqual(Object.keys(result.body.fastapi_envelope.data.artifact_payloads).sort(), [
+      "candidate_launchpad",
+      "portfolio_alternatives_builder",
+      "portfolio_xray",
+      "problem_classification",
+      "stress_report"
+    ]);
+    assert.deepEqual(result.body.fastapi_envelope.data.artifact_refs.map((ref) => ref.kind), [
+      "portfolio_xray"
+    ]);
+    assert.deepEqual(result.body.fastapi_envelope.evidence.source_artifacts.map((ref) => ref.kind), [
+      "portfolio_xray"
+    ]);
+    assert.deepEqual(Object.keys(result.body.review_result.outputs).sort(), [
+      "candidate_launchpad",
+      "portfolio_alternatives_builder",
+      "portfolio_xray",
+      "problem_classification",
+      "stress_report"
+    ]);
+    assert.deepEqual(Object.keys(result.body.review_result.paths).sort(), [
+      "portfolio_xray"
+    ]);
+    assert.equal(result.body.review_result.outputs.candidate_generation, undefined);
+    assert.equal(result.body.review_result.outputs.current_vs_candidate, undefined);
+    assert.equal(result.body.review_result.outputs.decision_verdict, undefined);
+    assert.equal(result.body.review_result.outputs.report, undefined);
+    assert.equal(result.body.fastapi_envelope.data.artifact_payloads.candidate_generation, undefined);
+    assert.equal(result.body.fastapi_envelope.data.artifact_payloads.current_vs_candidate, undefined);
+    assert.equal(result.body.fastapi_envelope.data.artifact_payloads.decision_verdict, undefined);
+    assert.equal(result.body.fastapi_envelope.data.artifact_payloads.report, undefined);
+    assert.equal(result.body.review_result.fastapi_envelope.data.artifact_payloads.candidate_generation, undefined);
+    assert.equal(result.body.review_result.fastapi_envelope.data.artifact_payloads.current_vs_candidate, undefined);
+    assert.equal(result.body.review_result.fastapi_envelope.data.artifact_payloads.decision_verdict, undefined);
+    assert.equal(result.body.review_result.fastapi_envelope.data.artifact_payloads.report, undefined);
+    assert.deepEqual(result.body.review_result.fastapi_envelope.data.artifact_refs.map((ref) => ref.kind), [
+      "portfolio_xray"
+    ]);
+    assert.deepEqual(result.body.review_result.fastapi_envelope.evidence.source_artifacts.map((ref) => ref.kind), [
+      "portfolio_xray"
+    ]);
+    assert.equal(result.body.review_result.paths.candidate_generation, undefined);
+    assert.equal(result.body.review_result.paths.current_vs_candidate, undefined);
+    assert.equal(result.body.review_result.paths.decision_verdict, undefined);
+    assert.equal(result.body.review_result.paths.report, undefined);
+  });
+});
+
+test("review recovery route rejects FastAPI recovery lineage from a different review before restoring state", async () => {
+  const route = loadRoute({ routePath: reviewRecoverRoutePath });
+
+  await withMockFetch(async (url, options) => {
+    assert.match(url, /\/api\/v1\/reviews\/frontend_review_recover_a$/);
+    assert.equal(options.method, "GET");
+    return Response.json(fastApiEnvelope({
+      review_id: "frontend_review_recover_b",
+      stage: "recovery",
+      lineage: { review_id: "frontend_review_recover_b" },
+      data: {
+        review_summary: { investor_currency: "USD" },
+        artifact_payloads: {
+          portfolio_xray: { schema_version: "portfolio_xray_v2" }
+        }
+      }
+    }));
+  }, async () => {
+    const result = await responseJson(await route.GET(new Request("http://localhost/api/portfolio/review/recover?review_id=frontend_review_recover_a")));
+
+    assert.equal(result.status, 409);
+    assert.equal(result.body.status, "failed");
+    assert.equal(result.body.stage, "review_recovery");
+    assert.match(result.body.error, /lineage did not match/);
+    assert.match(result.body.details.join(" "), /review_id mismatch/);
+    assert.equal(result.body.review_result, undefined);
+  });
+});
+
 test("candidate route rejects FastAPI lineage from a different active review before trusting downstream artifacts", async () => {
   const route = loadRoute({ routePath: candidateGenerateRoutePath });
 
@@ -1296,12 +1504,14 @@ test("Hypothesis probes backend review status before Builder and Candidate gener
 
 test("candidate generation hands off weights to Comparison instead of rendering them in Hypothesis", () => {
   const hypothesisSource = fs.readFileSync(hypothesisScreenPath, "utf8");
+  const hypothesisModelSource = fs.readFileSync(hypothesisScreenModelPath, "utf8");
   const comparisonSource = fs.readFileSync(comparisonScreenPath, "utf8");
 
   assert.match(hypothesisSource, /router\.push\("\/comparison"\)/);
   assert.match(hypothesisSource, /router\.push\("\/hypothesis\?sample=1&generated=1"\)/);
   assert.doesNotMatch(hypothesisSource, /router\.push\("\/comparison\?sample=1"\)/);
-  assert.match(hypothesisSource, /generated weights are reviewed in Current vs Candidate Comparison/i);
+  assert.match(hypothesisModelSource, /Continue to Comparison/);
+  assert.match(hypothesisModelSource, /Select one diagnosis-led test candidate before Current vs Candidate Comparison/);
   assert.doesNotMatch(hypothesisSource, /View weights/);
   assert.match(comparisonSource, /Current portfolio vs/);
   assert.match(comparisonSource, /AllocationList/);
