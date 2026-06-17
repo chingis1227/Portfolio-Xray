@@ -73,12 +73,14 @@ Local testing shortcut `/onboarding/name?dev_bypass=1` is allowed only for local
 | `#ECEFF3` | Primary text | Headings and key values. |
 | `#C4C9D1` | Secondary text | Body and explanations. |
 | `#949BA6` | Muted text | Captions, metadata, inactive state. |
-| `#3B82F6` | Action blue | Primary CTA, current step, focus. |
-| `#60A5FA` | Soft blue | Links, hover, section accents. |
-| `#6FBF9B` | Positive | Ready/completed/improved/generated. |
-| `#C9A66B` | Amber | Caution, locked, partial, evidence required. |
-| `#D77A7A` | Risk | Error, failed, worsening, material risk. |
+| `#4F7EA8` | Steel Blue | Active/current/selected state, primary action, focus, and safe information emphasis. |
+| `#7EA6C8` | Soft Steel Blue | Links, hover, and restrained section accents. |
+| `#B66A61` | Muted Copper Red | Material issue, error, failure, destructive action, or high-risk evidence. |
+| `#C3A15F` | Muted Amber Gold | Watch, caution, partial, evidence required, locked, or degraded confidence. |
+| `#ECE7DC` | Ivory / neutral aligned | Normal, aligned, completed, generated, unavailable-neutral, unchanged, or secondary context. |
 | `#AAB7C6` | Premium slate accent | Formal accent and technical premium tone. |
+
+Green is not a Portfolio MRI product/system status semantic. If legacy backend or adapter enums still emit `green`, frontend presentation must normalize it to neutral/ivory treatment unless a future contract explicitly reintroduces green.
 
 ## Typography
 
@@ -100,16 +102,27 @@ Onboarding uses a focused public frame. It should feel simple and human: sign in
 
 ### Platform shell
 
-Platform routes use a left sidebar, sticky top journey rail, page header card, content cards, and clear locked/empty states. The page header should carry the route's step number and decision question.
+Platform routes use a left sidebar, verdict-first page heroes on redesigned analytical routes, content cards, and clear locked/empty states. Redesigned analytical routes carry the compact step context inside `VerdictHero` and suppress the sticky top journey rail. The sidebar remains visible but should be visually secondary: active/current uses Steel Blue, completed uses neutral text, and locked/unavailable uses muted treatment.
 
 ## Component rules
 
 - Cards use rounded corners, thin slate borders, dark surfaces, subtle gradients, and `shadow-decision` depth.
-- Badges are sparse and evidence-backed.
-- Primary CTAs use the blue gradient `.pmri-primary-action`.
+- Badges are sparse and evidence-backed. Page-level status belongs primarily in `VerdictHero`; row-level status appears only when it clarifies a specific metric.
+- `EvidenceSummary` is capped at four items in one quiet strip and must not repeat the hero verdict.
+- `MetricMatrix` groups analytical rows with metric, portfolio value, reference/threshold, status, and meaning. Fixed groups come first; material/problem rows sort first within each group.
+- Primary CTAs use the Steel Blue `.pmri-primary-action` treatment.
 - Secondary CTAs use border/transparent dark styling.
 - Tables must be readable and bounded by explanatory copy.
 - Locked states must explain the missing prerequisite and provide a safe CTA.
+
+## Motion rules
+
+- Motion is part of the premium decision-room feel: calm, brief, and explanatory.
+- Use Framer Motion for route transitions, scroll reveals, active journey indicators, onboarding question changes, and subtle card/CTA feedback.
+- Prefer GPU-friendly opacity and transform changes with restrained spring physics.
+- Stagger lists only enough to improve scan order; do not create showy cascades.
+- Respect reduced-motion preferences on every animation.
+- Do not animate evidence in a way that implies recommendation strength, suitability approval, trade urgency, or guaranteed improvement.
 
 ## Screen structure authority
 

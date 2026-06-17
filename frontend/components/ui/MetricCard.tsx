@@ -9,7 +9,7 @@ type MetricCardProps = {
 const toneLabel = {
   blue: "Strong evidence",
   gold: "Moderate evidence",
-  green: "Low risk",
+  green: "Aligned",
   amber: "Medium risk",
   red: "High risk",
   slate: "Insufficient data"

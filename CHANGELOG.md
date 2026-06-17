@@ -1,5 +1,13 @@
 # CHANGELOG.md
 
+## 2026-06-17
+
+- Extended the frontend redesign rollout across `/evidence`, `/client-fit`, `/hypothesis`, `/comparison`, `/verdict`, and `/report`: each route now uses verdict-first framing, concise evidence summaries or grouped matrices where appropriate, secondary technical details, restrained badges, and non-binding diagnostic boundary language.
+- Added the first Portfolio MRI frontend redesign slice: Steel Blue / muted copper red / muted amber gold / ivory status semantics, compact top step context, quieter sidebar states, shared VerdictHero/EvidenceSummary/MetricMatrix components, and a `/diagnosis` rollout with a dominant diagnosis hero plus grouped metric matrix.
+- Added Framer Motion-based frontend motion polish. Page transitions, landing reveals, journey rails,
+  hero cards, and onboarding question changes now use restrained spring/opacity/transform animation
+  with reduced-motion support.
+
 ## 2026-06-16
 
 - Fixed Current vs Candidate fallback display for generated candidates whose full candidate snapshot

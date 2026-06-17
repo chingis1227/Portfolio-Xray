@@ -20,13 +20,17 @@ const config: Config = {
           text: "#ECEFF3",
           text2: "#C4C9D1",
           muted: "#949BA6",
-          blue: "#3B82F6",
-          blueSoft: "#60A5FA",
-          positive: "#6FBF9B",
-          amber: "#C9A66B",
-          risk: "#D77A7A",
+          ivory: "#ECE7DC",
+          steelBlue: "#4F7EA8",
+          copperRed: "#B66A61",
+          amberGold: "#C3A15F",
+          blue: "#4F7EA8",
+          blueSoft: "#7EA6C8",
+          positive: "#ECE7DC",
+          amber: "#C3A15F",
+          risk: "#B66A61",
           gold: "#AAB7C6",
-          red: "#D77A7A"
+          red: "#B66A61"
         }
       },
       fontFamily: {

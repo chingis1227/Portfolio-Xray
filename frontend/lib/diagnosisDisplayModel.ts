@@ -158,7 +158,7 @@ function whatMatters(input: DiagnosisDisplayModelInput): DiagnosisDisplayFact[] 
       label: "Concentration",
       value: `Top 3 = ${formatDiagnosisDisplayValue(top3.value)}`,
       note: top3Pct !== null && top3Pct >= 50 ? "Largest holdings drive a material share of capital." : "Capital is less concentrated in the largest holdings.",
-      tone: top3Pct !== null && top3Pct >= 65 ? "red" : top3Pct !== null && top3Pct >= 50 ? "amber" : "green"
+      tone: top3Pct !== null && top3Pct >= 65 ? "red" : top3Pct !== null && top3Pct >= 50 ? "amber" : "slate"
     } : null,
     exposure && !isUnavailable(exposure.value) ? {
       label: "Main exposure",
@@ -230,10 +230,10 @@ function advancedMetrics(input: DiagnosisDisplayModelInput) {
 
 function dataCoverage(evidenceQuality: string) {
   const quality = evidenceQualityLabel(evidenceQuality);
-  if (quality === "Strong evidence") return { label: "Strong", tone: "green" as StatusTone };
+  if (quality === "Strong evidence") return { label: "Strong", tone: "slate" as StatusTone };
   if (quality === "Moderate evidence") return { label: "Moderate", tone: "slate" as StatusTone };
   if (quality === "Limited evidence") return { label: "Limited", tone: "amber" as StatusTone };
-  return { label: "Insufficient", tone: "slate" as StatusTone };
+  return { label: "Unavailable", tone: "slate" as StatusTone };
 }
 
 function userRelevantLimitations(input: DiagnosisDisplayModelInput) {

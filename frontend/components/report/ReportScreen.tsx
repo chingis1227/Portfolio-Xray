@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
 import { ClientReadyReportPreview } from "@/components/report/ClientReadyReportPreview";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { VerdictHero } from "@/components/ui/VerdictHero";
+import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
 import { displayTitleLabel, normalizeDisplaySentence } from "@/lib/displayLabels";
 import { useReviewState } from "@/lib/reviewState";
 
@@ -168,7 +169,7 @@ export function ReportScreen() {
     if (!reviewId) {
       return {
         title: "Start with a portfolio review first.",
-        description: "The report preview needs current portfolio diagnosis evidence before it can explain anything safely.",
+        description: "The report preview needs current portfolio diagnosis evidence before it can explain the review with proper boundaries.",
         ctaHref: "/portfolio-input",
         ctaLabel: "Go to Portfolio Input"
       };
@@ -224,12 +225,6 @@ export function ReportScreen() {
     setReportError(undefined);
   }, [activeReview?.readOnlyHistory, activeReview?.reportResult, candidateId, hasLiveLineage, reportMatchesCandidate, reviewId, selectedCardId, verdict?.generatedAt]);
 
-  const statusTone = useMemo<"green" | "gold" | "amber" | "slate">(() => {
-    if (activeReview?.readOnlyHistory) return "slate";
-    if (report) return "green";
-    if (canGenerateReport) return "gold";
-    return "amber";
-  }, [activeReview?.readOnlyHistory, canGenerateReport, report]);
 
   async function handleGenerateReport() {
     if (!reviewId || !selectedCardId) return;
@@ -270,20 +265,44 @@ export function ReportScreen() {
 
   return (
     <div>
-      <PageHeader
-        kicker="Step 08 / Report"
-        title="Client-ready report preview"
-        description="A concise narrative grounded in the active review: diagnosis, candidate test, comparison, verdict, limitations, and next observation points."
-      >
-        <StatusBadge tone={statusTone}>
-          {activeReview?.readOnlyHistory ? "Read-only compact history" : report ? "Grounded preview" : canGenerateReport ? "Ready to preview" : "Evidence required"}
-        </StatusBadge>
-      </PageHeader>
-      <SiteExplanationHierarchy
-        bundle={siteExplanation}
-        screen="report"
-        fallbackTitle="Report explanation"
-      />
+      <div className="mb-6 space-y-5">
+        <VerdictHero
+          stepContext="Step 8 of 8 - Report"
+          headline={report ? report.title : "Narrative report preview is evidence-gated"}
+          interpretation={report ? report.subtitle : "The report summarizes selected diagnosis, stress, Client Fit, comparison, and verdict evidence only after the active review is complete."}
+          facts={[
+            { label: "Main diagnosis", value: activeReview?.reviewSummary?.primaryProblem ?? activeReview?.reviewSummary?.diagnosis?.headline ?? "Unavailable" },
+            { label: "Selected candidate", value: candidateDisplayName },
+            { label: "Boundary", value: "Executive summary only; not trade advice." }
+          ]}
+          boundaryNote="The report is a concise diagnostic story. It does not duplicate every metric and does not add unsupported recommendations."
+        />
+        {report ? (
+          <EvidenceSummary
+            title="Selected report evidence"
+            description="The report promotes only the evidence needed for the executive story."
+            items={[
+              { label: "Diagnosis", value: activeReview?.reviewSummary?.primaryProblem ?? "Unavailable" },
+              { label: "Stress evidence", value: report.evidenceUsed.find((item) => /stress|scenario|loss/i.test(item)) ?? "Selected stress evidence included when returned" },
+              { label: "Comparison outcome", value: comparison?.summary ?? "Unavailable" },
+              { label: "Final verdict", value: verdict?.headline ?? verdict?.state ?? "Unavailable" }
+            ]}
+          />
+        ) : null}
+      </div>
+      <details className="mb-6 pmri-card rounded-3xl p-5 md:p-6">
+        <summary className="cursor-pointer list-none">
+          <p className="pmri-label">Secondary explanation detail</p>
+          <h2 className="pmri-heading-section mt-2 text-xl text-pmri-text">Report grounding trace</h2>
+        </summary>
+        <div className="mt-5">
+          <SiteExplanationHierarchy
+            bundle={siteExplanation}
+            screen="report"
+            fallbackTitle="Report explanation"
+          />
+        </div>
+      </details>
 
       {activeReview?.readOnlyHistory ? (
         <section className="mb-6 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
@@ -346,7 +365,7 @@ export function ReportScreen() {
               <p className="mt-3 text-sm leading-7 text-pmri-muted">{report.generatedAt ?? "Time unavailable"}</p>
             </article>
             <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
-              <StatusBadge tone={report.warnings.length ? "amber" : "green"}>Limitations</StatusBadge>
+              <StatusBadge tone={report.warnings.length ? "amber" : "slate"}>Limitations</StatusBadge>
               <ul className="mt-3 space-y-2 text-sm leading-7 text-pmri-muted">
                 {(report.warnings.length ? report.warnings.slice(0, 3) : report.unavailableEvidence.slice(0, 3)).map((item) => (
                   <li key={item}>• {item}</li>

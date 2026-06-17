@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ClientFitContextCard } from "@/components/client-fit/ClientFitContextCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { VerdictHero } from "@/components/ui/VerdictHero";
+import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
 import { diagnosisStageChainReady, useReviewState, type ActiveReviewState } from "@/lib/reviewState";
 import type { BuilderOverrides, ClientFitDisplaySummary, StagedReviewStatusResponse } from "@/lib/generated/api-types";
 import {
@@ -276,21 +278,33 @@ function sampleActiveReview(generated: boolean): ActiveReviewState {
 }
 
 function WorkstationHeader({ model }: { model: HypothesisScreenModel }) {
+  const test = model.primaryTest;
   return (
-    <header className="relative mb-5 overflow-hidden rounded-[1.75rem] border border-pmri-border/55 bg-[#111317]/90 p-5 shadow-decision md:p-6">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_84%_0%,rgba(96,165,250,0.12),transparent_28%),linear-gradient(90deg,rgba(255,255,255,0.045),transparent_44%)]" />
-      <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <div className="mb-4 flex items-center gap-3">
-            <span className="h-px w-14 bg-pmri-blueSoft/70" />
-            <p className="pmri-label text-pmri-blueSoft">Step 05 / Hypothesis</p>
-          </div>
-          <h1 className="pmri-heading-display text-pmri-text">{model.header.title}</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-text2">{model.header.subtitle}</p>
-        </div>
-        <StatusBadge tone={model.header.badgeTone}>{model.header.badge}</StatusBadge>
-      </div>
-    </header>
+    <div className="mb-6 space-y-5">
+      <VerdictHero
+        stepContext="Step 5 of 8 - Hypothesis"
+        headline={test?.title ?? model.header.title}
+        interpretation={test?.hypothesis ?? model.header.subtitle}
+        facts={[
+          { label: "Why this test", value: test?.why ?? model.primaryDiagnosis.explanation },
+          { label: "Success criteria", value: test?.successCriteria?.[0] ?? "Comparison will check the test against the current portfolio." },
+          { label: "Boundary", value: "The candidate is a diagnostic test, not a rebalance recommendation." }
+        ]}
+        boundaryNote="Hypothesis prepares one diagnostic candidate test. It does not approve a rebalance, rank portfolios, or provide trade advice."
+      />
+      {test ? (
+        <EvidenceSummary
+          title="Test setup summary"
+          description="The diagnostic test is explained before builder controls."
+          items={[
+            { label: "Selected because", value: test.why },
+            { label: "First success criterion", value: test.successCriteria[0] ?? "Unavailable" },
+            { label: "Trade-off to watch", value: test.tradeoff ?? "Unavailable", tone: test.tradeoff ? "amber" : "slate" },
+            { label: "Candidate boundary", value: test.decisionBoundary }
+          ]}
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -311,7 +325,7 @@ function CompactStepper({ actionState }: { actionState: HypothesisScreenModel["a
               item.state === "active"
                 ? "border-pmri-blue/45 bg-pmri-blue/12 text-pmri-text"
                 : item.state === "done"
-                  ? "border-pmri-positive/25 bg-pmri-positive/10 text-pmri-text2"
+                  ? "border-pmri-border/35 bg-white/[0.022] text-pmri-text2"
                   : "border-white/10 bg-white/[0.025] text-pmri-muted"
             }`}
           >
@@ -491,11 +505,11 @@ function BuilderControls({
   );
 }
 
-function RecommendedDiagnosticTestPanel({ test }: { test?: HypothesisTestModel }) {
+function ProposedDiagnosticTestPanel({ test }: { test?: HypothesisTestModel }) {
   if (!test) {
     return (
       <section className="rounded-3xl border border-pmri-amber/30 bg-pmri-amber/10 p-5">
-        <p className="pmri-label text-pmri-amber">Recommended diagnostic test</p>
+        <p className="pmri-label text-pmri-amber">Proposed diagnostic test</p>
         <h2 className="pmri-heading-section mt-2 text-xl text-pmri-text">No candidate test is available</h2>
         <p className="mt-3 text-sm leading-7 text-pmri-text2">Resolve data quality or rerun diagnosis before generating a candidate.</p>
       </section>
@@ -507,7 +521,7 @@ function RecommendedDiagnosticTestPanel({ test }: { test?: HypothesisTestModel }
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-pmri-blueSoft/60 to-transparent" />
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <p className="pmri-label text-pmri-blueSoft">Recommended diagnostic test</p>
+          <p className="pmri-label text-pmri-blueSoft">Proposed diagnostic test</p>
           <h2 className="pmri-heading-section mt-2 text-3xl text-pmri-text">{test.title}</h2>
           <p className="mt-3 max-w-4xl text-sm leading-7 text-pmri-text2">{test.hypothesis}</p>
         </div>
@@ -574,7 +588,7 @@ function HypothesisActionConsole({
           <p className="pmri-label text-pmri-blueSoft">Action console</p>
           <h3 className="pmri-heading-section mt-2 text-xl text-pmri-text">{test?.title ?? "No test selected"}</h3>
         </div>
-        <StatusBadge tone={action.state === "continue" ? "green" : action.state === "blocked" ? "amber" : "blue"}>{action.statusLabel}</StatusBadge>
+        <StatusBadge tone={action.state === "blocked" ? "amber" : "blue"}>{action.statusLabel}</StatusBadge>
       </div>
 
       <dl className="mt-6 space-y-4">
@@ -595,8 +609,8 @@ function HypothesisActionConsole({
       />
 
       {action.candidateName ? (
-        <div className="mt-5 rounded-2xl border border-pmri-positive/30 bg-pmri-positive/10 p-4">
-          <p className="pmri-label text-pmri-positive">Test candidate generated</p>
+        <div className="mt-5 rounded-2xl border border-pmri-blue/25 bg-pmri-blue/[0.045] p-4">
+          <p className="pmri-label text-pmri-blueSoft">Test candidate generated</p>
           <p className="mt-1 text-sm font-medium text-pmri-text">{action.candidateName}</p>
           <p className="mt-2 text-sm leading-6 text-pmri-text2">
             The generated weights are reviewed in Current vs Candidate Comparison, not inside Hypothesis Builder.
@@ -759,7 +773,6 @@ function HypothesisWorkstation({
   return (
     <>
       <WorkstationHeader model={model} />
-      <CompactStepper actionState={model.action.state} />
       {model.pageState === "read_only" ? (
         <section className="mb-5 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
           <StatusBadge tone="slate">Needs new diagnosis</StatusBadge>
@@ -771,7 +784,7 @@ function HypothesisWorkstation({
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
         <main className="space-y-5">
           <PrimaryDiagnosisPanel model={model} />
-          <RecommendedDiagnosticTestPanel test={model.primaryTest} />
+          <ProposedDiagnosticTestPanel test={model.primaryTest} />
         </main>
         <HypothesisActionConsole
           model={model}

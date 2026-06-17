@@ -31,8 +31,8 @@ Platform routes show:
 - left sidebar brand block: `Portfolio MRI` / `Investment Decision Room`;
 - account navigation entry for `Workspace` outside the 8-step review rail;
 - gated journey rail with 8 steps: Portfolio, Diagnosis, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report;
-- sticky top progress rail with the current route step;
-- large page header card;
+- no sticky top journey rail on redesigned analytical routes; compact step context appears inside `VerdictHero`;
+- verdict-first page hero on redesigned analytical routes;
 - content cards, tables, badges, and locked states.
 
 ## `/` Landing
@@ -223,11 +223,13 @@ Main blocks:
 
 Role: Step 02, current portfolio diagnosis before candidate tests.
 
-Header:
+Primary hero:
 
-- Kicker: `Step 02 / Portfolio Diagnosis`.
-- H1: `Current Portfolio Diagnosis`.
-- Description: `Current-portfolio review before any candidate test.`
+- Shared `VerdictHero` with compact context `Step 02 of 8 - Portfolio Diagnosis`.
+- Headline: dominant current-portfolio diagnosis from the active review.
+- Interpretation: one concise sentence explaining why the diagnosis matters.
+- Supporting facts: review scope, evidence quality, and next safe step.
+- Boundary note: diagnostic current-portfolio review, not a rebalance recommendation.
 
 Locked state:
 
@@ -237,140 +239,112 @@ Locked state:
 
 Ready state:
 
-- Shows a simplified Diagnosis display model for the active review: one main finding, one data-coverage badge, one candidate-not-tested state, up to three primary evidence facts, a compact `What matters first` strip, and a three-item historical behavior snapshot.
+- Shows the shared `VerdictHero`, then an `EvidenceSummary` with primary issue, severity, drivers, and evidence quality.
+- Replaces the previous first-read card grid with a grouped `MetricMatrix`: risk pressure, portfolio structure, evidence quality, and secondary observations.
 - Does not show the standalone `Diagnosis explanation` wall in the normal ready state. Evidence-chain and technical text are integrated into collapsed advanced diagnostics when available.
-- Professional metrics such as VaR, ES, skewness, kurtosis, beta, Sharpe, Sortino, and Treynor are hidden behind `Advanced diagnostics and technical evidence`.
-- Metrics are shown through compact decision rows and metric cards, not as raw backend JSON or repeated unavailable/evidence badges.
+- Professional metrics such as VaR, ES, skewness, kurtosis, beta, Sharpe, Sortino, and Treynor remain secondary behind `Advanced diagnostics and technical evidence`.
+- Metrics are shown through matrix rows, not as raw backend JSON or repeated unavailable/evidence badges.
 
 ## `/evidence`
 
 Role: Step 03, Stress Test Lab for current portfolio only.
 
-Header:
+Primary structure:
 
-- Kicker: `Step 03 / Stress Test Lab`.
-- H1: `Stress Test Lab`.
-- Boundary: no candidate or rebalance verdict is created here.
+- Shared `VerdictHero` with compact context `Step 3 of 8 - Stress Lab`.
+- Headline is the current-portfolio stress answer, such as material stress vulnerability or limited stress evidence.
+- Interpretation states the worst visible stress behavior and the current-portfolio-only boundary.
+- `EvidenceSummary` shows worst scenario, estimated loss, loss drivers/protection behavior, and evidence quality when available.
+- A grouped `MetricMatrix` shows stress vulnerability and scenario evidence rows.
+- A single analytical canvas keeps scenario contribution and hedge protection together.
+- Scenario library, selected scenario detail, factor attribution, evidence trace, and limitations remain secondary technical details.
 
-Locked state:
+Locked or compact-history states explain the missing stress model and route the user back to Portfolio Input.
 
-- Status: `Stress review locked`.
-- H2: `Complete Portfolio Input first to unlock Stress Test Lab.`
-- CTA: `Go to Portfolio Input`.
+The page must not create candidate, verdict, rebalance, or trade-advice language.
 
-Ready state:
-
-- Shows one current-portfolio stress answer first, with up to three supporting facts and up to four primary metrics.
-- Keeps scenario library, selected scenario detail, helped/hurt assets, loss contribution, hedge gap, factor stress attribution, diagnosis confirmation, technical evidence trace, and data limitations behind collapsed drill-down details by default.
-- Metrics are scenario/evidence facts tied to current portfolio stress behavior, not candidate, verdict, or rebalance language.
-- Repeated evidence badges are avoided on the primary surface; evidence quality appears as one compact confidence signal and detailed limitations remain in the drill-down.
 
 ## `/client-fit`
 
 Role: Step 04, non-binding profile-fit check after Stress Lab.
 
-Header:
+Primary structure:
 
-- Kicker: `Step 04 / Client Fit`.
-- H1: `Does this risk fit the provided profile?`
-- Boundary: Client Fit status is not diagnostic quality and is not a decision action.
+- Shared `VerdictHero` with compact context `Step 4 of 8 - Client Fit`.
+- Hero states the main alignment or mismatch with the provided profile.
+- Boundary note states that Client Fit is diagnostic context only, not suitability approval, not trade advice, and not a replacement for diagnosis.
+- `EvidenceSummary` shows the main mismatch dimensions.
+- `MetricMatrix` shows portfolio value, profile target/reference, restrained row status, and explanation for each target row.
+- Missing profile and evidence-required states remain visible and non-failing.
+- Technical evidence details remain collapsed below the main fit read.
 
-Locked state:
+The page reduces repeated `Outside`/aligned badges and keeps Client Fit from clearing material diagnosis issues.
 
-- Status: `Client Fit locked` / `Evidence required`.
-- H2: `Run profile-first diagnosis before Client Fit.`
-- CTAs: `Open Client Profile`, `Portfolio Input`.
-
-Ready state:
-
-- Shows status, profile confidence/source quality, target rows, portfolio values, target/limit values, and explanations.
-- CTA: `Continue to Hypothesis`.
 
 ## `/hypothesis`
 
 Role: Step 05, select one diagnostic hypothesis and prepare/generate one candidate test.
 
-Header:
+Primary structure:
 
-- Kicker: `Step 05 / Hypothesis`.
-- Candidates are test portfolios for comparison, not recommendations.
+- Shared `VerdictHero` with compact context `Step 5 of 8 - Hypothesis`.
+- Hero names the proposed diagnostic test and states that the candidate is a test, not a rebalance recommendation.
+- `EvidenceSummary` shows why this test was selected, first success criterion, trade-off to watch, and candidate boundary.
+- The primary diagnosis recap and proposed test panel appear before the builder controls.
+- The builder action console is visually secondary and prepares one candidate attempt only.
+- Client Fit context, alternative tests, and evidence/technical details are secondary panels.
+- The page intentionally does not use `MetricMatrix` as the primary pattern.
 
-Locked state:
+Generated candidate weights are not the main Hypothesis content; they are reviewed on `/comparison`.
 
-- H1: `Hypothesis is locked`.
-- Copy asks the user to complete Portfolio Input first.
-- CTA: `Go to Portfolio Input`.
-
-Ready state:
-
-- Shows an Analyst Workstation layout: primary diagnosis recap, one recommended diagnostic test, success criteria, trade-off, decision boundary, and a right-side action console for selected setup, candidate generation state, and comparison handoff when valid.
-- Shows Client Fit context, other possible tests, and evidence/technical details as secondary panels below the primary workstation.
-- Candidate language must remain test/hypothesis language.
-- Generated candidate weights are not displayed as Hypothesis content; they are reviewed on `/comparison`.
-- Technical service/developer details must stay out of the primary user error surface.
 
 ## `/comparison`
 
 Role: Step 06, compare current portfolio with one generated diagnostic candidate.
 
-Header:
+Primary structure:
 
-- Kicker: `Step 06 / Comparison`.
-- H1: `Current vs Candidate Comparison`.
-- Boundary: comparison does not create a final decision or rebalance instruction.
+- Shared `VerdictHero` with compact context `Step 6 of 8 - Comparison`.
+- Hero states whether comparison evidence is available and repeats that this is diagnostic comparison only.
+- `EvidenceSummary` promotes only selected material comparison facts when comparison evidence is available.
+- Empty, unavailable, ready-to-run, retry, read-only history, and candidate-not-comparable states remain visible.
+- Ready state uses comparison `MetricMatrix` groups: risk improvement, trade-offs, fit impact, and evidence quality.
+- Allocation lists, warnings, and technical comparison notes are secondary details.
 
-Blocked state:
+The page must show trade-offs without winner, switch, recommendation, or final-verdict framing.
 
-- Status: `Comparison required`.
-- H2: `Generate a test candidate first`.
-- CTA: `Return to Hypothesis Builder`.
-
-Ready state:
-
-- Shows the current allocation next to the generated candidate allocation, attempts the same-candidate comparison automatically when possible, then shows current vs candidate values, improved/worsened/similar/unavailable evidence, trade-off summary, Client Fit context when available, and materiality cues.
 
 ## `/verdict`
 
 Role: Step 07, non-binding decision-support verdict.
 
-Header:
+Primary structure:
 
-- Kicker: `Step 07 / Verdict`.
-- H1: `Decision verdict`.
-- Boundary: no-trade and evidence-insufficient are valid outcomes.
+- Shared `VerdictHero` with compact context `Step 7 of 8 - Verdict`.
+- Hero presents the cautious decision interpretation and a visible boundary: diagnostic interpretation only, not trade advice or suitability approval.
+- `EvidenceSummary` shows selected verdict evidence, rationale, major trade-off or limitation, and boundary.
+- Ready state uses narrative cards for decision interpretation, rationale, evidence quality, and what would change the verdict.
+- Client Fit is shown as one input to the verdict, not as an approval.
+- Evidence-insufficient and candidate-failed states remain valid outcomes with recovery paths.
 
-Blocked state:
+The page avoids recommendation, approval, safety, and trade-instruction language.
 
-- Status: `Verdict required`.
-- H2: `Verdict unavailable`.
-- CTA: `Return to Hypothesis Builder`.
-
-Ready state:
-
-- Shows verdict outcome, rationale, confidence/limitations, comparison links, and next safe step.
-- Must not say trade now, must rebalance, best portfolio, or suitability approved.
 
 ## `/report`
 
 Role: Step 08, grounded client-ready report preview.
 
-Header:
+Primary structure:
 
-- Kicker: `Step 08 / Report`.
-- H1: `Client-ready report preview`.
-- Description: concise narrative grounded in active review evidence.
+- Shared `VerdictHero` with compact context `Step 8 of 8 - Report`.
+- Hero frames the page as a narrative report preview grounded in active evidence.
+- `EvidenceSummary` includes selected evidence only: main diagnosis, stress evidence, Client Fit/comparison context when returned, and final verdict.
+- Report grounding trace is secondary detail.
+- Ready state shows `ClientReadyReportPreview` as a narrative executive summary with supporting sections, next observation, and boundary.
+- Evidence used, warnings, unavailable evidence, and timestamp are secondary support, not a dashboard wall.
 
-Blocked states:
+The report does not duplicate every metric from every page and does not add unsupported conclusions.
 
-- Start with portfolio review first.
-- Generate/select candidate first.
-- Complete active comparison first.
-- Complete active verdict first.
-
-Ready state:
-
-- CTA: `Create preview`.
-- Shows grounded diagnosis/test/comparison/verdict narrative, evidence used, unavailable evidence, warnings/limitations, timestamp, and next observation point.
 
 ## `/client-profile`
 

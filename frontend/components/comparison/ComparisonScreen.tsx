@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
 import { ClientFitContextCard } from "@/components/client-fit/ClientFitContextCard";
-import { CandidateComparisonPanel } from "@/components/comparison/CandidateComparisonPanel";
-import { TradeoffSummary } from "@/components/comparison/TradeoffSummary";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { VerdictHero } from "@/components/ui/VerdictHero";
+import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
+import { ComparisonMetricMatrix } from "@/components/ui/MetricMatrix";
 import { formatUnknownValue, normalizeDisplaySentence } from "@/lib/displayLabels";
 import { useReviewState } from "@/lib/reviewState";
 
@@ -300,214 +300,222 @@ export function ComparisonScreen() {
 
   return (
     <div>
-        <PageHeader
-          kicker="Step 06 / Comparison"
-          title="Current vs Candidate Comparison"
-          description="This step compares the current portfolio with one generated diagnostic candidate. It does not make a final decision or create a rebalance instruction."
-        >
-          <StatusBadge tone={activeReview?.readOnlyHistory ? "slate" : validComparisonAvailable ? "green" : "amber"}>
-            {activeReview?.readOnlyHistory ? "Read-only compact history" : validComparisonAvailable ? "Active comparison" : "Comparison required"}
-          </StatusBadge>
-        </PageHeader>
-        {validComparisonAvailable ? (
-          <SiteExplanationHierarchy
-            bundle={siteExplanation}
-            screen="comparison"
-            fallbackTitle="Comparison explanation"
-          />
-        ) : null}
-
-        {activeReview?.readOnlyHistory ? (
-          <section className="mb-6 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
-            <StatusBadge tone="slate">Historical</StatusBadge>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-text2">
-              This is compact review history. Run-local lineage is not recovered, so Portfolio MRI will not reuse this comparison to create a new verdict.
-            </p>
-          </section>
-        ) : null}
-
-        {hasGeneratedCandidate ? (
-          <section className="mb-6 pmri-card rounded-3xl p-6">
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div>
-                <p className="pmri-label">Generated diagnostic candidate</p>
-                <h2 className="mt-2 pmri-heading-section text-xl text-pmri-text">
-                  Current portfolio vs {candidateGeneration?.methodLabel ?? "generated candidate"}
-                </h2>
-                <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
-                  These are the two portfolios being compared. Portfolio MRI still treats the candidate as a diagnostic test, not as a rebalance instruction.
-                </p>
-              </div>
-              <StatusBadge tone={isComparing ? "blue" : validComparisonAvailable ? "green" : "amber"}>
-                {isComparing ? "Comparison running" : validComparisonAvailable ? "Comparison ready" : "Preparing comparison"}
-              </StatusBadge>
-            </div>
-            <div className="mt-5 grid gap-4 lg:grid-cols-2">
-              <AllocationList
-                title="Current portfolio"
-                subtitle="Input allocation"
-                weightUnit="percent"
-                items={currentWeights}
-              />
-              <AllocationList
-                title={candidateGeneration?.methodLabel ?? "Generated candidate"}
-                subtitle="Candidate allocation"
-                weightUnit="fraction"
-                items={candidateWeights}
-              />
-            </div>
-          </section>
-        ) : null}
-
-        {showCandidateMissingState ? (
-          <EmptyState
-            title="Generate a test candidate first"
-            description="Portfolio MRI needs one generated diagnostic test candidate before it can compare current vs candidate trade-offs."
-            nextStep="Return to Hypothesis Builder and generate a candidate."
-          />
-        ) : null}
-
-        {showMetricsUnavailableState ? (
-          <section className="pmri-card rounded-3xl p-6">
-            <p className="pmri-heading-section text-lg text-pmri-text">{comparisonAvailabilityTitle}</p>
-            <p className="mt-2 max-w-2xl text-sm leading-7 text-pmri-muted">{comparisonAvailabilityDescription}</p>
-            <div className="mt-5 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
-              <p className="pmri-label">What is missing</p>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-pmri-text2">
-                {comparisonMissingReasons({ comparison, comparisonError, candidateNotComparable: showCandidateNotComparableState }).map((item) => <li key={item}>• {item}</li>)}
-              </ul>
-            </div>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-pmri-text2">
-              <span className="font-medium text-pmri-text">Next step:</span>{" "}
-              {canGenerateEvidenceVerdict
-                ? "Generate an evidence-insufficient verdict, or return to Hypothesis Builder to test another setup."
-                : "Regenerate candidate, adjust setup, or resolve data quality."}
-            </p>
-            <div className="mt-5 flex flex-wrap gap-3">
-              {comparisonError && canRunComparison ? (
-                <button
-                  type="button"
-                  disabled={isComparing}
-                  className={`rounded-full border px-5 py-2.5 text-sm font-medium transition ${
-                    isComparing
-                      ? "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
-                      : "pmri-focus border-pmri-blue/50 bg-pmri-blue text-pmri-bg shadow-decision hover:bg-pmri-blueSoft"
-                  }`}
-                  onClick={handleRunComparison}
-                >
-                  {isComparing ? "Retrying comparison..." : "Retry comparison"}
-                </button>
-              ) : null}
-              {canGenerateEvidenceVerdict ? (
-                <button
-                  type="button"
-                  className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
-                  onClick={() => {
-                    markComparisonReady();
-                    router.push("/verdict");
-                  }}
-                >
-                  Continue to verdict
-                </button>
-              ) : null}
-              <Link
-                href="/hypothesis"
-                className="pmri-focus inline-flex rounded-full border border-pmri-border bg-white/[0.035] px-5 py-2.5 text-sm font-medium text-pmri-text transition hover:border-pmri-blue/60"
-              >
-                Return to Hypothesis Builder
-              </Link>
-            </div>
-          </section>
-        ) : null}
-
-        {showReadyToCompareState ? (
-          <section className="pmri-card rounded-3xl p-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div>
-                <p className="pmri-label">Ready for comparison</p>
-                <h2 className="mt-2 pmri-heading-section text-xl text-pmri-text">Run diagnostic comparison</h2>
-                <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
-                  The generated candidate is compare-ready. This step creates comparison evidence only; it does not decide whether to change the portfolio.
-                </p>
-              </div>
-              <StatusBadge tone="slate">Diagnostic comparison</StatusBadge>
-            </div>
-            <button
-              type="button"
-              disabled={isComparing}
-              onClick={handleRunComparison}
-              className={`mt-6 rounded-full border px-5 py-3 text-sm font-medium transition ${
-                isComparing
-                  ? "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
-                  : "pmri-focus border-pmri-blue/50 bg-pmri-blue text-pmri-bg shadow-decision hover:bg-pmri-blueSoft"
-              }`}
-            >
-              {isComparing ? "Comparing candidate..." : "Compare candidate"}
-            </button>
-            {comparisonError ? (
-              <p className="mt-4 rounded-xl border border-pmri-red/35 bg-pmri-red/10 p-3 text-sm leading-6 text-pmri-red">
-                {comparisonError}
-              </p>
-            ) : null}
-          </section>
-        ) : null}
-
+      <div className="mb-6 space-y-5">
+        <VerdictHero
+          stepContext="Step 6 of 8 - Comparison"
+          headline={validComparisonAvailable ? "Candidate test changes the evidence, with trade-offs" : "Current vs candidate evidence is required"}
+          interpretation="This page compares the current portfolio with one diagnostic candidate test. It does not make a final decision or create a rebalance instruction."
+          facts={[
+            { label: "Current portfolio", value: currentWeights.length ? `${currentWeights.length} holdings` : "Unavailable" },
+            { label: "Candidate portfolio", value: candidateGeneration?.methodLabel ?? "Unavailable" },
+            { label: "Boundary", value: "Diagnostic comparison only; not a recommendation to switch." }
+          ]}
+          boundaryNote="Candidate flows are diagnostic tests. Comparison evidence must be reviewed with trade-offs, Client Fit context, and verdict boundaries before any implementation decision."
+        />
         {validComparisonForDisplay ? (
-          <div className="space-y-6">
-            <TradeoffSummary
-              improved={validComparisonForDisplay.improved}
-              worsened={validComparisonForDisplay.worsened}
-              unclear={validComparisonForDisplay.unclear}
-              costs={tradeoffDetail}
-              evidenceQuality={validComparisonForDisplay.evidenceQuality}
-              boundary={validComparisonForDisplay.candidateBoundary}
-            />
-            <ClientFitContextCard
-              clientFit={clientFitForStage}
-              title="Current vs candidate vs Client Fit"
-              description="This comparison can show whether the candidate improves profile-fit evidence, but it still does not decide the portfolio action."
-              structuralIssueNote="A green Client Fit result is not enough to ignore a structural diagnosis issue; compare the candidate against both diagnosis evidence and profile targets."
-            />
-            <CandidateComparisonPanel {...validComparisonForDisplay} />
-            <section className="grid gap-4 lg:grid-cols-3">
-              <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
-                <StatusBadge tone="blue">Turnover / cost</StatusBadge>
-                <p className="mt-3 text-sm leading-7 text-pmri-text2">{validComparisonForDisplay.turnover}</p>
-                <p className="mt-2 text-sm leading-7 text-pmri-muted">{validComparisonForDisplay.estimatedCost}</p>
-              </article>
-              <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
-                <StatusBadge tone="amber">Success criteria evaluation</StatusBadge>
-                <p className="mt-3 text-sm leading-7 text-pmri-text2">{validComparisonForDisplay.summary}</p>
-                <p className="mt-2 text-sm leading-7 text-pmri-muted">{validComparisonForDisplay.materiality}</p>
-              </article>
-              <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
-                <StatusBadge tone="slate">Warnings</StatusBadge>
-                <ul className="mt-3 space-y-2 text-sm leading-7 text-pmri-muted">
-                  {(validComparisonForDisplay.warnings.length ? validComparisonForDisplay.warnings : ["No additional comparison warnings are available."]).map((item) => (
-                    <li key={item}>• {item}</li>
-                  ))}
-                </ul>
-              </article>
-            </section>
-            <div className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
-              <p className="mb-3 text-sm leading-7 text-pmri-muted">
-                Continue only after reviewing the trade-offs. The next step evaluates decision-support evidence; this page does not make the final decision.
-              </p>
-              {hasLiveLineage ? (
-                <button
-                  type="button"
-                  className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
-                  onClick={() => {
-                    markComparisonReady();
-                    router.push("/verdict");
-                  }}
-                >
-                  Continue to verdict
-                </button>
-              ) : null}
-            </div>
-          </div>
+          <EvidenceSummary
+            title="Comparison evidence summary"
+            description="Only material comparison facts are promoted before the matrix."
+            items={[
+              { label: "Improved", value: validComparisonForDisplay.improved[0] ?? "No material improvement returned" },
+              { label: "Trade-off", value: validComparisonForDisplay.worsened[0] ?? validComparisonForDisplay.materiality ?? "Unavailable", tone: validComparisonForDisplay.worsened.length ? "amber" : "slate" },
+              { label: "Evidence quality", value: validComparisonForDisplay.evidenceQuality, tone: /limited|insufficient|partial/i.test(validComparisonForDisplay.evidenceQuality) ? "amber" : "slate" },
+              { label: "Boundary", value: validComparisonForDisplay.candidateBoundary }
+            ]}
+          />
         ) : null}
+      </div>
+
+      {validComparisonAvailable ? (
+        <SiteExplanationHierarchy bundle={siteExplanation} screen="comparison" fallbackTitle="Comparison explanation" />
+      ) : null}
+
+      {activeReview?.readOnlyHistory ? (
+        <section className="mb-6 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
+          <StatusBadge tone="slate">Historical</StatusBadge>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-text2">
+            This is compact review history. Run-local lineage is not recovered, so Portfolio MRI will not reuse this comparison to create a new verdict.
+          </p>
+        </section>
+      ) : null}
+
+      {hasGeneratedCandidate ? (
+        <section className="mb-6 pmri-card rounded-3xl p-6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="pmri-label">Generated diagnostic candidate</p>
+              <h2 className="mt-2 pmri-heading-section text-xl text-pmri-text">
+                Current portfolio vs {candidateGeneration?.methodLabel ?? "generated candidate"}
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
+                These are the two portfolios being compared. Portfolio MRI still treats the candidate as a diagnostic test, not as a rebalance instruction.
+              </p>
+            </div>
+            <StatusBadge tone={isComparing ? "blue" : validComparisonAvailable ? "blue" : "amber"}>
+              {isComparing ? "Comparison running" : validComparisonAvailable ? "Comparison available" : "Preparing comparison"}
+            </StatusBadge>
+          </div>
+        </section>
+      ) : null}
+
+      {showCandidateMissingState ? (
+        <EmptyState
+          title="Generate a test candidate first"
+          description="Portfolio MRI needs one generated diagnostic test candidate before it can compare current vs candidate trade-offs."
+          nextStep="Return to Hypothesis Builder and generate a candidate."
+        />
+      ) : null}
+
+      {showMetricsUnavailableState ? (
+        <section className="pmri-card rounded-3xl p-6">
+          <p className="pmri-heading-section text-lg text-pmri-text">{comparisonAvailabilityTitle}</p>
+          <p className="mt-2 max-w-2xl text-sm leading-7 text-pmri-muted">{comparisonAvailabilityDescription}</p>
+          <div className="mt-5 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
+            <p className="pmri-label">What is missing</p>
+            <ul className="mt-3 space-y-2 text-sm leading-6 text-pmri-text2">
+              {comparisonMissingReasons({ comparison, comparisonError, candidateNotComparable: showCandidateNotComparableState }).map((item) => <li key={item}>- {item}</li>)}
+            </ul>
+          </div>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-pmri-text2">
+            <span className="font-medium text-pmri-text">Next step:</span>{" "}
+            {canGenerateEvidenceVerdict
+              ? "Generate an evidence-insufficient verdict, or return to Hypothesis Builder to test another setup."
+              : "Regenerate candidate, adjust setup, or resolve data quality."}
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            {comparisonError && canRunComparison ? (
+              <button
+                type="button"
+                disabled={isComparing}
+                className={`rounded-full border px-5 py-2.5 text-sm font-medium transition ${
+                  isComparing
+                    ? "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
+                    : "pmri-focus border-pmri-blue/50 bg-pmri-blue text-pmri-bg shadow-decision hover:bg-pmri-blueSoft"
+                }`}
+                onClick={handleRunComparison}
+              >
+                {isComparing ? "Retrying comparison..." : "Retry comparison"}
+              </button>
+            ) : null}
+            {canGenerateEvidenceVerdict ? (
+              <button
+                type="button"
+                className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
+                onClick={() => {
+                  markComparisonReady();
+                  router.push("/verdict");
+                }}
+              >
+                Continue to verdict
+              </button>
+            ) : null}
+            <Link href="/hypothesis" className="pmri-focus inline-flex rounded-full border border-pmri-border bg-white/[0.035] px-5 py-2.5 text-sm font-medium text-pmri-text transition hover:border-pmri-blue/60">
+              Return to Hypothesis Builder
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
+      {showReadyToCompareState ? (
+        <section className="pmri-card rounded-3xl p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="pmri-label">Ready for comparison</p>
+              <h2 className="mt-2 pmri-heading-section text-xl text-pmri-text">Run diagnostic comparison</h2>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
+                The generated candidate is compare-ready. This step creates comparison evidence only; it does not decide whether to change the portfolio.
+              </p>
+            </div>
+            <StatusBadge tone="slate">Diagnostic comparison</StatusBadge>
+          </div>
+          <button
+            type="button"
+            disabled={isComparing}
+            onClick={handleRunComparison}
+            className={`mt-6 rounded-full border px-5 py-3 text-sm font-medium transition ${
+              isComparing
+                ? "cursor-not-allowed border-white/10 bg-white/10 text-pmri-muted"
+                : "pmri-focus border-pmri-blue/50 bg-pmri-blue text-pmri-bg shadow-decision hover:bg-pmri-blueSoft"
+            }`}
+          >
+            {isComparing ? "Comparing candidate..." : "Compare candidate"}
+          </button>
+          {comparisonError ? (
+            <p className="mt-4 rounded-xl border border-pmri-red/35 bg-pmri-red/10 p-3 text-sm leading-6 text-pmri-red">
+              {comparisonError}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {validComparisonForDisplay ? (
+        <div className="space-y-6">
+          <ComparisonMetricMatrix
+            groups={[
+              {
+                title: "Risk improvement",
+                rows: validComparisonForDisplay.metrics
+                  .filter((metric) => metric.tone === "blue" || /improv|lower|reduce|better/i.test(metric.direction))
+                  .map((metric) => ({ metric: metric.metric, currentPortfolio: metric.current, candidatePortfolio: metric.candidate, change: metric.direction, interpretation: metric.tradeoff, material: true }))
+              },
+              {
+                title: "Trade-offs",
+                rows: [
+                  ...validComparisonForDisplay.metrics.filter((metric) => metric.tone === "amber" || metric.tone === "red" || /worsen|cost|turnover|higher/i.test(metric.direction)).map((metric) => ({ metric: metric.metric, currentPortfolio: metric.current, candidatePortfolio: metric.candidate, change: metric.direction, status: metric.tone === "red" || metric.tone === "amber" ? { label: metric.direction, tone: metric.tone } : undefined, interpretation: metric.tradeoff, material: true })),
+                  { metric: "Turnover", currentPortfolio: "Current allocation", candidatePortfolio: candidateGeneration?.methodLabel ?? "Candidate", change: validComparisonForDisplay.turnover, interpretation: validComparisonForDisplay.estimatedCost }
+                ]
+              },
+              {
+                title: "Fit impact",
+                rows: [{ metric: "Client Fit context", currentPortfolio: clientFitForStage?.status_label ?? "Unavailable", candidatePortfolio: "Candidate fit impact", change: "Limited", interpretation: "Client Fit informs the comparison but does not choose the answer." }]
+              },
+              {
+                title: "Evidence quality",
+                rows: [
+                  { metric: "Evidence quality", currentPortfolio: validComparisonForDisplay.evidenceQuality, candidatePortfolio: validComparisonForDisplay.materiality, change: validComparisonForDisplay.warnings.length ? "Limited" : "Available", status: validComparisonForDisplay.warnings.length ? { label: "Limited", tone: "amber" } : undefined, interpretation: validComparisonForDisplay.candidateBoundary, material: Boolean(validComparisonForDisplay.warnings.length) }
+                ]
+              }
+            ].map((group) => ({ ...group, rows: group.rows.length ? group.rows : [{ metric: "No material row", currentPortfolio: "Unavailable", candidatePortfolio: "Unavailable", change: "Unavailable", interpretation: "No material evidence was returned for this group." }] }))}
+          />
+          <ClientFitContextCard
+            clientFit={clientFitForStage}
+            title="Current vs candidate vs Client Fit"
+            description="This comparison can show whether the candidate changes profile-fit evidence, but it still does not decide the portfolio action."
+            structuralIssueNote="Client Fit alignment is not enough to ignore a structural diagnosis issue; compare the candidate against both diagnosis evidence and profile targets."
+            compact
+          />
+          <details className="pmri-card rounded-3xl p-5 md:p-6">
+            <summary className="cursor-pointer list-none">
+              <p className="pmri-label">Secondary detail</p>
+              <h2 className="pmri-heading-section mt-2 text-xl text-pmri-text">Allocations, warnings, and technical comparison notes</h2>
+            </summary>
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              <AllocationList title="Current portfolio" subtitle="Input allocation" weightUnit="percent" items={currentWeights} />
+              <AllocationList title={candidateGeneration?.methodLabel ?? "Generated candidate"} subtitle="Candidate allocation" weightUnit="fraction" items={candidateWeights} />
+            </div>
+            <ul className="mt-5 space-y-2 text-sm leading-7 text-pmri-muted">
+              {(validComparisonForDisplay.warnings.length ? validComparisonForDisplay.warnings : ["No additional comparison warnings are available."]).map((item) => <li key={item}>- {item}</li>)}
+            </ul>
+          </details>
+          <div className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
+            <p className="mb-3 text-sm leading-7 text-pmri-muted">
+              Continue only after reviewing the trade-offs. The next step evaluates decision-support evidence; this page does not make the final decision.
+            </p>
+            {hasLiveLineage ? (
+              <button
+                type="button"
+                className="pmri-focus rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg shadow-decision transition hover:bg-pmri-blueSoft"
+                onClick={() => {
+                  markComparisonReady();
+                  router.push("/verdict");
+                }}
+              >
+                Continue to verdict
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

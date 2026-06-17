@@ -217,7 +217,7 @@ export function evidenceQualityLabel(value?: unknown) {
 
 export function evidenceTone(value?: unknown): StatusTone {
   const label = evidenceQualityLabel(value);
-  if (label === "Strong evidence") return "green";
+  if (label === "Strong evidence") return "slate";
   if (label === "Moderate evidence") return "slate";
   if (label === "Limited evidence") return "amber";
   return "slate";
@@ -235,7 +235,7 @@ export function riskSeverityTone(value?: unknown): StatusTone {
   const label = riskSeverityLabel(value);
   if (label === "High risk") return "red";
   if (label === "Medium risk") return "amber";
-  if (label === "Low risk") return "green";
+  if (label === "Low risk") return "slate";
   return "slate";
 }
 

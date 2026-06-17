@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
 import { ClientFitContextCard } from "@/components/client-fit/ClientFitContextCard";
-import { VerdictPanel } from "@/components/verdict/VerdictPanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { VerdictHero } from "@/components/ui/VerdictHero";
+import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
 import { formatUnknownValue, normalizeDisplaySentence } from "@/lib/displayLabels";
 import { useReviewState } from "@/lib/reviewState";
 
@@ -232,15 +232,31 @@ export function VerdictScreen() {
 
   return (
     <div>
-        <PageHeader
-          kicker="Step 07 / Verdict"
-          title="Decision verdict"
-          description="The verdict evaluates one generated diagnostic candidate against the active comparison evidence. No-trade and evidence-insufficient are normal outcomes."
-        >
-          <StatusBadge tone={activeReview?.readOnlyHistory ? "slate" : verdictMatchesCandidate ? (evidenceInsufficient ? "amber" : "green") : "amber"}>
-            {activeReview?.readOnlyHistory ? "Read-only compact history" : verdictMatchesCandidate ? (evidenceInsufficient ? "Evidence insufficient" : "Active verdict") : "Verdict required"}
-          </StatusBadge>
-        </PageHeader>
+        <div className="mb-6 space-y-5">
+          <VerdictHero
+            stepContext="Step 7 of 8 - Verdict"
+            headline={verdictMatchesCandidate && verdict ? normalizeDisplaySentence(verdict.headline, "Decision-support verdict is available") : "Decision-support verdict is required"}
+            interpretation={verdictMatchesCandidate && verdict ? normalizeDisplaySentence(verdict.explanation, "Review the selected evidence before forming an implementation view.") : "The verdict evaluates one generated diagnostic candidate against active comparison evidence. Evidence-insufficient outcomes are normal."}
+            facts={[
+              { label: "Candidate", value: candidateDisplayName },
+              { label: "Confidence", value: verdictMatchesCandidate && verdict ? formatUnknownValue(verdict.confidence, "Unknown") : "Unavailable" },
+              { label: "Boundary", value: "Diagnostic interpretation only; not trade advice or suitability approval." }
+            ]}
+            boundaryNote="Verdict is non-binding decision support. It does not approve suitability, recommend trades, or instruct a rebalance."
+          />
+          {verdictMatchesCandidate && verdict ? (
+            <EvidenceSummary
+              title="Selected verdict evidence"
+              description="The verdict uses selected rationale and limitations rather than a dense dashboard."
+              items={[
+                { label: "Decision interpretation", value: formatUnknownValue(verdict.state, "Decision-support verdict") },
+                { label: "Rationale", value: verdict.keyEvidence[0] ?? verdict.explanation },
+                { label: "Major trade-off", value: verdict.limitations[0] ?? "No limitation returned", tone: verdict.limitations.length ? "amber" : "slate" },
+                { label: "Boundary", value: verdict.boundaryNote || "Decision-support only" }
+              ]}
+            />
+          ) : null}
+        </div>
         <SiteExplanationHierarchy
           bundle={siteExplanation}
           screen="verdict"
@@ -372,44 +388,40 @@ export function VerdictScreen() {
 
         {verdictMatchesCandidate && verdict && !evidenceInsufficient && !candidateFailed ? (
           <div className="space-y-6">
-            <VerdictPanel
-              state={verdict.state}
-              headline={verdict.headline}
-              explanation={verdict.explanation}
-              evidenceQuality={verdict.evidenceQuality}
-              boundaryNote={verdict.boundaryNote}
-              keyEvidence={verdict.keyEvidence}
-              monitoringTrigger={verdict.monitoringTrigger}
-              metrics={verdict.metrics}
-            />
+            <section className="pmri-card rounded-3xl p-6 md:p-7">
+              <p className="pmri-label">Decision interpretation</p>
+              <h2 className="pmri-heading-section mt-2 text-2xl text-pmri-text">{formatUnknownValue(verdict.state, "Decision-support verdict")}</h2>
+              <p className="mt-4 max-w-4xl text-base leading-8 text-pmri-text2">{normalizeDisplaySentence(verdict.actionFraming)}</p>
+              <div className="mt-6 grid gap-4 lg:grid-cols-3">
+                <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
+                  <p className="pmri-label">Rationale</p>
+                  <ul className="mt-3 space-y-2 text-sm leading-7 text-pmri-text2">
+                    {(verdict.keyEvidence.length ? verdict.keyEvidence : [verdict.explanation]).slice(0, 4).map((item) => <li key={item}>- {normalizeDisplaySentence(item)}</li>)}
+                  </ul>
+                </article>
+                <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
+                  <p className="pmri-label">Evidence quality</p>
+                  <p className="mt-3 text-sm leading-7 text-pmri-text2">Confidence: {formatUnknownValue(verdict.confidence, "Unknown")}</p>
+                  <p className="mt-2 text-sm leading-7 text-pmri-muted">{formatUnknownValue(verdict.evidenceQuality, "Evidence quality unavailable")}</p>
+                </article>
+                <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
+                  <p className="pmri-label">What would change it</p>
+                  <ul className="mt-3 space-y-2 text-sm leading-7 text-pmri-muted">
+                    {limitationRows.slice(0, 4).map((item) => <li key={item}>- {normalizeDisplaySentence(item)}</li>)}
+                  </ul>
+                </article>
+              </div>
+            </section>
             <ClientFitContextCard
               clientFit={clientFitForStage}
               title="Client Fit is one input to the verdict"
-              description="The verdict combines Client Fit, objective diagnosis, comparison evidence, and confidence limitations without letting any single green profile result override a material issue."
-              structuralIssueNote="Client Fit pass plus a material diagnosis issue should still lead to monitor, review, or test-candidate framing rather than an automatic no-action conclusion."
+              description="The verdict combines Client Fit, objective diagnosis, comparison evidence, and confidence limitations without letting any single profile alignment result override a material issue."
+              structuralIssueNote="Client Fit alignment plus a material diagnosis issue should still lead to monitor, review, or test-candidate framing rather than an automatic no-action conclusion."
+              compact
             />
-            <section className="grid gap-4 lg:grid-cols-3">
-              <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
-                <StatusBadge tone="slate">Action framing</StatusBadge>
-                <p className="mt-3 text-sm leading-7 text-pmri-text2">{verdict.actionFraming}</p>
-              </article>
-              <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
-                <StatusBadge tone={confidenceTone(verdict.confidence)}>Evidence quality</StatusBadge>
-                <p className="mt-3 text-sm leading-7 text-pmri-text2">Confidence: {formatUnknownValue(verdict.confidence, "Unknown")}</p>
-                <p className="mt-2 text-sm leading-7 text-pmri-muted">Verdict state: {formatUnknownValue(verdict.state, "Decision-support verdict")}</p>
-              </article>
-              <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
-                <StatusBadge tone="slate">What would change it</StatusBadge>
-                <ul className="mt-3 space-y-2 text-sm leading-7 text-pmri-muted">
-                  {limitationRows.map((item) => (
-                    <li key={item}>• {item}</li>
-                  ))}
-                </ul>
-              </article>
-            </section>
             <div className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
               <p className="mb-3 text-sm leading-7 text-pmri-muted">
-                Continue to Report only after reviewing the verdict framing. The next page should summarize the evidence; this is still not a trade order.
+                Continue to Report only after reviewing the verdict framing. The next page summarizes selected evidence; this is still not a trade order.
               </p>
               {hasLiveLineage ? (
                 <button

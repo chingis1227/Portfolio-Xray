@@ -35,7 +35,7 @@ export function HedgeGapAnalysisPanel({ hedgeGap }: { hedgeGap: HedgeGapSummary 
               <p className="pmri-label">Assets that hurt in main hedge gap scenario</p>
               <p className="data-figure mt-2 text-2xl text-pmri-text">{grossLossDisplay}</p>
             </div>
-            <div className="rounded-2xl border border-pmri-positive/18 bg-pmri-positive/[0.035] p-4">
+            <div className="rounded-2xl border border-pmri-blue/18 bg-pmri-blue/[0.035] p-4">
               <p className="pmri-label">Assets that helped in main hedge gap scenario</p>
               <p className="data-figure mt-2 text-2xl text-pmri-text">{positiveDisplay}</p>
             </div>

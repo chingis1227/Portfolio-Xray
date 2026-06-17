@@ -14,7 +14,7 @@ function AssetList({ rows, emptyMessage }: { rows: ContributionRow[]; emptyMessa
             <p className="text-sm font-semibold text-pmri-text">{row.ticker}</p>
             <p className="mt-1 text-xs text-pmri-muted">{row.status}</p>
           </div>
-          <StatusBadge tone={row.value > 0 ? "green" : row.value < 0 ? "red" : "slate"}>
+          <StatusBadge tone={row.value > 0 ? "blue" : row.value < 0 ? "red" : "slate"}>
             {formatStressPercent(row.value, { signed: true })}
           </StatusBadge>
         </div>
@@ -41,10 +41,10 @@ export function HelpedHurtPanel({ scenario }: { scenario: StressScenarioDetail }
           </div>
           <AssetList rows={scenario.assetsHurt} emptyMessage="No hurt assets are available for this scenario." />
         </article>
-        <article className="rounded-2xl border border-pmri-positive/18 bg-pmri-positive/[0.035] p-5">
+        <article className="rounded-2xl border border-pmri-blue/18 bg-pmri-blue/[0.035] p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h3 className="text-base font-semibold text-pmri-text">Assets that helped in selected scenario</h3>
-            <StatusBadge tone={scenario.assetsHelped.length ? "green" : "amber"}>
+            <StatusBadge tone={scenario.assetsHelped.length ? "blue" : "amber"}>
               {scenario.assetsHelped.length ? `${scenario.assetsHelped.length} helped` : "No offset"}
             </StatusBadge>
           </div>

@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { VerdictHero } from "@/components/ui/VerdictHero";
+import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
+import { MetricMatrix } from "@/components/ui/MetricMatrix";
 import { buildClientFitPresentation, type ClientFitReason } from "@/lib/clientFitPresentation";
 import { useReviewState } from "@/lib/reviewState";
 import type { ClientFitDisplaySummary } from "@/lib/generated/api-types";
@@ -19,7 +21,7 @@ function isMissingProfile(summary: ClientFitDisplaySummary | undefined) {
 const toneAccent: Record<StatusTone, string> = {
   blue: "from-pmri-blue/18 via-white/[0.035] to-transparent",
   gold: "from-pmri-borderSoft/16 via-white/[0.035] to-transparent",
-  green: "from-pmri-positive/18 via-white/[0.035] to-transparent",
+  green: "from-white/[0.08] via-white/[0.03] to-transparent",
   amber: "from-pmri-amber/18 via-white/[0.035] to-transparent",
   red: "from-pmri-risk/18 via-white/[0.035] to-transparent",
   slate: "from-white/[0.08] via-white/[0.03] to-transparent"
@@ -28,7 +30,7 @@ const toneAccent: Record<StatusTone, string> = {
 const rowToneClass: Record<StatusTone, string> = {
   blue: "border-pmri-blue/18 bg-pmri-blue/[0.035]",
   gold: "border-pmri-borderSoft/20 bg-white/[0.025]",
-  green: "border-pmri-positive/18 bg-pmri-positive/[0.035]",
+  green: "border-pmri-border/55 bg-white/[0.02]",
   amber: "border-pmri-amber/20 bg-pmri-amber/[0.04]",
   red: "border-pmri-risk/20 bg-pmri-risk/[0.04]",
   slate: "border-pmri-border/55 bg-white/[0.02]"
@@ -99,43 +101,22 @@ export function ClientFitScreen() {
 
   return (
     <div>
-      <PageHeader
-        kicker="Step 04 / Risk profile check"
-        title="Your portfolio vs your risk profile"
-        description="A calm comparison of the current portfolio against your stated return goal, volatility comfort range, loss limit, and horizon."
-        boundaryNote="This is diagnostic context only. It is not suitability approval, a trade instruction, or a replacement for the portfolio diagnosis."
-      >
-        <StatusBadge tone={ready ? presentation.statusTone : "amber"}>{ready ? presentation.statusLabel : "Evidence required"}</StatusBadge>
-      </PageHeader>
+      <VerdictHero
+        stepContext="Step 4 of 8 - Client Fit"
+        headline={ready ? presentation.headline : "Client Fit evidence is required"}
+        interpretation={ready ? presentation.summary : "This screen checks alignment with the stated profile after diagnosis and Stress Lab evidence are available."}
+        facts={[
+          { label: "Profile", value: ready ? presentation.profileLabel : "Unavailable" },
+          { label: "Evidence", value: ready ? presentation.sourceLabel : "Evidence required" },
+          { label: "Boundary", value: "Diagnostic context only; not suitability approval or trade advice." }
+        ]}
+        boundaryNote="Client Fit is non-binding diagnostic context. It is not suitability approval, not trade advice, and not a replacement for portfolio diagnosis."
+      />
 
       {!hydrated ? null : !ready ? (
         <LockedClientFitState />
       ) : (
         <div className="space-y-6">
-          <section className="pmri-card pmri-animated-border-panel overflow-hidden rounded-[2rem]">
-            <div className={`relative bg-gradient-to-br ${toneAccent[presentation.statusTone] ?? toneAccent.slate} p-6 md:p-8`}>
-              <div className="relative grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
-                <div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <StatusBadge tone={presentation.statusTone}>{presentation.statusLabel}</StatusBadge>
-                    <span className="rounded-full border border-pmri-border/55 bg-black/10 px-3 py-1.5 text-xs text-pmri-muted">
-                      Profile: {presentation.profileLabel}
-                    </span>
-                    <span className="rounded-full border border-pmri-border/55 bg-black/10 px-3 py-1.5 text-xs text-pmri-muted">
-                      Source: {presentation.sourceLabel}
-                    </span>
-                  </div>
-                  <h2 className="pmri-heading-display mt-6 max-w-4xl text-pmri-text">{presentation.headline}</h2>
-                  <p className="mt-5 max-w-3xl text-base leading-8 text-pmri-text2">{presentation.summary}</p>
-                </div>
-                <div className="rounded-3xl border border-pmri-border/45 bg-black/15 p-5">
-                  <p className="pmri-label">What this means</p>
-                  <p className="mt-3 text-sm leading-7 text-pmri-text2">{presentation.boundaryNote}</p>
-                </div>
-              </div>
-            </div>
-          </section>
-
           {missingProfile ? (
             <section className="pmri-card rounded-3xl p-5 md:p-6">
               <p className="pmri-label">Missing profile</p>
@@ -149,32 +130,32 @@ export function ClientFitScreen() {
             </section>
           ) : (
             <>
-              <section className="grid gap-4 lg:grid-cols-3">
-                {presentation.primaryReasons.map((reason, index) => (
-                  <ReasonCard key={reason.id} reason={reason} index={index} />
-                ))}
-              </section>
+              <EvidenceSummary
+                title="Main profile mismatch dimensions"
+                description="Only the most relevant fit facts are shown before the full row-level check."
+                items={presentation.primaryReasons.map((reason) => ({
+                  label: reason.label,
+                  value: `${reason.value} vs ${reason.target}. ${reason.explanation}`,
+                  tone: reason.tone
+                }))}
+              />
 
-              <section className="pmri-card overflow-hidden rounded-3xl">
-                <div className="flex flex-col gap-3 p-5 md:flex-row md:items-end md:justify-between md:p-6">
-                  <div>
-                    <p className="pmri-label">Portfolio vs profile</p>
-                    <h2 className="pmri-heading-section mt-2 text-2xl text-pmri-text">Main fit checks</h2>
-                  </div>
-                  <p className="max-w-xl text-sm leading-6 text-pmri-muted">
-                    One dominant status, compact rows, and details only where they help interpretation.
-                  </p>
-                </div>
-                <div className="hidden border-t border-pmri-border/35 px-5 py-3 text-xs font-medium text-pmri-muted md:grid md:grid-cols-[1.15fr_0.8fr_0.9fr_auto]">
-                  <span>Dimension</span>
-                  <span>Portfolio</span>
-                  <span>Your profile</span>
-                  <span>Status</span>
-                </div>
-                {presentation.allRows.map((reason) => (
-                  <CompactCheckRow key={reason.id} reason={reason} />
-                ))}
-              </section>
+              <MetricMatrix
+                title="Client Fit checks by profile dimension"
+                description="Rows compare the current portfolio evidence with stated profile limits. Missing values are shown as Unavailable rather than inferred."
+                groups={[{
+                  title: "Portfolio vs stated profile",
+                  description: "Row-level statuses are restrained and used only where they clarify a specific profile dimension.",
+                  rows: presentation.allRows.map((reason) => ({
+                    metric: reason.label,
+                    portfolioValue: reason.value,
+                    reference: reason.target,
+                    status: reason.tone === "red" || reason.tone === "amber" ? { label: reason.status, tone: reason.tone } : undefined,
+                    meaning: reason.explanation,
+                    material: reason.tone === "red" || reason.tone === "amber"
+                  }))
+                }]}
+              />
             </>
           )}
 

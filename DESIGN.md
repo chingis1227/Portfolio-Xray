@@ -68,20 +68,20 @@ The current frontend tokens live in `frontend/styles/globals.css` and `frontend/
 | Primary text | `pmri.text`, `--pmri-text-primary` | `#ECEFF3` | Headings, values, key labels. |
 | Secondary text | `pmri.text2`, `--pmri-text-secondary` | `#C4C9D1` | Body copy and interpretation. |
 | Muted text | `pmri.muted`, `--pmri-text-muted` | `#949BA6` | Captions, inactive steps, metadata. |
-| Action blue | `pmri.blue`, `--pmri-action-blue` | `#3B82F6` | Primary CTA, active journey, focus. |
-| Soft blue | `pmri.blueSoft` | `#60A5FA` | Links, hover, section accents. |
-| Positive | `pmri.positive`, `--pmri-positive` | `#6FBF9B` | Ready, completed, improved, generated. |
-| Amber | `pmri.amber`, `--pmri-warning` | `#C9A66B` | Caution, locked, partial, evidence required. |
-| Risk | `pmri.risk`, `--pmri-risk` | `#D77A7A` | Error, worsening, material risk. |
+| Steel Blue | `pmri.blue`, `pmri.steelBlue`, `--pmri-steel-blue`, `--pmri-action-blue` | `#4F7EA8` | Primary CTA, active/current/selected navigation, focus, informational emphasis. |
+| Soft Steel Blue | `pmri.blueSoft` | `#7EA6C8` | Links, hover, section accents. |
+| Ivory | `pmri.ivory`, `pmri.positive`, `--pmri-ivory`, `--pmri-positive` | `#ECE7DC` | Normal, aligned, completed, generated, unavailable-neutral, and secondary states. This is not a green status. |
+| Muted Amber Gold | `pmri.amber`, `pmri.amberGold`, `--pmri-amber-gold`, `--pmri-warning` | `#C3A15F` | Watch, caution, locked, partial, evidence required. |
+| Muted Copper Red | `pmri.risk`, `pmri.copperRed`, `--pmri-copper-red`, `--pmri-risk` | `#B66A61` | Material issue, error, failure, destructive action, or high-risk evidence. |
 | Premium accent | `pmri.gold`, `--pmri-premium-accent` | `#AAB7C6` | Formal slate accent, not decorative gold. |
 
 ## Color Semantics
 
-- Blue means action, active journey state, selected navigation, focus, or safe informational emphasis.
-- Green means ready, completed, generated, improved, or risk reduced. It must not imply suitability approval or a trade recommendation.
-- Amber means caution, evidence required, partial evidence, locked state, or degraded confidence.
-- Red means actual error, material worsening, failed run, destructive action, or high-risk evidence.
-- Slate/gray means neutral, inactive, unavailable, metadata, or structural boundary.
+- Steel Blue means action, active/current journey state, selected navigation, focus, or safe informational emphasis.
+- Ivory and neutral gray mean normal, aligned, completed, generated, unavailable, metadata, unchanged, or secondary context.
+- Muted Amber Gold means watch, caution, evidence required, partial evidence, locked state, or degraded confidence.
+- Muted Copper Red means material issue, actual error, material worsening, failed run, destructive action, or high-risk evidence.
+- Green is not a Portfolio MRI product/system status semantic. Legacy API enum values may still be normalized by adapters, but Core MVP UI must not rely on green as the visible status color.
 
 Use color sparsely. Most pixels should remain graphite, slate, and readable white/gray text.
 
@@ -112,9 +112,9 @@ Onboarding routes are public-frame screens without the platform sidebar. Canonic
 
 Platform routes use:
 
-- a left sidebar with 8 gated journey steps;
-- a sticky top journey rail;
-- a large page header card;
+- a quieter left sidebar with 8 gated journey steps;
+- a sticky compact step context rail instead of a full horizontal journey stepper on redesigned routes;
+- a verdict-first page hero on redesigned analytical routes;
 - dark cards and panels;
 - sparse badges;
 - explicit boundary notes;
@@ -147,7 +147,13 @@ Current platform steps:
 
 Cards use rounded corners, thin borders, subtle gradients, and `shadow-decision`. Depth is allowed when it supports hierarchy. Metric cards show a label, optional status badge, a tabular value, and one short explanation. Avoid all-at-once metric walls.
 
-Portfolio Diagnosis uses a diagnosis-first simplification pattern: one main finding, a maximum of three primary evidence facts, one compact `What matters first` strip, a three-item behavior snapshot, and advanced diagnostics hidden by default. Professional metrics such as VaR, ES, skewness, kurtosis, beta, Sharpe, Sortino, and Treynor remain available behind disclosure controls rather than dominating the first read.
+Redesigned analytical pages use shared `VerdictHero`, `EvidenceSummary`, and `MetricMatrix` patterns. `VerdictHero` carries the page-level message with compact step context, one interpretation sentence, up to three supporting facts, and an optional boundary note. `EvidenceSummary` is capped at four items in one quiet strip. `MetricMatrix` groups rows with metric, portfolio value, reference/threshold, status, and meaning; material/problem rows sort first inside fixed groups.
+
+Portfolio Diagnosis uses a diagnosis-first simplification pattern: one dominant hero finding, a maximum four-item evidence summary, an expanded Metric Matrix, and advanced diagnostics hidden by default. Professional metrics such as VaR, ES, skewness, kurtosis, beta, Sharpe, Sortino, and Treynor remain available behind disclosure controls rather than dominating the first read.
+
+### Motion and micro-interactions
+
+Motion should make the decision room feel calmer and more legible, not flashier. Use Framer Motion for route fades, section reveals, active-rail movement, onboarding question changes, and selected/hovered decision surfaces where the motion clarifies hierarchy or state. Prefer opacity and transform with restrained spring physics, keep stagger timing subtle, and always respect reduced-motion preferences. Do not add decorative movement that competes with portfolio evidence, stress results, Client Fit boundaries, candidate trade-offs, or verdict language.
 
 ### Badges
 

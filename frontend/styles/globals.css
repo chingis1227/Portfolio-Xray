@@ -11,10 +11,14 @@
   --pmri-text-secondary: #c4c9d1;
   --pmri-text-muted: #949ba6;
   --pmri-border: #25282e;
-  --pmri-action-blue: #3b82f6;
-  --pmri-positive: #6fbf9b;
-  --pmri-warning: #c9a66b;
-  --pmri-risk: #d77a7a;
+  --pmri-ivory: #ece7dc;
+  --pmri-steel-blue: #4f7ea8;
+  --pmri-copper-red: #b66a61;
+  --pmri-amber-gold: #c3a15f;
+  --pmri-action-blue: var(--pmri-steel-blue);
+  --pmri-positive: var(--pmri-ivory);
+  --pmri-warning: var(--pmri-amber-gold);
+  --pmri-risk: var(--pmri-copper-red);
   --pmri-premium-accent: #b6c0cb;
   --pmri-font-sans: var(--font-pmri-sans, Inter, Manrope, "Helvetica Neue", Arial, sans-serif);
   --pmri-font-mono: var(--font-pmri-mono, "SF Mono", "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
@@ -101,14 +105,14 @@ li {
 }
 
 .pmri-primary-action {
-  border: 1px solid rgba(96, 165, 250, 0.58);
-  background: linear-gradient(180deg, #60a5fa, #3b82f6);
+  border: 1px solid rgba(126, 166, 200, 0.58);
+  background: linear-gradient(180deg, #7ea6c8, #4f7ea8);
   color: #f8fafc;
-  box-shadow: 0 14px 32px rgba(59, 130, 246, 0.24), 0 12px 28px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 14px 32px rgba(79, 126, 168, 0.22), 0 12px 28px rgba(0, 0, 0, 0.2);
 }
 
 .pmri-primary-action:hover {
-  background: linear-gradient(180deg, #7db7ff, #4f8ff7);
+  background: linear-gradient(180deg, #8bb1cf, #5b8ab1);
 }
 
 .pmri-primary-action:disabled,
@@ -159,7 +163,7 @@ li {
   border-color: rgba(248, 250, 252, 0.72);
   box-shadow:
     0 0 0 4px rgba(248, 250, 252, 0.10),
-    0 0 24px rgba(96, 165, 250, 0.16);
+    0 0 24px rgba(79, 126, 168, 0.16);
 }
 
 @keyframes pmri-empty-field-pulse {
@@ -168,14 +172,14 @@ li {
     border-color: rgba(248, 250, 252, 0.34);
     box-shadow:
       inset 0 0 0 1px rgba(255, 255, 255, 0.035),
-      0 0 0 1px rgba(96, 165, 250, 0.04),
+      0 0 0 1px rgba(79, 126, 168, 0.04),
       0 0 14px rgba(248, 250, 252, 0.06);
   }
   50% {
     border-color: rgba(248, 250, 252, 0.68);
     box-shadow:
       inset 0 0 0 1px rgba(255, 255, 255, 0.07),
-      0 0 0 1px rgba(96, 165, 250, 0.10),
+      0 0 0 1px rgba(79, 126, 168, 0.10),
       0 0 24px rgba(248, 250, 252, 0.13);
   }
 }
@@ -486,9 +490,9 @@ li {
 
 .pmri-moving-grid {
   background-image:
-    linear-gradient(115deg, transparent 0, transparent 48%, rgba(96, 165, 250, 0.1) 49%, transparent 51%),
-    linear-gradient(rgba(96, 165, 250, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(96, 165, 250, 0.07) 1px, transparent 1px);
+    linear-gradient(115deg, transparent 0, transparent 48%, rgba(79, 126, 168, 0.1) 49%, transparent 51%),
+    linear-gradient(rgba(79, 126, 168, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79, 126, 168, 0.07) 1px, transparent 1px);
   background-size: 180px 180px, 82px 82px, 82px 82px;
   transform: perspective(920px) rotateX(59deg) translate3d(0, 0, 0);
   transform-origin: top;

@@ -47,7 +47,7 @@ export function HypothesisCard({
     <>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="pmri-label">{isMonitoring ? "Monitor current portfolio" : isPrimary ? "Recommended test path" : "Available test path"}</p>
+          <p className="pmri-label">{isMonitoring ? "Monitor current portfolio" : isPrimary ? "Primary test path" : "Available test path"}</p>
           <h3 className={`pmri-heading-section mt-2 text-pmri-text ${isPrimary ? "text-2xl" : "text-xl"}`}>{formatUnknownValue(hypothesis.title, "Selected test")}</h3>
         </div>
         <div className="flex flex-col items-end gap-2">

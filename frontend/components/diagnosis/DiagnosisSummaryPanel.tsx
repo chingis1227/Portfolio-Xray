@@ -1,10 +1,12 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import type { Metric, SiteExplanationBundle, StatusTone } from "@/lib/types";
 import type { XRaySummary } from "@/lib/reviewState";
 import { buildDiagnosisDisplayModel, type DiagnosisDisplayFact } from "@/lib/diagnosisDisplayModel";
 import { riskSeverityLabel } from "@/lib/displayLabels";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { MetricCard } from "@/components/ui/MetricCard";
+import { EvidenceSummary, type EvidenceSummaryItem } from "@/components/ui/EvidenceSummary";
+import { MetricMatrix, type MetricMatrixGroup, type MetricMatrixRow } from "@/components/ui/MetricMatrix";
+import { VerdictHero } from "@/components/ui/VerdictHero";
 import {
   CompositionPanel,
   FactorExposurePanel,
@@ -26,139 +28,134 @@ type DiagnosisSummaryPanelProps = {
 };
 
 function toneLabel(tone: StatusTone) {
-  if (tone === "green") return "Low risk";
+  if (tone === "green") return "Aligned";
   if (tone === "amber") return "Medium risk";
   if (tone === "red") return "High risk";
   return riskSeverityLabel(tone) === "Unavailable" ? "Review" : riskSeverityLabel(tone);
 }
 
-function FactDot() {
-  return <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-pmri-blueSoft/70" aria-hidden="true" />;
-}
-
 function DiagnosisHero({ model }: { model: ReturnType<typeof buildDiagnosisDisplayModel> }) {
   return (
-    <section className="pmri-card pmri-animated-border-panel pmri-section-reveal relative overflow-hidden rounded-3xl p-5 md:p-7">
-      <div className="absolute -right-10 -top-12 h-52 w-52 rounded-full bg-pmri-blue/[0.045] blur-3xl" aria-hidden="true" />
-      <div className="absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-pmri-blueSoft/25 to-transparent" aria-hidden="true" />
-      <div className="relative grid gap-7 lg:grid-cols-[1.1fr_0.9fr]">
-        <div>
-          <div className="flex flex-wrap gap-2">
-            <StatusBadge tone="slate">Current portfolio review</StatusBadge>
-            <StatusBadge tone={model.dataCoverageTone}>Data coverage: {model.dataCoverage}</StatusBadge>
-            <StatusBadge tone="slate">Candidate not tested yet</StatusBadge>
-          </div>
-          <p className="pmri-label mt-7 text-pmri-text2">Main finding</p>
-          <h2 className="mt-3 max-w-4xl text-3xl font-semibold leading-tight tracking-[-0.045em] text-pmri-text md:text-5xl">
-            {model.mainFinding}
-          </h2>
-          <p className="mt-5 max-w-3xl text-base leading-7 text-pmri-text2">
-            {model.whyItMatters}
-          </p>
-        </div>
-
-        <aside className="rounded-3xl border border-pmri-border/60 bg-black/10 p-5 shadow-inner shadow-black/20">
-          <p className="pmri-label text-pmri-text2">Evidence behind the finding</p>
-          <div className="mt-4 space-y-3">
-            {(model.primaryEvidence.length ? model.primaryEvidence : ["Primary evidence is unavailable in the compact review."]).map((item) => (
-              <p key={item} className="flex gap-2 text-sm leading-6 text-pmri-text2">
-                <FactDot />
-                <span>{item}</span>
-              </p>
-            ))}
-          </div>
-          <div className="mt-5 rounded-2xl border border-pmri-border/50 bg-white/[0.02] p-4">
-            <p className="pmri-label text-pmri-text2">Next safe step</p>
-            <p className="mt-2 text-sm leading-6 text-pmri-text2">{model.nextStep}</p>
-          </div>
-        </aside>
-      </div>
-
-      <div className="relative mt-7 flex flex-wrap gap-3">
-        <Link href="/evidence" className="pmri-focus pmri-primary-action rounded-full px-5 py-2.5 text-sm font-medium transition">
-          Review Stress Lab evidence
-        </Link>
-        <Link href="/hypothesis" className="pmri-focus rounded-full border border-pmri-border bg-white/[0.035] px-5 py-2.5 text-sm font-medium text-pmri-text2 transition hover:border-pmri-blue/45 hover:text-pmri-text">
-          Test one candidate hypothesis
-        </Link>
-      </div>
-    </section>
+    <VerdictHero
+      stepContext="Step 02 of 8 - Portfolio Diagnosis"
+      headline={model.mainFinding}
+      interpretation={model.whyItMatters}
+      facts={[
+        { label: "Review scope", value: "Current portfolio only; no candidate has been tested yet." },
+        { label: "Evidence quality", value: `${model.dataCoverage} diagnostic evidence.` },
+    { label: "Next review step", value: model.nextStep }
+      ]}
+      boundaryNote={model.boundaryNote}
+      actions={(
+        <>
+          <Link href="/evidence" className="pmri-focus pmri-primary-action rounded-full px-5 py-2.5 text-sm font-medium transition">
+            Review Stress Lab evidence
+          </Link>
+          <Link href="/hypothesis" className="pmri-focus rounded-full border border-pmri-border bg-white/[0.035] px-5 py-2.5 text-sm font-medium text-pmri-text2 transition hover:border-pmri-blue/45 hover:text-pmri-text">
+            Test one candidate hypothesis
+          </Link>
+        </>
+      )}
+    />
   );
 }
 
-function WhatMattersRow({ fact }: { fact: DiagnosisDisplayFact }) {
-  return (
-    <div className="grid gap-3 border-b border-pmri-border/45 px-1 py-4 last:border-b-0 md:grid-cols-[0.9fr_0.9fr_1.3fr_auto] md:items-center">
-      <p className="text-sm font-semibold text-pmri-text">{fact.label}</p>
-      <p className="data-figure text-xl font-semibold text-pmri-text md:text-2xl">{fact.value}</p>
-      <p className="text-sm leading-6 text-pmri-text2">{fact.note}</p>
-      <div className="md:justify-self-end">
-        <StatusBadge tone={fact.tone}>{toneLabel(fact.tone)}</StatusBadge>
-      </div>
-    </div>
-  );
+function evidenceSummaryItems(model: ReturnType<typeof buildDiagnosisDisplayModel>): EvidenceSummaryItem[] {
+  const primaryIssue = model.whatMatters.find((fact) => fact.tone === "red" || fact.tone === "amber") ?? model.whatMatters[0];
+  const mainDrivers = model.primaryEvidence.length ? model.primaryEvidence.join(" ") : "Unavailable in the compact review.";
+  return [
+    {
+      label: "Primary issue",
+      value: primaryIssue ? `${primaryIssue.label}: ${primaryIssue.value}` : "Unavailable",
+      tone: primaryIssue?.tone ?? "slate"
+    },
+    {
+      label: "Severity",
+      value: primaryIssue ? toneLabel(primaryIssue.tone) : "Unavailable",
+      tone: primaryIssue?.tone ?? "slate"
+    },
+    {
+      label: "Drivers",
+      value: mainDrivers,
+      tone: "slate"
+    },
+    {
+      label: "Evidence quality",
+      value: `${model.dataCoverage} diagnostic evidence`,
+      tone: model.dataCoverageTone
+    }
+  ];
 }
 
-function WhatMattersFirst({ facts }: { facts: DiagnosisDisplayFact[] }) {
-  return (
-    <section id="summary" className="pmri-card pmri-section-reveal scroll-mt-28 rounded-3xl p-5 [--pmri-reveal-delay:60ms] md:p-6">
-      <p className="pmri-label text-pmri-text2">Summary</p>
-      <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h2 className="pmri-heading-section text-2xl text-pmri-text md:text-3xl">What matters first</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-pmri-text2">
-            The diagnosis is reduced to the few facts that should guide the next review step.
-          </p>
-        </div>
-      </div>
-      <div className="mt-5 rounded-2xl border border-pmri-border/60 bg-white/[0.018] px-4 md:px-5">
-        {facts.length ? facts.map((fact) => <WhatMattersRow key={fact.label} fact={fact} />) : (
-          <p className="py-5 text-sm leading-6 text-pmri-text2">Decision-useful diagnosis facts are unavailable for this review.</p>
-        )}
-      </div>
-    </section>
-  );
+function rowStatus(tone: StatusTone): { label: string; tone: StatusTone } | undefined {
+  if (tone === "red") return { label: "Material issue", tone };
+  if (tone === "amber") return { label: "Watch", tone };
+  if (tone === "slate" || tone === "gold" || tone === "blue" || tone === "green") return { label: "Context", tone: "slate" };
+  return undefined;
 }
 
-function BehaviorCard({ fact }: { fact: DiagnosisDisplayFact }) {
-  return (
-    <article className="rounded-2xl border border-pmri-border/60 bg-white/[0.022] p-5">
-      <p className="pmri-label text-pmri-text2">{fact.label}</p>
-      <p className="data-figure mt-4 text-3xl font-semibold tracking-[-0.03em] text-pmri-text">{fact.value}</p>
-      <p className="mt-3 text-sm leading-6 text-pmri-text2">{fact.note}</p>
-    </article>
-  );
+function factRow(fact: DiagnosisDisplayFact, reference: string): MetricMatrixRow {
+  return {
+    metric: fact.label,
+    portfolioValue: fact.value,
+    reference,
+    status: rowStatus(fact.tone),
+    meaning: fact.note,
+    material: fact.tone === "red" || fact.tone === "amber"
+  };
 }
 
-function BehaviorSnapshot({ facts }: { facts: DiagnosisDisplayFact[] }) {
-  return (
-    <section id="behavior" className="pmri-card pmri-section-reveal scroll-mt-28 rounded-3xl p-5 [--pmri-reveal-delay:90ms] md:p-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="pmri-label text-pmri-text2">Historical behavior</p>
-          <h2 className="pmri-heading-section mt-2 text-2xl text-pmri-text md:text-3xl">How the current portfolio behaved historically</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-pmri-text2">
-            A compact read of growth, downside pain, and market dependence. Advanced diagnostics stay hidden until requested.
-          </p>
-        </div>
-        <Link href="/evidence" className="pmri-focus inline-flex w-fit rounded-full border border-pmri-borderSoft/55 bg-white/[0.035] px-4 py-2 text-sm font-medium text-pmri-text2 transition hover:border-pmri-blue/45 hover:text-pmri-text">
-          Review supporting evidence
-        </Link>
-      </div>
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
-        {facts.length ? facts.map((fact) => <BehaviorCard key={fact.label} fact={fact} />) : (
-          <div className="rounded-2xl border border-dashed border-pmri-borderSoft/55 bg-white/[0.018] p-5 text-sm leading-6 text-pmri-text2 md:col-span-3">
-            Historical behavior metrics are unavailable for this review.
-          </div>
-        )}
-      </div>
-      {facts.length ? (
-        <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/[0.055]" aria-hidden="true">
-          <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-pmri-blueSoft/70 via-pmri-amber/65 to-pmri-risk/60" />
-        </div>
-      ) : null}
-    </section>
-  );
+function metricRow(metric: Metric): MetricMatrixRow {
+  return {
+    metric: metric.label,
+    portfolioValue: metric.value,
+    reference: "Diagnostic reference",
+    status: metric.tone ? rowStatus(metric.tone) : undefined,
+    meaning: metric.detail ?? "Supporting diagnostic metric.",
+    material: metric.tone === "red" || metric.tone === "amber"
+  };
+}
+
+function diagnosisMetricGroups(model: ReturnType<typeof buildDiagnosisDisplayModel>): MetricMatrixGroup[] {
+  const riskLabels = new Set(["Downside pain", "Main weakness", "Pain", "Risk level", "Market dependence"]);
+  const structureLabels = new Set(["Concentration", "Main exposure"]);
+  const riskRows = [
+    ...model.whatMatters.filter((fact) => riskLabels.has(fact.label)).map((fact) => factRow(fact, "Review vs stress and drawdown tolerance")),
+    ...model.behaviorSnapshot.filter((fact) => riskLabels.has(fact.label)).map((fact) => factRow(fact, "Historical diagnostic window"))
+  ];
+  const structureRows = model.whatMatters
+    .filter((fact) => structureLabels.has(fact.label))
+    .map((fact) => factRow(fact, "Current portfolio composition"));
+  const evidenceRows: MetricMatrixRow[] = [
+    {
+      metric: "Evidence quality",
+      portfolioValue: model.dataCoverage,
+      reference: "Strong / Moderate / Limited / Unavailable",
+      status: rowStatus(model.dataCoverageTone),
+      meaning: model.dataCoverage === "Limited" ? "Read results with caution and review omissions." : "Shows how much support exists for the diagnosis.",
+      material: model.dataCoverageTone === "amber"
+    }
+  ];
+  const secondaryRows = [
+    ...model.behaviorSnapshot.filter((fact) => !riskLabels.has(fact.label)).map((fact) => factRow(fact, "Historical diagnostic window")),
+    ...model.advancedMetrics.slice(0, 4).map(metricRow)
+  ];
+
+  return [
+    { title: "Risk pressure", description: "Downside, stress-adjacent, and sensitivity metrics.", rows: riskRows },
+    { title: "Portfolio structure", description: "Concentration and dominant exposure context.", rows: structureRows },
+    { title: "Evidence quality", description: "Data availability and confidence boundaries.", rows: evidenceRows },
+    { title: "Secondary observations", description: "Useful supporting metrics that should not dominate the first read.", rows: secondaryRows }
+  ].map((group) => ({
+    ...group,
+    rows: group.rows.length ? group.rows : [{
+      metric: "Unavailable",
+      portfolioValue: "Unavailable",
+      reference: "Unavailable",
+      status: { label: "Unavailable", tone: "slate" as StatusTone },
+      meaning: "This group has no compact metric rows for the active review."
+    }]
+  }));
 }
 
 function AdvancedDiagnostics({ model, xraySummary }: { model: ReturnType<typeof buildDiagnosisDisplayModel>; xraySummary?: XRaySummary }) {
@@ -181,7 +178,7 @@ function AdvancedDiagnostics({ model, xraySummary }: { model: ReturnType<typeof 
           <section className="rounded-2xl border border-pmri-border/60 bg-white/[0.018] p-4">
             <h3 className="text-sm font-semibold text-pmri-text">Technical evidence</h3>
             <div className="mt-3 space-y-2">
-              {model.technicalEvidence.map((item) => <p key={item} className="text-sm leading-6 text-pmri-text2">• {item}</p>)}
+              {model.technicalEvidence.map((item) => <p key={item} className="text-sm leading-6 text-pmri-text2">- {item}</p>)}
             </div>
           </section>
         ) : null}
@@ -190,7 +187,7 @@ function AdvancedDiagnostics({ model, xraySummary }: { model: ReturnType<typeof 
           <section className="rounded-2xl border border-pmri-border/60 bg-white/[0.018] p-4">
             <h3 className="text-sm font-semibold text-pmri-text">Data limitations to review</h3>
             <div className="mt-3 space-y-2">
-              {model.limitations.map((item) => <p key={item} className="text-sm leading-6 text-pmri-text2">• {item}</p>)}
+              {model.limitations.map((item) => <p key={item} className="text-sm leading-6 text-pmri-text2">- {item}</p>)}
             </div>
           </section>
         ) : null}
@@ -238,8 +235,12 @@ export function DiagnosisSummaryPanel({
   return (
     <div className="space-y-6">
       <DiagnosisHero model={model} />
-      <WhatMattersFirst facts={model.whatMatters} />
-      <BehaviorSnapshot facts={model.behaviorSnapshot} />
+      <EvidenceSummary
+        title="Why this diagnosis is showing"
+        description="The first read is limited to the main issue, severity, drivers, and evidence quality."
+        items={evidenceSummaryItems(model)}
+      />
+      <MetricMatrix groups={diagnosisMetricGroups(model)} />
       <AdvancedDiagnostics model={model} xraySummary={xraySummary} />
 
       <section className="pmri-card rounded-3xl p-5 md:p-6">

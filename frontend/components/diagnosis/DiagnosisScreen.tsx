@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { DiagnosisSummaryPanel } from "@/components/diagnosis/DiagnosisSummaryPanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { buildDiagnosisFromReview, diagnosisStageChainReady, useReviewState, type ReviewHolding, type ReviewResult, type StagedReviewProgress } from "@/lib/reviewState";
@@ -227,11 +226,6 @@ export function DiagnosisScreen() {
 
   return (
     <div>
-      <PageHeader
-        kicker="Step 02 / Portfolio Diagnosis"
-        title="Current Portfolio Diagnosis"
-        description="Review your current portfolio before testing alternatives."
-      />
       {!hydrated ? null : failedRealRun && activeReview?.reviewError ? (
         <FailedDiagnosisState />
       ) : runningRealRun ? (

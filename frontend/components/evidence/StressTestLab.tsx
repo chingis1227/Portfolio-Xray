@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { MetricMatrix } from "@/components/ui/MetricMatrix";
 import type { SiteExplanationBundle } from "@/lib/types";
 import type { StressLabModel } from "./stressLabTypes";
 import { DataLimitationsPanel } from "./DataLimitationsPanel";
@@ -122,45 +123,64 @@ export function StressTestLab({ model, siteExplanation }: { model: StressLabMode
         </div>
       </section>
 
-      <section id="stress-story" className="pmri-card overflow-hidden rounded-3xl border-pmri-border/70 p-0">
-        <div className="border-b border-pmri-border/55 bg-[radial-gradient(circle_at_top_left,rgba(215,122,122,0.13),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.035),transparent)] p-5 md:p-8">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-4xl">
-              <p className="pmri-label text-pmri-blueSoft">{story.eyebrow}</p>
-              <h2 className="pmri-heading-section mt-3 text-3xl text-pmri-text md:text-4xl">{story.title}</h2>
-              <p className="mt-4 max-w-3xl text-base leading-8 text-pmri-text2 md:text-lg">
-                {story.answer}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2 lg:justify-end">
-              <StatusBadge tone={story.statusTone}>{story.statusLabel}</StatusBadge>
-              <StatusBadge tone={story.confidenceTone}>{story.confidenceLabel}</StatusBadge>
-            </div>
-          </div>
+      <MetricMatrix
+        title="Stress metrics by scenario relevance"
+        description="Worst-scenario rows appear before supporting evidence. Missing values are shown as Unavailable rather than inferred."
+        groups={[
+          {
+            title: "Stress vulnerability",
+            description: "Current-portfolio stress facts, ordered by materiality.",
+            rows: story.metrics.map((metric) => ({
+              metric: metric.label,
+              portfolioValue: metric.value,
+              reference: metric.label === "Worst scenario" ? "Worst visible stress" : "Current portfolio",
+              status: metric.tone === "red" || metric.tone === "amber" ? { label: metric.tone === "red" ? "Material" : "Limited", tone: metric.tone } : undefined,
+              meaning: metric.detail,
+              material: metric.tone === "red" || metric.tone === "amber"
+            }))
+          },
+          {
+            title: "Scenario evidence",
+            description: "Worst-scenario loss drivers and offset behavior stay visible before deeper drill-downs.",
+            rows: [
+              {
+                metric: "Main loss drivers",
+                portfolioValue: selectedScenario.assetsHurt.slice(0, 3).map((row) => row.ticker).join(", ") || "Unavailable",
+                reference: selectedScenario.displayName,
+                status: selectedScenario.assetsHurt.length ? { label: "Material", tone: "red" } : undefined,
+                meaning: selectedScenario.assetsHurt.length ? "Largest hurt positions in the selected stress scenario." : "Asset-level loss contribution is unavailable.",
+                material: Boolean(selectedScenario.assetsHurt.length)
+              },
+              {
+                metric: "Offset behavior",
+                portfolioValue: model.hedgeGap.statusLabel,
+                reference: model.hedgeGap.scenarioDisplayName,
+                status: model.hedgeGap.statusTone === "red" || model.hedgeGap.statusTone === "amber" ? { label: model.hedgeGap.statusTone === "red" ? "Weak" : "Partial", tone: model.hedgeGap.statusTone } : undefined,
+                meaning: model.hedgeGap.interpretation,
+                material: model.hedgeGap.statusTone === "red" || model.hedgeGap.statusTone === "amber"
+              },
+              {
+                metric: "Evidence quality",
+                portfolioValue: model.limitations.evidenceQualityLabel,
+                reference: "Scenario coverage",
+                status: model.limitations.evidenceTone === "red" || model.limitations.evidenceTone === "amber" ? { label: "Limited", tone: "amber" } : undefined,
+                meaning: story.confidenceDetail,
+                material: model.limitations.evidenceTone === "red" || model.limitations.evidenceTone === "amber"
+              }
+            ]
+          }
+        ]}
+      />
 
-          <div className="mt-7 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {story.metrics.map((metric) => (
-              <StoryMetricCard key={metric.label} metric={metric} />
-            ))}
-          </div>
-        </div>
-
-        <div className="grid gap-5 p-5 md:p-7 xl:grid-cols-[1.15fr_0.85fr]">
-          <div>
-            <p className="pmri-label">Supporting facts</p>
-            <div className="mt-3 grid gap-3 md:grid-cols-3">
-              {story.facts.map((fact) => (
-                <StoryFactCard key={fact.label} fact={fact} />
-              ))}
-            </div>
-          </div>
-          <aside className="rounded-2xl border border-pmri-border/55 bg-black/10 p-5">
-            <p className="pmri-label">What this means</p>
-            <p className="mt-3 text-sm leading-7 text-pmri-text2">{story.whatThisMeans}</p>
-            <p className="mt-4 rounded-2xl border border-pmri-border/55 bg-white/[0.024] p-3 text-xs leading-5 text-pmri-muted">
-              {story.confidenceDetail}
-            </p>
-          </aside>
+      <section className="pmri-card rounded-3xl p-5 md:p-6">
+        <p className="pmri-label">Analytical canvas</p>
+        <h2 className="pmri-heading-section mt-2 text-2xl text-pmri-text">Scenario contribution and protection behavior</h2>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-pmri-muted">
+          This canvas keeps the main loss drivers and offset behavior together. The scenario library and raw technical panels remain below as secondary details.
+        </p>
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <LossContributionPanel scenario={selectedScenario} />
+          <HedgeGapAnalysisPanel hedgeGap={model.hedgeGap} />
         </div>
       </section>
 
@@ -196,21 +216,10 @@ export function StressTestLab({ model, siteExplanation }: { model: StressLabMode
 
         <DetailDisclosure
           id="loss-drivers-drilldown"
-          title="Loss drivers"
-          summary="Assets and factors that hurt or helped in the selected stress scenario."
+          title="Factor attribution"
+          summary="Factor-level loss and offset detail for the selected stress scenario."
         >
-          <LossContributionPanel scenario={selectedScenario} />
-          <div className="mt-4">
-            <FactorStressAttributionPanel scenario={selectedScenario} />
-          </div>
-        </DetailDisclosure>
-
-        <DetailDisclosure
-          id="hedge-protection-drilldown"
-          title="Hedge protection"
-          summary="How much helped assets offset losses from hurt assets."
-        >
-          <HedgeGapAnalysisPanel hedgeGap={model.hedgeGap} />
+          <FactorStressAttributionPanel scenario={selectedScenario} />
         </DetailDisclosure>
 
         <DetailDisclosure

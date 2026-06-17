@@ -11,7 +11,7 @@ type BarRow = {
 
 function toneForValue(value: number) {
   if (value < 0) return "red" as const;
-  if (value > 0) return "green" as const;
+  if (value > 0) return "blue" as const;
   return "slate" as const;
 }
 
@@ -40,7 +40,7 @@ function ContributionBar({ row, maxAbs }: { row: BarRow; maxAbs: number }) {
         <div className="flex h-2 items-center rounded-r-full bg-black/20">
           {isPositive ? (
             <div
-              className="pmri-bar-fill h-2 rounded-r-full bg-pmri-positive/75"
+              className="pmri-bar-fill h-2 rounded-r-full bg-pmri-blue/70"
               style={{ width: `${width}%` }}
             />
           ) : null}

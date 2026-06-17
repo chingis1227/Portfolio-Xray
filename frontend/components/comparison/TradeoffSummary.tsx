@@ -47,8 +47,8 @@ export function TradeoffSummary({
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-4">
-        <article className="rounded-2xl border border-pmri-positive/18 bg-pmri-positive/[0.055] p-5">
-          <StatusBadge tone="green">What improves</StatusBadge>
+        <article className="rounded-2xl border border-pmri-blue/18 bg-pmri-blue/[0.045] p-5">
+          <StatusBadge tone="blue">What changes positively</StatusBadge>
           <ul className="mt-4 space-y-3 text-sm leading-6 text-pmri-text2">
             {safeImproved.map((item) => <li key={item}>• {item}</li>)}
           </ul>

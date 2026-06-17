@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { StressTestLab } from "@/components/evidence/StressTestLab";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { VerdictHero } from "@/components/ui/VerdictHero";
+import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
+import { buildStressStoryViewModel } from "@/components/evidence/stressStoryModel";
 import sampleStressLabData from "@/data/demo/stress-lab.json";
 import { ensureStressLabModel } from "@/components/evidence/stressLabModel";
 import { useReviewState } from "@/lib/reviewState";
@@ -62,20 +64,31 @@ function EvidencePageContent() {
     ? activeReview?.reviewSummary?.stressLabModel ?? null
     : null;
   const model = realStressLab ?? (sampleMode ? ensureStressLabModel(sampleStressLabData) : null);
-  const stateLabel = realStressLab ? "Stress review ready" : sampleMode ? "Sample review" : "Stress review locked";
-  const stateTone = realStressLab ? "green" : sampleMode ? "amber" : "slate";
   const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
+  const story = model ? buildStressStoryViewModel(model, siteExplanation) : null;
 
   return (
     <div>
-      <PageHeader
-        kicker="Step 03 / Stress Test Lab"
-        title="Stress Test Lab"
-        description="How the current portfolio behaves under historical and synthetic market stress."
-        boundaryNote="Current portfolio only. No candidate or rebalance verdict is created in Stress Test Lab."
-      >
-        <StatusBadge tone={stateTone}>{stateLabel}</StatusBadge>
-      </PageHeader>
+      {story ? (
+        <div className="mb-6 space-y-5">
+          <VerdictHero
+            stepContext="Step 3 of 8 - Stress Lab"
+            headline={story.title}
+            interpretation={story.answer}
+            facts={[
+              { label: "Worst scenario", value: story.metrics.find((item) => item.label === "Worst scenario")?.value ?? "Unavailable" },
+              { label: "Estimated loss", value: story.metrics.find((item) => item.label === "Worst scenario")?.detail.replace(/^Estimated loss:\s*/, "") ?? "Unavailable" },
+              { label: "Boundary", value: "Current portfolio only. No rebalance verdict is created here." }
+            ]}
+            boundaryNote="Stress Lab is current-portfolio-only evidence. It does not compare candidates, approve changes, or create trade advice."
+          />
+          <EvidenceSummary
+            title="Stress evidence summary"
+            description="The summary shows only the facts that explain the current-portfolio stress answer."
+            items={story.metrics.map((metric) => ({ label: metric.label, value: `${metric.value} - ${metric.detail}`, tone: metric.tone }))}
+          />
+        </div>
+      ) : null}
       {!hydrated ? null : model ? (
         <>
           <StressTestLab model={model} siteExplanation={siteExplanation} />

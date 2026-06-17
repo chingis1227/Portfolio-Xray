@@ -37,29 +37,30 @@ The current frontend token set is the contract baseline:
 | Text | `#ECEFF3` | Headings and decisive values. |
 | Secondary text | `#C4C9D1` | Body copy and interpretation. |
 | Muted text | `#949BA6` | Captions and inactive states. |
-| Blue | `#3B82F6` / `#60A5FA` | Action, focus, active journey. |
-| Positive | `#6FBF9B` | Ready, completed, generated, improved. |
-| Amber | `#C9A66B` | Caution, locked, partial, evidence required. |
-| Risk | `#D77A7A` | Error, failure, worsening, material risk. |
+| Steel Blue | `#4F7EA8` / `#7EA6C8` | Active/current/selected state, primary action, focus, and safe information emphasis. |
+| Muted Copper Red | `#B66A61` | Material issue, error, failure, destructive action, and high-risk evidence. |
+| Muted Amber Gold | `#C3A15F` | Watch, caution, partial evidence, locked, evidence required, and degraded confidence. |
+| Ivory / neutral aligned | `#ECE7DC` | Normal, aligned, completed, generated, unavailable-neutral, unchanged, and secondary context. |
 | Premium accent | `#AAB7C6` | Formal slate accent only. |
 
 Any intentional code-token change must update this table and `DESIGN.md` in the same change.
 
 ## Color semantics
 
-- Blue is for action, active navigation, focus, selected state, and safe informational emphasis.
-- Green is for ready/completed/generated/improved states. It never means suitability approval or trade recommendation.
-- Amber is for caution, evidence required, partial evidence, blocked or locked states.
-- Red is for actual errors, failures, destructive actions, material worsening, and risk.
-- Slate/gray is for neutral, inactive, metadata, unavailable, unchanged, or structural boundaries.
+- Steel Blue is for action, active/current navigation, focus, selected state, and safe informational emphasis.
+- Ivory and neutral gray are for normal, aligned, completed, generated, metadata, unavailable, unchanged, and secondary states.
+- Muted Amber Gold is for watch, caution, evidence required, partial evidence, blocked or locked states.
+- Muted Copper Red is for material issues, actual errors, failures, destructive actions, material worsening, and high-risk evidence.
+- Green is not a Portfolio MRI product/system status semantic. Legacy enum values may exist in adapters, but visible Core MVP status color must normalize them to neutral/ivory treatment unless a future contract explicitly changes this.
 
 No neon, rainbow, crypto-style glow systems, or decorative red/green chart coloring are allowed in Core MVP UI.
 
 ## Layout contract
 
 - Landing and onboarding must not show the platform sidebar or top journey rail.
-- Platform screens must show the 8-step rail: Portfolio, Diagnosis, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report.
-- Page headers must use matching step numbers and route names.
+- Platform screens must show the visible left 8-step rail: Portfolio, Diagnosis, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report.
+- Redesigned platform routes suppress the top journey rail and use compact step context inside `VerdictHero` instead of the full horizontal top stepper.
+- Verdict-first heroes must use matching step numbers and route names.
 - Locked screens must display the actual route step while explaining the missing prerequisite.
 - Advanced/manual Client Fit editing remains `/client-profile` and is not the main onboarding path.
 
@@ -67,6 +68,9 @@ No neon, rainbow, crypto-style glow systems, or decorative red/green chart color
 
 - Use cards as decision-reading units, not as raw JSON containers.
 - A card header should usually have at most one primary status badge.
+- `VerdictHero` has a fixed structure: compact step context, headline, one-sentence interpretation, up to three supporting facts, optional boundary note, and restrained tone.
+- `EvidenceSummary` must show at most four concise items in one quiet container and must not repeat the page-level verdict.
+- `MetricMatrix` rows use metric, portfolio value, reference/threshold, status, and meaning. Comparison variants use current portfolio, candidate portfolio, change, and interpretation. Fixed groups remain in product order; material/problem rows sort first within each group.
 - Badges must have nearby explanatory copy.
 - Diagnosis must not repeat generic evidence-availability badges across every fact. Use one global data-coverage badge and reserve row-level badges for material risk, review state, or unavailable states.
 - Status labels must be product-facing, not backend enum names or file names.
@@ -78,6 +82,14 @@ No neon, rainbow, crypto-style glow systems, or decorative red/green chart color
 - Secondary CTA: navigation, recovery, or non-primary action.
 - CTA copy must never imply trading execution, suitability approval, optimizer mandate, or guaranteed improvement.
 - `Enter Platform` on the public landing uses the canonical sign-in route. The dev-bypass route may be documented only as local testing support.
+
+## Motion contract
+
+- Motion must be calm, short, and state-explanatory; it must not become a decorative or gamified layer.
+- Framer Motion may be used for route fades, scroll reveals, active journey rail movement, onboarding question transitions, and subtle card or CTA feedback.
+- Animations must primarily use opacity and transform, with restrained spring physics.
+- Reduced-motion preferences must be respected.
+- Motion must never make candidate tests, Client Fit output, comparison evidence, or verdicts feel like recommendations, trade instructions, suitability approval, or guaranteed improvement.
 
 ## Website structure contract
 

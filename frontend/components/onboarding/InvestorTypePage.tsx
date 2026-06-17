@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { OnboardingFrame } from "@/components/onboarding/OnboardingFrame";
+import { buttonMotion, pmriSpring } from "@/components/ui/motion";
 import {
   readOnboardingState,
   writeOnboardingState,
@@ -69,12 +71,18 @@ function Question<T extends string>({
   onChange: (value: T) => void;
   active: boolean;
 }) {
+  const reduceMotion = useReducedMotion();
+
   return (
-    <section
+    <motion.section
       key={number}
       className={`rounded-[2rem] border border-pmri-border/45 bg-white/[0.022] p-4 shadow-decision transition duration-500 md:p-5 motion-safe:animate-[pmri-section-reveal_520ms_cubic-bezier(0.2,0.8,0.2,1)] ${
         active ? "opacity-100" : "opacity-0"
       }`}
+      initial={reduceMotion ? false : { opacity: 0, x: 18 }}
+      animate={reduceMotion ? undefined : { opacity: 1, x: 0 }}
+      exit={reduceMotion ? undefined : { opacity: 0, x: -14 }}
+      transition={pmriSpring}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
@@ -87,23 +95,25 @@ function Question<T extends string>({
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         {options.map((option) => (
-          <button
+          <motion.button
             key={option.id}
             type="button"
             onClick={() => onChange(option.id)}
             className={`pmri-focus cursor-pointer rounded-2xl border p-4 text-left transition ${value === option.id ? "border-pmri-blue/60 bg-pmri-blue/[0.11]" : "border-pmri-border/55 bg-white/[0.02] hover:border-pmri-border hover:bg-white/[0.04]"}`}
+            {...(reduceMotion ? {} : buttonMotion)}
           >
             <span className="block text-sm font-semibold text-pmri-text">{option.label}</span>
             <span className="mt-1 block text-xs leading-5 text-pmri-muted">{option.detail}</span>
-          </button>
+          </motion.button>
         ))}
       </div>
-    </section>
+    </motion.section>
   );
 }
 
 export function InvestorTypePage() {
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const [state, setState] = useState<OnboardingState>(() => readOnboardingState());
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
 
@@ -201,19 +211,27 @@ export function InvestorTypePage() {
             <span className="data-figure">{progressPct}%</span>
           </div>
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-pmri-border/45">
-            <div className="h-full rounded-full bg-pmri-blue transition-all duration-500" style={{ width: `${progressPct}%` }} />
+            <motion.div
+              className="h-full origin-left rounded-full bg-pmri-blue"
+              initial={false}
+              animate={reduceMotion ? { width: `${progressPct}%` } : { scaleX: progressPct / 100 }}
+              style={reduceMotion ? undefined : { scaleX: progressPct / 100 }}
+              transition={pmriSpring}
+            />
           </div>
         </div>
 
-        <Question
-          key={currentQuestion.key}
-          number={currentQuestion.number}
-          title={currentQuestion.title}
-          value={currentQuestion.value as never}
-          options={currentQuestion.options as Array<Option<never>>}
-          onChange={answerCurrent}
-          active
-        />
+        <AnimatePresence mode="wait">
+          <Question
+            key={currentQuestion.key}
+            number={currentQuestion.number}
+            title={currentQuestion.title}
+            value={currentQuestion.value as never}
+            options={currentQuestion.options as Array<Option<never>>}
+            onChange={answerCurrent}
+            active
+          />
+        </AnimatePresence>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <button
