@@ -702,10 +702,65 @@ function sourceEvidenceLabel(key: string) {
     candidate_generation: "generated test candidate",
     current_vs_candidate: "comparison evidence",
     decision_verdict: "decision evidence",
-    ai_commentary_context: "grounding context",
+    ai_commentary_context: "grounded explanation inputs",
     site_explanation_bundle: "screen explanation"
   };
-  return labels[normalizedKey] || normalizedKey.replaceAll("_", " ");
+  if (labels[normalizedKey]) return labels[normalizedKey];
+  const cleaned = scrubForClient(normalizedKey)
+    .replace(/\b(?:schema_version|field_path|source_refs)\b/gi, "supporting evidence")
+    .replace(/\bfrontend_review_[A-Za-z0-9_-]+\b/g, "active review");
+  if (!cleaned || /(?:[\\/]|\.json\b|logical:|\[path\])/i.test(cleaned)) {
+    return "supporting evidence";
+  }
+  return cleaned.replaceAll("_", " ");
+}
+
+function reportDisplayText(value: unknown, fallback = "") {
+  const text = scrubForClient(textValue(value, fallback));
+  if (!text) return "";
+  return text
+    .replace(/\b(?:portfolio_xray|stress_report|problem_classification|candidate_generation|current_vs_candidate|decision_verdict|ai_commentary_context|site_explanation_bundle)\.json\b/gi, "supporting evidence")
+    .replace(/\bAI Commentary context\b/gi, "grounded explanation inputs")
+    .replace(/\b(?:schema_version|field_path|source_refs)\b/gi, "supporting evidence")
+    .replace(/\bfrontend_review_[A-Za-z0-9_-]+\b/g, "active review")
+    .replace(/\b(?:trade now|must rebalance|best portfolio|suitability approved)\b/gi, "decision-support boundary applies");
+}
+
+function reportDisplayTextArray(value: unknown) {
+  return stringArray(value).map((item) => reportDisplayText(item)).filter(Boolean);
+}
+
+function sanitizeReportDisplayValue(value: unknown): unknown {
+  if (typeof value === "string") return reportDisplayText(value);
+  if (Array.isArray(value)) return value.map(sanitizeReportDisplayValue);
+  if (isRecord(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, sanitizeReportDisplayValue(item)])
+    );
+  }
+  return value;
+}
+
+function publicReportHasRequiredFields(body: unknown) {
+  const data = fastApiData(body);
+  const preview = isRecord(data.report_preview) ? data.report_preview : {};
+  const grounding = isRecord(data.grounding) ? data.grounding : {};
+  const sourceRefs = Array.isArray(grounding.source_refs) ? grounding.source_refs : [];
+  const previewText = [
+    preview.executive_summary,
+    preview.current_portfolio_diagnosis,
+    preview.tested_hypothesis,
+    preview.candidate_boundary,
+    preview.verdict_explanation,
+    ...stringArray(preview.stress_evidence),
+    ...stringArray(preview.comparison_tradeoffs),
+    ...stringArray(preview.evidence_limitations)
+  ].some((item) => textValue(item));
+  return data.llm_generated === false
+    && isRecord(data.report_preview)
+    && isRecord(data.grounding)
+    && sourceRefs.length > 0
+    && previewText;
 }
 
 function reportDisplayModelFromFastApi(envelope: ReportResponse | Record<string, unknown>) {
@@ -715,13 +770,13 @@ function reportDisplayModelFromFastApi(envelope: ReportResponse | Record<string,
   const evidenceChainContext = isRecord(data.evidence_chain_context) ? data.evidence_chain_context : {};
   const sourceRefs = Array.isArray(grounding.source_refs) ? grounding.source_refs.filter(isRecord) : [];
   const sections = [
-    { title: "Executive summary", body: textValue(preview.executive_summary, "") },
-    { title: "Current portfolio diagnosis", body: textValue(preview.current_portfolio_diagnosis, textValue(evidenceChainContext.diagnosis_statement, "")) },
-    ...stringArray(preview.stress_evidence).map((body) => ({ title: "Stress evidence", body })),
-    { title: "Tested hypothesis", body: textValue(preview.tested_hypothesis, textValue(evidenceChainContext.tested_hypothesis, "")) },
-    { title: "Candidate boundary", body: textValue(preview.candidate_boundary, textValue(evidenceChainContext.candidate_boundary, "")) },
-    ...stringArray(preview.comparison_tradeoffs).map((body) => ({ title: "Comparison trade-offs", body })),
-    { title: "Decision verdict", body: textValue(preview.verdict_explanation, "") }
+    { title: "Executive summary", body: reportDisplayText(preview.executive_summary) },
+    { title: "Current portfolio diagnosis", body: reportDisplayText(preview.current_portfolio_diagnosis, textValue(evidenceChainContext.diagnosis_statement, "")) },
+    ...reportDisplayTextArray(preview.stress_evidence).map((body) => ({ title: "Stress evidence", body })),
+    { title: "Tested hypothesis", body: reportDisplayText(preview.tested_hypothesis, textValue(evidenceChainContext.tested_hypothesis, "")) },
+    { title: "Candidate boundary", body: reportDisplayText(preview.candidate_boundary, textValue(evidenceChainContext.candidate_boundary, "")) },
+    ...reportDisplayTextArray(preview.comparison_tradeoffs).map((body) => ({ title: "Comparison trade-offs", body })),
+    { title: "Decision verdict", body: reportDisplayText(preview.verdict_explanation) }
   ].filter((section) => section.body);
   const unavailable = stringArray(grounding.unavailable_sections).map(sourceEvidenceLabel);
   const contextSources = stringArray(evidenceChainContext.source_artifacts).map(sourceEvidenceLabel);
@@ -740,10 +795,10 @@ function reportDisplayModelFromFastApi(envelope: ReportResponse | Record<string,
       .concat(contextSources)
       .filter((item, index, items) => item && items.indexOf(item) === index),
     unavailableEvidence: unavailable.length ? unavailable : ["No unsupported sections were added beyond the available review evidence."],
-    nextObservation: textValue(preview.monitoring_note, "Retest if diagnosis, comparison, or verdict evidence changes."),
-    boundaryNote: textValue(evidenceChainContext.recommendation_boundary, "Decision-support only. This preview explains available evidence and does not provide suitability, tax, or trade advice."),
-    warnings: stringArray(envelope.warnings).concat(stringArray(preview.evidence_limitations)),
-    clientFit: isRecord(data.client_fit) ? data.client_fit : undefined,
+    nextObservation: reportDisplayText(preview.monitoring_note, "Retest if diagnosis, comparison, or verdict evidence changes."),
+    boundaryNote: reportDisplayText(evidenceChainContext.recommendation_boundary, "Decision-support only. This preview explains available evidence and does not provide suitability, tax, or trade advice."),
+    warnings: reportDisplayTextArray(envelope.warnings).concat(reportDisplayTextArray(preview.evidence_limitations)),
+    clientFit: isRecord(data.client_fit) ? sanitizeReportDisplayValue(data.client_fit) : undefined,
     generatedAt: new Date().toISOString()
   };
 }
@@ -1276,7 +1331,7 @@ export async function reportViaFastApi(request: Request) {
   if (errors.length) return jsonError("Report commentary request validation failed.", 400, errors);
 
   const candidateId = stageBodyText(body, "candidate_id");
-  const comparisonId = stageBodyText(body, "comparison_id");
+  const comparisonId = stageBodyText(body, "comparison_id") || (candidateId ? `current_vs_candidate:${candidateId}` : "");
   const verdictId = stageBodyText(body, "verdict_id");
   if (!verdictId) return jsonError("Report commentary requires a verdict id.", 400);
 
@@ -1305,6 +1360,19 @@ export async function reportViaFastApi(request: Request) {
       candidateId,
       verdictId
     }, reportLineageErrors);
+  }
+  if (!publicReportHasRequiredFields(api.body)) {
+    return NextResponse.json({
+      status: "failed",
+      stage: "report_commentary",
+      review_id: reviewId,
+      selected_card_id: selectedCardId,
+      candidate_id: candidateId,
+      comparison_id: comparisonId,
+      verdict_id: verdictId,
+      error: "Report response did not include a grounded public preview.",
+      details: ["FastAPI report response requires data.llm_generated=false, public preview text, and grounding source references before the frontend can display it."]
+    }, { status: 502 });
   }
 
   return NextResponse.json({

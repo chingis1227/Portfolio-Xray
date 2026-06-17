@@ -466,9 +466,13 @@ Purpose: return a grounded explanation preview from current diagnosis, hypothesi
 comparison, and verdict evidence.
 
 Implementation status: implemented in Session 06 by `src/api/reviews.py` and `src/api/app.py`.
-The endpoint verifies the active same-candidate verdict, delegates to the existing grounded
-`ai_commentary_context.json` writer, and returns a compact deterministic report preview. It does
-not call an LLM and does not refresh PDFs.
+The endpoint verifies the active same-candidate verdict and re-checks the active
+same-candidate comparison before delegating to the existing grounded
+`ai_commentary_context.json` writer. The comparison must still contain displayable public evidence
+for the selected candidate; otherwise the endpoint returns a bounded `comparison_unavailable`
+failure with `user_action = rerun_comparison` instead of creating a report preview from stale or
+evidence-insufficient inputs. Successful responses return a compact deterministic report preview.
+The endpoint does not call an LLM and does not refresh PDFs.
 
 Request model:
 
@@ -488,7 +492,10 @@ Response data should include:
 - `llm_generated`: false until a later approved AI Commentary implementation exists.
 
 Boundary: report is grounded preview/context. It must not invent conclusions, imply an LLM decided, or
-present missing PDF export as a product failure.
+present missing PDF export as a product failure. Frontend report display must consume the public
+report envelope (`data.report_preview`, `data.grounding`, and `data.evidence_chain_context`) and
+must not expose raw artifact names, absolute paths, tracebacks, or internal `AI Commentary context`
+language as primary UI copy.
 
 ## Public response envelopes versus internal artifacts
 

@@ -2055,6 +2055,8 @@ def _error_code_for_stage_exception(exc: BaseException, *, stage: str) -> tuple[
         return 404, "review_not_found" if "review run" in lowered else "artifact_missing", "none", False
     if "does not match" in lowered or "mismatch" in lowered or "different review" in lowered:
         return 409, "lineage_mismatch", "return_to_hypothesis", False
+    if "displayable evidence" in lowered or "active current-vs-candidate comparison" in lowered:
+        return 409, "comparison_unavailable", "rerun_comparison", False
     if "cannot generate" in lowered or "not generatable" in lowered or "data_quality" in lowered:
         return (
             409,
@@ -2806,7 +2808,15 @@ def _active_verdict_lineage(review_id: str, verdict_id: str) -> tuple[str, str, 
         raise VerdictBridgeError("decision_verdict.json does not contain a reviewed candidate id.")
     selected_card_id, actual_candidate_id = _candidate_lineage(review_id, candidate_id)
     comparison_id = _comparison_id_for_candidate(actual_candidate_id) or actual_candidate_id
-    return selected_card_id, actual_candidate_id, comparison_id, actual_verdict_id
+    _selected_card_id, comparison_candidate_id, actual_comparison_id = _active_comparison_lineage(
+        review_id,
+        comparison_id,
+    )
+    if comparison_candidate_id != actual_candidate_id:
+        raise VerdictBridgeError(
+            "Active current-vs-candidate comparison does not match the active Decision Verdict candidate."
+        )
+    return selected_card_id, actual_candidate_id, actual_comparison_id, actual_verdict_id
 
 
 def _as_text_list(items: Any, *, fallback_field: str = "label") -> list[str]:

@@ -239,6 +239,7 @@ export function ReportScreen() {
           review_id: reviewId,
           selected_card_id: selectedCardId,
           candidate_id: candidateId,
+          comparison_id: candidateId ? `current_vs_candidate:${candidateId}` : undefined,
           verdict_id: verdict?.verdictId
         })
       });

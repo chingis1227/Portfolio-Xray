@@ -1291,6 +1291,9 @@ def test_write_selected_report_context_writes_grounded_post_compare_context(
     context = result["ai_commentary_context"]
     assert context["grounding_phase"] == "post_compare"
     assert context["guardrails"]["does_not_execute_trades"] is True
+    assert context["guardrails"]["does_not_call_llm"] is True
+    assert context["guardrails"]["does_not_calculate_metrics"] is True
+    assert context["guardrails"]["does_not_change_selection_or_verdict"] is True
     assert context["source_artifacts"]["decision_verdict"] == "decision_verdict.json"
     assert context["source_artifacts"]["current_vs_candidate"] == "current_vs_candidate.json"
     assert context["client_explanation_draft"]["sentences"]
@@ -1320,4 +1323,137 @@ def test_write_selected_report_context_rejects_stale_verdict_candidate(
             review_id=review_id,
             selected_card_id="card_a",
             base_dir=tmp_path,
+        )
+
+
+def test_write_selected_report_context_rejects_non_displayable_comparison_evidence(
+    tmp_path: Path,
+) -> None:
+    review_id, run_dir = _review_dir_with_selected_builder(tmp_path)
+    _write_json(run_dir / "candidate_generation.json", _candidate_generation_document())
+    _write_json(
+        run_dir / "candidate_factory_run.json",
+        {"steps": [{"candidate_id": "minimum_variance", "status": "succeeded"}]},
+    )
+    comparison = _current_vs_candidate_document()
+    comparison["comparisons"][0]["dimensions"] = [
+        {
+            "field": "vol_annual",
+            "status": "available",
+            "direction": "unknown",
+            "baseline_value": None,
+            "candidate_value": None,
+            "delta": None,
+        }
+    ]
+    comparison["comparisons"][0]["what_improved"] = []
+    comparison["comparisons"][0]["what_worsened"] = []
+    comparison["comparisons"][0]["risk_reduced"] = []
+    comparison["comparisons"][0]["risk_added"] = []
+    _write_json(run_dir / "current_vs_candidate.json", comparison)
+    _write_json(
+        run_dir / "decision_verdict.json",
+        {
+            "verdict_id": "rebalance_to_selected_candidate",
+            "reviewed_candidate_id": "minimum_variance",
+            "selected_candidate_id": "minimum_variance",
+            "guardrails": {"does_not_execute_trades": True},
+        },
+    )
+
+    with pytest.raises(bridge.ReportBridgeError, match="displayable same-candidate evidence"):
+        bridge.write_selected_report_context(
+            review_id=review_id,
+            selected_card_id="card_a",
+            base_dir=tmp_path,
+        )
+
+
+def test_write_selected_report_context_rejects_mixed_stale_comparison_rows(
+    tmp_path: Path,
+) -> None:
+    review_id, run_dir = _review_dir_with_selected_builder(tmp_path)
+    _write_json(run_dir / "candidate_generation.json", _candidate_generation_document())
+    _write_json(
+        run_dir / "candidate_factory_run.json",
+        {"steps": [{"candidate_id": "minimum_variance", "status": "succeeded"}]},
+    )
+    comparison = _current_vs_candidate_document()
+    stale_row = dict(comparison["comparisons"][0])
+    stale_row["candidate_id"] = "risk_parity"
+    comparison["comparisons"].append(stale_row)
+    _write_json(run_dir / "current_vs_candidate.json", comparison)
+    _write_json(
+        run_dir / "decision_verdict.json",
+        {
+            "verdict_id": "rebalance_to_selected_candidate",
+            "reviewed_candidate_id": "minimum_variance",
+            "selected_candidate_id": "minimum_variance",
+            "guardrails": {"does_not_execute_trades": True},
+        },
+    )
+
+    with pytest.raises(bridge.ReportBridgeError, match="not scoped"):
+        bridge.write_selected_report_context(
+            review_id=review_id,
+            selected_card_id="card_a",
+            base_dir=tmp_path,
+        )
+
+
+@pytest.mark.parametrize(
+    "guardrail",
+    [
+        "does_not_execute_trades",
+        "does_not_call_llm",
+        "does_not_calculate_metrics",
+        "does_not_change_selection_or_verdict",
+    ],
+)
+def test_write_selected_report_context_requires_grounding_guardrails(
+    tmp_path: Path,
+    guardrail: str,
+) -> None:
+    review_id, run_dir = _review_dir_with_selected_builder(tmp_path)
+    _write_json(run_dir / "candidate_generation.json", _candidate_generation_document())
+    _write_json(
+        run_dir / "candidate_factory_run.json",
+        {"steps": [{"candidate_id": "minimum_variance", "status": "succeeded"}]},
+    )
+    _write_json(run_dir / "current_vs_candidate.json", _current_vs_candidate_document())
+    _write_json(
+        run_dir / "decision_verdict.json",
+        {
+            "verdict_id": "rebalance_to_selected_candidate",
+            "reviewed_candidate_id": "minimum_variance",
+            "selected_candidate_id": "minimum_variance",
+            "guardrails": {"does_not_execute_trades": True},
+        },
+    )
+
+    def unsafe_context_writer(**kwargs):
+        path = kwargs["output_dir"] / "ai_commentary_context.json"
+        _write_json(
+            path,
+            {
+                "grounding_phase": "post_compare",
+                "guardrails": {
+                    "does_not_execute_trades": True,
+                    "does_not_call_llm": True,
+                    "does_not_calculate_metrics": True,
+                    "does_not_change_selection_or_verdict": True,
+                },
+            },
+        )
+        context = json.loads(path.read_text(encoding="utf-8"))
+        context["guardrails"][guardrail] = False
+        _write_json(path, context)
+        return {"ai_commentary_context_json": path}
+
+    with pytest.raises(bridge.ReportBridgeError, match=guardrail):
+        bridge.write_selected_report_context(
+            review_id=review_id,
+            selected_card_id="card_a",
+            base_dir=tmp_path,
+            context_writer=unsafe_context_writer,
         )

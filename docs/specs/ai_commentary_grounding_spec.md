@@ -289,6 +289,15 @@ artifacts as stale: for example, a `decision_verdict.json` from another run is i
 `source_artifacts.decision_verdict` becomes `null`, and the context warns with
 `artifact_lineage_mismatch:decision_verdict.json` rather than citing the stale verdict.
 
+The staged web report bridge is stricter for active `/report` generation: for generated candidates,
+it requires `candidate_generation.json`, `current_vs_candidate.json`, and `decision_verdict.json` to
+refer to the same selected candidate and requires the active comparison row to include displayable
+public evidence. If the comparison row is stale or evidence-insufficient, report generation is
+blocked and the UI should ask for a fresh comparison rather than creating confident report text.
+The produced context must preserve the guardrails `does_not_execute_trades`,
+`does_not_call_llm`, `does_not_calculate_metrics`, and
+`does_not_change_selection_or_verdict`.
+
 Monitoring is integrated later in the product flow. If `monitoring_diff.json`
 is not available at context build time, future commentary must state monitoring
 context is absent instead of inventing a "what changed" narrative.

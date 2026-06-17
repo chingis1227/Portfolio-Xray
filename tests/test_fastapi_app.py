@@ -1506,6 +1506,10 @@ def test_generate_report_runs_adapter_and_returns_grounded_preview(
     run_dir.mkdir()
     _write_candidate_generation(run_dir)
     _write_client_fit_check(run_dir)
+    (run_dir / "current_vs_candidate.json").write_text(
+        json.dumps(_current_vs_candidate_doc()),
+        encoding="utf-8",
+    )
     (run_dir / "decision_verdict.json").write_text(
         json.dumps(
             {
@@ -1613,6 +1617,109 @@ def test_generate_report_runs_adapter_and_returns_grounded_preview(
     assert staged_state["current_stage"] == "report"
     assert staged_state["stages"]["report"]["status"] == "completed"
     assert staged_state["stages"]["report"]["artifact_refs"] == ["ai_commentary_context.json"]
+
+
+def test_generate_report_rejects_stale_comparison_before_writer_runs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    review_id = "frontend_review_fastapi_report_stale_comparison"
+    run_dir = tmp_path / review_id
+    run_dir.mkdir()
+    _write_candidate_generation(run_dir)
+    stale_comparison = _current_vs_candidate_doc()
+    stale_comparison["selected_candidate_ids"] = ["equal_weight"]
+    stale_comparison["comparisons"][0]["candidate_id"] = "stale_candidate"
+    (run_dir / "current_vs_candidate.json").write_text(
+        json.dumps(stale_comparison),
+        encoding="utf-8",
+    )
+    (run_dir / "decision_verdict.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "decision_verdict_v1",
+                "verdict_id": "no_material_rebalance_recommended",
+                "reviewed_candidate_id": "equal_weight",
+                "guardrails": {"does_not_execute_trades": True},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    def fail_if_called(**kwargs):
+        raise AssertionError("report writer must not run for stale comparison lineage")
+
+    monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
+    monkeypatch.setattr(review_service, "write_selected_report_context", fail_if_called)
+    _write_staged_state_for_test(run_dir, review_id, current_stage="report")
+
+    response = _request(
+        "POST",
+        f"/api/v1/reviews/{review_id}/report",
+        json_body={"verdict_id": "no_material_rebalance_recommended"},
+    )
+
+    assert response.status_code == 409
+    body = response.json()
+    assert body["stage"] == "report"
+    assert body["status"] == "failed"
+    assert body["safe_error"]["code"] == "comparison_unavailable"
+    assert body["safe_error"]["user_action"] == "rerun_comparison"
+    assert "displayable evidence" in body["safe_error"]["message"]
+    assert not (run_dir / "ai_commentary_context.json").exists()
+
+
+def test_generate_report_rejects_missing_displayable_comparison_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    review_id = "frontend_review_fastapi_report_no_evidence"
+    run_dir = tmp_path / review_id
+    run_dir.mkdir()
+    _write_candidate_generation(run_dir)
+    no_evidence = _current_vs_candidate_doc()
+    no_evidence["comparisons"][0]["dimensions"] = [
+        {"field": "vol_annual", "status": "available", "direction": "unknown"}
+    ]
+    no_evidence["comparisons"][0]["what_improved"] = []
+    no_evidence["comparisons"][0]["what_worsened"] = []
+    no_evidence["comparisons"][0]["success_criteria_result"] = {"overall_status": "unavailable"}
+    no_evidence["comparisons"][0]["materiality_for_decision_review"] = {"status": "unknown"}
+    (run_dir / "current_vs_candidate.json").write_text(
+        json.dumps(no_evidence),
+        encoding="utf-8",
+    )
+    (run_dir / "decision_verdict.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "decision_verdict_v1",
+                "verdict_id": "no_material_rebalance_recommended",
+                "reviewed_candidate_id": "equal_weight",
+                "guardrails": {"does_not_execute_trades": True},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
+    monkeypatch.setattr(
+        review_service,
+        "write_selected_report_context",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("writer must not run")),
+    )
+    _write_staged_state_for_test(run_dir, review_id, current_stage="report")
+
+    response = _request(
+        "POST",
+        f"/api/v1/reviews/{review_id}/report",
+        json_body={"verdict_id": "no_material_rebalance_recommended"},
+    )
+
+    assert response.status_code == 409
+    body = response.json()
+    assert body["status"] == "failed"
+    assert body["safe_error"]["code"] == "comparison_unavailable"
+    assert body["safe_error"]["user_action"] == "rerun_comparison"
+    assert "displayable evidence" in body["safe_error"]["message"]
+    assert not (run_dir / "ai_commentary_context.json").exists()
 
 
 

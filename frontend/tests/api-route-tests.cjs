@@ -43,6 +43,7 @@ const stressTestLabPath = path.resolve(frontendRoot, "components", "evidence", "
 const hypothesisScreenPath = path.resolve(frontendRoot, "components", "hypothesis", "HypothesisScreen.tsx");
 const comparisonScreenPath = path.resolve(frontendRoot, "components", "comparison", "ComparisonScreen.tsx");
 const verdictScreenPath = path.resolve(frontendRoot, "components", "verdict", "VerdictScreen.tsx");
+const reportScreenPath = path.resolve(frontendRoot, "components", "report", "ReportScreen.tsx");
 const siteExplanationPresenterPath = path.resolve(frontendRoot, "lib", "siteExplanationPresenter.ts");
 const hypothesisScreenModelPath = path.resolve(frontendRoot, "lib", "hypothesis", "hypothesisScreenModel.ts");
 
@@ -3276,5 +3277,133 @@ test("report route returns a display model from the FastAPI public envelope", as
     assert.ok(result.body.report_display_model.evidenceUsed.includes("main diagnosis"));
     assert.ok(result.body.report_display_model.evidenceUsed.includes("comparison evidence"));
     assert.equal(result.body.fastapi_envelope.data.llm_generated, false);
+  });
+});
+
+test("Report screen sends same-candidate comparison lineage with report generation requests", () => {
+  const source = fs.readFileSync(reportScreenPath, "utf8");
+  const requestSection = source.slice(
+    source.indexOf("body: encodeRequestBody({"),
+    source.indexOf("const result = await response.json()")
+  );
+
+  assert.match(requestSection, /candidate_id: candidateId/);
+  assert.match(requestSection, /comparison_id: candidateId \? `current_vs_candidate:\$\{candidateId\}` : undefined/);
+  assert.match(requestSection, /verdict_id: verdict\?\.verdictId/);
+});
+
+test("report route defaults comparison lineage when older clients omit comparison id", async () => {
+  const route = loadRoute({ routePath: reportGenerateRoutePath });
+
+  await withMockFetch(async () => Response.json(fastApiReportEnvelope({
+    review_id: "frontend_review_report_default_comparison",
+    lineage: {
+      review_id: "frontend_review_report_default_comparison",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight",
+      comparison_id: "current_vs_candidate:other_candidate",
+      verdict_id: "no_material_rebalance_recommended"
+    }
+  })), async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_report_default_comparison",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight",
+      verdict_id: "no_material_rebalance_recommended"
+    }, "http://localhost/api/portfolio/report/generate")));
+
+    assert.equal(result.status, 409);
+    assert.match(result.body.details.join(" "), /comparison_id mismatch: expected current_vs_candidate:equal_weight/);
+    assert.equal(result.body.report_display_model, undefined);
+  });
+});
+
+test("report route rejects incomplete or LLM-generated FastAPI report envelopes", async () => {
+  const route = loadRoute({ routePath: reportGenerateRoutePath });
+
+  await withMockFetch(async () => Response.json(fastApiReportEnvelope({
+    review_id: "frontend_review_report_incomplete",
+    lineage: {
+      review_id: "frontend_review_report_incomplete",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight",
+      verdict_id: "no_material_rebalance_recommended"
+    },
+    data: {
+      report_preview: {},
+      grounding: { source_refs: [] },
+      llm_generated: true
+    }
+  })), async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_report_incomplete",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight",
+      verdict_id: "no_material_rebalance_recommended"
+    }, "http://localhost/api/portfolio/report/generate")));
+
+    assert.equal(result.status, 502);
+    assert.equal(result.body.status, "failed");
+    assert.equal(result.body.stage, "report_commentary");
+    assert.equal(result.body.report_display_model, undefined);
+    assert.equal(result.body.fastapi_envelope, undefined);
+    assert.match(result.body.details.join(" "), /llm_generated=false/);
+  });
+});
+
+test("report route sanitizes raw artifact and advice wording from display model", async () => {
+  const route = loadRoute({ routePath: reportGenerateRoutePath });
+
+  await withMockFetch(async () => Response.json(fastApiReportEnvelope({
+    review_id: "frontend_review_report_sanitized",
+    lineage: {
+      review_id: "frontend_review_report_sanitized",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight",
+      verdict_id: "no_material_rebalance_recommended"
+    },
+    data: {
+      report_preview: {
+        executive_summary: "AI Commentary context read C:\\secret\\runs\\frontend_review_bad\\ai_commentary_context.json and says trade now.",
+        current_portfolio_diagnosis: "field_path source_refs schema_version should stay out.",
+        stress_evidence: ["Traceback (most recent call last): boom"],
+        tested_hypothesis: "Use current_vs_candidate.json only as supporting evidence.",
+        candidate_boundary: "This is not the best portfolio.",
+        comparison_tradeoffs: ["decision_verdict.json must rebalance"],
+        verdict_explanation: "No suitability approved language.",
+        evidence_limitations: ["site_explanation_bundle.json limitation"],
+        monitoring_note: "Retest active review."
+      },
+      grounding: {
+        source_refs: [
+          { kind: "C:\\secret\\runs\\frontend_review_bad\\ai_commentary_context.json", ref: "logical://ai_commentary_context", scope: "logical", raw_path_exposed: false }
+        ],
+        unavailable_sections: ["D:\\secret\\frontend_review_bad\\current_vs_candidate.json"]
+      },
+      evidence_chain_context: {
+        recommendation_boundary: "Decision-support only.",
+        source_artifacts: ["C:\\secret\\frontend_review_bad\\decision_verdict.json"]
+      },
+      client_fit: {
+        status_label: "suitability approved",
+        next_best_test: "must rebalance after reading ai_commentary_context.json"
+      },
+      llm_generated: false
+    }
+  })), async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_report_sanitized",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight",
+      verdict_id: "no_material_rebalance_recommended"
+    }, "http://localhost/api/portfolio/report/generate")));
+
+    assert.equal(result.status, 200);
+    const displayText = JSON.stringify(result.body.report_display_model);
+    assert.doesNotMatch(displayText, /C:\\secret|Traceback|frontend_review_bad/);
+    assert.doesNotMatch(displayText, /ai_commentary_context\.json|current_vs_candidate\.json|decision_verdict\.json|site_explanation_bundle\.json/);
+    assert.doesNotMatch(displayText, /AI Commentary context|field_path|source_refs|schema_version/);
+    assert.doesNotMatch(displayText, /trade now|must rebalance|best portfolio|suitability approved/i);
+    assert.match(displayText, /grounded explanation inputs|supporting evidence|decision-support boundary applies/);
   });
 });

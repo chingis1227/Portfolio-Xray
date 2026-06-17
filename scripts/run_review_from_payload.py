@@ -947,6 +947,49 @@ def _assert_current_vs_candidate_scope(
         raise ReportBridgeError(
             "current_vs_candidate.comparisons are not scoped to the selected generated candidate."
         )
+    if required and not _current_vs_candidate_has_displayable_row(
+        current_vs_candidate,
+        candidate_id=candidate_id,
+    ):
+        raise ReportBridgeError(
+            "current_vs_candidate does not contain displayable same-candidate evidence for the grounded report."
+        )
+
+
+def _current_vs_candidate_has_displayable_row(
+    current_vs_candidate: dict[str, Any],
+    *,
+    candidate_id: str,
+) -> bool:
+    comparisons = current_vs_candidate.get("comparisons")
+    rows = comparisons if isinstance(comparisons, list) else []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("candidate_id") or "").strip() != candidate_id:
+            continue
+        dimensions = row.get("dimensions")
+        if isinstance(dimensions, list):
+            for dimension in dimensions:
+                if not isinstance(dimension, dict):
+                    continue
+                direction = str(dimension.get("direction") or "").strip().lower()
+                has_values = any(
+                    dimension.get(key) is not None
+                    for key in ("baseline_value", "candidate_value", "delta")
+                )
+                if (
+                    dimension.get("status") == "available"
+                    and has_values
+                    and direction
+                    and direction != "unknown"
+                ):
+                    return True
+        for key in ("what_improved", "what_worsened", "risk_reduced", "risk_added"):
+            values = row.get(key)
+            if isinstance(values, list) and values:
+                return True
+    return False
 
 
 def _assert_decision_verdict_scope(
@@ -1034,8 +1077,17 @@ def write_selected_report_context(
     if ai_context_path is None or not Path(ai_context_path).is_file():
         raise ReportBridgeError(f"{AI_COMMENTARY_CONTEXT_FILENAME} was not created for this review.")
     ai_context = _read_json(Path(ai_context_path))
-    if ai_context.get("guardrails", {}).get("does_not_execute_trades") is not True:
+    guardrails = ai_context.get("guardrails", {})
+    if guardrails.get("does_not_execute_trades") is not True:
         raise ReportBridgeError("ai_commentary_context must preserve the does_not_execute_trades guardrail.")
+    if guardrails.get("does_not_call_llm") is not True:
+        raise ReportBridgeError("ai_commentary_context must preserve the does_not_call_llm guardrail.")
+    if guardrails.get("does_not_calculate_metrics") is not True:
+        raise ReportBridgeError("ai_commentary_context must preserve the does_not_calculate_metrics guardrail.")
+    if guardrails.get("does_not_change_selection_or_verdict") is not True:
+        raise ReportBridgeError(
+            "ai_commentary_context must preserve the does_not_change_selection_or_verdict guardrail."
+        )
     if ai_context.get("grounding_phase") != "post_compare":
         raise ReportBridgeError("ai_commentary_context must be a post-compare grounded report context.")
     site_bundle_path, site_bundle = write_run_site_explanation_bundle(run_dir, review_id=review_id)
