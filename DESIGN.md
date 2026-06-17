@@ -68,8 +68,8 @@ The current frontend tokens live in `frontend/styles/globals.css` and `frontend/
 | Primary text | `pmri.text`, `--pmri-text-primary` | `#ECEFF3` | Headings, values, key labels. |
 | Secondary text | `pmri.text2`, `--pmri-text-secondary` | `#C4C9D1` | Body copy and interpretation. |
 | Muted text | `pmri.muted`, `--pmri-text-muted` | `#949BA6` | Captions, inactive steps, metadata. |
-| Steel Blue | `pmri.blue`, `pmri.steelBlue`, `--pmri-steel-blue`, `--pmri-action-blue` | `#4F7EA8` | Primary CTA, active/current/selected navigation, focus, informational emphasis. |
-| Soft Steel Blue | `pmri.blueSoft` | `#7EA6C8` | Links, hover, section accents. |
+| Steel Blue | `pmri.blue`, `pmri.steelBlue`, `--pmri-steel-blue`, `--pmri-action-blue` | `#6EA8D7` | Primary CTA, active/current/selected navigation, focus, informational emphasis. |
+| Soft Steel Blue | `pmri.blueSoft` | `#9DCCF0` | Links, hover, section accents. |
 | Ivory | `pmri.ivory`, `pmri.positive`, `--pmri-ivory`, `--pmri-positive` | `#ECE7DC` | Normal, aligned, completed, generated, unavailable-neutral, and secondary states. This is not a green status. |
 | Muted Amber Gold | `pmri.amber`, `pmri.amberGold`, `--pmri-amber-gold`, `--pmri-warning` | `#C3A15F` | Watch, caution, locked, partial, evidence required. |
 | Muted Copper Red | `pmri.risk`, `pmri.copperRed`, `--pmri-copper-red`, `--pmri-risk` | `#B66A61` | Material issue, error, failure, destructive action, or high-risk evidence. |
@@ -161,7 +161,7 @@ Badges must communicate evidence-backed state. Do not use badges as decoration. 
 
 ### CTAs
 
-Primary CTAs use the blue gradient `.pmri-primary-action`. Secondary CTAs use thin borders and dark transparent backgrounds. CTA copy must describe the next safe product step and must not imply trading or optimizer execution.
+Primary CTAs use the brighter blue gradient `.pmri-primary-action` with dark text for contrast. Secondary CTAs use thin borders and dark transparent backgrounds. CTA copy must describe the next safe product step and must not imply trading or optimizer execution.
 
 ## Current Website Structure
 

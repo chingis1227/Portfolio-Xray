@@ -42,7 +42,7 @@ function LockedClientFitState() {
       <StatusBadge tone="amber">Evidence required</StatusBadge>
       <h2 className="pmri-heading-section mt-4 text-2xl text-pmri-text">Run the profile-first diagnosis before this check.</h2>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-pmri-muted">
-        This screen needs a completed risk profile, portfolio diagnosis, and Stress Test Lab evidence. The check stays non-binding and never replaces the diagnosis.
+        This screen needs a completed risk profile, portfolio diagnosis, and Stress Test Lab evidence.
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
         <Link href="/client-profile" className="pmri-focus pmri-primary-action rounded-full px-5 py-2.5 text-sm font-medium transition">Open risk profile</Link>
@@ -103,14 +103,12 @@ export function ClientFitScreen() {
     <div>
       <VerdictHero
         stepContext="Step 4 of 8 - Client Fit"
-        headline={ready ? presentation.headline : "Client Fit evidence is required"}
+        headline={ready ? presentation.headline : "Risk profile check is required"}
         interpretation={ready ? presentation.summary : "This screen checks alignment with the stated profile after diagnosis and Stress Lab evidence are available."}
         facts={[
           { label: "Profile", value: ready ? presentation.profileLabel : "Unavailable" },
-          { label: "Evidence", value: ready ? presentation.sourceLabel : "Evidence required" },
-          { label: "Boundary", value: "Diagnostic context only; not suitability approval or trade advice." }
+          { label: "Evidence", value: ready ? presentation.sourceLabel : "Evidence required" }
         ]}
-        boundaryNote="Client Fit is non-binding diagnostic context. It is not suitability approval, not trade advice, and not a replacement for portfolio diagnosis."
       />
 
       {!hydrated ? null : !ready ? (

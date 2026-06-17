@@ -77,10 +77,8 @@ function EvidencePageContent() {
             interpretation={story.answer}
             facts={[
               { label: "Worst scenario", value: story.metrics.find((item) => item.label === "Worst scenario")?.value ?? "Unavailable" },
-              { label: "Estimated loss", value: story.metrics.find((item) => item.label === "Worst scenario")?.detail.replace(/^Estimated loss:\s*/, "") ?? "Unavailable" },
-              { label: "Boundary", value: "Current portfolio only. No rebalance verdict is created here." }
+              { label: "Estimated loss", value: story.metrics.find((item) => item.label === "Worst scenario")?.detail.replace(/^Estimated loss:\s*/, "") ?? "Unavailable" }
             ]}
-            boundaryNote="Stress Lab is current-portfolio-only evidence. It does not compare candidates, approve changes, or create trade advice."
           />
           <EvidenceSummary
             title="Stress evidence summary"

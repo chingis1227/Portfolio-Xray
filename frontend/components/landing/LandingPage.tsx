@@ -28,7 +28,7 @@ const workflow = [
   {
     number: "04",
     title: "Client Fit",
-    text: "Compare the evidence against the stated profile without turning it into suitability approval."
+    text: "Compare the evidence against the stated profile in plain language."
   },
   {
     number: "05",

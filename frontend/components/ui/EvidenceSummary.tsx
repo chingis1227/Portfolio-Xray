@@ -19,7 +19,7 @@ export function EvidenceSummary({
   description,
   items
 }: EvidenceSummaryProps) {
-  const visibleItems = items.slice(0, 4);
+  const visibleItems = items.filter((item) => !String(item.label).toLowerCase().includes("boundary")).slice(0, 4);
 
   return (
     <section className="pmri-card rounded-3xl p-5 md:p-6">

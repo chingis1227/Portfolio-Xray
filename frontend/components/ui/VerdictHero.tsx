@@ -10,7 +10,6 @@ type VerdictHeroProps = {
   headline: string;
   interpretation: string;
   facts?: VerdictHeroFact[];
-  boundaryNote?: string;
   actions?: ReactNode;
 };
 
@@ -19,10 +18,9 @@ export function VerdictHero({
   headline,
   interpretation,
   facts = [],
-  boundaryNote,
   actions
 }: VerdictHeroProps) {
-  const visibleFacts = facts.slice(0, 3);
+  const visibleFacts = facts.filter((fact) => String(fact.label ?? "").trim().toLowerCase() !== "boundary").slice(0, 3);
 
   return (
     <section className="pmri-card pmri-animated-border-panel relative overflow-hidden rounded-3xl p-6 md:p-8">
@@ -48,11 +46,6 @@ export function VerdictHero({
           </div>
         ) : null}
 
-        {boundaryNote ? (
-          <p className="pmri-boundary-note mt-6 max-w-4xl rounded-2xl px-4 py-3 text-sm leading-6">
-            {boundaryNote}
-          </p>
-        ) : null}
 
         {actions ? <div className="mt-6 flex flex-wrap gap-3">{actions}</div> : null}
       </div>

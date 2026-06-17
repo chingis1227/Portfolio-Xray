@@ -272,10 +272,8 @@ export function ReportScreen() {
           interpretation={report ? report.subtitle : "The report summarizes selected diagnosis, stress, Client Fit, comparison, and verdict evidence only after the active review is complete."}
           facts={[
             { label: "Main diagnosis", value: activeReview?.reviewSummary?.primaryProblem ?? activeReview?.reviewSummary?.diagnosis?.headline ?? "Unavailable" },
-            { label: "Selected candidate", value: candidateDisplayName },
-            { label: "Boundary", value: "Executive summary only; not trade advice." }
+            { label: "Selected candidate", value: candidateDisplayName }
           ]}
-          boundaryNote="The report is a concise diagnostic story. It does not duplicate every metric and does not add unsupported recommendations."
         />
         {report ? (
           <EvidenceSummary
@@ -323,7 +321,7 @@ export function ReportScreen() {
               <h2 className="mt-2 pmri-heading-section text-xl text-pmri-text">Create report preview from active evidence</h2>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
                 This preview explains the current diagnosis, selected test candidate{" "}
-                <span className="font-medium text-pmri-text2">{candidateDisplayName}</span>, comparison, verdict, and known limitations. It does not add unsupported conclusions.
+                <span className="font-medium text-pmri-text2">{candidateDisplayName}</span>, comparison, verdict, and known limitations.
               </p>
             </div>
             <StatusBadge tone="blue">Preview only</StatusBadge>

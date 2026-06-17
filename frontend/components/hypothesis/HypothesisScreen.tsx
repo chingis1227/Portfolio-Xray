@@ -229,7 +229,7 @@ function sampleActiveReview(generated: boolean): ActiveReviewState {
             "Reduce top stress-loss concentration without excessive turnover."
           ],
           tradeoff_to_watch: "Lower tail loss vs lower expected return and higher turnover.",
-          decision_boundary: "This is not a rebalance recommendation. Actual rebalance decision is made only after Current vs Candidate Comparison and Decision Verdict.",
+          decision_boundary: "Review this candidate in comparison before forming the verdict.",
           is_rebalance_recommendation: false,
           generates_portfolio: false
         },
@@ -244,7 +244,7 @@ function sampleActiveReview(generated: boolean): ActiveReviewState {
           default_method: "minimum_variance",
           success_criteria: ["Lower credit or liquidity shock loss.", "Reduce fragile carry exposure without over-penalizing intentional income sleeves."],
           tradeoff_to_watch: "Less credit/carry vs income yield.",
-          decision_boundary: "This is not a rebalance recommendation.",
+          decision_boundary: "Review this candidate in comparison before forming the verdict.",
           is_rebalance_recommendation: false,
           generates_portfolio: false
         }
@@ -287,10 +287,8 @@ function WorkstationHeader({ model }: { model: HypothesisScreenModel }) {
         interpretation={test?.hypothesis ?? model.header.subtitle}
         facts={[
           { label: "Why this test", value: test?.why ?? model.primaryDiagnosis.explanation },
-          { label: "Success criteria", value: test?.successCriteria?.[0] ?? "Comparison will check the test against the current portfolio." },
-          { label: "Boundary", value: "The candidate is a diagnostic test, not a rebalance recommendation." }
+          { label: "Success criteria", value: test?.successCriteria?.[0] ?? "Comparison will check the test against the current portfolio." }
         ]}
-        boundaryNote="Hypothesis prepares one diagnostic candidate test. It does not approve a rebalance, rank portfolios, or provide trade advice."
       />
       {test ? (
         <EvidenceSummary
@@ -299,8 +297,7 @@ function WorkstationHeader({ model }: { model: HypothesisScreenModel }) {
           items={[
             { label: "Selected because", value: test.why },
             { label: "First success criterion", value: test.successCriteria[0] ?? "Unavailable" },
-            { label: "Trade-off to watch", value: test.tradeoff ?? "Unavailable", tone: test.tradeoff ? "amber" : "slate" },
-            { label: "Candidate boundary", value: test.decisionBoundary }
+            { label: "Trade-off to watch", value: test.tradeoff ?? "Unavailable", tone: test.tradeoff ? "amber" : "slate" }
           ]}
         />
       ) : null}
@@ -497,7 +494,7 @@ function BuilderControls({
 
         {settings.mode === "uncapped" ? (
           <p className="rounded-xl border border-pmri-amber/25 bg-pmri-amber/10 p-3 text-xs leading-5 text-pmri-amber">
-            Uncapped mode may create concentrated portfolios. Use it only for diagnostic comparison, not as an automatic rebalance recommendation.
+            Uncapped mode may create concentrated portfolios. Review the impact carefully before comparison.
           </p>
         ) : null}
       </div>
@@ -555,10 +552,6 @@ function ProposedDiagnosticTestPanel({ test }: { test?: HypothesisTestModel }) {
             <p className="mt-2 text-sm leading-6 text-pmri-text2">{test.tradeoff}</p>
           </div>
         ) : null}
-        <div className="rounded-2xl border border-pmri-amber/25 bg-pmri-amber/10 p-4">
-          <p className="pmri-label text-pmri-amber">Decision boundary</p>
-          <p className="mt-2 text-sm leading-6 text-pmri-text2">{test.decisionBoundary}</p>
-        </div>
       </div>
     </section>
   );
@@ -612,9 +605,6 @@ function HypothesisActionConsole({
         <div className="mt-5 rounded-2xl border border-pmri-blue/25 bg-pmri-blue/[0.045] p-4">
           <p className="pmri-label text-pmri-blueSoft">Test candidate generated</p>
           <p className="mt-1 text-sm font-medium text-pmri-text">{action.candidateName}</p>
-          <p className="mt-2 text-sm leading-6 text-pmri-text2">
-            The generated weights are reviewed in Current vs Candidate Comparison, not inside Hypothesis Builder.
-          </p>
         </div>
       ) : null}
 

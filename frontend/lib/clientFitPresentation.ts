@@ -136,7 +136,7 @@ function statusSummary(statusLabel: string, topReasons: ClientFitReason[]) {
   if (/within/i.test(statusLabel)) {
     return "The profile check does not flag a major mismatch. Keep the diagnosis and stress evidence separate before making a decision.";
   }
-  return "This result is context only. It does not approve suitability, recommend a trade, or clear unresolved diagnosis issues.";
+  return "This result adds profile context to the diagnosis and stress evidence.";
 }
 
 function evidenceSummary(bundle: SiteExplanationBundle | undefined) {
@@ -182,7 +182,7 @@ export function buildClientFitPresentation(
     allRows: rows,
     boundaryNote: fallbackText(
       summary?.decision_boundary,
-      "Client Fit is non-binding decision support. It does not approve suitability, execute trades, or clear unresolved diagnostics by itself."
+      "Client Fit adds profile context alongside the diagnosis, stress evidence, and comparison."
     ),
     nextBestTest: fallbackText(
       summary?.next_best_test,

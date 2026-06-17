@@ -53,7 +53,6 @@ export function ClientFitContextCard({
       <p className="mt-4 rounded-xl border border-pmri-border/55 bg-white/[0.026] p-3 text-sm leading-6 text-pmri-text2">
         {normalizeDisplaySentence(clientFit.main_explanation ?? note, note)}
       </p>
-      <p className="mt-3 text-sm leading-6 text-pmri-muted">{normalizeDisplaySentence(clientFit.decision_boundary)}</p>
 
       {!compact && rows.length ? (
         <div className="mt-4 grid gap-3 md:grid-cols-2">

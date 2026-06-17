@@ -81,14 +81,6 @@ export function HypothesisCard({
           <dt className="pmri-label">Trade-off to watch</dt>
           <dd className="mt-1 leading-6 text-pmri-text2">{normalizeDisplaySentence(hypothesis.expectedTradeoff)}</dd>
         </div>
-        <div>
-          <dt className="pmri-label">Decision boundary</dt>
-          <dd className="mt-1 leading-6 text-pmri-text2">{normalizeDisplaySentence(hypothesis.decisionBoundary, "This is not a rebalance recommendation.")}</dd>
-        </div>
-        <div>
-          <dt className="pmri-label">Recommendation boundary</dt>
-          <dd className="mt-1 leading-6 text-pmri-text2">Not a rebalance recommendation</dd>
-        </div>
       </dl>
     </>
   );

@@ -12,7 +12,7 @@
   --pmri-text-muted: #949ba6;
   --pmri-border: #25282e;
   --pmri-ivory: #ece7dc;
-  --pmri-steel-blue: #4f7ea8;
+  --pmri-steel-blue: #6ea8d7;
   --pmri-copper-red: #b66a61;
   --pmri-amber-gold: #c3a15f;
   --pmri-action-blue: var(--pmri-steel-blue);
@@ -105,14 +105,21 @@ li {
 }
 
 .pmri-primary-action {
-  border: 1px solid rgba(126, 166, 200, 0.58);
-  background: linear-gradient(180deg, #7ea6c8, #4f7ea8);
-  color: #f8fafc;
-  box-shadow: 0 14px 32px rgba(79, 126, 168, 0.22), 0 12px 28px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(183, 222, 255, 0.76);
+  background: linear-gradient(180deg, #abd9ff 0%, #7db8e8 48%, #5f9ed3 100%);
+  color: #06111c;
+  box-shadow:
+    0 0 0 1px rgba(248, 250, 252, 0.08) inset,
+    0 18px 40px rgba(95, 158, 211, 0.32),
+    0 12px 28px rgba(0, 0, 0, 0.22);
 }
 
 .pmri-primary-action:hover {
-  background: linear-gradient(180deg, #8bb1cf, #5b8ab1);
+  background: linear-gradient(180deg, #bee4ff 0%, #91c7f1 48%, #70addd 100%);
+  box-shadow:
+    0 0 0 1px rgba(248, 250, 252, 0.12) inset,
+    0 20px 46px rgba(112, 173, 221, 0.38),
+    0 14px 30px rgba(0, 0, 0, 0.22);
 }
 
 .pmri-primary-action:disabled,

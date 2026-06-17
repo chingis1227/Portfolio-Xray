@@ -43,7 +43,6 @@ function EmptyState({
   action = "Return to Hypothesis Builder",
   why,
   nextStep,
-  decisionBoundary,
   details
 }: {
   title: string;
@@ -52,7 +51,6 @@ function EmptyState({
   action?: string;
   why?: string;
   nextStep?: string;
-  decisionBoundary?: string;
   details?: string[];
 }) {
   return (
@@ -75,11 +73,6 @@ function EmptyState({
       {nextStep ? (
         <p className="mt-4 max-w-3xl text-sm leading-7 text-pmri-text2">
           <span className="font-medium text-pmri-text">Next step:</span> {nextStep}
-        </p>
-      ) : null}
-      {decisionBoundary ? (
-        <p className="mt-4 max-w-3xl rounded-xl border border-pmri-border/70 bg-white/[0.035] p-3 text-sm leading-6 text-pmri-text2">
-          <span className="font-medium text-pmri-text">Decision boundary:</span> {decisionBoundary}
         </p>
       ) : null}
       <Link
@@ -239,10 +232,8 @@ export function VerdictScreen() {
             interpretation={verdictMatchesCandidate && verdict ? normalizeDisplaySentence(verdict.explanation, "Review the selected evidence before forming an implementation view.") : "The verdict evaluates one generated diagnostic candidate against active comparison evidence. Evidence-insufficient outcomes are normal."}
             facts={[
               { label: "Candidate", value: candidateDisplayName },
-              { label: "Confidence", value: verdictMatchesCandidate && verdict ? formatUnknownValue(verdict.confidence, "Unknown") : "Unavailable" },
-              { label: "Boundary", value: "Diagnostic interpretation only; not trade advice or suitability approval." }
+              { label: "Confidence", value: verdictMatchesCandidate && verdict ? formatUnknownValue(verdict.confidence, "Unknown") : "Unavailable" }
             ]}
-            boundaryNote="Verdict is non-binding decision support. It does not approve suitability, recommend trades, or instruct a rebalance."
           />
           {verdictMatchesCandidate && verdict ? (
             <EvidenceSummary
@@ -251,8 +242,7 @@ export function VerdictScreen() {
               items={[
                 { label: "Decision interpretation", value: formatUnknownValue(verdict.state, "Decision-support verdict") },
                 { label: "Rationale", value: verdict.keyEvidence[0] ?? verdict.explanation },
-                { label: "Major trade-off", value: verdict.limitations[0] ?? "No limitation returned", tone: verdict.limitations.length ? "amber" : "slate" },
-                { label: "Boundary", value: verdict.boundaryNote || "Decision-support only" }
+                { label: "Major trade-off", value: verdict.limitations[0] ?? "No limitation returned", tone: verdict.limitations.length ? "amber" : "slate" }
               ]}
             />
           ) : null}
@@ -285,9 +275,8 @@ export function VerdictScreen() {
           <EmptyState
             title="Candidate test could not be used"
             description="The selected candidate attempt failed or was infeasible, so Portfolio MRI cannot form an evidence-supported verdict from it."
-            why="A verdict needs a feasible candidate and current comparison evidence. Failed or infeasible tests are treated as evidence-insufficient outcomes, not as recommendations."
+            why="A verdict needs a feasible candidate and current comparison evidence. Failed or infeasible tests are treated as evidence-insufficient outcomes."
             nextStep="Return to Hypothesis Builder and test another diagnostic path."
-            decisionBoundary="No portfolio action is implied."
           />
         ) : null}
 
@@ -299,7 +288,6 @@ export function VerdictScreen() {
             nextStep="Return to Comparison and regenerate evidence for the active candidate."
             href="/comparison"
             action="Return to Comparison"
-            decisionBoundary="Portfolio MRI will not create a fake verdict from outdated evidence."
           />
         ) : null}
 
@@ -312,7 +300,6 @@ export function VerdictScreen() {
             nextStep={candidateGeneration ? "Return to Comparison and complete a valid same-candidate comparison." : "Return to Hypothesis Builder and generate a valid candidate."}
             href={candidateGeneration ? "/comparison" : "/hypothesis"}
             action={candidateGeneration ? "Return to Comparison" : "Return to Hypothesis Builder"}
-            decisionBoundary="No verdict is shown until current comparison evidence exists."
           />
           ) : null
         ) : null}
@@ -324,7 +311,7 @@ export function VerdictScreen() {
                 <p className="pmri-label">Ready for verdict</p>
                 <h2 className="mt-2 pmri-heading-section text-xl text-pmri-text">Generate decision-support verdict</h2>
                 <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
-                  The <span className="font-medium text-pmri-text2">{candidateDisplayName}</span> has active comparison evidence. This step creates decision-support evidence only; it does not create a rebalance instruction.
+                  The <span className="font-medium text-pmri-text2">{candidateDisplayName}</span> has active comparison evidence. This step creates the verdict evidence.
                 </p>
               </div>
               <StatusBadge tone="slate">Decision-support only</StatusBadge>
@@ -354,9 +341,8 @@ export function VerdictScreen() {
             <EmptyState
               title="Candidate failed or infeasible"
               description="The selected candidate test did not produce usable comparison evidence."
-              why="A failed or infeasible candidate can explain why no action/no-action verdict is supported, but it is not a reason to change the portfolio."
+              why="A failed or infeasible candidate can explain why the evidence is not usable for a clear verdict."
               nextStep="Test another diagnostic hypothesis or keep the current portfolio under monitoring."
-              decisionBoundary="This is a blocked evidence state, not a trade instruction."
               details={evidenceInsufficientDetails.length ? evidenceInsufficientDetails : ["The verdict did not return enough evidence to support action review."]}
             />
           </div>
@@ -369,7 +355,6 @@ export function VerdictScreen() {
               description="Do not make a portfolio decision from this evidence yet."
               why="The candidate comparison is incomplete or degraded. Portfolio MRI cannot determine whether the candidate improves the diagnosed weakness."
               nextStep="Generate a valid candidate, test another hypothesis, or keep the current portfolio under monitoring."
-              decisionBoundary="This is not a trade instruction or rebalance recommendation."
               details={evidenceInsufficientDetails.length ? evidenceInsufficientDetails : ["The verdict did not return enough evidence to support an action/no-action decision."]}
             />
             <section className="grid gap-4 lg:grid-cols-2">
@@ -421,7 +406,7 @@ export function VerdictScreen() {
             />
             <div className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
               <p className="mb-3 text-sm leading-7 text-pmri-muted">
-                Continue to Report only after reviewing the verdict framing. The next page summarizes selected evidence; this is still not a trade order.
+                Continue to Report after reviewing the verdict framing. The next page summarizes selected evidence.
               </p>
               {hasLiveLineage ? (
                 <button

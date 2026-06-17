@@ -84,7 +84,6 @@ export function Sidebar() {
             <span className={`h-2 w-2 rounded-full ${pathname.startsWith("/workspace") ? "bg-pmri-blue" : "bg-pmri-border"}`} />
             <span className="truncate">Workspace</span>
           </span>
-          <span className="data-figure text-[11px] text-pmri-muted/75">Home</span>
         </Link>
       </nav>
 

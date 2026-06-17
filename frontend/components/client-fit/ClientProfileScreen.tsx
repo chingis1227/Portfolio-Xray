@@ -130,7 +130,6 @@ export function ClientProfileScreen() {
         kicker="Advanced / Client Fit profile editor"
         title="Manual diagnostic context"
         description="Edit the stated planning profile used as non-binding context. The main product path now collects this through onboarding before Portfolio Input."
-        boundaryNote="Client Fit is not suitability approval and does not change optimizer behavior."
       >
         <StatusBadge tone={values.valid ? "green" : "amber"}>{values.valid ? "Profile ready" : "Profile incomplete"}</StatusBadge>
       </PageHeader>

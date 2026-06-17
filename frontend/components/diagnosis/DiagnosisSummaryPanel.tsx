@@ -41,11 +41,9 @@ function DiagnosisHero({ model }: { model: ReturnType<typeof buildDiagnosisDispl
       headline={model.mainFinding}
       interpretation={model.whyItMatters}
       facts={[
-        { label: "Review scope", value: "Current portfolio only; no candidate has been tested yet." },
         { label: "Evidence quality", value: `${model.dataCoverage} diagnostic evidence.` },
-    { label: "Next review step", value: model.nextStep }
+        { label: "Next review step", value: model.nextStep }
       ]}
-      boundaryNote={model.boundaryNote}
       actions={(
         <>
           <Link href="/evidence" className="pmri-focus pmri-primary-action rounded-full px-5 py-2.5 text-sm font-medium transition">
@@ -243,23 +241,6 @@ export function DiagnosisSummaryPanel({
       <MetricMatrix groups={diagnosisMetricGroups(model)} />
       <AdvancedDiagnostics model={model} xraySummary={xraySummary} />
 
-      <section className="pmri-card rounded-3xl p-5 md:p-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="pmri-label">Decision boundary</p>
-            <h2 className="pmri-heading-section mt-2 text-2xl text-pmri-text">Review evidence before testing a hypothesis</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-pmri-muted">{model.boundaryNote}</p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/evidence" className="pmri-focus pmri-primary-action rounded-full px-5 py-2.5 text-sm font-medium transition">
-              Review Stress Lab evidence
-            </Link>
-            <Link href="/hypothesis" className="pmri-focus rounded-full border border-pmri-border bg-white/[0.035] px-5 py-2.5 text-sm font-medium text-pmri-text2 transition hover:border-pmri-blue/45 hover:text-pmri-text">
-              Test one candidate hypothesis
-            </Link>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }

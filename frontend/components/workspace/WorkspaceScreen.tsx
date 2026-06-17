@@ -246,7 +246,6 @@ export function WorkspaceScreen() {
         kicker="Workspace"
         title="Your investment workspace"
         description="Keep your saved portfolios, past reviews, and current analysis in one place."
-        boundaryNote="Opening a saved portfolio starts a new review. Completed reviews remain unchanged."
       >
         <StatusBadge tone="green">Signed in</StatusBadge>
       </PageHeader>

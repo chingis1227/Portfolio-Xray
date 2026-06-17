@@ -166,7 +166,7 @@ function launchpadCardToTest(card: LaunchpadCardSummary, hasLiveLineage: boolean
     tradeoff: card.tradeoff_to_watch ? normalizeDisplaySentence(card.tradeoff_to_watch) : undefined,
     decisionBoundary: normalizeDisplaySentence(
       card.decision_boundary,
-      "This is not a rebalance recommendation. A verdict is formed only after Current vs Candidate Comparison."
+      "Review this candidate in comparison before forming the verdict."
     ),
     statusLabel: monitorOrData ? "Context path" : "Ready to test",
     canGenerate,
@@ -216,11 +216,11 @@ function clientFitContext(activeReview: ActiveReviewState | null): HypothesisScr
     statusLabel: formatUnknownValue(rawStatus, "Client Fit context"),
     summary: normalizeDisplaySentence(
       clientFit.main_explanation,
-      "Client Fit is shown as context for the test, not as suitability approval."
+      "Client Fit is shown as context for the test."
     ),
     boundary: normalizeDisplaySentence(
       clientFit.decision_boundary,
-      "Client Fit does not approve suitability, recommend trades, or replace the diagnosis and comparison evidence."
+      "Client Fit adds profile context to the diagnosis and comparison evidence."
     ),
     tone,
     badgeTone: clientFit.status_tone ?? (tone === "breach" ? "red" : tone === "watch" ? "amber" : "slate")
@@ -320,7 +320,7 @@ export function buildHypothesisScreenModel({
     header: {
       title: "Hypothesis Builder",
       subtitle: "Select one diagnosis-led test candidate before Current vs Candidate Comparison.",
-      badge: pageState === "read_only" ? "Read-only compact history" : pageState === "locked" ? "Locked" : pageState === "unavailable" ? "Hypothesis unavailable" : "Not a recommendation",
+      badge: pageState === "read_only" ? "Read-only compact history" : pageState === "locked" ? "Locked" : pageState === "unavailable" ? "Hypothesis unavailable" : "Ready",
       badgeTone: pageState === "ready" ? "blue" : pageState === "locked" || pageState === "unavailable" ? "amber" : "slate"
     },
     primaryDiagnosis: primaryDiagnosisFromReview(activeReview),

@@ -7,14 +7,12 @@ export function TradeoffSummary({
   unclear,
   costs,
   evidenceQuality,
-  boundary
 }: {
   improved: string[];
   worsened: string[];
   unclear?: string[];
   costs?: string[];
   evidenceQuality: string;
-  boundary: string;
 }) {
   const safeImproved = improved.length
     ? improved.map((item) => normalizeDisplaySentence(item))
@@ -27,8 +25,7 @@ export function TradeoffSummary({
     : ["Turnover and cost evidence is not available for this comparison."];
   const unclearItems = unclear?.length ? unclear.map((item) => normalizeDisplaySentence(item)) : [
     "Whether the trade-off fits the client mandate.",
-    "Whether evidence is strong enough for a material change.",
-    safeWorsened[2] ?? normalizeDisplaySentence(boundary)
+    "Whether the evidence is strong enough for the next review step.",
   ];
 
   return (
@@ -37,7 +34,7 @@ export function TradeoffSummary({
         <div>
           <p className="pmri-label">Trade-off conclusion</p>
           <h2 className="pmri-heading-display mt-2 max-w-4xl text-pmri-text">
-            Comparison evidence is visible, but it does not automatically justify action.
+            Comparison evidence is visible with its main trade-offs.
           </h2>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -73,7 +70,6 @@ export function TradeoffSummary({
         </article>
       </div>
 
-      <p className="mt-5 rounded-xl border border-pmri-border/45 bg-white/[0.026] p-3 text-sm leading-6 text-pmri-text2">{normalizeDisplaySentence(boundary)}</p>
     </section>
   );
 }

@@ -304,13 +304,11 @@ export function ComparisonScreen() {
         <VerdictHero
           stepContext="Step 6 of 8 - Comparison"
           headline={validComparisonAvailable ? "Candidate test changes the evidence, with trade-offs" : "Current vs candidate evidence is required"}
-          interpretation="This page compares the current portfolio with one diagnostic candidate test. It does not make a final decision or create a rebalance instruction."
+          interpretation="This page compares the current portfolio with one generated candidate and highlights the main trade-offs."
           facts={[
             { label: "Current portfolio", value: currentWeights.length ? `${currentWeights.length} holdings` : "Unavailable" },
-            { label: "Candidate portfolio", value: candidateGeneration?.methodLabel ?? "Unavailable" },
-            { label: "Boundary", value: "Diagnostic comparison only; not a recommendation to switch." }
+            { label: "Candidate portfolio", value: candidateGeneration?.methodLabel ?? "Unavailable" }
           ]}
-          boundaryNote="Candidate flows are diagnostic tests. Comparison evidence must be reviewed with trade-offs, Client Fit context, and verdict boundaries before any implementation decision."
         />
         {validComparisonForDisplay ? (
           <EvidenceSummary
@@ -319,8 +317,7 @@ export function ComparisonScreen() {
             items={[
               { label: "Improved", value: validComparisonForDisplay.improved[0] ?? "No material improvement returned" },
               { label: "Trade-off", value: validComparisonForDisplay.worsened[0] ?? validComparisonForDisplay.materiality ?? "Unavailable", tone: validComparisonForDisplay.worsened.length ? "amber" : "slate" },
-              { label: "Evidence quality", value: validComparisonForDisplay.evidenceQuality, tone: /limited|insufficient|partial/i.test(validComparisonForDisplay.evidenceQuality) ? "amber" : "slate" },
-              { label: "Boundary", value: validComparisonForDisplay.candidateBoundary }
+              { label: "Evidence quality", value: validComparisonForDisplay.evidenceQuality, tone: /limited|insufficient|partial/i.test(validComparisonForDisplay.evidenceQuality) ? "amber" : "slate" }
             ]}
           />
         ) : null}
@@ -348,7 +345,7 @@ export function ComparisonScreen() {
                 Current portfolio vs {candidateGeneration?.methodLabel ?? "generated candidate"}
               </h2>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
-                These are the two portfolios being compared. Portfolio MRI still treats the candidate as a diagnostic test, not as a rebalance instruction.
+                These are the two portfolios being compared.
               </p>
             </div>
             <StatusBadge tone={isComparing ? "blue" : validComparisonAvailable ? "blue" : "amber"}>
@@ -423,7 +420,7 @@ export function ComparisonScreen() {
               <p className="pmri-label">Ready for comparison</p>
               <h2 className="mt-2 pmri-heading-section text-xl text-pmri-text">Run diagnostic comparison</h2>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
-                The generated candidate is compare-ready. This step creates comparison evidence only; it does not decide whether to change the portfolio.
+                The generated candidate is compare-ready. This step creates the comparison evidence.
               </p>
             </div>
             <StatusBadge tone="slate">Diagnostic comparison</StatusBadge>
@@ -467,12 +464,12 @@ export function ComparisonScreen() {
               },
               {
                 title: "Fit impact",
-                rows: [{ metric: "Client Fit context", currentPortfolio: clientFitForStage?.status_label ?? "Unavailable", candidatePortfolio: "Candidate fit impact", change: "Limited", interpretation: "Client Fit informs the comparison but does not choose the answer." }]
+                rows: [{ metric: "Client Fit context", currentPortfolio: clientFitForStage?.status_label ?? "Unavailable", candidatePortfolio: "Candidate fit impact", change: "Limited", interpretation: "Profile context for the comparison." }]
               },
               {
                 title: "Evidence quality",
                 rows: [
-                  { metric: "Evidence quality", currentPortfolio: validComparisonForDisplay.evidenceQuality, candidatePortfolio: validComparisonForDisplay.materiality, change: validComparisonForDisplay.warnings.length ? "Limited" : "Available", status: validComparisonForDisplay.warnings.length ? { label: "Limited", tone: "amber" } : undefined, interpretation: validComparisonForDisplay.candidateBoundary, material: Boolean(validComparisonForDisplay.warnings.length) }
+                  { metric: "Evidence quality", currentPortfolio: validComparisonForDisplay.evidenceQuality, candidatePortfolio: validComparisonForDisplay.materiality, change: validComparisonForDisplay.warnings.length ? "Limited" : "Available", status: validComparisonForDisplay.warnings.length ? { label: "Limited", tone: "amber" } : undefined, interpretation: validComparisonForDisplay.summary, material: Boolean(validComparisonForDisplay.warnings.length) }
                 ]
               }
             ].map((group) => ({ ...group, rows: group.rows.length ? group.rows : [{ metric: "No material row", currentPortfolio: "Unavailable", candidatePortfolio: "Unavailable", change: "Unavailable", interpretation: "No material evidence was returned for this group." }] }))}
@@ -480,8 +477,8 @@ export function ComparisonScreen() {
           <ClientFitContextCard
             clientFit={clientFitForStage}
             title="Current vs candidate vs Client Fit"
-            description="This comparison can show whether the candidate changes profile-fit evidence, but it still does not decide the portfolio action."
-            structuralIssueNote="Client Fit alignment is not enough to ignore a structural diagnosis issue; compare the candidate against both diagnosis evidence and profile targets."
+            description="This comparison can show whether the candidate changes profile-fit evidence."
+            structuralIssueNote="Compare the candidate against both diagnosis evidence and profile targets."
             compact
           />
           <details className="pmri-card rounded-3xl p-5 md:p-6">
@@ -499,7 +496,7 @@ export function ComparisonScreen() {
           </details>
           <div className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
             <p className="mb-3 text-sm leading-7 text-pmri-muted">
-              Continue only after reviewing the trade-offs. The next step evaluates decision-support evidence; this page does not make the final decision.
+              Continue after reviewing the trade-offs. The next step evaluates the evidence.
             </p>
             {hasLiveLineage ? (
               <button

@@ -73,8 +73,8 @@ Local testing shortcut `/onboarding/name?dev_bypass=1` is allowed only for local
 | `#ECEFF3` | Primary text | Headings and key values. |
 | `#C4C9D1` | Secondary text | Body and explanations. |
 | `#949BA6` | Muted text | Captions, metadata, inactive state. |
-| `#4F7EA8` | Steel Blue | Active/current/selected state, primary action, focus, and safe information emphasis. |
-| `#7EA6C8` | Soft Steel Blue | Links, hover, and restrained section accents. |
+| `#6EA8D7` | Steel Blue | Active/current/selected state, primary action, focus, and safe information emphasis. |
+| `#9DCCF0` | Soft Steel Blue | Links, hover, and restrained section accents. |
 | `#B66A61` | Muted Copper Red | Material issue, error, failure, destructive action, or high-risk evidence. |
 | `#C3A15F` | Muted Amber Gold | Watch, caution, partial, evidence required, locked, or degraded confidence. |
 | `#ECE7DC` | Ivory / neutral aligned | Normal, aligned, completed, generated, unavailable-neutral, unchanged, or secondary context. |
@@ -110,7 +110,7 @@ Platform routes use a left sidebar, verdict-first page heroes on redesigned anal
 - Badges are sparse and evidence-backed. Page-level status belongs primarily in `VerdictHero`; row-level status appears only when it clarifies a specific metric.
 - `EvidenceSummary` is capped at four items in one quiet strip and must not repeat the hero verdict.
 - `MetricMatrix` groups analytical rows with metric, portfolio value, reference/threshold, status, and meaning. Fixed groups come first; material/problem rows sort first within each group.
-- Primary CTAs use the Steel Blue `.pmri-primary-action` treatment.
+- Primary CTAs use the brighter Steel Blue `.pmri-primary-action` treatment with dark text for contrast.
 - Secondary CTAs use border/transparent dark styling.
 - Tables must be readable and bounded by explanatory copy.
 - Locked states must explain the missing prerequisite and provide a safe CTA.
