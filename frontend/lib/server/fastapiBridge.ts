@@ -1226,6 +1226,7 @@ export async function reportViaFastApi(request: Request) {
   if (errors.length) return jsonError("Report commentary request validation failed.", 400, errors);
 
   const candidateId = stageBodyText(body, "candidate_id");
+  const comparisonId = stageBodyText(body, "comparison_id");
   const verdictId = stageBodyText(body, "verdict_id");
   if (!verdictId) return jsonError("Report commentary requires a verdict id.", 400);
 
@@ -1244,6 +1245,7 @@ export async function reportViaFastApi(request: Request) {
     reviewId,
     selectedCardId,
     candidateId,
+    comparisonId,
     verdictId
   });
   if (reportLineageErrors.length) {
@@ -1261,6 +1263,7 @@ export async function reportViaFastApi(request: Request) {
     stage: "report_commentary",
     selected_card_id: textValue(fastApiLineage(api.body).selected_card_id, selectedCardId),
     candidate_id: textValue(fastApiLineage(api.body).candidate_id, candidateId),
+    comparison_id: textValue(fastApiLineage(api.body).comparison_id, comparisonId),
     verdict_id: textValue(fastApiLineage(api.body).verdict_id, verdictId),
     fastapi_envelope: api.body,
     report_display_model: reportDisplayModelFromFastApi(isRecord(api.body) ? api.body : {}),

@@ -12,8 +12,10 @@ if (!globalThis.crypto?.subtle) {
 const frontendRoot = path.resolve(__dirname, "..");
 const builderPrepareRoutePath = path.resolve(frontendRoot, "app", "api", "portfolio", "builder", "prepare", "route.ts");
 const candidateGenerateRoutePath = path.resolve(frontendRoot, "app", "api", "portfolio", "candidate", "generate", "route.ts");
+const comparisonGenerateRoutePath = path.resolve(frontendRoot, "app", "api", "portfolio", "comparison", "generate", "route.ts");
 const diagnoseRoutePath = path.resolve(frontendRoot, "app", "api", "portfolio", "diagnose", "route.ts");
 const reportGenerateRoutePath = path.resolve(frontendRoot, "app", "api", "portfolio", "report", "generate", "route.ts");
+const verdictGenerateRoutePath = path.resolve(frontendRoot, "app", "api", "portfolio", "verdict", "generate", "route.ts");
 const reviewRecoverRoutePath = path.resolve(frontendRoot, "app", "api", "portfolio", "review", "recover", "route.ts");
 const reviewStatusRoutePath = path.resolve(frontendRoot, "app", "api", "portfolio", "review", "status", "route.ts");
 const supabasePersistencePath = path.resolve(frontendRoot, "lib", "supabase", "persistence.tsx");
@@ -1731,6 +1733,158 @@ test("candidate route rejects FastAPI lineage from a different active review bef
   });
 });
 
+test("comparison route rejects FastAPI lineage for a different candidate before trusting comparison evidence", async () => {
+  const route = loadRoute({ routePath: comparisonGenerateRoutePath });
+
+  await withMockFetch(async (url, options) => {
+    assert.match(url, /\/api\/v1\/reviews\/frontend_review_lineage\/comparison$/);
+    assert.equal(options.method, "POST");
+    assert.deepEqual(JSON.parse(options.body), {
+      candidate_id: "equal_weight"
+    });
+    return Response.json(fastApiEnvelope({
+      review_id: "frontend_review_lineage",
+      stage: "comparison",
+      lineage: {
+        review_id: "frontend_review_lineage",
+        selected_card_id: "card_equal_weight",
+        candidate_id: "stale_candidate",
+        comparison_id: "current_vs_candidate:stale_candidate"
+      },
+      data: {
+        comparison: {
+          candidate_label: "Stale Candidate",
+          success_criteria_result: "passed"
+        }
+      }
+    }));
+  }, async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_lineage",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight"
+    }, "http://localhost/api/portfolio/comparison/generate")));
+
+    assert.equal(result.status, 409);
+    assert.equal(result.body.status, "failed");
+    assert.equal(result.body.stage, "current_vs_candidate");
+    assert.match(result.body.error, /lineage did not match/);
+    assert.match(result.body.details.join(" "), /candidate_id mismatch/);
+    assert.equal(result.body.current_vs_candidate, undefined);
+    assert.equal(result.body.fastapi_envelope, undefined);
+  });
+});
+
+test("verdict route rejects FastAPI lineage for a different comparison before trusting verdict evidence", async () => {
+  const route = loadRoute({ routePath: verdictGenerateRoutePath });
+
+  await withMockFetch(async (url, options) => {
+    assert.match(url, /\/api\/v1\/reviews\/frontend_review_lineage\/verdict$/);
+    assert.equal(options.method, "POST");
+    assert.deepEqual(JSON.parse(options.body), {
+      comparison_id: "current_vs_candidate:equal_weight"
+    });
+    return Response.json(fastApiEnvelope({
+      review_id: "frontend_review_lineage",
+      stage: "verdict",
+      lineage: {
+        review_id: "frontend_review_lineage",
+        selected_card_id: "card_equal_weight",
+        candidate_id: "equal_weight",
+        comparison_id: "current_vs_candidate:stale_candidate",
+        verdict_id: "rebalance_to_selected_candidate"
+      },
+      data: {
+        verdict: {
+          verdict_id: "rebalance_to_selected_candidate",
+          verdict: "rebalance_review"
+        }
+      }
+    }));
+  }, async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_lineage",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight",
+      comparison_id: "current_vs_candidate:equal_weight"
+    }, "http://localhost/api/portfolio/verdict/generate")));
+
+    assert.equal(result.status, 409);
+    assert.equal(result.body.status, "failed");
+    assert.equal(result.body.stage, "decision_verdict");
+    assert.match(result.body.error, /lineage did not match/);
+    assert.match(result.body.details.join(" "), /comparison_id mismatch/);
+    assert.equal(result.body.decision_verdict, undefined);
+    assert.equal(result.body.fastapi_envelope, undefined);
+  });
+});
+
+test("report route rejects FastAPI lineage for a different verdict before building report display model", async () => {
+  const route = loadRoute({ routePath: reportGenerateRoutePath });
+
+  await withMockFetch(async (url, options) => {
+    assert.match(url, /\/api\/v1\/reviews\/frontend_review_lineage\/report$/);
+    assert.equal(options.method, "POST");
+    assert.deepEqual(JSON.parse(options.body), {
+      verdict_id: "no_material_rebalance_recommended"
+    });
+    return Response.json(fastApiReportEnvelope({
+      review_id: "frontend_review_lineage",
+      lineage: {
+        review_id: "frontend_review_lineage",
+        selected_card_id: "card_equal_weight",
+        candidate_id: "equal_weight",
+        comparison_id: "current_vs_candidate:equal_weight",
+        verdict_id: "stale_verdict"
+      }
+    }));
+  }, async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_lineage",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight",
+      comparison_id: "current_vs_candidate:equal_weight",
+      verdict_id: "no_material_rebalance_recommended"
+    }, "http://localhost/api/portfolio/report/generate")));
+
+    assert.equal(result.status, 409);
+    assert.equal(result.body.status, "failed");
+    assert.equal(result.body.stage, "report_commentary");
+    assert.match(result.body.error, /lineage did not match/);
+    assert.match(result.body.details.join(" "), /verdict_id mismatch/);
+    assert.equal(result.body.report_display_model, undefined);
+    assert.equal(result.body.fastapi_envelope, undefined);
+  });
+});
+
+test("report route rejects FastAPI lineage for a different comparison when comparison id is supplied", async () => {
+  const route = loadRoute({ routePath: reportGenerateRoutePath });
+
+  await withMockFetch(async () => Response.json(fastApiReportEnvelope({
+    review_id: "frontend_review_lineage",
+    lineage: {
+      review_id: "frontend_review_lineage",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight",
+      comparison_id: "current_vs_candidate:stale_candidate",
+      verdict_id: "no_material_rebalance_recommended"
+    }
+  })), async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_lineage",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight",
+      comparison_id: "current_vs_candidate:equal_weight",
+      verdict_id: "no_material_rebalance_recommended"
+    }, "http://localhost/api/portfolio/report/generate")));
+
+    assert.equal(result.status, 409);
+    assert.equal(result.body.stage, "report_commentary");
+    assert.match(result.body.details.join(" "), /comparison_id mismatch/);
+    assert.equal(result.body.report_display_model, undefined);
+  });
+});
+
 test("Hypothesis probes backend review status before Builder and Candidate generation", () => {
   const source = fs.readFileSync(hypothesisScreenPath, "utf8");
   const probeIndex = source.indexOf("probeLiveReviewLineage(reviewId)");
@@ -1742,6 +1896,54 @@ test("Hypothesis probes backend review status before Builder and Candidate gener
   assert.ok(candidateIndex > builderIndex, "Candidate generation must happen after Builder prepare.");
   assert.match(source, /Run a new diagnosis before generating a candidate/);
   assert.match(source, /markLiveLineageUnavailable\(message\)/);
+});
+
+test("downstream active state is cleared when upstream Builder or candidate evidence changes", () => {
+  const reviewStateSource = fs.readFileSync(reviewStatePath, "utf8");
+  const hypothesisSource = fs.readFileSync(hypothesisScreenPath, "utf8");
+
+  const builderSection = reviewStateSource.slice(
+    reviewStateSource.indexOf("const recordBuilderSetup"),
+    reviewStateSource.indexOf("const clearDownstreamReviewState")
+  );
+  assert.match(builderSection, /candidateGeneration: undefined/);
+  assert.match(builderSection, /comparisonResult: undefined/);
+  assert.match(builderSection, /verdictResult: undefined/);
+  assert.match(builderSection, /reportResult: undefined/);
+  assert.match(builderSection, /candidateReady: false/);
+  assert.match(builderSection, /comparisonReady: false/);
+  assert.match(builderSection, /verdictReady: false/);
+
+  const candidateSection = reviewStateSource.slice(
+    reviewStateSource.indexOf("const recordCandidateGeneration"),
+    reviewStateSource.indexOf("const recordComparisonResult")
+  );
+  assert.match(candidateSection, /comparisonResult: undefined/);
+  assert.match(candidateSection, /verdictResult: undefined/);
+  assert.match(candidateSection, /reportResult: undefined/);
+  assert.match(candidateSection, /comparisonReady: false/);
+  assert.match(candidateSection, /verdictReady: false/);
+
+  const comparisonSection = reviewStateSource.slice(
+    reviewStateSource.indexOf("const recordComparisonResult"),
+    reviewStateSource.indexOf("const recordVerdictResult")
+  );
+  assert.match(comparisonSection, /verdictResult: undefined/);
+  assert.match(comparisonSection, /reportResult: undefined/);
+  assert.match(comparisonSection, /verdictReady: false/);
+
+  const verdictSection = reviewStateSource.slice(
+    reviewStateSource.indexOf("const recordVerdictResult"),
+    reviewStateSource.indexOf("const recordReportResult")
+  );
+  assert.match(verdictSection, /reportResult: undefined/);
+
+  const hypothesisResetSection = hypothesisSource.slice(
+    hypothesisSource.indexOf("const key = ["),
+    hypothesisSource.indexOf("function handleSelectCard")
+  );
+  assert.match(hypothesisResetSection, /builderSettingsKey\(builderSettings\)/);
+  assert.match(hypothesisResetSection, /clearDownstreamReviewState\(\)/);
 });
 
 test("candidate generation hands off weights to Comparison instead of rendering them in Hypothesis", () => {
