@@ -112,7 +112,8 @@ Onboarding routes are public-frame screens without the platform sidebar. Canonic
 
 Platform routes use:
 
-- a quieter left sidebar with 8 gated journey steps, compact letter emblems, and a clear outlined active pill;
+- a vertical graphite journey rail on wide platform screens, with 8 icon-led gated journey steps and a white active capsule beside the content blocks;
+- a bottom floating glass dock on narrower screens, using the same gated step icons and compact Workspace/account controls;
 - a sticky compact step context rail instead of a full horizontal journey stepper on redesigned routes;
 - a verdict-first page hero on redesigned analytical routes;
 - dark cards and panels;

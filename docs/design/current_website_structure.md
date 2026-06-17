@@ -24,13 +24,14 @@ The shortcut is allowed for local preview while email sign-in is still being sta
 
 ## Global visual frame
 
-Public routes (`/` and `/onboarding/*`) do not show the platform sidebar or top journey rail. They use a dark graphite background, radial atmospheric gradients, moving-grid accents, rounded cards, and blue CTAs.
+Public routes (`/` and `/onboarding/*`) do not show the platform journey rail, navigation dock, or top journey rail. They use a dark graphite background, radial atmospheric gradients, moving-grid accents, rounded cards, and blue CTAs.
 
 Platform routes show:
 
-- left sidebar brand block: `Portfolio MRI` / `Investment Decision Room`;
+- a fixed vertical graphite journey rail on wide screens, positioned beside the content blocks;
 - account navigation entry for `Workspace` outside the 8-step review rail;
-- gated journey rail with 8 steps: Portfolio, Diagnosis, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report;
+- a bottom glass journey dock on narrower screens, with compact `Workspace` and optional account controls;
+- gated journey navigation with 8 icon-led steps: Portfolio, Diagnosis, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report;
 - no sticky top journey rail on redesigned analytical routes; compact step context appears inside `VerdictHero`;
 - verdict-first page hero on redesigned analytical routes;
 - content cards, tables, badges, and locked states.
