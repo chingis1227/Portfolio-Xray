@@ -65,15 +65,25 @@ const ROW_STATUS_LABELS: Array<[RegExp, string]> = [
   [/client fit not provided/i, "Missing"]
 ];
 
+const unsafeClientFitPublicTextPattern = /\b(?:suitability|suitable|approved|safe portfolio|no action needed|trade now|must rebalance|best portfolio|optimizer mandate)\b|\bsell\b(?!-off)|\bbuy\b/i;
+
 function fallbackText(value: string | null | undefined, fallback: string) {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
+function cleanPublicClientFitText(value: string | null | undefined, fallback: string) {
+  const text = fallbackText(value, fallback).replace(/\s+/g, " ").trim();
+  if (!text || unsafeClientFitPublicTextPattern.test(text)) return fallback;
+  return text;
+}
+
 function cleanTechnicalText(value: string | null | undefined) {
-  return fallbackText(value, "")
+  const text = fallbackText(value, "")
     .replace(/\bclient fit\b/gi, "Client Fit")
     .replace(/\s+/g, " ")
     .trim();
+  if (unsafeClientFitPublicTextPattern.test(text)) return "";
+  return text;
 }
 
 function shortLabel(value: string | null | undefined, pairs: Array<[RegExp, string]>, fallback: string) {
@@ -109,7 +119,7 @@ function rowToReason(row: ClientFitTargetDisplayRow, index: number): ClientFitRe
     target: fallbackText(row.target_or_limit_label, "No target returned"),
     status: shortLabel(row.status_label, ROW_STATUS_LABELS, "Check"),
     tone: row.status_tone ?? "slate",
-    explanation: fallbackText(row.explanation, "This check compares the current portfolio evidence with your stated profile.")
+    explanation: cleanPublicClientFitText(row.explanation, "This check compares the current portfolio evidence with your stated profile.")
   };
 }
 
@@ -180,11 +190,11 @@ export function buildClientFitPresentation(
     primaryReasons: visibleReasons,
     secondaryRows: rows.slice(3),
     allRows: rows,
-    boundaryNote: fallbackText(
+    boundaryNote: cleanPublicClientFitText(
       summary?.decision_boundary,
       "Client Fit adds profile context alongside the diagnosis, stress evidence, and comparison."
     ),
-    nextBestTest: fallbackText(
+    nextBestTest: cleanPublicClientFitText(
       summary?.next_best_test,
       "Continue to the hypothesis page and test one candidate only if the diagnosis evidence justifies a comparison."
     ),

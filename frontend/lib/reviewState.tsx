@@ -678,7 +678,7 @@ function cleanClientFitProfileInput(value: unknown): ClientFitInput | undefined 
   };
 }
 
-function hasProvidedClientFitSummary(value: ClientFitDisplaySummary | undefined) {
+export function hasProvidedClientFitSummary(value: ClientFitDisplaySummary | undefined) {
   if (!value) return false;
   const label = (value.status_label ?? "").trim().toLowerCase();
   return Boolean(label && !label.includes("not provided"));

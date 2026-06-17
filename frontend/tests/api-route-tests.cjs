@@ -28,6 +28,7 @@ const stagedSafeErrorPath = path.resolve(frontendRoot, "lib", "review", "stagedS
 const fastApiErrorsPath = path.resolve(frontendRoot, "lib", "server", "fastapi", "errors.ts");
 const journeyPath = path.resolve(frontendRoot, "lib", "journey.ts");
 const clientFitContextCardPath = path.resolve(frontendRoot, "components", "client-fit", "ClientFitContextCard.tsx");
+const clientFitScreenPath = path.resolve(frontendRoot, "components", "client-fit", "ClientFitScreen.tsx");
 const clientFitPresentationPath = path.resolve(frontendRoot, "lib", "clientFitPresentation.ts");
 const siteExplanationHierarchyPath = path.resolve(frontendRoot, "components", "explanation", "SiteExplanationHierarchy.tsx");
 const diagnosisPagePath = path.resolve(frontendRoot, "app", "diagnosis", "page.tsx");
@@ -1031,6 +1032,95 @@ test("Hypothesis, Comparison, and Verdict keep Client Fit separate from structur
   assert.doesNotMatch(combined, /\bsell\b/i);
 });
 
+test("Client Fit screen is a required non-binding step before Hypothesis", () => {
+  const source = fs.readFileSync(clientFitScreenPath, "utf8");
+
+  assert.match(source, /activeReview\?\.runStatus === "completed"/);
+  assert.match(source, /activeReview\.evidenceReady/);
+  assert.match(source, /hasSummary\(summary\)/);
+  assert.match(source, /isMissingProfile\(summary\)/);
+  assert.match(source, /Backend-compatible runs can preserve a missing-profile state/);
+  assert.match(source, /the normal web journey uses your profile before testing a hypothesis/);
+  assert.match(source, /href="\/hypothesis"/);
+  assert.match(source, /!\s*missingProfile\s*\?\s*\(/);
+  assert.doesNotMatch(source, /href="\/comparison"|href="\/verdict"|href="\/report"/);
+  assert.doesNotMatch(source, /suitability approved|suitable|approved portfolio|trade now|must rebalance|best portfolio|optimizer mandate/i);
+});
+
+test("backend-compatible not_provided Client Fit does not unlock Hypothesis in the web journey", () => {
+  const reviewState = loadTsModule(reviewStatePath);
+  const { buildHypothesisScreenModel } = loadTsModule(hypothesisScreenModelPath);
+  const source = fs.readFileSync(reviewStatePath, "utf8");
+  const review = mockHypothesisReview([{
+    card_id: "launchpad_01_improve_crisis_resilience",
+    title: "Improve Crisis Resilience",
+    goal: "Improve crisis resilience",
+    hypothesis_to_test: "Test whether crisis resilience improves.",
+    card_type: "targeted_hypothesis_test",
+    source_problem_label: "Weak crisis resilience",
+    suggested_methods: [{ candidate_method_id: "minimum_cvar", method_role: "targeted_hypothesis" }],
+    default_method: "minimum_cvar",
+    success_criteria: ["Lower worst stress loss."],
+    tradeoff_to_watch: "Lower tail loss vs lower expected return.",
+    decision_boundary: "This is not a rebalance recommendation.",
+    is_rebalance_recommendation: false,
+    generates_portfolio: false
+  }], {
+    clientFit: {
+      status_label: "Client Fit not provided",
+      status_tone: "amber",
+      main_explanation: "Profile missing.",
+      decision_boundary: "Complete Client Fit before testing a hypothesis."
+    }
+  });
+  const model = buildHypothesisScreenModel({ activeReview: review });
+
+  assert.equal(reviewState.hasProvidedClientFitSummary(undefined), false);
+  assert.equal(reviewState.hasProvidedClientFitSummary({ status_label: "Client Fit not provided" }), false);
+  assert.equal(reviewState.hasProvidedClientFitSummary({ status_label: "Profile missing: not provided" }), false);
+  assert.equal(reviewState.hasProvidedClientFitSummary({ status_label: "Within stated Client Fit profile" }), true);
+  assert.match(source, /clientFitReady:\s*hasProvidedClientFitSummary\(activeReview\?\.reviewSummary\?\.clientFit\)/);
+  assert.equal(model.pageState, "locked");
+  assert.equal(model.action.state, "blocked");
+  assert.match(model.action.disabledReason, /Complete Client Fit/i);
+});
+
+test("sample Hypothesis review includes provided Client Fit context before Builder unlocks", () => {
+  const source = fs.readFileSync(hypothesisScreenPath, "utf8");
+  const { buildHypothesisScreenModel } = loadTsModule(hypothesisScreenModelPath);
+  const sampleLikeReview = mockHypothesisReview([{
+    card_id: "sample_improve_crisis_resilience",
+    title: "Improve Crisis Resilience",
+    goal: "Improve crisis resilience",
+    hypothesis_to_test: "Test whether crisis resilience improves.",
+    card_type: "targeted_hypothesis_test",
+    source_problem_label: "Weak crisis resilience",
+    suggested_methods: [{ candidate_method_id: "minimum_cvar", method_role: "targeted_hypothesis" }],
+    default_method: "minimum_cvar",
+    success_criteria: ["Lower worst stress loss."],
+    tradeoff_to_watch: "Lower tail loss vs lower expected return.",
+    decision_boundary: "This is not a rebalance recommendation.",
+    is_rebalance_recommendation: false,
+    generates_portfolio: false
+  }]);
+  const model = buildHypothesisScreenModel({ activeReview: sampleLikeReview });
+
+  assert.match(source, /Sample Client Fit context is available for the demo journey/);
+  assert.match(source, /Client Fit is non-binding context and does not approve a rebalance/);
+  assert.equal(model.pageState, "ready");
+  assert.equal(model.action.state, "generate");
+});
+
+test("Comparison and Verdict prefer stage-scoped Client Fit context over older review summaries", () => {
+  const comparisonScreen = fs.readFileSync(comparisonScreenPath, "utf8");
+  const verdictScreen = fs.readFileSync(verdictScreenPath, "utf8");
+
+  assert.match(comparisonScreen, /const clientFitForStage = comparison\?\.clientFit \?\? activeReview\?\.reviewSummary\?\.clientFit/);
+  assert.match(verdictScreen, /const clientFitForStage = verdict\?\.clientFit \?\? comparison\?\.clientFit \?\? activeReview\?\.reviewSummary\?\.clientFit/);
+  assert.match(comparisonScreen, /<ClientFitContextCard[\s\S]*clientFit={clientFitForStage}/);
+  assert.match(verdictScreen, /<ClientFitContextCard[\s\S]*clientFit={clientFitForStage}/);
+});
+
 function mockHypothesisReview(cards, extra = {}) {
   return {
     investorCurrency: "USD",
@@ -1081,7 +1171,12 @@ function mockHypothesisReview(cards, extra = {}) {
       recommendedFirstTest: "Improve Crisis Resilience",
       candidateLaunchpadAvailable: true,
       problemClassificationAvailable: true,
-      clientFit: extra.clientFit,
+      clientFit: extra.clientFit ?? {
+        status_label: "Within stated Client Fit profile",
+        status_tone: "green",
+        main_explanation: "Client Fit context is available.",
+        decision_boundary: "Client Fit is non-binding context."
+      },
       storage: {
         summaryBytes: 0,
         rawBytes: 0,
@@ -1295,6 +1390,64 @@ test("Client Fit presentation maps technical API labels into concise user-facing
   assert.doesNotMatch(serialized, /ultra_conservative/);
   assert.doesNotMatch(serialized, /Evidence available/);
   assert.doesNotMatch(serialized, /client_fit_check\.json/);
+});
+
+test("Client Fit pass presentation remains contextual and does not approve inaction", () => {
+  const presenter = loadTsModule(clientFitPresentationPath);
+  const display = presenter.buildClientFitPresentation({
+    status_label: "Within stated Client Fit profile",
+    status_tone: "green",
+    profile_label: "balanced",
+    source_quality_label: "high",
+    main_explanation: "Client Fit status is fit.",
+    decision_boundary: "Client Fit is non-binding context; keep diagnosis and stress evidence separate.",
+    next_best_test: "No action needed because this is a safe portfolio approved for best portfolio status.",
+    target_rows: [
+      {
+        dimension_label: "Return target",
+        portfolio_value_label: "6.1%",
+        target_or_limit_label: "5.0% to 7.0%",
+        status_label: "Within stated Client Fit profile",
+        status_tone: "green",
+        explanation: "Return evidence sits inside the stated range; do not treat it as suitable or approved."
+      },
+      {
+        dimension_label: "Worst stress loss limit",
+        portfolio_value_label: "-12.0%",
+        target_or_limit_label: "Limit: -18.0%",
+        status_label: "Within stated Client Fit profile",
+        status_tone: "green",
+        explanation: "Stress loss is within the stated temporary loss limit; this is not a trade now signal."
+      }
+    ]
+  }, {
+    schema_version: "site_explanation_bundle_v1",
+    screens: {
+      client_fit: {
+        executive: [{
+          id: "client_fit.unsafe",
+          level: "executive",
+          text: "Suitability approved and no action needed.",
+          tone: "neutral",
+          evidence_status: "available",
+          claim_type: "boundary_note",
+          source_refs: []
+        }],
+        evidence: [],
+        technical: []
+      }
+    }
+  });
+  const serialized = JSON.stringify(display);
+
+  assert.equal(display.statusLabel, "Within your profile");
+  assert.match(display.summary, /Keep the diagnosis and stress evidence separate/i);
+  assert.match(display.boundaryNote, /non-binding context/i);
+  assert.match(display.nextBestTest, /test one candidate only if the diagnosis evidence justifies a comparison/i);
+  assert.ok(display.allRows.every((row) => !/suitable|approved|trade now/i.test(row.explanation)));
+  assert.ok(display.technicalDetails.every((detail) => !/suitability|approved|no action needed/i.test(detail)));
+  assert.ok(display.technicalDetails.includes("Client Fit is separate from Diagnostic Quality and Decision Verdict."));
+  assert.doesNotMatch(serialized, /suitability|suitable|approved|safe portfolio|no action needed|trade now|must rebalance|best portfolio|optimizer mandate/i);
 });
 
 test("site explanation presenter exposes raw provenance only when explicitly requested", () => {

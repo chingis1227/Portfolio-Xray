@@ -227,6 +227,11 @@ function clientFitContext(activeReview: ActiveReviewState | null): HypothesisScr
   };
 }
 
+function hasProvidedClientFitContext(activeReview: ActiveReviewState | null) {
+  const label = optionalText(activeReview?.reviewSummary?.clientFit?.status_label)?.toLowerCase() ?? "";
+  return Boolean(label && !label.includes("not provided"));
+}
+
 function evidencePanel(activeReview: ActiveReviewState | null, candidateGenerated: boolean): HypothesisScreenModel["evidencePanel"] {
   const bundle = activeReview?.reviewSummary?.siteExplanation;
   const display = buildPublicSiteExplanationDisplayModel(
@@ -297,16 +302,23 @@ export function buildHypothesisScreenModel({
 
   let pageState: HypothesisScreenModel["pageState"] = "ready";
   if (!completedRealReview || !activeReview) pageState = "locked";
+  else if (!hasProvidedClientFitContext(activeReview)) pageState = "locked";
   else if (activeReview.readOnlyHistory) pageState = "read_only";
   else if (!rawCards.length) pageState = "unavailable";
 
   const disabledReason = pageState === "read_only"
     ? "This saved review is compact history. Run a new diagnosis before generating a candidate."
-    : primaryTest?.disabledReason;
+    : pageState === "locked" && completedRealReview
+      ? "Complete Client Fit before testing a hypothesis."
+      : pageState === "locked"
+        ? "Complete Portfolio Input and Client Fit before testing a hypothesis."
+        : primaryTest?.disabledReason;
 
   const actionState: HypothesisScreenModel["action"]["state"] = isGenerating
     ? "generating"
-    : candidateForSelectedCard?.canCompare && hasLiveLineage
+    : pageState !== "ready"
+      ? "blocked"
+      : candidateForSelectedCard?.canCompare && hasLiveLineage
       ? "continue"
       : candidateGenerated
         ? "generated"

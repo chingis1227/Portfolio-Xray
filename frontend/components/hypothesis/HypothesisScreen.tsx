@@ -210,6 +210,16 @@ function sampleActiveReview(generated: boolean): ActiveReviewState {
       candidateLaunchpadAvailable: true,
       problemClassificationAvailable: true,
       recommendedFirstTest: "Improve Crisis Resilience",
+      clientFit: {
+        status_label: "Within stated Client Fit profile",
+        status_tone: "green",
+        profile_label: "Balanced",
+        source_quality_label: "Sample profile",
+        main_explanation: "Sample Client Fit context is available for the demo journey.",
+        decision_boundary: "Client Fit is non-binding context and does not approve a rebalance.",
+        next_best_test: "Continue only because the sample diagnosis includes a testable hypothesis.",
+        target_rows: []
+      },
       launchpadCards: [
         {
           card_id: selectedCardId,

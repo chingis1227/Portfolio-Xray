@@ -157,7 +157,7 @@ export function ClientFitScreen() {
             </>
           )}
 
-          <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+          <section className={missingProfile ? "grid gap-6" : "grid gap-6 lg:grid-cols-[1fr_0.9fr]"}>
             <details className="pmri-card rounded-3xl p-5 md:p-6">
               <summary className="cursor-pointer list-none">
                 <p className="pmri-label">Evidence details</p>
@@ -173,14 +173,16 @@ export function ClientFitScreen() {
               </div>
             </details>
 
-            <article className="pmri-card rounded-3xl p-5 md:p-6">
-              <p className="pmri-label">Next step</p>
-              <h2 className="pmri-heading-section mt-2 text-xl text-pmri-text">Continue with one diagnostic hypothesis</h2>
-              <p className="mt-3 text-sm leading-7 text-pmri-text2">{presentation.nextBestTest}</p>
-              <Link href="/hypothesis" className="pmri-focus pmri-primary-action mt-5 inline-flex rounded-full px-5 py-2.5 text-sm font-medium transition">
-                Continue to Hypothesis
-              </Link>
-            </article>
+            {!missingProfile ? (
+              <article className="pmri-card rounded-3xl p-5 md:p-6">
+                <p className="pmri-label">Next step</p>
+                <h2 className="pmri-heading-section mt-2 text-xl text-pmri-text">Continue with one diagnostic hypothesis</h2>
+                <p className="mt-3 text-sm leading-7 text-pmri-text2">{presentation.nextBestTest}</p>
+                <Link href="/hypothesis" className="pmri-focus pmri-primary-action mt-5 inline-flex rounded-full px-5 py-2.5 text-sm font-medium transition">
+                  Continue to Hypothesis
+                </Link>
+              </article>
+            ) : null}
           </section>
         </div>
       )}
