@@ -176,7 +176,7 @@ export function StressTestLab({ model, siteExplanation }: { model: StressLabMode
         <p className="pmri-label">Analytical canvas</p>
         <h2 className="pmri-heading-section mt-2 text-2xl text-pmri-text">Scenario contribution and protection behavior</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-pmri-muted">
-          This canvas keeps the main loss drivers and offset behavior together. The scenario library and raw technical panels remain below as secondary details.
+          This canvas keeps the main loss drivers and offset behavior together. The scenario library and technical drill-downs remain below as secondary details.
         </p>
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <LossContributionPanel scenario={selectedScenario} />

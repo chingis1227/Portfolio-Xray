@@ -41,11 +41,21 @@ const evidenceStatusPresentation: Record<PublicEvidenceStatus, { label: string; 
   preliminary: { label: "Preliminary evidence", tone: "slate" }
 };
 
+const unsafePublicTextPattern = /\b(?:stress_report|portfolio_xray|problem_classification|candidate_generation|current_vs_candidate|decision_verdict|site_explanation_bundle|schema_version|field_path|source_refs|artifact|frontend_review|trade now|must rebalance|best portfolio|suitability approved)\b|\.json\b|\bbuy\b|\bsell\b(?!-off)/i;
+
+function publicExplanationText(value: string) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized || unsafePublicTextPattern.test(normalized)) {
+    return "Evidence-backed explanation is available for this step; developer provenance stays separate from the public view.";
+  }
+  return normalized;
+}
+
 function toPublicItem(item: SiteExplanationTextItem): PublicSiteExplanationItem {
   const evidence = evidenceStatusPresentation[item.evidence_status] ?? evidenceStatusPresentation.limited;
   return {
     id: item.id,
-    text: item.text,
+    text: publicExplanationText(item.text),
     tone: item.tone,
     evidenceLabel: evidence.label,
     evidenceTone: evidence.tone

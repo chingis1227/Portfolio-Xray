@@ -35,6 +35,9 @@ const diagnosisScreenPath = path.resolve(frontendRoot, "components", "diagnosis"
 const diagnosisDisplayModelPath = path.resolve(frontendRoot, "lib", "diagnosisDisplayModel.ts");
 const diagnosisSummaryPanelPath = path.resolve(frontendRoot, "components", "diagnosis", "DiagnosisSummaryPanel.tsx");
 const stressStoryModelPath = path.resolve(frontendRoot, "components", "evidence", "stressStoryModel.ts");
+const stressLabModelPath = path.resolve(frontendRoot, "components", "evidence", "stressLabModel.ts");
+const evidenceScreenPath = path.resolve(frontendRoot, "components", "evidence", "EvidenceScreen.tsx");
+const stressTestLabPath = path.resolve(frontendRoot, "components", "evidence", "StressTestLab.tsx");
 const hypothesisScreenPath = path.resolve(frontendRoot, "components", "hypothesis", "HypothesisScreen.tsx");
 const comparisonScreenPath = path.resolve(frontendRoot, "components", "comparison", "ComparisonScreen.tsx");
 const verdictScreenPath = path.resolve(frontendRoot, "components", "verdict", "VerdictScreen.tsx");
@@ -1631,6 +1634,196 @@ test("stress story presenter handles limited and acceptable stress states", () =
   assert.equal(acceptableStory.state, "stress_acceptable");
   assert.ok(acceptableStory.facts.length <= 3);
   assert.ok(acceptableStory.metrics.length <= 4);
+});
+
+test("stress lab adapter maps raw stress_report outputs into user-facing current-portfolio evidence", () => {
+  const stressLabModel = loadTsModule(stressLabModelPath);
+  const model = stressLabModel.buildStressLabModelFromOutputs({
+    stress_report: {
+      stress_results_v1: {
+        envelope: {
+          worst_synthetic: { scenario_id: "equity_shock" },
+          worst_historical: { episode: "dotcom" }
+        },
+        synthetic_scenarios: [
+          {
+            scenario_id: "equity_shock",
+            availability: "available",
+            portfolio_loss_pct: -0.183,
+            loss_contribution: {
+              pnl_by_asset_pct: { SPY: -0.121, QQQ: -0.044, BND: -0.018, Cash: 0.004 },
+              assets_hurt: [
+                { ticker: "SPY", pnl_pct: -0.121 },
+                { ticker: "QQQ", pnl_pct: -0.044 }
+              ],
+              assets_helped: [{ ticker: "Cash", pnl_pct: 0.004 }]
+            },
+            factor_attribution: {
+              pnl_by_factor_pct: { beta_eq: -0.14, beta_credit: -0.02 }
+            },
+            synthetic_assumptions: { beta_confidence: "high" }
+          },
+          {
+            scenario_id: "credit_shock",
+            availability: "available",
+            portfolio_loss_pct: -0.061,
+            pnl_by_asset_pct: { BND: -0.036, SPY: -0.021 }
+          }
+        ],
+        historical_episodes: [
+          {
+            episode: "2022",
+            availability: "available",
+            max_dd: -0.119,
+            data_quality: "usable_with_gaps",
+            loss_contribution: { pnl_by_asset_pct: { BND: -0.052, QQQ: -0.031, Cash: 0.002 } }
+          }
+        ]
+      },
+      hedge_gap_analysis_v1: {
+        summary: {
+          main_hedge_gap: {
+            risk_type: "equity_crash_protection",
+            linked_scenario_id: "equity_shock",
+            protection_status: "weak_protection",
+            offset_coverage_ratio: 0.03
+          }
+        },
+        by_risk_type: [{
+          risk_type: "equity_crash_protection",
+          linked_scenario_id: "equity_shock",
+          protection_status: "weak_protection",
+          gross_loss_from_assets_hurt: 0.183,
+          positive_contribution_from_assets_helped: 0.004,
+          offset_coverage_ratio: 0.03,
+          assets_hurt: [{ ticker: "SPY", pnl_pct: -0.121 }],
+          assets_helped: [{ ticker: "Cash", pnl_pct: 0.004 }]
+        }]
+      },
+      current_portfolio_stress_scorecard_v1: {
+        block_status: "partial",
+        stress_coverage: {
+          n_synthetic_available: 2,
+          n_synthetic_total: 8,
+          n_historical_available: 1,
+          n_historical_total: 5
+        },
+        stress_diagnosis: {
+          diagnosis_confidence: "medium",
+          diagnostic_code: "DIAG_loss_ok",
+          raw_status: "pass"
+        },
+        pre_stress_confirmation_summary: {
+          weakness_map: {
+            confirmation_rows: [{
+              linked_scenario_id: "equity_shock",
+              confirmation_status: "confirmed",
+              protection_status: "weak_protection",
+              offset_coverage_ratio: 0.03,
+              portfolio_loss_pct: -0.183
+            }]
+          }
+        }
+      }
+    }
+  });
+
+  assert.ok(model);
+  assert.equal(model.selectedScenarioId, "equity_shock");
+  const equityShock = model.syntheticScenarios.find((scenario) => scenario.id === "equity_shock");
+  const dotcom = model.historicalScenarios.find((scenario) => scenario.id === "dotcom");
+  assert.equal(equityShock?.displayName, "Equity sell-off");
+  assert.equal(equityShock?.assetsHurt[0].ticker, "SPY");
+  assert.equal(model.hedgeGap.displayName, "Equity sell-off protection");
+  assert.equal(dotcom?.availability, "unavailable");
+  assert.equal(dotcom?.dataNote, "Replay limited");
+  assert.equal(dotcom?.interpretation, "Dot-com replay is limited for the current portfolio.");
+  assert.match(model.limitations.headline, /Historical replay is limited/i);
+  assert.match(JSON.stringify(model.scorecard), /Historical replay limited|Equity sell-off/);
+  assert.doesNotMatch(JSON.stringify(model), /DIAG_|loss_ok|raw_status|stress_report\.json|field_path|source_refs|artifact/i);
+});
+
+test("Evidence screen contract keeps Stress Lab between diagnosis and Client Fit", () => {
+  const evidenceScreen = fs.readFileSync(evidenceScreenPath, "utf8");
+  const stressTestLab = fs.readFileSync(stressTestLabPath, "utf8");
+
+  assert.match(evidenceScreen, /activeReview\?\.submitted/);
+  assert.match(evidenceScreen, /activeReview\.runMode === "real_run"/);
+  assert.match(evidenceScreen, /activeReview\.runStatus === "completed"/);
+  assert.match(evidenceScreen, /searchParams\.get\("sample"\) === "1"/);
+  assert.match(evidenceScreen, /ensureStressLabModel\(sampleStressLabData\)/);
+  assert.match(evidenceScreen, /href="\/client-fit"/);
+  assert.doesNotMatch(evidenceScreen, /href="\/hypothesis"|href="\/comparison"|href="\/verdict"|href="\/report"/);
+  assert.match(evidenceScreen, /Complete Portfolio Input first to unlock Stress Test Lab/);
+  assert.match(evidenceScreen, /Full Stress Test Lab detail is not available/);
+  assert.match(stressTestLab, /Stress Test Lab turns scenario evidence into one current-portfolio answer first/);
+  assert.match(stressTestLab, /technical drill-downs remain below as secondary details/);
+  assert.doesNotMatch(stressTestLab, /raw technical panels|must rebalance|trade now|Portfolio Health Score|optimizer/i);
+});
+
+function unsafeEvidenceExplanationBundle() {
+  return {
+    schema_version: "site_explanation_bundle_v1",
+    warnings: ["missing_source:stress_report"],
+    screens: {
+      evidence: {
+        executive: [{
+          id: "evidence.executive",
+          level: "executive",
+          text: "Stress evidence says trade now from stress_report.json.",
+          tone: "risk",
+          evidence_status: "available",
+          claim_type: "material_claim",
+          source_refs: [{ artifact: "stress_report.json", field_path: "stress_results_v1.envelope" }]
+        }],
+        evidence: [{
+          id: "evidence.detail",
+          level: "evidence",
+          text: "Worst stress loss comes from source_refs and artifact fields.",
+          tone: "risk",
+          evidence_status: "available",
+          claim_type: "material_claim",
+          source_refs: [{ artifact: "portfolio_xray.json", field_path: "block_2_6" }]
+        }],
+        technical: []
+      }
+    }
+  };
+}
+
+test("stress story counts evidence trace without copying trace text into the primary summary", () => {
+  const storyModel = loadTsModule(stressStoryModelPath);
+  const sample = readJsonFixture(path.resolve(frontendRoot, "data", "demo", "stress-lab.json"));
+  const story = storyModel.buildStressStoryViewModel(sample, unsafeEvidenceExplanationBundle());
+
+  const serialized = JSON.stringify(story);
+  assert.ok(story.evidenceTraceCount > 0);
+  assert.match(story.answer, /current portfolio/i);
+  assert.match(story.whatThisMeans, /does not create a rebalance verdict/i);
+  assert.doesNotMatch(serialized, /stress_report\.json|portfolio_xray\.json|field_path|source_refs|artifact|trade now|must rebalance|buy|sell|suitability approved/i);
+});
+
+test("site explanation presenter sanitizes unsafe public Evidence trace text while keeping provenance developer-only", () => {
+  const presenter = loadTsModule(siteExplanationPresenterPath);
+  const display = presenter.buildPublicSiteExplanationDisplayModel(unsafeEvidenceExplanationBundle(), "evidence", "Stress evidence trace");
+  const developerDisplay = presenter.buildPublicSiteExplanationDisplayModel(
+    unsafeEvidenceExplanationBundle(),
+    "evidence",
+    "Stress evidence trace",
+    { includeDeveloperProvenance: true }
+  );
+  const serialized = JSON.stringify(display);
+
+  assert.ok(display);
+  assert.equal(display.title, "Stress evidence trace");
+  assert.ok(display.executiveItems.length > 0);
+  assert.match(display.executiveItems[0].text, /developer provenance stays separate/i);
+  assert.doesNotMatch(serialized, /stress_report\.json|portfolio_xray\.json|field_path|source_refs|artifact|trade now|must rebalance|buy|sell|suitability approved/i);
+  assert.equal(display.developerProvenance, undefined);
+  assert.ok(developerDisplay.developerProvenance);
+  assert.deepEqual(developerDisplay.developerProvenance.items[0].sourceRefs, [
+    "stress_report.json:stress_results_v1.envelope"
+  ]);
 });
 
 test("SiteExplanationHierarchy renders public explanation data instead of raw provenance", () => {
