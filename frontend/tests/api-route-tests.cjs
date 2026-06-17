@@ -282,6 +282,42 @@ function fastApiComparisonEnvelope(overrides = {}) {
   });
 }
 
+function fastApiVerdictEnvelope(overrides = {}) {
+  return fastApiEnvelope({
+    schema_version: "decision_verdict_v1",
+    review_id: "frontend_review_verdict",
+    stage: "verdict",
+    status: "ok",
+    lineage: {
+      review_id: "frontend_review_verdict",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight",
+      comparison_id: "current_vs_candidate:equal_weight",
+      verdict_id: "no_material_rebalance_recommended"
+    },
+    data: {
+      verdict: {
+        verdict_id: "no_material_rebalance_recommended",
+        verdict: "no_material_rebalance",
+        confidence: "medium",
+        rationale: ["Comparison evidence does not support a material change now."],
+        evidence_used: ["Current-vs-candidate comparison"],
+        limitations: ["Decision-support only; not trade advice."],
+        decision_support_only: true
+      },
+      next_allowed_actions: ["generate_report"]
+    },
+    evidence: {
+      source_artifacts: [
+        { kind: "decision_verdict", ref: "runs/frontend_review_verdict/decision_verdict.json", scope: "run_local", raw_path_exposed: false }
+      ],
+      data_quality: "ok",
+      confidence: "medium"
+    },
+    ...overrides
+  });
+}
+
 function completedClientFit(overrides = {}) {
   return {
     preset_id: "balanced",
@@ -2942,6 +2978,70 @@ test("comparison route rejects FastAPI lineage for a different candidate before 
     assert.match(result.body.details.join(" "), /candidate_id mismatch/);
     assert.equal(result.body.current_vs_candidate, undefined);
     assert.equal(result.body.fastapi_envelope, undefined);
+  });
+});
+
+test("verdict route maps displayable FastAPI public verdict envelope", async () => {
+  const route = loadRoute({ routePath: verdictGenerateRoutePath });
+
+  await withMockFetch(async (url, options) => {
+    assertSignedFastApiHeaders(options);
+    assert.match(String(url), /\/api\/v1\/reviews\/frontend_review_verdict\/verdict$/);
+    assert.equal(options.method, "POST");
+    assert.deepEqual(JSON.parse(options.body), {
+      comparison_id: "current_vs_candidate:equal_weight"
+    });
+    return Response.json(fastApiVerdictEnvelope());
+  }, async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_verdict",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight",
+      comparison_id: "current_vs_candidate:equal_weight"
+    }, "http://localhost/api/portfolio/verdict/generate")));
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.status, "completed");
+    assert.equal(result.body.stage, "decision_verdict");
+    assert.equal(result.body.review_id, "frontend_review_verdict");
+    assert.equal(result.body.selected_card_id, "card_equal_weight");
+    assert.equal(result.body.candidate_id, "equal_weight");
+    assert.equal(result.body.comparison_id, "current_vs_candidate:equal_weight");
+    assert.equal(result.body.verdict_id, "no_material_rebalance_recommended");
+    assert.equal(result.body.selection_decision_status, "no_material_rebalance");
+    assert.equal(result.body.decision_verdict.verdict_id, "no_material_rebalance_recommended");
+    assert.doesNotMatch(JSON.stringify(result.body), /[A-Z]:[\\/]/);
+    assert.doesNotMatch(JSON.stringify(result.body), /Traceback|portfolio_weights\.yml/);
+  });
+});
+
+test("verdict route does not fabricate completed verdict from incomplete public envelope", async () => {
+  const route = loadRoute({ routePath: verdictGenerateRoutePath });
+
+  await withMockFetch(async () => Response.json(fastApiVerdictEnvelope({
+    lineage: {
+      review_id: "frontend_review_verdict",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight",
+      comparison_id: "current_vs_candidate:equal_weight"
+    },
+    data: {
+      next_allowed_actions: ["generate_report"]
+    }
+  })), async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_verdict",
+      selected_card_id: "card_equal_weight",
+      candidate_id: "equal_weight",
+      comparison_id: "current_vs_candidate:equal_weight"
+    }, "http://localhost/api/portfolio/verdict/generate")));
+
+    assert.equal(result.status, 502);
+    assert.equal(result.body.status, "failed");
+    assert.equal(result.body.stage, "decision_verdict");
+    assert.match(result.body.error, /did not include a displayable public verdict/);
+    assert.equal(result.body.decision_verdict, undefined);
+    assert.equal(result.body.verdict_id, undefined);
   });
 });
 

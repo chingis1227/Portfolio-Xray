@@ -2787,6 +2787,10 @@ def _active_comparison_lineage(review_id: str, comparison_id: str) -> tuple[str,
     if comparison_id not in valid_comparison_ids:
         raise ComparisonBridgeError("Requested comparison_id does not match the active run-local comparison.")
     selected_card_id, actual_candidate_id = _candidate_lineage(review_id, candidate_id)
+    if not _comparison_has_displayable_evidence(current_vs_candidate, actual_candidate_id):
+        raise ComparisonBridgeError(
+            "Active current-vs-candidate comparison does not contain displayable evidence for the selected candidate."
+        )
     return selected_card_id, actual_candidate_id, _comparison_id_for_candidate(actual_candidate_id) or comparison_id
 
 
@@ -3264,6 +3268,7 @@ def generate_decision_verdict(
     except (CandidateBridgeError, ComparisonBridgeError, VerdictBridgeError, FileNotFoundError, ValueError) as exc:
         status_code, code, user_action, retryable = _error_code_for_stage_exception(exc, stage="verdict")
         if code == "backend_failed":
+            status_code = 409
             code = "verdict_unavailable"
             user_action = "rerun_comparison"
             retryable = False

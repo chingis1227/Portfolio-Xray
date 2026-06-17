@@ -430,7 +430,9 @@ Purpose: translate current-vs-candidate evidence into non-binding decision suppo
 Implementation status: implemented in Session 06 by `src/api/reviews.py` and `src/api/app.py`.
 The endpoint resolves the active same-candidate comparison, delegates to the existing
 `decision_verdict.json` writer, and maps the non-binding Decision Verdict into the public FastAPI
-envelope.
+envelope. The endpoint must re-check that the active `current_vs_candidate.json` still contains
+displayable evidence for the selected candidate before writing or returning a verdict; staged
+`comparison=completed` alone is not enough.
 
 Request model:
 
@@ -454,6 +456,8 @@ Response data should include:
   `resolve_data_quality`.
 
 Boundary: verdict is not trade execution, tax advice, suitability approval, or best-portfolio ranking.
+The public API must not synthesize a completed verdict when `data.verdict.verdict` or a concrete
+verdict id is missing; incomplete verdict envelopes stay failed/blocked and must not unlock Report.
 No-trade and evidence-insufficient are valid successful outcomes.
 
 ### `POST /api/v1/reviews/{review_id}/report`

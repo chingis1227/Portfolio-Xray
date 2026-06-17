@@ -20,6 +20,12 @@ It reads:
 - optional `analysis_subject/problem_classification.json`;
 - optional `action_plan.json`.
 
+For the direct Candidate Generation -> Current vs Candidate -> Verdict path, the active
+`current_vs_candidate.json` must contain displayable evidence for the same reviewed candidate before
+Block 9 writes a verdict. Partial, stale, missing, summary-only, or wrong-candidate comparison
+evidence must remain evidence-insufficient/blocked and must not produce a decisive rebalance,
+no-trade, or report-unlocking verdict.
+
 It writes:
 
 - `decision_verdict.json`.

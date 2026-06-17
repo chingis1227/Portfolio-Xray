@@ -1429,6 +1429,75 @@ def test_generate_verdict_runs_adapter_and_returns_public_envelope(
     assert staged_state["stages"]["verdict"]["artifact_refs"] == ["decision_verdict.json"]
 
 
+def test_generate_verdict_rejects_partial_comparison_artifact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    review_id = "frontend_review_fastapi_verdict_partial_comparison"
+    run_dir = tmp_path / review_id
+    run_dir.mkdir()
+    _write_candidate_generation(run_dir)
+    partial_doc = _current_vs_candidate_doc()
+    partial_doc["comparison_status"] = "partial"
+    partial_doc["comparisons"][0]["dimensions"] = [
+        {"field": "vol_annual", "status": "unavailable", "baseline_value": None, "candidate_value": None, "delta": None}
+    ]
+    (run_dir / "current_vs_candidate.json").write_text(json.dumps(partial_doc), encoding="utf-8")
+
+    def unexpected_write_selected_candidate_verdict(**kwargs):
+        raise AssertionError("verdict writer must not run without displayable comparison evidence")
+
+    monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
+    monkeypatch.setattr(review_service, "write_selected_candidate_verdict", unexpected_write_selected_candidate_verdict)
+    _write_staged_state_for_test(run_dir, review_id, current_stage="verdict")
+
+    response = _request(
+        "POST",
+        f"/api/v1/reviews/{review_id}/verdict",
+        json_body={"comparison_id": "current_vs_candidate:equal_weight"},
+    )
+
+    assert response.status_code == 409
+    body = response.json()
+    assert body["status"] == "failed"
+    assert body["safe_error"]["code"] in {"lineage_mismatch", "comparison_unavailable", "verdict_unavailable"}
+    assert "displayable evidence" in body["safe_error"]["message"]
+    assert not (run_dir / "decision_verdict.json").exists()
+    staged_state = json.loads((run_dir / "review_state.json").read_text(encoding="utf-8"))
+    assert staged_state["stages"]["verdict"]["status"] == "blocked"
+
+
+def test_generate_verdict_rejects_stale_comparison_candidate_row(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    review_id = "frontend_review_fastapi_verdict_stale_row"
+    run_dir = tmp_path / review_id
+    run_dir.mkdir()
+    _write_candidate_generation(run_dir)
+    stale_doc = _current_vs_candidate_doc()
+    stale_doc["selected_candidate_ids"] = ["equal_weight"]
+    stale_doc["comparisons"][0]["candidate_id"] = "stale_candidate"
+    (run_dir / "current_vs_candidate.json").write_text(json.dumps(stale_doc), encoding="utf-8")
+
+    def unexpected_write_selected_candidate_verdict(**kwargs):
+        raise AssertionError("verdict writer must not run for a stale comparison row")
+
+    monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
+    monkeypatch.setattr(review_service, "write_selected_candidate_verdict", unexpected_write_selected_candidate_verdict)
+    _write_staged_state_for_test(run_dir, review_id, current_stage="verdict")
+
+    response = _request(
+        "POST",
+        f"/api/v1/reviews/{review_id}/verdict",
+        json_body={"comparison_id": "current_vs_candidate:equal_weight"},
+    )
+
+    assert response.status_code == 409
+    body = response.json()
+    assert body["status"] == "failed"
+    assert "displayable evidence" in body["safe_error"]["message"]
+    assert not (run_dir / "decision_verdict.json").exists()
+
+
 def test_generate_report_runs_adapter_and_returns_grounded_preview(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

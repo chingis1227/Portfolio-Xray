@@ -841,6 +841,16 @@ function sanitizeRecoveredReviewResult(value: unknown, reviewId: string) {
   };
 }
 
+function publicVerdictHasRequiredFields(body: unknown) {
+  const data = fastApiData(body);
+  const verdict = isRecord(data.verdict) ? data.verdict : {};
+  const lineage = fastApiLineage(body);
+  return Boolean(
+    textValue(lineage.verdict_id, textValue(verdict.verdict_id))
+    && textValue(verdict.verdict)
+  );
+}
+
 function sanitizeRecoveryEnvelope(value: unknown) {
   if (!isRecord(value)) return value;
   const recoverableKeys = [
@@ -1227,6 +1237,18 @@ export async function verdictViaFastApi(request: Request) {
   }
 
   const decisionVerdict = publicDecisionVerdictFromFastApi(api.body);
+  if (!publicVerdictHasRequiredFields(api.body)) {
+    return NextResponse.json({
+      status: "failed",
+      stage: "decision_verdict",
+      review_id: reviewId,
+      selected_card_id: selectedCardId,
+      candidate_id: candidateId,
+      comparison_id: comparisonId,
+      error: "Decision Verdict response did not include a displayable public verdict.",
+      details: ["FastAPI verdict response requires data.verdict.verdict and a verdict id before the frontend can unlock Report."]
+    }, { status: 502 });
+  }
   return NextResponse.json({
     review_id: reviewId,
     status: "completed",
