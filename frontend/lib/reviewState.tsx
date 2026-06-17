@@ -23,6 +23,7 @@ import { instrumentByTicker } from "@/data/instrumentUniverse";
 import { buildStressLabModelFromOutputs } from "@/components/evidence/stressLabModel";
 import type { StressLabModel } from "@/components/evidence/stressLabTypes";
 import { stagedSafeErrorMessage } from "@/lib/review/stagedSafeError";
+import { isCompareReadyCandidateGeneration } from "@/lib/review/candidateGenerationReadiness";
 import { buildClientFitProfileFromOnboarding, hasCompletedOnboarding, readOnboardingState } from "@/lib/onboarding";
 import { useSupabaseAuth } from "@/lib/supabase/auth";
 import { persistCompactStageSummariesForReview, persistDiagnosisSummaryForReview, persistStagedProgressForReview, useSupabasePersistence, type SavedReviewRecord } from "@/lib/supabase/persistence";
@@ -1044,7 +1045,7 @@ function cleanReviewState(value: ActiveReviewState): ActiveReviewState {
     diagnosisReady: Boolean(value.diagnosisReady && (hasCompletedReviewResult || isStagedStageReady(stagedProgress, "xray"))),
     evidenceReady: Boolean((value.evidenceReady ?? value.diagnosisReady) && (hasCompletedReviewResult || isStagedStageReady(stagedProgress, "stress"))),
     improvementPathsReady: Boolean((value.improvementPathsReady ?? value.diagnosisReady) && (hasCompletedReviewResult || isStagedStageReady(stagedProgress, "launchpad_builder"))),
-    candidateReady: Boolean(hasLiveLineage && value.candidateReady && candidateMatchesReview),
+    candidateReady: Boolean(hasLiveLineage && value.candidateReady && candidateMatchesReview && isCompareReadyCandidateGeneration(candidateGeneration)),
     comparisonReady: Boolean(hasLiveLineage && value.comparisonReady && comparisonMatchesCandidate && comparisonResultCanGenerateVerdict(comparisonResult)),
     verdictReady: Boolean(hasLiveLineage && value.verdictReady && verdictMatchesCandidate),
     updatedAt: value.updatedAt || nowIso()
@@ -1746,7 +1747,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   const markCandidateReady = useCallback(() => {
     setActiveReview((current) => current ? {
       ...current,
-      candidateReady: Boolean(current.lineageAvailable && !current.readOnlyHistory && current.candidateGeneration),
+      candidateReady: Boolean(current.lineageAvailable && !current.readOnlyHistory && isCompareReadyCandidateGeneration(current.candidateGeneration)),
       comparisonReady: false,
       verdictReady: false,
       updatedAt: nowIso()
@@ -1794,8 +1795,8 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
         ...summary,
         reviewId: summary.reviewId ?? current.reviewId
       },
-      candidateReady: status === "completed",
-      stagedProgress: summary.canCompare && status === "completed"
+      candidateReady: isCompareReadyCandidateGeneration(summary),
+      stagedProgress: isCompareReadyCandidateGeneration(summary)
         ? advanceStagedProgress(current.stagedProgress, "candidate", "comparison")
         : current.stagedProgress,
       comparisonResult: undefined,
@@ -1897,7 +1898,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   const markComparisonReady = useCallback(() => {
     setActiveReview((current) => current ? {
       ...current,
-      candidateReady: Boolean(current.lineageAvailable && !current.readOnlyHistory && current.candidateGeneration),
+      candidateReady: Boolean(current.lineageAvailable && !current.readOnlyHistory && isCompareReadyCandidateGeneration(current.candidateGeneration)),
       comparisonReady: Boolean(current.lineageAvailable && !current.readOnlyHistory && current.comparisonResult),
       verdictReady: false,
       updatedAt: nowIso()
@@ -1907,7 +1908,7 @@ export function ReviewStateProvider({ children }: { children: ReactNode }) {
   const markVerdictReady = useCallback(() => {
     setActiveReview((current) => current ? {
       ...current,
-      candidateReady: Boolean(current.lineageAvailable && !current.readOnlyHistory && current.candidateGeneration),
+      candidateReady: Boolean(current.lineageAvailable && !current.readOnlyHistory && isCompareReadyCandidateGeneration(current.candidateGeneration)),
       comparisonReady: Boolean(current.lineageAvailable && !current.readOnlyHistory && current.comparisonResult),
       verdictReady: Boolean(current.lineageAvailable && !current.readOnlyHistory && current.verdictResult),
       updatedAt: nowIso()

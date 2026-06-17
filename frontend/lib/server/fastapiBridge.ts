@@ -606,6 +606,7 @@ function publicCandidateGenerationFromFastApi(body: unknown, selectedCardId: str
       source_card_id: textValue(lineage.selected_card_id, selectedCardId),
       candidate_name: textValue(candidate.method_label, candidateId),
       method: textValue(candidate.method_label),
+      generation_status: generationStatus,
       weights: isRecord(candidate.weight_summary) ? candidate.weight_summary : {},
       status: generationStatus,
       hypothesis_to_test: textValue(hypothesis.hypothesis),
@@ -615,7 +616,7 @@ function publicCandidateGenerationFromFastApi(body: unknown, selectedCardId: str
     },
     handoff_to_comparison: {
       candidate_id: candidateId,
-      can_compare: stringArray(data.next_allowed_actions).includes("run_comparison")
+      can_compare: generationStatus === "generated" && stringArray(data.next_allowed_actions).includes("run_comparison")
     }
   };
 }
@@ -1111,16 +1112,17 @@ export async function candidateViaFastApi(request: Request) {
 
   const candidateGeneration = publicCandidateGenerationFromFastApi(api.body, selectedCardId);
   const candidate: Record<string, unknown> = isRecord(candidateGeneration.candidate) ? candidateGeneration.candidate : {};
+  const canCompare = isRecord(candidateGeneration.handoff_to_comparison) && candidateGeneration.handoff_to_comparison.can_compare === true;
   return NextResponse.json({
     review_id: reviewId,
-    status: "completed",
+    status: canCompare ? "completed" : "blocked",
     stage: "candidate_generation",
     selected_card_id: textValue(fastApiLineage(api.body).selected_card_id, selectedCardId),
     builder_setup_id: builderSetupId,
     candidate_id: textValue(fastApiLineage(api.body).candidate_id, textValue(candidate.candidate_id)),
     fastapi_envelope: api.body,
     generation_status: textValue(candidate.generation_status, "unknown"),
-    can_compare: isRecord(candidateGeneration.handoff_to_comparison) && candidateGeneration.handoff_to_comparison.can_compare === true,
+    can_compare: canCompare,
     path: sourceArtifactPath(api.body, "candidate_generation", artifactPath(reviewId, "candidate_generation.json")),
     candidate_generation: candidateGeneration
   });

@@ -26,6 +26,7 @@ const portfolioInputTablePath = path.resolve(frontendRoot, "components", "portfo
 const reviewStatePath = path.resolve(frontendRoot, "lib", "reviewState.tsx");
 const stagedSafeErrorPath = path.resolve(frontendRoot, "lib", "review", "stagedSafeError.ts");
 const fastApiErrorsPath = path.resolve(frontendRoot, "lib", "server", "fastapi", "errors.ts");
+const candidateGenerationReadinessPath = path.resolve(frontendRoot, "lib", "review", "candidateGenerationReadiness.ts");
 const journeyPath = path.resolve(frontendRoot, "lib", "journey.ts");
 const clientFitContextCardPath = path.resolve(frontendRoot, "components", "client-fit", "ClientFitContextCard.tsx");
 const clientFitScreenPath = path.resolve(frontendRoot, "components", "client-fit", "ClientFitScreen.tsx");
@@ -176,6 +177,44 @@ function fastApiEnvelope(overrides = {}) {
     evidence: { source_artifacts: [], data_quality: "ok", confidence: "medium" },
     ...overrides
   };
+}
+
+function fastApiCandidateEnvelope(overrides = {}) {
+  return fastApiEnvelope({
+    schema_version: "candidate_generation_v1",
+    review_id: "frontend_review_candidate",
+    stage: "candidate",
+    status: "ok",
+    lineage: {
+      review_id: "frontend_review_candidate",
+      selected_card_id: "card_equal_weight",
+      builder_setup_id: "builder_setup_equal_weight",
+      candidate_id: "equal_weight"
+    },
+    data: {
+      candidate: {
+        candidate_id: "equal_weight",
+        method_label: "Equal Weight",
+        generation_status: "generated",
+        weight_summary: { VOO: 0.5, BND: 0.5 }
+      },
+      hypothesis: {
+        hypothesis: "Test whether equal weighting reduces concentration.",
+        success_criteria: ["Reduce top holding concentration."],
+        tradeoff_to_watch: "Return drag.",
+        decision_boundary: "Decision Verdict decides; this is not a recommendation."
+      },
+      next_allowed_actions: ["run_comparison"]
+    },
+    evidence: {
+      source_artifacts: [
+        { kind: "candidate_generation", ref: "runs/frontend_review_candidate/candidate_generation.json", scope: "run_local", raw_path_exposed: false }
+      ],
+      data_quality: "ok",
+      confidence: "medium"
+    },
+    ...overrides
+  });
 }
 
 function completedClientFit(overrides = {}) {
@@ -2430,6 +2469,226 @@ test("candidate route rejects FastAPI lineage from a different active review bef
   });
 });
 
+test("candidate route maps a compare-ready FastAPI candidate envelope without unsafe paths", async () => {
+  const route = loadRoute({ routePath: candidateGenerateRoutePath });
+
+  await withMockFetch(async (url, options) => {
+    assertSignedFastApiHeaders(options);
+    assert.match(url, /\/api\/v1\/reviews\/frontend_review_candidate\/candidate$/);
+    assert.equal(options.method, "POST");
+    assert.deepEqual(JSON.parse(options.body), {
+      builder_setup_id: "builder_setup_equal_weight"
+    });
+    return Response.json(fastApiCandidateEnvelope());
+  }, async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_candidate",
+      selected_card_id: "card_equal_weight",
+      builder_setup_id: "builder_setup_equal_weight"
+    }, "http://localhost/api/portfolio/candidate/generate")));
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.status, "completed");
+    assert.equal(result.body.stage, "candidate_generation");
+    assert.equal(result.body.review_id, "frontend_review_candidate");
+    assert.equal(result.body.selected_card_id, "card_equal_weight");
+    assert.equal(result.body.builder_setup_id, "builder_setup_equal_weight");
+    assert.equal(result.body.candidate_id, "equal_weight");
+    assert.equal(result.body.generation_status, "generated");
+    assert.equal(result.body.can_compare, true);
+    assert.equal(result.body.candidate_generation.candidate.candidate_id, "equal_weight");
+    assert.deepEqual(result.body.candidate_generation.candidate.weights, { VOO: 0.5, BND: 0.5 });
+    assert.equal(result.body.candidate_generation.handoff_to_comparison.can_compare, true);
+    assert.doesNotMatch(JSON.stringify(result.body), /[A-Z]:[\\/]/);
+    assert.doesNotMatch(JSON.stringify(result.body), /Traceback|portfolio_weights\.yml/);
+  });
+});
+
+test("candidate route prepares Builder first when setup id is missing", async () => {
+  const route = loadRoute({ routePath: candidateGenerateRoutePath });
+  const calls = [];
+
+  await withMockFetch(async (url, options) => {
+    const requestUrl = String(url);
+    calls.push(requestUrl);
+    assertSignedFastApiHeaders(options);
+    if (requestUrl.endsWith("/api/v1/reviews/frontend_review_candidate/builder")) {
+      assert.equal(options.method, "POST");
+      const builderBody = JSON.parse(options.body);
+      assert.equal(builderBody.selected_card_id, "card_equal_weight");
+      assert.equal(builderBody.overrides.method_id, "equal_weight");
+      return Response.json(fastApiEnvelope({
+        review_id: "frontend_review_candidate",
+        stage: "builder",
+        lineage: {
+          review_id: "frontend_review_candidate",
+          selected_card_id: "card_equal_weight",
+          builder_setup_id: "builder_setup_equal_weight"
+        },
+        data: { candidate_generation_allowed: true }
+      }));
+    }
+    assert.match(requestUrl, /\/api\/v1\/reviews\/frontend_review_candidate\/candidate$/);
+    assert.deepEqual(JSON.parse(options.body), {
+      builder_setup_id: "builder_setup_equal_weight"
+    });
+    return Response.json(fastApiCandidateEnvelope());
+  }, async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_candidate",
+      selected_card_id: "card_equal_weight",
+      overrides: { method_id: "equal_weight" }
+    }, "http://localhost/api/portfolio/candidate/generate")));
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.status, "completed");
+    assert.equal(result.body.builder_setup_id, "builder_setup_equal_weight");
+    assert.equal(result.body.can_compare, true);
+    assert.equal(calls.length, 2);
+    assert.match(calls[0], /\/builder$/);
+    assert.match(calls[1], /\/candidate$/);
+  });
+});
+
+test("candidate route blocks stale Builder lineage before calling candidate generation", async () => {
+  const route = loadRoute({ routePath: candidateGenerateRoutePath });
+  let callCount = 0;
+
+  await withMockFetch(async (url, options) => {
+    callCount += 1;
+    assert.match(url, /\/api\/v1\/reviews\/frontend_review_candidate\/builder$/);
+    assert.equal(options.method, "POST");
+    return Response.json(fastApiEnvelope({
+      review_id: "frontend_review_candidate",
+      stage: "builder",
+      lineage: {
+        review_id: "frontend_review_candidate",
+        selected_card_id: "stale_card",
+        builder_setup_id: "builder_setup_stale"
+      },
+      data: { candidate_generation_allowed: true }
+    }));
+  }, async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_candidate",
+      selected_card_id: "card_equal_weight",
+      method_id: "equal_weight"
+    }, "http://localhost/api/portfolio/candidate/generate")));
+
+    assert.equal(callCount, 1);
+    assert.equal(result.status, 409);
+    assert.equal(result.body.status, "failed");
+    assert.equal(result.body.stage, "candidate_generation");
+    assert.match(result.body.details.join(" "), /selected_card_id mismatch/);
+    assert.equal(result.body.candidate_generation, undefined);
+  });
+});
+
+test("candidate route keeps blocked candidate attempts from unlocking Comparison", async () => {
+  const route = loadRoute({ routePath: candidateGenerateRoutePath });
+
+  await withMockFetch(async (url, options) => {
+    assert.match(url, /\/api\/v1\/reviews\/frontend_review_candidate\/candidate$/);
+    assert.equal(options.method, "POST");
+    return Response.json(fastApiCandidateEnvelope({
+      status: "blocked",
+      data: {
+        candidate: {
+          candidate_id: "equal_weight",
+          method_label: "Equal Weight",
+          generation_status: "blocked"
+        },
+        hypothesis: {
+          hypothesis: "Test whether equal weighting reduces concentration.",
+          success_criteria: ["Reduce top holding concentration."]
+        },
+        next_allowed_actions: ["select_another_card"]
+      },
+      safe_error: {
+        code: "candidate_generation_blocked",
+        message: "Candidate generation did not produce compare-ready weights.",
+        user_action: "return_to_hypothesis",
+        retryable: false
+      }
+    }));
+  }, async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_candidate",
+      selected_card_id: "card_equal_weight",
+      builder_setup_id: "builder_setup_equal_weight"
+    }, "http://localhost/api/portfolio/candidate/generate")));
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.status, "blocked");
+    assert.equal(result.body.stage, "candidate_generation");
+    assert.equal(result.body.can_compare, false);
+    assert.equal(result.body.candidate_generation.handoff_to_comparison.can_compare, false);
+    assert.equal(result.body.candidate_generation.candidate.status, "blocked");
+  });
+});
+
+test("candidate route does not trust run_comparison when generation status is not generated", async () => {
+  const route = loadRoute({ routePath: candidateGenerateRoutePath });
+
+  await withMockFetch(async (url, options) => {
+    assert.match(String(url), /\/api\/v1\/reviews\/frontend_review_candidate\/candidate$/);
+    assert.equal(options.method, "POST");
+    return Response.json(fastApiCandidateEnvelope({
+      status: "ok",
+      data: {
+        candidate: {
+          candidate_id: "equal_weight",
+          method_label: "Equal Weight",
+          generation_status: "blocked"
+        },
+        hypothesis: {
+          hypothesis: "Test whether equal weighting reduces concentration.",
+          success_criteria: ["Reduce top holding concentration."]
+        },
+        next_allowed_actions: ["run_comparison"]
+      }
+    }));
+  }, async () => {
+    const result = await responseJson(await route.POST(makeJsonRequest({
+      review_id: "frontend_review_candidate",
+      selected_card_id: "card_equal_weight",
+      builder_setup_id: "builder_setup_equal_weight"
+    }, "http://localhost/api/portfolio/candidate/generate")));
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.status, "blocked");
+    assert.equal(result.body.can_compare, false);
+    assert.equal(result.body.generation_status, "blocked");
+    assert.equal(result.body.candidate_generation.handoff_to_comparison.can_compare, false);
+  });
+});
+
+test("candidate generation readiness requires completed, generated, compare-ready state", () => {
+  const { isCompareReadyCandidateGeneration } = loadTsModule(candidateGenerationReadinessPath);
+
+  assert.equal(isCompareReadyCandidateGeneration({
+    status: "completed",
+    generationStatus: "generated",
+    canCompare: true
+  }), true);
+  assert.equal(isCompareReadyCandidateGeneration({
+    status: "completed",
+    generationStatus: "blocked",
+    canCompare: true
+  }), false);
+  assert.equal(isCompareReadyCandidateGeneration({
+    status: "completed",
+    generationStatus: "generated",
+    canCompare: false
+  }), false);
+  assert.equal(isCompareReadyCandidateGeneration({
+    status: "blocked",
+    generationStatus: "generated",
+    canCompare: true
+  }), false);
+  assert.equal(isCompareReadyCandidateGeneration(undefined), false);
+});
+
 test("comparison route rejects FastAPI lineage for a different candidate before trusting comparison evidence", async () => {
   const route = loadRoute({ routePath: comparisonGenerateRoutePath });
 
@@ -2615,6 +2874,7 @@ test("downstream active state is cleared when upstream Builder or candidate evid
     reviewStateSource.indexOf("const recordCandidateGeneration"),
     reviewStateSource.indexOf("const recordComparisonResult")
   );
+  assert.match(candidateSection, /candidateReady: isCompareReadyCandidateGeneration\(summary\)/);
   assert.match(candidateSection, /comparisonResult: undefined/);
   assert.match(candidateSection, /verdictResult: undefined/);
   assert.match(candidateSection, /reportResult: undefined/);

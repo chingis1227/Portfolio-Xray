@@ -2577,7 +2577,7 @@ def _candidate_data(candidate_generation: dict[str, Any]) -> CandidateData:
             method_label=_text(candidate.get("candidate_name"), candidate.get("method")),
             generation_status=status,  # type: ignore[arg-type]
             weight_summary=_number_map(candidate.get("weights")),
-            infeasible_reason=None if status == "generated" else failure_reason,
+            infeasible_reason=None if status == "generated" and can_compare else failure_reason,
         ),
         hypothesis=HypothesisSummary(
             diagnosis_id=_text(candidate.get("source_diagnosis_id")),

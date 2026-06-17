@@ -80,8 +80,9 @@ def _write_staged_state_for_test(
     *,
     current_stage: str = "candidate",
     owner_id: str = TEST_USER_ID,
+    mode: str = "live",
 ) -> None:
-    state = review_service._initial_staged_state(review_id, mode="live", owner_id=owner_id)
+    state = review_service._initial_staged_state(review_id, mode=mode, owner_id=owner_id)
     state["status"] = "partial"
     state["current_stage"] = current_stage
     for stage in [
@@ -851,6 +852,190 @@ def test_generate_candidate_runs_adapter_and_returns_public_envelope(
     assert staged_state["current_stage"] == "comparison"
     assert staged_state["stages"]["candidate"]["status"] == "completed"
     assert staged_state["stages"]["candidate"]["artifact_refs"] == ["candidate_generation.json"]
+
+
+def test_demo_qa_candidate_then_comparison_preserves_same_run_lineage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    review_id = "frontend_review_fastapi_demo_candidate_chain"
+    run_dir = tmp_path / review_id
+    subject_dir = run_dir / "analysis_subject"
+    subject_dir.mkdir(parents=True)
+    (subject_dir / "portfolio_alternatives_builder.json").write_text(
+        json.dumps(_fake_builder_document()),
+        encoding="utf-8",
+    )
+    _write_staged_state_for_test(run_dir, review_id, current_stage="candidate", mode="demo_qa")
+    monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
+
+    candidate_response = _request(
+        "POST",
+        f"/api/v1/reviews/{review_id}/candidate",
+        json_body={"builder_setup_id": "candidate_setup_builder_prefill_launchpad_01_reduce_concentration"},
+    )
+
+    assert candidate_response.status_code == 200
+    candidate_body = candidate_response.json()
+    assert candidate_body["status"] == "ok"
+    assert candidate_body["lineage"]["review_id"] == review_id
+    assert candidate_body["lineage"]["selected_card_id"] == "launchpad_01_reduce_concentration"
+    assert (
+        candidate_body["lineage"]["builder_setup_id"]
+        == "candidate_setup_builder_prefill_launchpad_01_reduce_concentration"
+    )
+    assert candidate_body["lineage"]["candidate_id"] == "equal_weight"
+    assert candidate_body["data"]["next_allowed_actions"] == ["run_comparison"]
+    assert candidate_body["data"]["candidate"]["weight_summary"] == {"fixture_equal_weight": 1.0}
+    assert (run_dir / "candidate_generation.json").is_file()
+    assert (run_dir / "candidate_factory_run.json").is_file()
+
+    comparison_response = _request(
+        "POST",
+        f"/api/v1/reviews/{review_id}/comparison",
+        json_body={"candidate_id": "equal_weight"},
+    )
+
+    assert comparison_response.status_code == 200
+    comparison_body = comparison_response.json()
+    assert comparison_body["status"] == "ok"
+    assert comparison_body["lineage"]["review_id"] == review_id
+    assert comparison_body["lineage"]["selected_card_id"] == "launchpad_01_reduce_concentration"
+    assert comparison_body["lineage"]["candidate_id"] == "equal_weight"
+    assert comparison_body["lineage"]["comparison_id"] == "current_vs_candidate:equal_weight"
+    assert (run_dir / "current_vs_candidate.json").is_file()
+    staged_state = json.loads((run_dir / "review_state.json").read_text(encoding="utf-8"))
+    assert staged_state["stages"]["candidate"]["status"] == "completed"
+    assert staged_state["stages"]["comparison"]["status"] == "completed"
+    assert staged_state["current_stage"] == "verdict"
+
+
+def test_generate_candidate_rejects_stale_builder_setup_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    review_id = "frontend_review_fastapi_stale_builder_setup"
+    run_dir = tmp_path / review_id
+    subject_dir = run_dir / "analysis_subject"
+    subject_dir.mkdir(parents=True)
+    (subject_dir / "portfolio_alternatives_builder.json").write_text(
+        json.dumps(_fake_builder_document()),
+        encoding="utf-8",
+    )
+    _write_staged_state_for_test(run_dir, review_id, current_stage="candidate")
+    monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
+
+    def unexpected_generate_selected_candidate(**kwargs):
+        raise AssertionError("candidate generator must not run for stale builder setup ids")
+
+    monkeypatch.setattr(review_service, "generate_selected_candidate", unexpected_generate_selected_candidate)
+
+    response = _request(
+        "POST",
+        f"/api/v1/reviews/{review_id}/candidate",
+        json_body={"builder_setup_id": "candidate_setup_from_another_card"},
+    )
+
+    assert response.status_code == 409
+    body = response.json()
+    assert body["status"] == "failed"
+    assert body["safe_error"]["code"] == "lineage_mismatch"
+    assert "Builder setup" in body["safe_error"]["message"]
+    assert body["lineage"]["builder_setup_id"] == "candidate_setup_from_another_card"
+    assert not (run_dir / "candidate_generation.json").exists()
+    staged_state = json.loads((run_dir / "review_state.json").read_text(encoding="utf-8"))
+    assert staged_state["stages"]["candidate"]["status"] == "blocked"
+
+
+def test_generate_candidate_blocks_generated_attempt_without_comparison_handoff(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    review_id = "frontend_review_fastapi_candidate_not_compare_ready"
+    run_dir = tmp_path / review_id
+    subject_dir = run_dir / "analysis_subject"
+    subject_dir.mkdir(parents=True)
+    (subject_dir / "portfolio_alternatives_builder.json").write_text(
+        json.dumps(_fake_builder_document()),
+        encoding="utf-8",
+    )
+    _write_staged_state_for_test(run_dir, review_id, current_stage="candidate")
+    monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
+
+    def fake_generate_selected_candidate(**kwargs):
+        candidate_generation = {
+            "generation_status": "generated",
+            "candidate": {
+                "candidate_id": "equal_weight",
+                "candidate_name": "Equal Weight",
+                "source_card_id": "launchpad_01_reduce_concentration",
+                "weights": {"VOO": 0.5, "BND": 0.5},
+            },
+            "handoff_to_comparison": {
+                "can_compare": False,
+                "candidate_id": "equal_weight",
+                "blocked_reason": "factory_reused_existing_candidate_snapshot",
+            },
+        }
+        (run_dir / "candidate_generation.json").write_text(
+            json.dumps(candidate_generation),
+            encoding="utf-8",
+        )
+        return {
+            "review_id": review_id,
+            "status": "completed",
+            "stage": "candidate_generation",
+            "selected_card_id": "launchpad_01_reduce_concentration",
+            "candidate_id": "equal_weight",
+            "generation_status": "generated",
+            "can_compare": False,
+            "path": f"runs/{review_id}/candidate_generation.json",
+            "candidate_generation": candidate_generation,
+        }
+
+    monkeypatch.setattr(review_service, "generate_selected_candidate", fake_generate_selected_candidate)
+
+    response = _request(
+        "POST",
+        f"/api/v1/reviews/{review_id}/candidate",
+        json_body={"builder_setup_id": "candidate_setup_builder_prefill_launchpad_01_reduce_concentration"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "blocked"
+    assert body["safe_error"]["code"] == "candidate_generation_blocked"
+    assert body["data"]["candidate"]["generation_status"] == "generated"
+    assert body["data"]["next_allowed_actions"] == ["select_another_card"]
+    assert body["data"]["candidate"]["infeasible_reason"] == "factory_reused_existing_candidate_snapshot"
+    staged_state = json.loads((run_dir / "review_state.json").read_text(encoding="utf-8"))
+    assert staged_state["stages"]["candidate"]["status"] == "blocked"
+    assert staged_state["stages"]["comparison"]["status"] == "pending"
+
+
+def test_generate_candidate_requires_completed_launchpad_builder_stage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    review_id = "frontend_review_fastapi_candidate_stage_not_ready"
+    run_dir = tmp_path / review_id
+    run_dir.mkdir(parents=True)
+    state = review_service._initial_staged_state(review_id, mode="live", owner_id=TEST_USER_ID)
+    state["status"] = "partial"
+    state["current_stage"] = "launchpad_builder"
+    for stage in ["input", "data_load", "xray", "stress", "client_fit", "problem_classification"]:
+        state["stages"][stage]["status"] = "completed"
+    review_service._write_staged_state(run_dir, state)
+    monkeypatch.setattr(review_service, "safe_review_run_dir", lambda value: run_dir)
+
+    response = _request(
+        "POST",
+        f"/api/v1/reviews/{review_id}/candidate",
+        json_body={"builder_setup_id": "candidate_setup_builder_prefill_launchpad_01_reduce_concentration"},
+    )
+
+    assert response.status_code == 409
+    body = response.json()
+    assert body["status"] == "failed"
+    assert body["safe_error"]["code"] == "stage_not_ready"
+    assert "Builder setup" in body["safe_error"]["message"]
+    assert body["data"]["next_allowed_actions"] == ["select_another_card"]
 
 
 def _write_candidate_generation(run_dir: Path) -> None:

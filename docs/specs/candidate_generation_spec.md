@@ -114,6 +114,12 @@ set `handoff_to_comparison.can_compare: false`. Existing `weights.json` files ar
 current factory step is failed or infeasible, so stale artifacts cannot turn a failed attempt into a
 candidate recommendation or comparison input.
 
+FastAPI and frontend bridges use the same boundary: a candidate response unlocks Comparison only
+when the public candidate envelope is generated and compare-ready. If the backend returns a
+generated attempt without `handoff_to_comparison.can_compare: true`, the public API response remains
+`status: blocked`, exposes the safe blocker reason, and must not mark the frontend
+`candidateReady` flag or staged candidate progress as complete.
+
 After successful factory output is read, the runtime script checks generated weights against the
 Builder min/max asset-weight constraints. If any positive weight violates the selected cap/floor, the
 attempt is rewritten as `generation_status: infeasible`, `weights: null`, and
@@ -158,4 +164,13 @@ Runtime failure/infeasible checks:
 
 ```text
 .\.venv\Scripts\python.exe -m pytest tests\test_candidate_generation_failed_infeasible.py -q
+```
+
+FastAPI / frontend bridge checks:
+
+```text
+.\.venv\Scripts\python.exe -m pytest tests\test_frontend_review_bridge.py tests\test_fastapi_app.py tests\test_blocks_5_to_9_vertical_flow.py -q
+cd frontend
+npm.cmd run test:api
+npm.cmd run typecheck
 ```
