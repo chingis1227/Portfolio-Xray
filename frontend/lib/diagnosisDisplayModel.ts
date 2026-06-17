@@ -99,6 +99,10 @@ function uniqueStrings(values: string[], limit?: number) {
   return typeof limit === "number" ? output.slice(0, limit) : output;
 }
 
+function isUnsafePublicDiagnosisText(value: string) {
+  return /portfolio health score|robustness scorecard|\bscorecard\b|\boptimizer\b|rebalance now|must rebalance|trade now|approved portfolio|\.json\b/i.test(value);
+}
+
 function parsePercent(value?: string) {
   if (!value) return null;
   const parsed = Number(value.replace("%", "").trim());
@@ -256,7 +260,7 @@ export function buildDiagnosisDisplayModel(input: DiagnosisDisplayModelInput): D
   const technicalEvidence = uniqueStrings([
     ...(input.siteExplanation?.screens?.diagnosis?.evidence ?? []).map((item) => item.text),
     ...(input.siteExplanation?.screens?.diagnosis?.technical ?? []).map((item) => item.text)
-  ], 6);
+  ].filter((item) => !isUnsafePublicDiagnosisText(item)), 6);
 
   return {
     mainFinding: mainFinding(input),

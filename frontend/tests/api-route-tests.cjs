@@ -68,6 +68,7 @@ function loadTsModule(filePath, { readFileImpl, moduleCache = new Map() } = {}) 
     compilerOptions: {
       module: ts.ModuleKind.CommonJS,
       target: ts.ScriptTarget.ES2022,
+      jsx: ts.JsxEmit.ReactJSX,
       esModuleInterop: true
     },
     fileName: resolvedPath
@@ -92,12 +93,12 @@ function loadTsModule(filePath, { readFileImpl, moduleCache = new Map() } = {}) 
     }
     if (specifier.startsWith("@/")) {
       const aliasedPath = path.join(frontendRoot, specifier.slice(2));
-      const tsPath = fs.existsSync(`${aliasedPath}.ts`) ? `${aliasedPath}.ts` : aliasedPath;
+      const tsPath = fs.existsSync(`${aliasedPath}.ts`) ? `${aliasedPath}.ts` : fs.existsSync(`${aliasedPath}.tsx`) ? `${aliasedPath}.tsx` : aliasedPath;
       return loadTsModule(tsPath, { readFileImpl, moduleCache });
     }
     if (specifier.startsWith(".")) {
       const relativePath = path.resolve(path.dirname(resolvedPath), specifier);
-      const tsPath = fs.existsSync(`${relativePath}.ts`) ? `${relativePath}.ts` : relativePath;
+      const tsPath = fs.existsSync(`${relativePath}.ts`) ? `${relativePath}.ts` : fs.existsSync(`${relativePath}.tsx`) ? `${relativePath}.tsx` : relativePath;
       return loadTsModule(tsPath, { readFileImpl, moduleCache });
     }
     return require(specifier);
@@ -1393,6 +1394,77 @@ test("diagnosis display model keeps the public Diagnosis screen compact", () => 
   assert.deepEqual(model.limitations, ["Missing source:stress evidence"]);
 });
 
+test("diagnosis display model keeps adversarial optimizer and advice wording out of the primary answer", () => {
+  const diagnosisDisplay = loadTsModule(diagnosisDisplayModelPath);
+  const model = diagnosisDisplay.buildDiagnosisDisplayModel({
+    headline: "Portfolio Health Score says the optimizer should rebalance now.",
+    evidenceQuality: "Strong evidence",
+    nextStep: "Review supporting evidence before testing one candidate hypothesis.",
+    boundaryNote: "Diagnosis is decision-support evidence only.",
+    drivers: [
+      "Optimizer driver says trade now.",
+      "Portfolio Health Score driver says must rebalance.",
+      "Scorecard driver says approved portfolio."
+    ],
+    metrics: [
+      { label: "VaR 95", value: "-1.20%", detail: "Advanced tail metric", tone: "blue" },
+      { label: "Sharpe", value: "0.42", detail: "Advanced efficiency metric", tone: "blue" }
+    ],
+    xraySummary: {
+      snapshotCards: [
+        { label: "Top 3 concentration", value: "68.00%", detail: "Capital in largest three holdings", tone: "red" },
+        { label: "Dominant exposure", value: "Equity", detail: "72.00%", tone: "amber" },
+        { label: "Max drawdown", value: "-24.00%", detail: "Recovered within sample", tone: "red" },
+        { label: "Worst pre-stress weakness", value: "Equity sell-off risk", detail: "Score 78/100", tone: "red" }
+      ],
+      riskProfile: {
+        insight: "Current portfolio risk profile evidence is available.",
+        metrics: [
+          { label: "CAGR", value: "6.40%", detail: "Primary diagnostic window", tone: "blue" },
+          { label: "Max drawdown", value: "-24.00%", detail: "Recovered within sample", tone: "red" },
+          { label: "Time to recovery", value: "13.00 months", detail: "Recovered within sample", tone: "slate" },
+          { label: "VaR 95", value: "-1.20%", detail: "Advanced tail metric", tone: "blue" },
+          { label: "Sharpe", value: "0.42", detail: "Advanced efficiency metric", tone: "blue" }
+        ],
+        keyFacts: []
+      },
+      unavailableNotes: []
+    },
+    siteExplanation: {
+      schema_version: "site_explanation_bundle_v1",
+      warnings: [],
+      screens: {
+        diagnosis: {
+          executive: [{ id: "e", level: "executive", text: "Raw executive says rebalance now from optimizer.", tone: "risk", evidence_status: "available", claim_type: "material_claim", source_refs: [] }],
+          evidence: [{ id: "v", level: "evidence", text: "Raw evidence references portfolio_xray.json and trade now.", tone: "risk", evidence_status: "available", claim_type: "material_claim", source_refs: [] }],
+          technical: []
+        }
+      }
+    }
+  });
+
+  const publicSurface = JSON.stringify({
+    mainFinding: model.mainFinding,
+    whyItMatters: model.whyItMatters,
+    primaryEvidence: model.primaryEvidence,
+    whatMatters: model.whatMatters,
+    behaviorSnapshot: model.behaviorSnapshot,
+    technicalEvidence: model.technicalEvidence
+  });
+
+  assert.match(model.mainFinding, /equity-led/i);
+  assert.match(model.whyItMatters, /equity sell-off risk/i);
+  assert.match(publicSurface, /Top 3 = 68%|Top 3 holdings: 68%/);
+  assert.match(publicSurface, /Dominant exposure: Equity 72%|Main exposure/);
+  assert.equal(model.primaryEvidence.length, 3);
+  assert.ok(model.whatMatters.length <= 4);
+  assert.ok(model.behaviorSnapshot.length <= 3);
+  assert.ok(model.advancedMetrics.some((metric) => metric.label === "VaR 95"));
+  assert.ok(model.advancedMetrics.some((metric) => metric.label === "Sharpe"));
+  assert.deepEqual(model.technicalEvidence, []);
+  assert.doesNotMatch(publicSurface, /optimizer|Portfolio Health Score|scorecard|rebalance now|must rebalance|trade now|approved portfolio|portfolio_xray\.json/i);
+});
+
 test("Diagnosis page uses the compact display model instead of the standalone explanation wall", () => {
   const diagnosisPage = fs.readFileSync(diagnosisPagePath, "utf8");
   const diagnosisScreen = fs.readFileSync(diagnosisScreenPath, "utf8");
@@ -1401,10 +1473,105 @@ test("Diagnosis page uses the compact display model instead of the standalone ex
   assert.doesNotMatch(diagnosisPage, /SiteExplanationHierarchy/);
   assert.match(diagnosisScreen, /siteExplanation/);
   assert.match(diagnosisPanel, /buildDiagnosisDisplayModel/);
+  assert.match(diagnosisPanel, /VerdictHero/);
+  assert.match(diagnosisPanel, /EvidenceSummary/);
+  assert.match(diagnosisPanel, /MetricMatrix/);
+  assert.match(diagnosisPanel, /<details id="advanced-diagnostics"/);
   assert.match(diagnosisPanel, /Advanced diagnostics and technical evidence/);
+  assert.match(diagnosisPanel, /Full portfolio x-ray detail/);
   assert.match(diagnosisPanel, /Historical diagnostic window/);
+  assert.match(diagnosisPanel, /href="\/evidence"/);
+  assert.match(diagnosisPanel, /href="\/hypothesis"/);
+  assert.doesNotMatch(diagnosisPanel, /href="\/verdict"|href="\/report"/);
+  assert.doesNotMatch(diagnosisPanel, /sourceArtifacts|rejectedAlternatives|rationaleRefs/);
   assert.doesNotMatch(diagnosisPanel, /Evidence available/);
   assert.doesNotMatch(diagnosisPanel, /Rolling charts are not shown/);
+  assert.doesNotMatch(diagnosisPanel, /must rebalance|trade now|Portfolio Health Score|Robustness Scorecard|optimizer/i);
+});
+
+test("review state builds Diagnosis from compact summaries, then FastAPI envelope, then raw artifacts", () => {
+  const reviewState = loadTsModule(reviewStatePath);
+  const compactDiagnosis = {
+    status: "Diagnosis ready",
+    headline: "Compact saved summary wins.",
+    evidenceQuality: "Strong evidence",
+    nextStep: "Continue from compact review state.",
+    boundaryNote: "Compact summary only.",
+    drivers: ["Compact saved driver."],
+    metrics: [],
+    sourceArtifacts: [],
+    rejectedAlternatives: [],
+    rationaleRefs: []
+  };
+  const rawOutputs = {
+    portfolio_xray: {
+      block_2_1_asset_allocation: {
+        actual_economic_exposure_summary: { headline: "Raw artifact allocation headline." },
+        portfolio_composition_snapshot: {
+          top1_holding: { ticker: "SPY", weight_pct: 0.52 },
+          dominant_asset_class: { name: "equity", weight_pct: 0.72 },
+          dominant_main_risk_factor: { name: "equity", weight_pct: 0.72 }
+        }
+      },
+      block_2_2_portfolio_metrics: {
+        portfolio_behavior_snapshot: { headline: "Raw artifact behavior headline.", overall_behavior_label: "Concentrated growth" },
+        return_risk_metrics: { portfolio_cagr: 0.064, vol_annual: 0.18, sharpe: 0.42 },
+        drawdown_diagnostics: { max_drawdown: -0.24 }
+      },
+      block_2_6_portfolio_weakness_map: {
+        risk_types: [{ risk_title: "Equity sell-off risk", score_0_100: 78, severity: "high", short_diagnosis: "Equity sell-off risk dominates." }]
+      }
+    },
+    stress_report: {
+      stress_conclusions: { overall_confidence: "high" }
+    }
+  };
+  const fastApiReviewResult = {
+    status: "completed",
+    outputs: rawOutputs,
+    fastapi_envelope: {
+      data: {
+        diagnosis: {
+          headline: "FastAPI bounded diagnosis wins.",
+          confidence: "high",
+          selected_diagnosis_role: "primary",
+          next_diagnostic_step: "Review supporting evidence before testing one candidate hypothesis.",
+          recommendation_boundary: "Diagnosis is decision-support evidence only.",
+          root_cause_narrative: {
+            statement: "FastAPI bounded diagnosis wins.",
+            label: "Concentration"
+          },
+          diagnosis_evidence_items: [{ interpretation: "Bounded FastAPI evidence." }],
+          evidence_chain: ["Bounded chain item."]
+        }
+      }
+    }
+  };
+
+  const compactResult = reviewState.buildDiagnosisFromReview({
+    investorCurrency: "USD",
+    holdings: [],
+    reviewSummary: { diagnosis: compactDiagnosis },
+    reviewResult: fastApiReviewResult
+  });
+  const fastApiResult = reviewState.buildDiagnosisFromReview({
+    investorCurrency: "USD",
+    holdings: [],
+    reviewResult: fastApiReviewResult
+  });
+  const rawResult = reviewState.buildDiagnosisFromReview({
+    investorCurrency: "USD",
+    holdings: [],
+    reviewResult: {
+      status: "completed",
+      outputs: rawOutputs
+    }
+  });
+
+  assert.equal(compactResult.headline, "Compact saved summary wins.");
+  assert.equal(fastApiResult.headline, "FastAPI bounded diagnosis wins.");
+  assert.match(rawResult.headline, /main pre-stress weakness to review is Equity Sell-Off Risk/i);
+  assert.deepEqual(rawResult.sourceArtifacts, ["portfolio_xray.json", "stress_report.json"]);
 });
 
 test("stress story presenter keeps the primary Stress Lab surface compact", () => {
