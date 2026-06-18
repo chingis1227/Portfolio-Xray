@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { VerdictHero } from "@/components/ui/VerdictHero";
 import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
 import { MetricMatrix } from "@/components/ui/MetricMatrix";
+import { CaseFileTopCards } from "@/components/ui/CaseFileCards";
 import { buildClientFitPresentation, type ClientFitReason } from "@/lib/clientFitPresentation";
 import { useReviewState } from "@/lib/reviewState";
 import type { ClientFitDisplaySummary } from "@/lib/generated/api-types";
@@ -39,8 +40,8 @@ const rowToneClass: Record<StatusTone, string> = {
 function LockedClientFitState() {
   return (
     <section className="pmri-card rounded-3xl p-6 md:p-8">
-      <StatusBadge tone="amber">Evidence required</StatusBadge>
-      <h2 className="pmri-heading-section mt-4 text-2xl text-pmri-text">Run the profile-first diagnosis before this check.</h2>
+      <StatusBadge tone="amber">Fit check not ready</StatusBadge>
+      <h2 className="pmri-heading-section mt-4 text-2xl text-pmri-text">Complete the evidence chain before interpreting profile fit.</h2>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-pmri-muted">
         This screen needs a completed risk profile, portfolio diagnosis, and Stress Test Lab evidence.
       </p>
@@ -106,8 +107,8 @@ export function ClientFitScreen() {
         headline={ready ? presentation.headline : "Risk profile check is required"}
         interpretation={ready ? presentation.summary : "This screen checks alignment with the stated profile after diagnosis and Stress Lab evidence are available."}
         facts={[
-          { label: "Profile", value: ready ? presentation.profileLabel : "Unavailable" },
-          { label: "Evidence", value: ready ? presentation.sourceLabel : "Evidence required" }
+          { label: "Profile", value: ready ? presentation.profileLabel : "Profile not ready" },
+          { label: "Source quality", value: ready ? presentation.sourceLabel : "Complete prior steps first" }
         ]}
       />
 
@@ -115,6 +116,31 @@ export function ClientFitScreen() {
         <LockedClientFitState />
       ) : (
         <div className="space-y-6">
+          <CaseFileTopCards
+            cards={[
+              {
+                eyebrow: "Fit interpretation",
+                title: presentation.headline,
+                value: presentation.profileLabel,
+                description: presentation.summary,
+                tone: summary?.status_tone ?? "slate"
+              },
+              {
+                eyebrow: "Main mismatch",
+                title: presentation.primaryReasons[0]?.label ?? "No dominant mismatch returned",
+                value: presentation.primaryReasons[0] ? `${presentation.primaryReasons[0].value} vs ${presentation.primaryReasons[0].target}` : "Profile rows not evaluated",
+                description: presentation.primaryReasons[0]?.explanation ?? "This profile context does not clear material portfolio issues.",
+                tone: presentation.primaryReasons[0]?.tone ?? "slate"
+              },
+              {
+                eyebrow: "Profile context",
+                title: presentation.sourceLabel,
+                value: presentation.nextBestTest,
+                description: "Client Fit is diagnostic context only. It is not suitability approval, trade advice, or an optimizer mandate.",
+                tone: /limited|missing|not/i.test(presentation.sourceLabel) ? "amber" : "slate"
+              }
+            ]}
+          />
           {missingProfile ? (
             <section className="pmri-card rounded-3xl p-5 md:p-6">
               <p className="pmri-label">Missing profile</p>
@@ -140,7 +166,7 @@ export function ClientFitScreen() {
 
               <MetricMatrix
                 title="Client Fit checks by profile dimension"
-                description="Rows compare the current portfolio evidence with stated profile limits. Missing values are shown as Unavailable rather than inferred."
+                description="Rows compare current portfolio evidence with stated profile limits. Missing values identify which profile-fit conclusion is blocked."
                 groups={[{
                   title: "Portfolio vs stated profile",
                   description: "Row-level statuses are restrained and used only where they clarify a specific profile dimension.",

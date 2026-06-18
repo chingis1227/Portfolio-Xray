@@ -12,7 +12,7 @@ import {
 import type { DiagnosisDisplayFact } from "@/lib/diagnosisDisplayModel";
 
 function evidenceToneLabel(fact?: DiagnosisDisplayFact) {
-  if (!fact) return "Unavailable";
+  if (!fact) return "Not evaluated";
   if (fact.tone === "red") return "Material";
   if (fact.tone === "amber") return "Watch";
   return "Observed";
@@ -51,9 +51,9 @@ export function DiagnosticCanvas({ model }: { model: DiagnosisDisplayModel }) {
         <div className="p-5 md:p-6 lg:p-7">
           <SectionHeader eyebrow="Diagnostic canvas" title="What is material in the current portfolio" />
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <MetricValue label="Primary issue" value={concentration?.value ?? "Unavailable"} detail={evidenceToneLabel(concentration)} tone={concentration?.tone} size="sm" />
-            <MetricValue label="Main exposure" value={exposure?.value ?? "Unavailable"} detail={exposure?.detail ?? evidenceToneLabel(exposure)} tone={exposure?.tone} size="sm" />
-            <MetricValue label="Downside evidence" value={downside?.value ?? "Unavailable"} detail={evidenceToneLabel(downside)} tone={downside?.tone} size="sm" />
+            <MetricValue label="Primary issue" value={concentration?.value ?? "Not evaluated"} detail={evidenceToneLabel(concentration)} tone={concentration?.tone} size="sm" />
+            <MetricValue label="Main exposure" value={exposure?.value ?? "Not evaluated"} detail={exposure?.detail ?? evidenceToneLabel(exposure)} tone={exposure?.tone} size="sm" />
+            <MetricValue label="Downside evidence" value={downside?.value ?? "Not evaluated"} detail={evidenceToneLabel(downside)} tone={downside?.tone} size="sm" />
           </div>
           <div className="mt-5 space-y-3">
             {drivingItems.map((item, index) => (

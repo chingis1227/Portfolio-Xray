@@ -39,7 +39,7 @@ function orderedRows<T extends { material?: boolean }>(rows: T[]) {
 export function MetricMatrix({
   groups,
   title = "Diagnosis metrics by decision relevance",
-  description = "Material or problem rows appear first inside each fixed group. Missing values are shown as Unavailable rather than inferred."
+  description = "These rows sit below the first-read conclusion. Each metric is included only when it helps explain the problem, why it matters, or what would change the decision."
 }: {
   groups: MetricMatrixGroup[];
   title?: string;
@@ -69,8 +69,8 @@ export function MetricMatrix({
                 <span>Status</span>
                 <span>Meaning</span>
               </div>
-              {orderedRows(group.rows).map((row) => (
-                <div key={`${group.title}-${row.metric}`} className="grid gap-3 border-b border-pmri-border/35 px-4 py-4 last:border-b-0 md:grid-cols-[1.05fr_0.85fr_0.85fr_0.65fr_1.45fr] md:items-center">
+              {orderedRows(group.rows).map((row, index) => (
+                <div key={`${group.title}-${row.metric}-${index}`} className="grid gap-3 border-b border-pmri-border/35 px-4 py-4 last:border-b-0 md:grid-cols-[1.05fr_0.85fr_0.85fr_0.65fr_1.45fr] md:items-center">
                   <p className="text-sm font-semibold text-pmri-text">{row.metric}</p>
                   <p className="data-figure text-sm text-pmri-text2">{row.portfolioValue ?? "Unavailable"}</p>
                   <p className="text-sm text-pmri-text2">{row.reference ?? "Unavailable"}</p>
@@ -91,6 +91,9 @@ export function ComparisonMetricMatrix({ groups }: { groups: Array<{ title: stri
     <section className="pmri-card rounded-3xl p-5 md:p-6">
       <p className="pmri-type-meta text-pmri-text2">Comparison matrix</p>
       <h2 className="pmri-type-section-title mt-2 text-pmri-text">Current portfolio vs test candidate</h2>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-pmri-text2">
+        These comparison metrics are secondary evidence. Read them as investor trade-offs, not as a portfolio winner.
+      </p>
       <div className="mt-6 space-y-6">
         {groups.map((group) => (
           <div key={group.title}>
@@ -103,8 +106,8 @@ export function ComparisonMetricMatrix({ groups }: { groups: Array<{ title: stri
                 <span>Change</span>
                 <span>Interpretation</span>
               </div>
-              {orderedRows(group.rows).map((row) => (
-                <div key={`${group.title}-${row.metric}`} className="grid gap-3 border-b border-pmri-border/35 px-4 py-4 last:border-b-0 md:grid-cols-[1fr_0.8fr_0.8fr_0.75fr_1.35fr] md:items-center">
+              {orderedRows(group.rows).map((row, index) => (
+                <div key={`${group.title}-${row.metric}-${index}`} className="grid gap-3 border-b border-pmri-border/35 px-4 py-4 last:border-b-0 md:grid-cols-[1fr_0.8fr_0.8fr_0.75fr_1.35fr] md:items-center">
                   <p className="text-sm font-semibold text-pmri-text">{row.metric}</p>
                   <p className="data-figure text-sm text-pmri-text2">{row.currentPortfolio ?? "Unavailable"}</p>
                   <p className="data-figure text-sm text-pmri-text2">{row.candidatePortfolio ?? "Unavailable"}</p>

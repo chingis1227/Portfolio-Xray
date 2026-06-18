@@ -2,6 +2,7 @@
 
 ## 2026-06-18
 
+- Added the Diagnostic Case File UX pass: documented the route-by-route spec, added shared case-file top cards, and restructured platform screen copy so conclusions and investor meaning precede dense metrics and technical drill-downs.
 - Implemented the UX/UI audit foundation: added a living ExecPlan, UX product brief, screen-job matrix, component-state matrix, shared product-state components, active diagnostic-test context, expanded /sandbox/components state coverage, and first-pass diagnostic-test wording across key downstream routes.
 - Reset the frontend platform presentation around a deeper cinematic workspace, compact metadata-led top utility header, quieter journey rail, stricter badge discipline, and a Diagnosis case-file screen with a controlled statement hero, four-item floating evidence strip, primary diagnostic canvas, and collapsed advanced diagnostics.
 
@@ -1313,7 +1314,7 @@ Category: Added
   (invariant asset metrics/corr/cov, extended betas, weekly factor frames, prepared synthetic stress);
   optional `report_timing` blocks and factory aggregate; Session 6 closure audit
   (`docs/audits/2026-05-23_candidate_factory_shared_evidence_session06_timing_audit.md`);
-  full-menu sequential `report_seconds` **в€’28.1%** vs 1192.9 s baseline (below в€’35% goal);
+  full-menu sequential `report_seconds` **-28.1%** vs 1192.9 s baseline (below -35% goal);
   verification bundle **106 passed**; `scripts/shared_evidence_session06_timing_smoke.py`.
 
 Date: 2026-05-22

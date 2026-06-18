@@ -6,7 +6,7 @@ import { EvidenceStrip } from "@/components/diagnosis/EvidenceStrip";
 import { DiagnosticCanvas } from "@/components/diagnosis/DiagnosticCanvas";
 import { AdvancedDiagnostics } from "@/components/diagnosis/AdvancedDiagnostics";
 import { StressLabCta } from "@/components/diagnosis/StressLabCta";
-import { TopUtilityHeader } from "@/components/ui/TopUtilityHeader";
+import { CaseFileTopCards } from "@/components/ui/CaseFileCards";
 
 type DiagnosisSummaryPanelProps = {
   status: string;
@@ -43,16 +43,32 @@ export function DiagnosisSummaryPanel({
 
   return (
     <div className="space-y-3 md:space-y-4">
-      <TopUtilityHeader
-        eyebrow="Current portfolio · diagnosis-first"
-        title="Read the material issue, supporting evidence, next risk review, and safe handoff before any candidate work."
-        items={[
-          { label: "Scope", value: "Current only" },
-          { label: "Evidence", value: model.dataCoverage, tone: model.dataCoverageTone },
-          { label: "Next", value: "Stress Lab", tone: "blue" }
+      <DiagnosisHero model={model} />
+      <CaseFileTopCards
+        cards={[
+          {
+            eyebrow: "Main diagnosis",
+            title: model.mainFinding,
+            value: evidenceItems[0]?.value,
+            description: "This is the leading current-portfolio issue to understand before any candidate test.",
+            tone: evidenceItems[0]?.tone
+          },
+          {
+            eyebrow: "Why it matters",
+            title: "Investment relevance",
+            value: evidenceItems[2]?.value,
+            description: model.whyItMatters,
+            tone: evidenceItems[2]?.tone
+          },
+          {
+            eyebrow: "Key evidence",
+            title: evidenceItems[1]?.value ? String(evidenceItems[1].value) : "Evidence needs review",
+            value: `Quality: ${model.dataCoverage}`,
+            description: "Primary evidence is summarized here; professional metrics remain in the collapsed diagnostics section.",
+            tone: model.dataCoverageTone
+          }
         ]}
       />
-      <DiagnosisHero model={model} />
       <EvidenceStrip items={evidenceItems} />
       <DiagnosticCanvas model={model} />
       <StressLabCta model={model} />

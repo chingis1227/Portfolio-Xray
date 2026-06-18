@@ -66,6 +66,8 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 7. Raw artifact names, JSON keys, backend labels, run folders, booleans, and method IDs must not appear in primary UI copy.
 8. Client Fit status is diagnostic context only; it is not suitability approval, optimizer mandate, or proof that no action is needed.
 9. Report preview must stay grounded in active review evidence and limitations.
+10. Platform analytical routes use the Diagnostic Case File hierarchy: main finding, why it matters, key evidence, metrics with investor meaning, collapsed technical drill-down, and next safe decision.
+11. Primary cards must not lead with generic availability states such as `Evidence available`, `Evidence unavailable`, `Current portfolio only`, `Diagnostic only`, `No rebalancing`, `Comparison pending`, `Unavailable`, or `Evidence required`. Those states are secondary limitation/status language.
 
 ## Public route contracts
 
@@ -95,6 +97,7 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 ### Portfolio Input `/portfolio-input`
 
 - Must show `Step 01 / Portfolio to diagnose` and `Define the current portfolio`.
+- Must lead with `Portfolio to diagnose`, `Input readiness`, and `Client Fit context` cards.
 - Must show Client Fit profile summary, investor currency, holdings/weights table, validation/readiness, Run diagnosis CTA, and recovery panel.
 - Must let `Adjust intake` update target rows and reclassify the displayed Client Fit preset from those edited values.
 - Must block diagnosis until Client Fit context, currency, at least two valid holdings, and weights summing to 100% are valid.
@@ -102,7 +105,8 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 
 ### Diagnosis `/diagnosis`
 
-- Must lead with the production diagnosis hierarchy: compact utility header, controlled diagnosis hero, four-item evidence strip, two-column diagnostic canvas, Stress Lab CTA, then collapsed advanced diagnostics.
+- Must lead with the production diagnosis hierarchy: controlled diagnosis hero, Diagnostic Case File top cards, four-item evidence strip, two-column diagnostic canvas, Stress Lab CTA, then collapsed advanced diagnostics.
+- Must present Diagnostic Case File top cards: `Main diagnosis`, `Why it matters`, and `Key evidence`.
 - Locked state must say `Complete Portfolio Input first to unlock Diagnosis.` and link to Portfolio Input.
 - Ready state must explain current portfolio evidence before any candidate test through one dominant diagnosis headline, one interpretation sentence, a four-item Evidence Summary covering primary issue, main exposure, worst observed downside, and evidence quality, and a primary canvas that names the material drivers and next risk review.
 - Ready state must keep the grouped Metric Matrix for diagnosis metrics behind collapsed advanced diagnostics.
@@ -113,6 +117,7 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 ### Stress Test Lab `/evidence`
 
 - Must show `Step 03 / Stress Test Lab` and `Stress Test Lab`.
+- Must lead with `Stress failure mode`, `Worst scenario`, and `Loss drivers and protection gap`.
 - Locked state must say Stress Lab requires Portfolio Input / diagnosis first.
 - Ready state must show one primary current-portfolio stress answer before detailed evidence.
 - The primary surface must stay compact: no more than three supporting facts and no more than four primary metric cards.
@@ -123,6 +128,7 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 ### Client Fit `/client-fit`
 
 - Must show `Step 04 / Risk profile check` and `Your portfolio vs your risk profile`.
+- Must lead with `Fit interpretation`, `Main mismatch`, and `Profile context`.
 - Must lead with one concise verdict card (`Within your profile`, `Worth reviewing`, `Outside your profile`, `Goal and risk conflict`, or `Profile missing`) before detailed rows.
 - Must explain Client Fit is separate from diagnostic quality and decision action.
 - Locked state must route to Client Profile or Portfolio Input.
@@ -133,6 +139,8 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 
 - Must show `Step 05 / Hypothesis`.
 - Must keep Launchpad, Builder setup, and candidate generation as one merged MVP screen unless a future route split is approved.
+- Must visibly split the merged route into `Problem Classification`, `Candidate Launchpad`, `Alternatives Builder`, and `Candidate Generation Result`.
+- Must show both the investment hypothesis and the mathematical method in Candidate Launchpad.
 - Must render through a frontend Hypothesis screen model that normalizes compact review state into one primary diagnosis, one recommended diagnostic test, one primary CTA, secondary alternatives, Client Fit context, and collapsed evidence/technical details.
 - Must preserve backend Launchpad priority: the primary test comes from the first eligible Launchpad card unless the user selected another eligible card.
 - Must present candidates as tests only and show the decision boundary once in the main test/workstation surface.
@@ -144,6 +152,7 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 ### Comparison `/comparison`
 
 - Must show `Step 06 / Comparison` and `Current vs Candidate Comparison`.
+- Must lead with `What improved`, `What worsened`, and `Is the trade-off meaningful?`.
 - Must require one active generated candidate.
 - Must show the current allocation next to the generated candidate allocation before or while comparison evidence is produced.
 - Must automatically attempt same-candidate comparison when the generated candidate is compare-ready, while preserving a retry path for failures.
@@ -153,6 +162,8 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 ### Verdict `/verdict`
 
 - Must show `Step 07 / Verdict` and `Decision verdict`.
+- Must lead with `Decision stance`, `Reason`, and `What would change the verdict`.
+- Must use only these primary decision stances: `Keep current`, `Review rebalance`, `Test another candidate`, and `Evidence insufficient`.
 - Must require current comparison evidence or a safe evidence-insufficient/candidate-failed condition.
 - Must present non-binding outcomes only.
 - Must not say `trade now`, `must rebalance`, `best portfolio`, or `suitability approved`.
@@ -160,6 +171,7 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 ### Report `/report`
 
 - Must show `Step 08 / Report` and `Client-ready report preview`.
+- Must lead with `Plain-English explanation`, `Evidence used`, and `Limitations`.
 - Must require active diagnosis, selected candidate, comparison, and verdict evidence before creating a grounded preview.
 - Must show evidence used, unavailable evidence, warnings/limitations, timestamp, and next observation point.
 - Must not invent unsupported conclusions.

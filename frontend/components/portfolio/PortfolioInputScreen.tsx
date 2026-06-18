@@ -5,9 +5,9 @@ export function PortfolioInputScreen() {
   return (
     <div>
       <PageHeader
-        kicker="Step 01 of 8"
-        title="Define the current portfolio"
-        description="Enter the portfolio as it stands today. Portfolio MRI will diagnose this allocation before testing any alternative."
+        kicker="Step 01 / Portfolio to diagnose"
+        title="Define the current portfolio case file"
+        description="Enter the portfolio as it stands today. The first answer is whether this input is ready for diagnosis, not whether an alternative should be built."
       />
 
       <PortfolioInputTable

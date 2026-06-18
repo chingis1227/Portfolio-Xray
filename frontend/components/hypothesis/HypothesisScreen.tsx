@@ -7,6 +7,7 @@ import { ClientFitContextCard } from "@/components/client-fit/ClientFitContextCa
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { VerdictHero } from "@/components/ui/VerdictHero";
 import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
+import { CaseFileTopCards } from "@/components/ui/CaseFileCards";
 import { diagnosisStageChainReady, useReviewState, type ActiveReviewState } from "@/lib/reviewState";
 import type { BuilderOverrides, ClientFitDisplaySummary, StagedReviewStatusResponse } from "@/lib/generated/api-types";
 import {
@@ -287,12 +288,14 @@ function WorkstationHeader({ model }: { model: HypothesisScreenModel }) {
       />
       {test ? (
         <EvidenceSummary
-          title="Test setup summary"
-          description="The diagnostic test is explained before builder controls."
+          title="Hypothesis evidence summary"
+          description="The investment hypothesis and mathematical method are explained before builder controls."
+          emptyMessage="No test path is available yet; return to Diagnosis or rerun the review before generating a candidate."
           items={[
-            { label: "Selected because", value: test.why },
-            { label: "First success criterion", value: test.successCriteria[0] ?? "Unavailable" },
-            { label: "Trade-off to watch", value: test.tradeoff ?? "Unavailable", tone: test.tradeoff ? "amber" : "slate" }
+            { label: "Investment hypothesis", value: test.hypothesis },
+            { label: "Mathematical method", value: test.selectedMethodLabel ?? test.methods[0] ?? "Method not selected" },
+            { label: "First success criterion", value: test.successCriteria[0] ?? "Comparison will define success." },
+            { label: "Trade-off to watch", value: test.tradeoff ?? "No main trade-off returned", tone: test.tradeoff ? "amber" : "slate" }
           ]}
         />
       ) : null}
@@ -340,7 +343,7 @@ function PrimaryDiagnosisPanel({ model }: { model: HypothesisScreenModel }) {
 
   return (
     <section className="rounded-3xl border border-white/10 bg-white/[0.026] p-5">
-      <p className="pmri-label text-pmri-blueSoft">Primary diagnosis</p>
+      <p className="pmri-label text-pmri-blueSoft">Problem Classification</p>
       <h2 className="pmri-heading-section mt-2 text-2xl text-pmri-text">{diagnosis.label}</h2>
       <p className="mt-3 max-w-4xl text-sm leading-7 text-pmri-text2">{diagnosis.explanation}</p>
       {diagnosis.rootCause ? (
@@ -412,7 +415,7 @@ function BuilderControls({
 
   return (
     <div className="mt-5 rounded-2xl border border-white/10 bg-black/15 p-4">
-      <p className="pmri-label text-pmri-blueSoft">Builder setup</p>
+      <p className="pmri-label text-pmri-blueSoft">Alternatives Builder / Test setup</p>
       <p className="mt-2 text-xs leading-5 text-pmri-muted">
         These fields prepare one diagnostic test candidate. They do not approve a rebalance or hide portfolio issues.
       </p>
@@ -501,7 +504,7 @@ function ProposedDiagnosticTestPanel({ test }: { test?: HypothesisTestModel }) {
   if (!test) {
     return (
       <section className="rounded-3xl border border-pmri-amber/30 bg-pmri-amber/10 p-5">
-        <p className="pmri-label text-pmri-amber">Proposed diagnostic test</p>
+        <p className="pmri-label text-pmri-amber">Candidate Launchpad</p>
         <h2 className="pmri-heading-section mt-2 text-xl text-pmri-text">No diagnostic test is available</h2>
         <p className="mt-3 text-sm leading-7 text-pmri-text2">Resolve data quality or rerun diagnosis before generating a test candidate.</p>
       </section>
@@ -513,11 +516,39 @@ function ProposedDiagnosticTestPanel({ test }: { test?: HypothesisTestModel }) {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-pmri-blueSoft/60 to-transparent" />
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <p className="pmri-label text-pmri-blueSoft">Proposed diagnostic test</p>
+          <p className="pmri-label text-pmri-blueSoft">Candidate Launchpad</p>
           <h2 className="pmri-heading-section mt-2 text-3xl text-pmri-text">{test.title}</h2>
           <p className="mt-3 max-w-4xl text-sm leading-7 text-pmri-text2">{test.hypothesis}</p>
         </div>
         <StatusBadge tone={test.canGenerate ? "blue" : "amber"}>{test.statusLabel}</StatusBadge>
+      </div>
+
+      <div className="mt-5">
+        <CaseFileTopCards
+          cards={[
+            {
+              eyebrow: "Investment hypothesis",
+              title: test.title,
+              value: test.hypothesis,
+              description: "This is the investment idea being tested against the current portfolio evidence.",
+              tone: "blue"
+            },
+            {
+              eyebrow: "Mathematical method",
+              title: test.selectedMethodLabel ?? test.methods[0] ?? "Method not selected",
+              value: test.methods.join(", "),
+              description: "The method is visible because the candidate is a diagnostic experiment, not a black-box recommendation.",
+              tone: "slate"
+            },
+            {
+              eyebrow: "Why this method fits",
+              title: test.why,
+              value: test.successCriteria[0],
+              description: "Success is judged later by comparison evidence, including the trade-off it creates.",
+              tone: test.canGenerate ? "slate" : "amber"
+            }
+          ]}
+        />
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
@@ -533,7 +564,7 @@ function ProposedDiagnosticTestPanel({ test }: { test?: HypothesisTestModel }) {
           </div>
         </div>
         <div className="rounded-2xl border border-white/10 bg-black/15 p-4">
-          <p className="pmri-label">Success criteria</p>
+          <p className="pmri-label">Alternatives Builder / Success criteria</p>
           <div className="mt-2">
             <BulletList items={test.successCriteria} fallback="Comparison will check whether this test improves the diagnosis." />
           </div>
@@ -573,7 +604,7 @@ function HypothesisActionConsole({
     <aside className="rounded-3xl border border-pmri-border/60 bg-[#15171c] p-5 shadow-decision xl:sticky xl:top-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="pmri-label text-pmri-blueSoft">Action console</p>
+          <p className="pmri-label text-pmri-blueSoft">Candidate Generation Result</p>
           <h3 className="pmri-heading-section mt-2 text-xl text-pmri-text">{test?.title ?? "No test selected"}</h3>
         </div>
         <StatusBadge tone={action.state === "blocked" ? "amber" : "blue"}>{action.statusLabel}</StatusBadge>

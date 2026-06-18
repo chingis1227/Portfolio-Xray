@@ -225,6 +225,9 @@ Platform routes use:
 - compact dark dock on smaller screens;
 - gated journey navigation with 8 icon-led steps: Portfolio, Diagnosis, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report;
 - platform content width around 1180-1240 px;
+- narrow-screen portfolio-entry controls should render as stacked cards rather than requiring
+  horizontal table scrolling;
+- public and platform shells should expose a keyboard-visible skip link to the main content area;
 - flat hairline case-file panels;
 - sparse badges;
 - explicit boundary notes;
@@ -232,12 +235,14 @@ Platform routes use:
 
 ### Analytical Pages
 
-Redesigned analytical pages use shared `VerdictHero`, `EvidenceSummary`, and `MetricMatrix` patterns.
+Redesigned analytical pages use shared `VerdictHero`, `CaseFileTopCards`, `EvidenceSummary`, and `MetricMatrix` patterns.
 
 - `VerdictHero` carries the page-level message with compact step context, one interpretation sentence, optional supporting facts, and restrained pill actions.
+- `CaseFileTopCards` carries the first-read case-file answer: main finding, why it matters, key evidence, or the route-specific equivalent.
 - `EvidenceSummary` is capped at four items in one flat hairline evidence strip.
 - `MetricMatrix` groups rows with metric, portfolio value, reference/threshold, status, and meaning.
 - Material/problem rows sort first inside fixed groups and stay secondary to the first-read diagnosis.
+- Primary cards must not lead with generic operational states such as `Evidence available`, `Unavailable`, `Diagnostic only`, `No rebalancing`, or `Comparison pending`; those states belong in compact status notes, limitations, or collapsed details.
 
 `/diagnosis` is the benchmark screen for the foundation:
 

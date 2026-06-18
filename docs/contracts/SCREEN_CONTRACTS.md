@@ -57,6 +57,29 @@ There is no current `/candidate`, `/monitoring`, `/what-changed`, optimizer-aren
 10. Evidence-provenance traces from `site_explanation_bundle.json` are hidden by default. Public explanation cards show product-language evidence labels; raw schema names, artifact filenames, and field paths may appear only in an explicit developer/debug provenance panel.
 11. Staged diagnosis internals such as `Data check`, `pending`, `waiting`, provider freshness, backend stage IDs, and per-stage status rows are operational state, not normal product UI. Running diagnosis screens may show a simple product-facing preparation message and safe user-facing errors.
 
+## Diagnostic Case File hierarchy
+
+Platform analytical screens use a shared first-read hierarchy:
+
+```text
+Main finding
+-> Why it matters
+-> Key evidence
+-> Metrics with investor meaning
+-> Collapsed technical drill-down
+-> Next safe decision
+```
+
+Primary cards must not lead with generic operational labels such as `Evidence available`,
+`Evidence unavailable`, `Current portfolio only`, `Diagnostic only`, `No rebalancing`,
+`Comparison pending`, `Unavailable`, or `Evidence required`. Those states remain valid, but they
+belong in compact status rows, secondary notes, collapsed limitations, or specific explanations of
+which conclusion is blocked and what the user can do next.
+
+Promoted metrics must answer at least one investor question: what is the problem, why does it
+matter, or what would change the next decision. Full metric matrices remain available below the
+first-read answer.
+
 ## Route contracts
 
 | Route | Product role | Must show | Primary CTA / next step | Must not show |
@@ -101,6 +124,7 @@ Every product screen must guide the user from problem to evidence to decision/ac
 
 - Primary user question: What current portfolio is being diagnosed?
 - Primary answer: the user has supplied a valid current allocation, investor currency, and diagnostic context.
+- First-read top cards: `Portfolio to diagnose`, `Input readiness`, and `Client Fit context`.
 - Top evidence items: holdings count, weight total, instrument/cash validation, Client Fit context presence.
 - Primary CTA: Run diagnosis.
 - Secondary CTA: adjust intake or recover an active review.
@@ -112,6 +136,7 @@ Every product screen must guide the user from problem to evidence to decision/ac
 
 - Primary user question: What is wrong or material in the current portfolio before any candidate is tested?
 - Primary answer: a dominant current-portfolio diagnosis with one supporting interpretation.
+- First-read top cards: `Main diagnosis`, `Why it matters`, and `Key evidence`.
 - Top evidence items: primary issue, main exposure, worst observed downside, evidence quality.
 - Primary CTA: Review Stress Lab evidence.
 - Secondary CTA: export report or test one candidate hypothesis when journey state allows.
@@ -123,6 +148,7 @@ Every product screen must guide the user from problem to evidence to decision/ac
 
 - Primary user question: Which stress behavior should be reviewed next for the current portfolio?
 - Primary answer: the worst material stress behavior and its current-portfolio-only boundary.
+- First-read top cards: `Stress failure mode`, `Worst scenario`, and `Loss drivers and protection gap`.
 - Top evidence items: worst scenario, estimated loss, drivers/protection behavior, evidence quality.
 - Primary CTA: Continue to Client Fit.
 - Secondary CTA: return to Diagnosis.
@@ -134,6 +160,7 @@ Every product screen must guide the user from problem to evidence to decision/ac
 
 - Primary user question: Does the current portfolio conflict with the provided diagnostic profile context?
 - Primary answer: a non-binding fit interpretation that cannot clear material portfolio issues.
+- First-read top cards: `Fit interpretation`, `Main mismatch`, and `Profile context`.
 - Top evidence items: main mismatch, drawdown tolerance, horizon/target context, evidence quality.
 - Primary CTA: Continue to Hypothesis.
 - Secondary CTA: adjust profile/intake.
@@ -145,6 +172,8 @@ Every product screen must guide the user from problem to evidence to decision/ac
 
 - Primary user question: Which one diagnostic candidate test should be prepared?
 - Primary answer: one proposed test path with success criteria and trade-off boundaries.
+- First-read sections: `Problem Classification`, `Candidate Launchpad`, `Alternatives Builder`, and `Candidate Generation Result`.
+- Candidate Launchpad must show both the investment hypothesis and the mathematical method before generation controls.
 - Top evidence items: selected problem, why this test, first success criterion, main trade-off.
 - Primary CTA: Generate one test candidate.
 - Secondary CTA: review alternatives or return to Client Fit.
@@ -156,6 +185,7 @@ Every product screen must guide the user from problem to evidence to decision/ac
 
 - Primary user question: What changes between the current portfolio and the generated diagnostic candidate?
 - Primary answer: trade-off evidence, not a winner or final verdict.
+- First-read top cards: `What improved`, `What worsened`, and `Is the trade-off meaningful?`.
 - Top evidence items: material improvement, material cost, Client Fit impact, comparison evidence quality.
 - Primary CTA: Continue to Verdict.
 - Secondary CTA: return to Hypothesis or retry generation when safe.
@@ -167,6 +197,8 @@ Every product screen must guide the user from problem to evidence to decision/ac
 
 - Primary user question: What non-binding decision-support interpretation follows from the evidence?
 - Primary answer: a cautious verdict with evidence, limitations, and what would change it.
+- First-read top cards: `Decision stance`, `Reason`, and `What would change the verdict`.
+- Allowed decision stances are `Keep current`, `Review rebalance`, `Test another candidate`, and `Evidence insufficient`.
 - Top evidence items: main diagnosis, comparison outcome, major trade-off, evidence limitation.
 - Primary CTA: Open Report.
 - Secondary CTA: test another hypothesis.
@@ -178,6 +210,7 @@ Every product screen must guide the user from problem to evidence to decision/ac
 
 - Primary user question: What client-ready narrative can be grounded in this review?
 - Primary answer: an executive preview based on selected evidence from the active review.
+- First-read top cards: `Plain-English explanation`, `Evidence used`, and `Limitations`.
 - Top evidence items: diagnosis, stress evidence, Client Fit/comparison context, verdict boundary.
 - Primary CTA: create/open report preview when evidence is ready.
 - Secondary CTA: return to Workspace or Verdict.

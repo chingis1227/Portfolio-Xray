@@ -44,7 +44,7 @@ export function OnboardingFrame({
   }, [pathname, router, status]);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-pmri-bg text-pmri-text">
+    <main id="main-content" className="relative min-h-screen overflow-hidden bg-pmri-bg text-pmri-text">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(59,130,246,0.16),transparent_30%),radial-gradient(circle_at_18%_24%,rgba(170,183,198,0.09),transparent_26%),linear-gradient(180deg,rgba(255,255,255,0.035),transparent_42%)]" />
       <div className="pointer-events-none absolute left-1/2 top-24 h-[420px] w-[420px] -translate-x-1/2 rounded-full border border-pmri-blue/15 opacity-50 [background:repeating-radial-gradient(circle,rgba(96,165,250,0.18)_0_1px,transparent_1px_18px)]" />
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-6 md:px-8">

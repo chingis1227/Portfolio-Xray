@@ -30,7 +30,7 @@ const platformEntryHref = "/onboarding/sign-in";
 
 export function LandingPage() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-pmri-bg text-pmri-text">
+    <main id="main-content" className="relative min-h-screen overflow-hidden bg-pmri-bg text-pmri-text">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_72%_10%,rgba(255,122,23,0.10),transparent_24%),radial-gradient(ellipse_at_78%_18%,rgba(196,181,253,0.08),transparent_28%)]" />
 
       <header className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-5 md:px-8">

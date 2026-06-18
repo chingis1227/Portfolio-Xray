@@ -65,7 +65,7 @@ export function OnboardingLoadingPage() {
   }, [hydrated, router, saveClientFitProfile, state, status]);
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-pmri-bg px-5 text-pmri-text">
+    <main id="main-content" className="relative flex min-h-screen items-center justify-center overflow-hidden bg-pmri-bg px-5 text-pmri-text">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_32%,rgba(59,130,246,0.22),transparent_26%),radial-gradient(circle_at_50%_50%,rgba(170,183,198,0.08),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.035),transparent_50%)]" />
       <div className="pointer-events-none absolute h-[520px] w-[520px] rounded-full border border-pmri-blue/15 [background:repeating-radial-gradient(circle,rgba(96,165,250,0.22)_0_1px,transparent_1px_20px)] motion-safe:animate-[pmri-spin_18s_linear_infinite]" />
       <section className="relative z-10 w-full max-w-xl text-center">

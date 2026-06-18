@@ -9,6 +9,7 @@ import { ActiveDiagnosticTestContext } from "@/components/ui/ActiveDiagnosticTes
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { VerdictHero } from "@/components/ui/VerdictHero";
 import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
+import { CaseFileTopCards } from "@/components/ui/CaseFileCards";
 import { formatUnknownValue, normalizeDisplaySentence } from "@/lib/displayLabels";
 import { useReviewState } from "@/lib/reviewState";
 
@@ -128,6 +129,19 @@ function confidenceTone(value: string) {
   return key === "low" || key.includes("insufficient") ? "amber" : "blue";
 }
 
+function allowedDecisionStance(verdict: NonNullable<ReturnType<typeof useReviewState>["activeReview"]>["verdictResult"] | undefined) {
+  const combined = [
+    verdict?.state,
+    verdict?.decisionStatus,
+    verdict?.headline,
+    verdict?.actionFraming
+  ].map((value) => statusKey(value)).join(" ");
+  if (combined.includes("insufficient") || combined.includes("unavailable")) return "Evidence insufficient";
+  if (combined.includes("test_another") || combined.includes("another_candidate") || combined.includes("candidate_failed") || combined.includes("infeasible")) return "Test another candidate";
+  if (combined.includes("rebalance") || combined.includes("review")) return "Review rebalance";
+  return "Keep current";
+}
+
 export function VerdictScreen() {
   const router = useRouter();
   const { activeReview, hydrated, markVerdictReady, recordVerdictResult } = useReviewState();
@@ -229,19 +243,47 @@ export function VerdictScreen() {
         <div className="mb-6 space-y-5">
           <VerdictHero
             stepContext="Step 7 of 8 - Verdict"
-            headline={verdictMatchesCandidate && verdict ? normalizeDisplaySentence(verdict.headline, "Decision-support verdict is available") : "Decision-support verdict is required"}
+            headline={verdictMatchesCandidate && verdict ? allowedDecisionStance(verdict) : "Decision stance needs comparison evidence"}
             interpretation={verdictMatchesCandidate && verdict ? normalizeDisplaySentence(verdict.explanation, "Review the selected evidence before forming an implementation view.") : "The verdict evaluates one generated diagnostic test candidate against active comparison evidence. Evidence-insufficient outcomes are normal."}
             facts={[
               { label: "Diagnostic test", value: candidateDisplayName },
-              { label: "Confidence", value: verdictMatchesCandidate && verdict ? formatUnknownValue(verdict.confidence, "Unknown") : "Unavailable" }
+              { label: "Confidence", value: verdictMatchesCandidate && verdict ? formatUnknownValue(verdict.confidence, "Unknown") : "Verdict not ready" }
             ]}
           />
+          {verdictMatchesCandidate && verdict ? (
+            <CaseFileTopCards
+              cards={[
+                {
+                  eyebrow: "Decision stance",
+                  title: allowedDecisionStance(verdict),
+                  value: formatUnknownValue(verdict.confidence, "Confidence not returned"),
+                  description: "The stance is non-binding decision support and must be read with the evidence limitations.",
+                  tone: confidenceTone(verdict.confidence)
+                },
+                {
+                  eyebrow: "Reason",
+                  title: verdict.keyEvidence[0] ?? verdict.explanation,
+                  value: formatUnknownValue(verdict.evidenceQuality, "Evidence quality not returned"),
+                  description: normalizeDisplaySentence(verdict.actionFraming),
+                  tone: evidenceInsufficient ? "amber" : "slate"
+                },
+                {
+                  eyebrow: "What would change the verdict",
+                  title: verdict.limitations[0] ?? "No primary limitation returned",
+                  value: normalizeDisplaySentence(verdict.monitoringTrigger, "Retest if evidence changes."),
+                  description: "Limitations define what must improve before a stronger conclusion is used.",
+                  tone: verdict.limitations.length ? "amber" : "slate"
+                }
+              ]}
+            />
+          ) : null}
           {verdictMatchesCandidate && verdict ? (
             <EvidenceSummary
               title="Selected verdict evidence"
               description="The verdict uses selected rationale and limitations rather than a dense dashboard."
+              emptyMessage="Verdict evidence is not ready; complete a same-candidate comparison or treat the outcome as evidence insufficient."
               items={[
-                { label: "Decision interpretation", value: formatUnknownValue(verdict.state, "Decision-support verdict") },
+                { label: "Decision stance", value: allowedDecisionStance(verdict) },
                 { label: "Rationale", value: verdict.keyEvidence[0] ?? verdict.explanation },
                 { label: "Major trade-off", value: verdict.limitations[0] ?? "No limitation returned", tone: verdict.limitations.length ? "amber" : "slate" }
               ]}
@@ -386,7 +428,7 @@ export function VerdictScreen() {
           <div className="space-y-6">
             <section className="pmri-card rounded-3xl p-6 md:p-7">
               <p className="pmri-label">Decision interpretation</p>
-              <h2 className="pmri-heading-section mt-2 text-2xl text-pmri-text">{formatUnknownValue(verdict.state, "Decision-support verdict")}</h2>
+              <h2 className="pmri-heading-section mt-2 text-2xl text-pmri-text">{allowedDecisionStance(verdict)}</h2>
               <p className="mt-4 max-w-4xl text-base leading-8 text-pmri-text2">{normalizeDisplaySentence(verdict.actionFraming)}</p>
               <div className="mt-6 grid gap-4 lg:grid-cols-3">
                 <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">

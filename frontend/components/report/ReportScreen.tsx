@@ -8,6 +8,7 @@ import { ActiveDiagnosticTestContext } from "@/components/ui/ActiveDiagnosticTes
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { VerdictHero } from "@/components/ui/VerdictHero";
 import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
+import { CaseFileTopCards } from "@/components/ui/CaseFileCards";
 import { displayTitleLabel, normalizeDisplaySentence } from "@/lib/displayLabels";
 import { useReviewState } from "@/lib/reviewState";
 
@@ -273,19 +274,47 @@ export function ReportScreen() {
           headline={report ? report.title : "Narrative report preview is evidence-gated"}
           interpretation={report ? report.subtitle : "The report summarizes selected diagnosis, stress, Client Fit, comparison, and verdict evidence only after the active review is complete."}
           facts={[
-            { label: "Main diagnosis", value: activeReview?.reviewSummary?.primaryProblem ?? activeReview?.reviewSummary?.diagnosis?.headline ?? "Unavailable" },
+            { label: "Main diagnosis", value: activeReview?.reviewSummary?.primaryProblem ?? activeReview?.reviewSummary?.diagnosis?.headline ?? "Diagnosis not ready" },
             { label: "Diagnostic test", value: candidateDisplayName }
           ]}
         />
         {report ? (
+          <CaseFileTopCards
+            cards={[
+              {
+                eyebrow: "Plain-English explanation",
+                title: report.title,
+                value: report.sections[0]?.title,
+                description: report.subtitle,
+                tone: "blue"
+              },
+              {
+                eyebrow: "Evidence used",
+                title: report.evidenceUsed[0] ?? "Selected evidence list not returned",
+                value: activeReview?.reviewSummary?.primaryProblem ?? "Diagnosis evidence",
+                description: "The report is grounded in selected diagnosis, stress, Client Fit, comparison, and verdict evidence.",
+                tone: "slate"
+              },
+              {
+                eyebrow: "Limitations",
+                title: report.warnings[0] ?? report.unavailableEvidence[0] ?? "No primary limitation returned",
+                value: report.nextObservation,
+                description: "Limitations stay visible so the report does not become an unsupported recommendation.",
+                tone: report.warnings.length || report.unavailableEvidence.length ? "amber" : "slate"
+              }
+            ]}
+          />
+        ) : null}
+        {report ? (
           <EvidenceSummary
             title="Selected report evidence"
             description="The report promotes only the evidence needed for the executive story."
+            emptyMessage="The report preview is blocked until diagnosis, comparison, and verdict evidence are ready."
             items={[
-              { label: "Diagnosis", value: activeReview?.reviewSummary?.primaryProblem ?? "Unavailable" },
+              { label: "Diagnosis", value: activeReview?.reviewSummary?.primaryProblem ?? "Diagnosis not ready" },
               { label: "Stress evidence", value: report.evidenceUsed.find((item) => /stress|scenario|loss/i.test(item)) ?? "Selected stress evidence included when returned" },
-              { label: "Comparison outcome", value: comparison?.summary ?? "Unavailable" },
-              { label: "Final verdict", value: verdict?.headline ?? verdict?.state ?? "Unavailable" }
+              { label: "Comparison outcome", value: comparison?.summary ?? "Comparison not ready" },
+              { label: "Verdict stance", value: verdict?.headline ?? verdict?.state ?? "Verdict not ready" }
             ]}
           />
         ) : null}
