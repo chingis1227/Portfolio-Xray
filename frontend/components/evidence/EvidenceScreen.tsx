@@ -6,6 +6,7 @@ import { StressTestLab } from "@/components/evidence/StressTestLab";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { VerdictHero } from "@/components/ui/VerdictHero";
 import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
+import { CaseFileTopCards } from "@/components/ui/CaseFileCards";
 import { buildStressStoryViewModel } from "@/components/evidence/stressStoryModel";
 import sampleStressLabData from "@/data/demo/stress-lab.json";
 import { ensureStressLabModel } from "@/components/evidence/stressLabModel";
@@ -66,6 +67,10 @@ function EvidencePageContent() {
   const model = realStressLab ?? (sampleMode ? ensureStressLabModel(sampleStressLabData) : null);
   const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
   const story = model ? buildStressStoryViewModel(model, siteExplanation) : null;
+  const worstScenarioMetric = story?.metrics.find((item) => item.label === "Worst scenario");
+  const estimatedLossMetric = story?.metrics.find((item) => item.label === "Estimated loss");
+  const driverOrProtectionMetric = story?.metrics.find((item) => /driver|protection|hedge/i.test(item.label));
+  const confidenceMetric = story?.metrics.find((item) => /quality|confidence/i.test(item.label));
 
   return (
     <div>
@@ -76,13 +81,39 @@ function EvidencePageContent() {
             headline={story.title}
             interpretation={story.answer}
             facts={[
-              { label: "Worst scenario", value: story.metrics.find((item) => item.label === "Worst scenario")?.value ?? "Unavailable" },
-              { label: "Estimated loss", value: story.metrics.find((item) => item.label === "Worst scenario")?.detail.replace(/^Estimated loss:\s*/, "") ?? "Unavailable" }
+              { label: "Worst scenario", value: worstScenarioMetric?.value ?? "Not evaluated" },
+              { label: "Estimated loss", value: worstScenarioMetric?.detail.replace(/^Estimated loss:\s*/, "") ?? "Not evaluated" }
+            ]}
+          />
+          <CaseFileTopCards
+            cards={[
+              {
+                eyebrow: "Stress failure mode",
+                title: story.title,
+                value: worstScenarioMetric?.value,
+                description: "The first stress read names the market condition most likely to expose the current portfolio weakness.",
+                tone: worstScenarioMetric?.tone
+              },
+              {
+                eyebrow: "Worst scenario",
+                title: estimatedLossMetric?.value ?? worstScenarioMetric?.value ?? "Scenario needs review",
+                value: worstScenarioMetric?.detail,
+                description: "This is the downside evidence to compare against profile tolerance and later candidate trade-offs.",
+                tone: "red"
+              },
+              {
+                eyebrow: "Loss drivers and protection gap",
+                title: driverOrProtectionMetric?.value ?? "Drivers require review",
+                value: confidenceMetric?.value,
+                description: "Driver and protection evidence explains whether losses are concentrated or offset by defensive holdings.",
+                tone: driverOrProtectionMetric?.tone
+              }
             ]}
           />
           <EvidenceSummary
             title="Stress evidence summary"
             description="The summary shows only the facts that explain the current-portfolio stress answer."
+            emptyMessage="Stress evidence is not sufficient to identify a failure mode; rerun the review or continue only with disclosed limitations."
             items={story.metrics.map((metric) => ({ label: metric.label, value: `${metric.value} - ${metric.detail}`, tone: metric.tone }))}
           />
         </div>

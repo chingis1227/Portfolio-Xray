@@ -9,6 +9,7 @@ import { ActiveDiagnosticTestContext } from "@/components/ui/ActiveDiagnosticTes
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { VerdictHero } from "@/components/ui/VerdictHero";
 import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
+import { CaseFileTopCards } from "@/components/ui/CaseFileCards";
 import { ComparisonMetricMatrix } from "@/components/ui/MetricMatrix";
 import { formatUnknownValue, normalizeDisplaySentence } from "@/lib/displayLabels";
 import { useReviewState } from "@/lib/reviewState";
@@ -307,17 +308,45 @@ export function ComparisonScreen() {
           headline={validComparisonAvailable ? "Diagnostic test changes the evidence, with trade-offs" : "Current vs diagnostic test evidence is required"}
           interpretation="This page compares the current portfolio with one generated diagnostic test candidate and highlights the main trade-offs."
           facts={[
-            { label: "Current portfolio", value: currentWeights.length ? `${currentWeights.length} holdings` : "Unavailable" },
-            { label: "Test candidate", value: candidateGeneration?.methodLabel ?? "Unavailable" }
+            { label: "Current portfolio", value: currentWeights.length ? `${currentWeights.length} holdings` : "Input not ready" },
+            { label: "Test candidate", value: candidateGeneration?.methodLabel ?? "Candidate not generated" }
           ]}
         />
+        {validComparisonForDisplay ? (
+          <CaseFileTopCards
+            cards={[
+              {
+                eyebrow: "What improved",
+                title: validComparisonForDisplay.improved[0] ?? "No material improvement returned",
+                value: validComparisonForDisplay.metrics.find((metric) => metric.tone === "blue")?.direction,
+                description: "This is the strongest improvement signal to carry into the verdict step.",
+                tone: "blue"
+              },
+              {
+                eyebrow: "What worsened",
+                title: validComparisonForDisplay.worsened[0] ?? "No material worsening returned",
+                value: tradeoffDetail[0] ?? validComparisonForDisplay.materiality,
+                description: "This is the main cost or trade-off that could make an improvement less useful.",
+                tone: validComparisonForDisplay.worsened.length ? "amber" : "slate"
+              },
+              {
+                eyebrow: "Is the trade-off meaningful?",
+                title: validComparisonForDisplay.materiality || "Materiality needs review",
+                value: validComparisonForDisplay.evidenceQuality,
+                description: "Comparison evidence is not a winner; it tells the verdict step whether the improvement is large enough to matter.",
+                tone: /limited|insufficient|partial/i.test(validComparisonForDisplay.evidenceQuality) ? "amber" : "slate"
+              }
+            ]}
+          />
+        ) : null}
         {validComparisonForDisplay ? (
           <EvidenceSummary
             title="Comparison evidence summary"
             description="Only material comparison facts are promoted before the matrix."
+            emptyMessage="Comparison evidence is not ready; generate one test candidate and complete a same-candidate comparison first."
             items={[
               { label: "Improved", value: validComparisonForDisplay.improved[0] ?? "No material improvement returned" },
-              { label: "Trade-off", value: validComparisonForDisplay.worsened[0] ?? validComparisonForDisplay.materiality ?? "Unavailable", tone: validComparisonForDisplay.worsened.length ? "amber" : "slate" },
+              { label: "Trade-off", value: validComparisonForDisplay.worsened[0] ?? validComparisonForDisplay.materiality ?? "No main trade-off returned", tone: validComparisonForDisplay.worsened.length ? "amber" : "slate" },
               { label: "Evidence quality", value: validComparisonForDisplay.evidenceQuality, tone: /limited|insufficient|partial/i.test(validComparisonForDisplay.evidenceQuality) ? "amber" : "slate" }
             ]}
           />
@@ -329,7 +358,7 @@ export function ComparisonScreen() {
           testName={candidateGeneration?.methodLabel ?? "Diagnostic test candidate not generated"}
           purpose="Comparison checks whether the generated test candidate changes the current portfolio evidence enough to support a cautious verdict."
           candidateName={candidateGeneration?.methodLabel}
-          evidenceQuality={validComparisonAvailable ? "Comparison available" : "Comparison pending"}
+          evidenceQuality={validComparisonAvailable ? "Trade-off evidence ready" : "Trade-off evidence not ready"}
           limitation="Comparison is trade-off evidence only. It is not a final verdict or trade instruction."
           tone={validComparisonAvailable ? "blue" : "amber"}
         />

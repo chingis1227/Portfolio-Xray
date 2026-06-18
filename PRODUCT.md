@@ -52,6 +52,11 @@ implementation status is owned by `SPEC.md`, `OUTPUTS.md`, detailed specs, contr
 - AI explains grounded evidence; code and specs own calculations.
 - Advanced capabilities should support the core journey, not replace it.
 
+These principles are product-authoring constraints. They should shape route order, screen hierarchy,
+and action labels; they should not be repeated as defensive badges, hero disclaimers, or primary
+card copy. User-facing information architecture and copy discipline are governed by
+[`docs/contracts/INFORMATION_ARCHITECTURE_COPY_CONTRACT.md`](docs/contracts/INFORMATION_ARCHITECTURE_COPY_CONTRACT.md).
+
 ## Primary Users
 
 ### Independent Advisor / Financial Advisor

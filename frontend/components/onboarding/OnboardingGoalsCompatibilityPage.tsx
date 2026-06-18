@@ -12,7 +12,7 @@ export function OnboardingGoalsCompatibilityPage() {
   }, [router]);
 
   return (
-    <main className="flex min-h-[100dvh] items-center justify-center bg-pmri-bg px-6 text-pmri-text">
+    <main id="main-content" className="flex min-h-[100dvh] items-center justify-center bg-pmri-bg px-6 text-pmri-text">
       <section className="pmri-card max-w-md rounded-3xl p-6 text-center">
         <p className="pmri-label text-pmri-text2">Onboarding moved</p>
         <h1 className="mt-3 text-2xl font-semibold tracking-[-0.03em]">Opening investor type intake</h1>

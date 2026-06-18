@@ -633,7 +633,7 @@ function buildLimitations(stress: Record<string, unknown>, historical: StressSce
     stillUsable: [
       `${syntheticAvailable}/${synthetic.length} synthetic stress scenarios remain available.`,
       "Current portfolio diagnosis evidence remain available as pre-stress context.",
-      "Use these results as supporting evidence before testing any candidate hypothesis."
+      "Use these results as supporting evidence for the next review step."
     ]
   };
 }

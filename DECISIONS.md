@@ -60,6 +60,19 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-06-18-002
+Title: Treat product guardrails as IA constraints, not repeated primary UI copy
+
+- Status: accepted
+- Date: 2026-06-18
+- Decision: Diagnosis-first, current-portfolio-first, and decision-support-only boundaries are authoring constraints for route order, neutral actions, blocked states, and final evidence review. They must not be repeated as generic badges, hero disclaimers, top-card text, or platform-header metadata on primary UI surfaces.
+- Context: The Diagnosis route and platform header repeated evidence-quality, scope, candidate-boundary, and staged review status labels, making the UI feel defensive and technical instead of like a clean diagnostic case file.
+- Rationale: Safety and product boundaries are better preserved through information architecture and copy discipline than through repeated visible disclaimers.
+- Alternatives considered: Keep one visible boundary disclaimer per route (rejected because it still trains every screen to feel legalistic); remove guardrails from docs entirely (rejected because product boundaries remain essential); rename noisy badges only (rejected because the duplication root would remain).
+- Assumptions: Backend schemas, formulas, generated artifacts, optimizer behavior, and route gates remain unchanged; this decision governs primary UI copy and documentation discipline only.
+- Consequences: Primary UI surfaces must follow `docs/contracts/INFORMATION_ARCHITECTURE_COPY_CONTRACT.md`; frontend copy regression uses `cd frontend && npm.cmd run test:copy`; platform chrome must not promote staged statuses such as `partial` into the main header metadata.
+- Related documents: [Information Architecture and Copy Contract](docs/contracts/INFORMATION_ARCHITECTURE_COPY_CONTRACT.md), [ExecPlan](docs/exec_plans/2026-06-18_global_ia_defensive_copy_cleanup_plan.md), [Design System Contract](docs/contracts/DESIGN_SYSTEM_CONTRACT.md).
+- Review trigger: Revisit if legal/compliance requirements mandate a visible disclosure pattern or if a future public route changes the advice/recommendation boundary.
 Decision ID: DEC-2026-06-18-001
 Title: Use sandbox-first diagnostic-test UX foundation
 

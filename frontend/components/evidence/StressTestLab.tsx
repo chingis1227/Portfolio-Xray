@@ -125,7 +125,7 @@ export function StressTestLab({ model, siteExplanation }: { model: StressLabMode
 
       <MetricMatrix
         title="Stress metrics by scenario relevance"
-        description="Worst-scenario rows appear before supporting evidence. Missing values are shown as Unavailable rather than inferred."
+        description="Worst-scenario rows appear before supporting evidence. Missing values identify which stress conclusion cannot be supported yet."
         groups={[
           {
             title: "Stress vulnerability",

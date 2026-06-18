@@ -6,7 +6,6 @@ import { EvidenceStrip } from "@/components/diagnosis/EvidenceStrip";
 import { DiagnosticCanvas } from "@/components/diagnosis/DiagnosticCanvas";
 import { AdvancedDiagnostics } from "@/components/diagnosis/AdvancedDiagnostics";
 import { StressLabCta } from "@/components/diagnosis/StressLabCta";
-import { TopUtilityHeader } from "@/components/ui/TopUtilityHeader";
 
 type DiagnosisSummaryPanelProps = {
   status: string;
@@ -43,15 +42,6 @@ export function DiagnosisSummaryPanel({
 
   return (
     <div className="space-y-3 md:space-y-4">
-      <TopUtilityHeader
-        eyebrow="Current portfolio · diagnosis-first"
-        title="Read the material issue, supporting evidence, next risk review, and safe handoff before any candidate work."
-        items={[
-          { label: "Scope", value: "Current only" },
-          { label: "Evidence", value: model.dataCoverage, tone: model.dataCoverageTone },
-          { label: "Next", value: "Stress Lab", tone: "blue" }
-        ]}
-      />
       <DiagnosisHero model={model} />
       <EvidenceStrip items={evidenceItems} />
       <DiagnosticCanvas model={model} />

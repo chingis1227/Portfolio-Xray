@@ -12,6 +12,7 @@ type EvidenceSummaryProps = {
   description?: string;
   items: EvidenceSummaryItem[];
   showHeader?: boolean;
+  emptyMessage?: string;
 };
 
 function valueToneClass(tone?: StatusTone) {
@@ -25,7 +26,8 @@ export function EvidenceSummary({
   title = "Evidence summary",
   description,
   items,
-  showHeader = true
+  showHeader = true,
+  emptyMessage = "This review does not yet include enough evidence for this conclusion; use the next-step guidance before relying on this screen."
 }: EvidenceSummaryProps) {
   const visibleItems = items.slice(0, 4);
 
@@ -49,7 +51,7 @@ export function EvidenceSummary({
             </p>
           </div>
         )) : (
-          <p className="p-5 text-sm leading-6 text-pmri-text2 md:col-span-4">Evidence is unavailable for this review.</p>
+          <p className="p-5 text-sm leading-6 text-pmri-text2 md:col-span-4">{emptyMessage}</p>
         )}
       </div>
     </section>

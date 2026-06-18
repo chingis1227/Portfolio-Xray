@@ -2,6 +2,8 @@
 
 ## 2026-06-18
 
+- Added a global information-architecture/copy contract, TDD copy regression gate, and Diagnosis/header cleanup so product guardrails stay as authoring constraints instead of repeated primary UI disclaimers.
+- Added the Diagnostic Case File UX pass: documented the route-by-route spec, added shared case-file top cards, and restructured platform screen copy so conclusions and investor meaning precede dense metrics and technical drill-downs.
 - Implemented the UX/UI audit foundation: added a living ExecPlan, UX product brief, screen-job matrix, component-state matrix, shared product-state components, active diagnostic-test context, expanded /sandbox/components state coverage, and first-pass diagnostic-test wording across key downstream routes.
 - Reset the frontend platform presentation around a deeper cinematic workspace, compact metadata-led top utility header, quieter journey rail, stricter badge discipline, and a Diagnosis case-file screen with a controlled statement hero, four-item floating evidence strip, primary diagnostic canvas, and collapsed advanced diagnostics.
 
@@ -738,7 +740,7 @@ Category: Added
 - **Block 3.3 institutional upgrade Session 07:** Problem Classification uses `hedge_gap_analysis_v1` as primary hedge-gap path; legacy `hedge_gap_status` fallback only; `hedge_gap_source` on `problem_classification.json`.
 - **Block 3.3 institutional upgrade Session 06:** Block 2.6 bridge - `weakness_map_confirmation[]` on `hedge_gap_analysis_v1`, optional `attach_hedge_gap_analysis_v1(..., block_2_6_portfolio_weakness_map=...)`, wired from `build_portfolio_xray_v2` (read-only on 2.6); dual-bridge clears pre-stress limitation flags.
 - **Block 3.3 institutional upgrade Session 05:** Block 2.4 bridge - `hidden_exposure_confirmation[]` on `hedge_gap_analysis_v1`, per-row `confirmation_status`, `weak_hedge_behavior.hedge_gap_bridge`, wired from `build_portfolio_xray_v2`; Block 2.4 adds `partially_confirmed` / `not_confirmed`; contract tests **66+** passed.
-- **Block 3.3 institutional upgrade Session 04:** Main hedge gap selection v2 - weighted `main_gap_score` (offset deficit Г— loss severity Г— concentration boost), `selection_reason_code` / `selection_reason_en`, ruleset bump to `hedge_gap_rules_v1_2`; [hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md) Sectionsummary updated; contract tests **63 passed**.
+- **Block 3.3 institutional upgrade Session 04:** Main hedge gap selection v2 - weighted `main_gap_score` (offset deficit x loss severity x concentration boost), `selection_reason_code` / `selection_reason_en`, ruleset bump to `hedge_gap_rules_v1_2`; [hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md) Sectionsummary updated; contract tests **63 passed**.
 - **Block 3.3 institutional upgrade Session 03:** Calculation hardening - finite PnL parsing, safe offset ratio, deterministic hurt/helped split, parametrized `protection_status` tests; contract tests **60 passed**.
 - **Block 3.3 institutional upgrade Session 02:** Product contract v1.1 on `hedge_gap_analysis_v1` (`ruleset_version`, `block_status`, `scenario_coverage`, row aliases, `protection_status`, `client_diagnosis_en`, enriched `summary`); [hedge_gap_analysis_spec.md](docs/specs/hedge_gap_analysis_spec.md) updated; contract tests **47 passed**.
 
@@ -1313,7 +1315,7 @@ Category: Added
   (invariant asset metrics/corr/cov, extended betas, weekly factor frames, prepared synthetic stress);
   optional `report_timing` blocks and factory aggregate; Session 6 closure audit
   (`docs/audits/2026-05-23_candidate_factory_shared_evidence_session06_timing_audit.md`);
-  full-menu sequential `report_seconds` **в€’28.1%** vs 1192.9 s baseline (below в€’35% goal);
+  full-menu sequential `report_seconds` **-28.1%** vs 1192.9 s baseline (below -35% goal);
   verification bundle **106 passed**; `scripts/shared_evidence_session06_timing_smoke.py`.
 
 Date: 2026-05-22

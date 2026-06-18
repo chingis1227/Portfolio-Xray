@@ -137,7 +137,7 @@ function launchpadCardToTest(card: LaunchpadCardSummary, hasLiveLineage: boolean
   const monitorOrData = isMonitorOrDataCard(card);
   const canGenerate = Boolean(hasLiveLineage && reviewId && defaultMethodId && !monitorOrData);
   const disabledReason = !hasLiveLineage
-    ? "Run a new diagnosis before generating a candidate."
+    ? "Run a new diagnosis to continue."
     : monitorOrData
       ? "This path is for monitoring or data review, not candidate generation."
       : !defaultMethodId
@@ -151,7 +151,7 @@ function launchpadCardToTest(card: LaunchpadCardSummary, hasLiveLineage: boolean
     title: formatUnknownValue(card.title, "Selected diagnostic test"),
     hypothesis: normalizeDisplaySentence(
       card.hypothesis_to_test ?? card.goal,
-      "Test whether the selected candidate improves the diagnosed weakness before comparison."
+      "Test whether the selected candidate improves the diagnosed weakness in comparison."
     ),
     why: normalizeDisplaySentence(
       card.source_problem_label
@@ -166,7 +166,7 @@ function launchpadCardToTest(card: LaunchpadCardSummary, hasLiveLineage: boolean
     tradeoff: card.tradeoff_to_watch ? normalizeDisplaySentence(card.tradeoff_to_watch) : undefined,
     decisionBoundary: normalizeDisplaySentence(
       card.decision_boundary,
-      "Review this candidate in comparison before forming the verdict."
+      "Review this candidate in comparison."
     ),
     statusLabel: monitorOrData ? "Context path" : "Ready to test",
     canGenerate,
@@ -193,7 +193,7 @@ function primaryDiagnosisFromReview(activeReview: ActiveReviewState | null): Hyp
     label: formatUnknownValue(primaryProblem ?? diagnosis?.headline, "Current diagnosis is available"),
     explanation: normalizeDisplaySentence(
       diagnosis?.headline,
-      "The current portfolio has a completed diagnosis. The next step is to test one candidate before comparison."
+      "The diagnosis is ready. The next step is to prepare one test for comparison."
     ),
     rootCause: primaryProblem ? formatUnknownValue(primaryProblem) : undefined,
     confidence: summary?.problemConfidence ? formatUnknownValue(summary.problemConfidence) : undefined,
@@ -307,7 +307,7 @@ export function buildHypothesisScreenModel({
   else if (!rawCards.length) pageState = "unavailable";
 
   const disabledReason = pageState === "read_only"
-    ? "This saved review is compact history. Run a new diagnosis before generating a candidate."
+    ? "This saved review is compact history. Run a new diagnosis to continue."
     : pageState === "locked" && completedRealReview
       ? "Complete Client Fit before testing a hypothesis."
       : pageState === "locked"

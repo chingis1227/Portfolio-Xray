@@ -2621,7 +2621,7 @@ function diagnosisFromFastApiEnvelope(envelope: CreateReviewResponse | Record<st
     headline: normalizeDisplaySentence(headline, "Portfolio diagnosis completed for the submitted current portfolio."),
     evidenceQuality: evidenceQualityLabel(diagnosis.confidence ?? "unknown"),
     nextStep: normalizeDisplaySentence(diagnosis.next_diagnostic_step, "Review supporting evidence before testing one candidate hypothesis."),
-    boundaryNote: normalizeDisplaySentence(diagnosis.recommendation_boundary, "Diagnosis is decision-support evidence only. It is not a rebalance recommendation or trade instruction."),
+    boundaryNote: normalizeDisplaySentence(diagnosis.recommendation_boundary, "Diagnostic review context is available."),
     drivers: drivers.length ? drivers : ["FastAPI returned a bounded diagnosis display summary for the active review."],
     metrics: [
       {
@@ -3473,7 +3473,7 @@ function compactEvidenceFields({
   const hedgeCoverage = mainHedgeGap.offset_coverage_ratio ?? hedgeSummary.main_hedge_gap_offset_coverage_ratio;
   const hedgeArea = textValue(mainHedgeGap.protection_type ?? hedgeSummary.weakest_protection_area, "hedge gap");
   const riskContributorText = topRiskContributors.length
-    ? topRiskContributors.map((item) => `${textValue(item.ticker, "Asset")} ${formatRawPercent(item.rc_pct ?? item.risk_contribution_pct)}`).join(" В· ")
+    ? topRiskContributors.map((item) => `${textValue(item.ticker, "Asset")} ${formatRawPercent(item.rc_pct ?? item.risk_contribution_pct)}`).join(" · ")
     : "Top risk contributors were not returned.";
 
   const items: EvidenceItem[] = [
@@ -3490,7 +3490,7 @@ function compactEvidenceFields({
     {
       type: "Diagnosis",
       title: "Dominant exposure",
-      status: `${dominantExposureName} В· ${dominantExposureWeight}`,
+      status: `${dominantExposureName} · ${dominantExposureWeight}`,
       summary: `The current portfolio is most exposed to ${dominantExposureName}.`,
       source: "Portfolio Diagnosis",
       tone: numericValue(dominantRiskFactor.weight_pct ?? dominantAssetClass.weight_pct) !== null && (numericValue(dominantRiskFactor.weight_pct ?? dominantAssetClass.weight_pct) ?? 0) >= 50 ? "amber" : "blue"
@@ -3527,7 +3527,7 @@ function compactEvidenceFields({
     items.splice(3, 0, {
       type: "Diagnosis",
       title: "Primary weakness",
-      status: `${textValue(riskTypes[0].severity, "Risk")} В· score ${textValue(String(riskTypes[0].score_0_100 ?? "n/a"))}`,
+      status: `${textValue(riskTypes[0].severity, "Risk")} · score ${textValue(String(riskTypes[0].score_0_100 ?? "n/a"))}`,
       summary: textValue(riskTypes[0].short_diagnosis, textValue(riskTypes[0].risk_title, "Primary weakness returned by Portfolio Diagnosis.")),
       source: "Portfolio Diagnosis",
       tone: (numericValue(riskTypes[0].score_0_100) ?? 0) >= 70 ? "red" : "amber"
@@ -3761,7 +3761,7 @@ export function buildDiagnosisFromReview(review: ActiveReviewState): DiagnosisSt
     status: "Diagnosis ready",
     headline,
     evidenceQuality: "Limited evidence",
-    nextStep: "Review evidence before testing any candidate hypothesis.",
+    nextStep: "Review evidence, then continue the test flow.",
     boundaryNote: "Diagnosis reflects the portfolio currently entered on the input screen.",
     drivers,
     metrics: [

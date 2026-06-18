@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import type { Holding } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { CaseFileTopCards } from "@/components/ui/CaseFileCards";
 import { instrumentByTicker, instrumentUniverse, type Instrument } from "@/data/instrumentUniverse";
 import { diagnosisStageChainReady, useReviewState, type ReviewHolding, type ReviewResult, type StagedReviewProgress } from "@/lib/reviewState";
 import type { ClientFitInput, StagedReviewStartedResponse, StagedReviewStatusResponse } from "@/lib/generated/api-types";
@@ -364,11 +365,14 @@ function InstrumentCombobox({
   const updateDropdownPosition = () => {
     const rect = inputRef.current?.getBoundingClientRect();
     if (!rect) return;
+    const viewportPadding = 16;
+    const availableWidth = Math.max(0, window.innerWidth - viewportPadding * 2);
+    const width = Math.min(rect.width, availableWidth);
 
     setDropdownStyle({
-      left: rect.left,
+      left: Math.min(Math.max(viewportPadding, rect.left), Math.max(viewportPadding, window.innerWidth - viewportPadding - width)),
       top: rect.bottom + 8,
-      width: rect.width
+      width
     });
   };
 
@@ -455,6 +459,7 @@ function InstrumentCombobox({
           }
         }}
         role="combobox"
+        aria-label="Ticker or cash position"
         aria-expanded={open}
         aria-autocomplete="list"
         aria-invalid={showMissingState}
@@ -641,7 +646,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
 
     return {
       title: "Ready for diagnosis",
-      text: `${validHoldingCount} holdings В· 100% allocated`,
+      text: `${validHoldingCount} holdings - 100% allocated`,
       tone: "green"
     };
   }, [clientProfileReady, hasStartedPortfolio, instrumentsComplete, totalWeight, validHoldingCount, weightsComplete]);
@@ -1022,6 +1027,31 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
 
   return (
     <div className="space-y-5">
+    <CaseFileTopCards
+      cards={[
+        {
+          eyebrow: "Portfolio to diagnose",
+          title: validHoldingCount ? `${validHoldingCount} current positions` : "No current positions yet",
+          value: `${formatTotalWeight(totalWeight)}% total weight`,
+          description: "This is the current allocation that will be diagnosed before any alternative is tested.",
+          tone: validHoldingCount >= MIN_VALID_HOLDINGS ? "blue" : "amber"
+        },
+        {
+          eyebrow: "Input readiness",
+          title: validationSummary.title,
+          value: validationSummary.text,
+          description: "Readiness checks holdings, instruments, currency, and total weight so the diagnosis starts from a usable current portfolio.",
+          tone: validationSummary.tone
+        },
+        {
+          eyebrow: "Client Fit context",
+          title: clientProfileReady ? profileLabel(activeReview?.clientFitProfile?.preset_id) : "Profile context missing",
+          value: clientProfileReady ? "Profile present" : "Complete before diagnosis",
+          description: "Client Fit is non-binding context for later interpretation; it does not approve trades or hide portfolio issues.",
+          tone: clientProfileReady ? "slate" : "amber"
+        }
+      ]}
+    />
     <section className="pmri-card rounded-2xl p-5 md:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
@@ -1111,7 +1141,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
 
         <p className="mt-3 text-xs leading-5 text-pmri-muted">Cash is treated as a portfolio position.</p>
 
-        <div className="mt-5 overflow-x-auto rounded-2xl border border-pmri-border/45 bg-pmri-secondary/35">
+        <div className="mt-5 hidden overflow-x-auto rounded-2xl border border-pmri-border/45 bg-pmri-secondary/35 xl:block">
           <table className="w-full min-w-[760px] border-separate border-spacing-0 text-left text-sm">
             <thead className="bg-white/[0.018] text-xs font-medium tracking-[-0.005em] text-pmri-muted">
               <tr>
@@ -1179,6 +1209,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
                         placeholder="0"
                         value={row.weightInput}
                         onChange={(event) => updateWeight(row.id, event.target.value)}
+                        aria-label={`Weight percent for ${displayTicker(row) || "holding"}`}
                         aria-invalid={!isValidWeight(row)}
                       />
                       {!isValidWeight(row) && rowStarted ? (
@@ -1199,6 +1230,93 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
               })}
             </tbody>
           </table>
+        </div>
+
+        <div className="mt-5 grid gap-3 xl:hidden">
+          {rows.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-pmri-border/60 bg-white/[0.018] p-5 text-center">
+              <h3 className="pmri-heading-section text-base text-pmri-text">No holdings added yet</h3>
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-pmri-muted">
+                Add at least two current positions before running the diagnosis. Cash can be entered as its own portfolio position.
+              </p>
+              <button
+                type="button"
+                onClick={addHolding}
+                className="pmri-focus mt-4 rounded-full border border-pmri-blue/25 bg-pmri-blue/[0.065] px-4 py-2 text-sm font-medium text-pmri-blueSoft transition hover:bg-pmri-blue/[0.095]"
+              >
+                Add first holding
+              </button>
+            </div>
+          ) : rows.map((row, index) => {
+            const ticker = normalizeTicker(row.ticker);
+            const tickerMissing = ticker.length === 0;
+            const rowStarted = ticker.length > 0 || row.weightInput.trim().length > 0;
+            const instrumentMissing = !isKnownInstrument(row);
+            const duplicateTicker = ticker.length > 0 && duplicateTickerSet.has(ticker);
+
+            return (
+              <article key={row.id} className="rounded-2xl border border-pmri-border/45 bg-pmri-secondary/35 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="pmri-label">Holding {index + 1}</p>
+                    <p className="mt-1 text-xs leading-5 text-pmri-muted">Ticker, instrument, and portfolio weight.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeRow(row.id)}
+                    className="pmri-focus shrink-0 rounded-full border border-transparent bg-transparent px-2.5 py-2 text-sm font-medium text-pmri-muted transition hover:bg-pmri-risk/[0.045] hover:text-pmri-risk"
+                  >
+                    Remove
+                  </button>
+                </div>
+
+                <label className="mt-4 block">
+                  <span className="pmri-label block">Ticker / Cash</span>
+                  <div className="mt-2">
+                    <InstrumentCombobox
+                      row={row}
+                      duplicateTicker={duplicateTicker}
+                      showValidationError={instrumentMissing && rowStarted}
+                      onSelect={(instrument) => updateInstrument(row.id, instrument)}
+                      onClearSelection={() => updateInstrument(row.id, null)}
+                    />
+                  </div>
+                </label>
+                {instrumentMissing && rowStarted ? (
+                  <p className="mt-2 text-xs leading-5 text-pmri-risk">
+                    {tickerMissing ? "Select a ticker or cash position." : "Select an instrument from the list."}
+                  </p>
+                ) : null}
+                {duplicateTicker ? (
+                  <p className="mt-2 text-xs leading-5 text-pmri-amber">Warning: this exact ticker appears more than once.</p>
+                ) : null}
+
+                <div className="mt-4">
+                  <span className="pmri-label block">Instrument</span>
+                  <div className="mt-2 break-words rounded-xl border border-pmri-border/45 bg-white/[0.02] px-3 py-2.5 text-sm leading-6 text-pmri-text2">
+                    {displayInstrument(row) || "Choose an instrument from the list"}
+                  </div>
+                </div>
+
+                <label className="mt-4 block">
+                  <span className="pmri-label block">Weight %</span>
+                  <input
+                    className="pmri-focus data-figure mt-2 w-full rounded-xl border border-pmri-border/55 bg-pmri-secondary/80 px-3 py-2.5 text-right text-sm font-medium text-pmri-text placeholder:text-pmri-muted/70"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={row.weightInput}
+                    onChange={(event) => updateWeight(row.id, event.target.value)}
+                    aria-label={`Weight percent for ${displayTicker(row) || "holding"}`}
+                    aria-invalid={!isValidWeight(row)}
+                  />
+                </label>
+                {!isValidWeight(row) && rowStarted ? (
+                  <p className="mt-2 text-xs leading-5 text-pmri-risk">Enter a weight greater than 0.</p>
+                ) : null}
+              </article>
+            );
+          })}
         </div>
 
         {hasDuplicateTickers ? (
@@ -1342,7 +1460,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
                         <div className="min-w-0">
                           <h3 className="truncate text-sm font-semibold text-pmri-text">{portfolio.name}</h3>
                           <p className="mt-1 text-xs leading-5 text-pmri-muted">
-                            {portfolio.holdings.length} holdings В· {portfolio.baseCurrency} base currency
+                            {portfolio.holdings.length} holdings - {portfolio.baseCurrency} base currency
                           </p>
                           {portfolio.description ? (
                             <p className="mt-1 text-xs leading-5 text-pmri-muted">{portfolio.description}</p>

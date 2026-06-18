@@ -61,6 +61,7 @@ No neon, rainbow, crypto-style glow systems, or decorative red/green chart color
 - Platform screens must show the visible left 8-step rail: Portfolio, Diagnosis, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report.
 - The platform workspace must use a deep cinematic black background with subtle radial gradients and glass depth. It must not fall back to a flat gray dashboard wall.
 - Platform top headers must be compact utility bars. They may show route title and quiet metadata, but must not show noisy review-status or evidence-quality pills as the main header treatment.
+- Platform top headers must not translate staged execution states such as `partial` into primary metadata. If a stage is blocked or failed, explain it inside the affected route state.
 - Redesigned platform routes suppress the top journey rail and use compact step context inside `VerdictHero` instead of the full horizontal top stepper.
 - Verdict-first heroes must use matching step numbers and route names.
 - Locked screens must display the actual route step while explaining the missing prerequisite.
@@ -75,6 +76,7 @@ No neon, rainbow, crypto-style glow systems, or decorative red/green chart color
 - `MetricMatrix` rows use metric, portfolio value, reference/threshold, status, and meaning. Comparison variants use current portfolio, candidate portfolio, change, and interpretation. Fixed groups remain in product order; material/problem rows sort first within each group.
 - Badges must have nearby explanatory copy.
 - Diagnosis must not repeat generic evidence-availability badges across every fact. Use one global evidence-quality state in the evidence strip or advanced detail, not in the main top header, and reserve row-level badges for material risk, review state, or unavailable states.
+- Primary surfaces must follow [Information Architecture and Copy Contract](INFORMATION_ARCHITECTURE_COPY_CONTRACT.md): product guardrails are authoring constraints, not repeated visible disclaimers.
 - Diagnosis must show the hero, four-item evidence strip, and primary diagnostic canvas before MetricMatrix, professional metrics, full X-Ray detail, technical evidence, or raw evidence-chain details.
 - Status labels must be product-facing, not backend enum names or file names.
 - Empty, locked, partial, no-trade, evidence-insufficient, and unavailable states are valid product states and must not look like broken UI.

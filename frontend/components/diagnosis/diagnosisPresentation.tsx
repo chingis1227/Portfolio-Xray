@@ -75,7 +75,7 @@ export function downsideFact(model: DiagnosisDisplayModel, metrics: Metric[] = [
 }
 
 function exposureValue(exposure?: DiagnosisDisplayFact) {
-  if (!exposure) return "Unavailable";
+  if (!exposure) return "Not evaluated";
   const percent = extractPercent(exposure.detail) ?? extractPercent(exposure.note);
   if (percent && !extractPercent(exposure.value)) return `${exposure.value} = ${percent}`;
   return exposure.value;
@@ -88,9 +88,9 @@ export function evidenceSummaryItems(model: DiagnosisDisplayModel, metrics: Metr
   const quality = evidenceQualityValue(model);
 
   return [
-    { label: "Primary issue", value: concentration?.value ?? "Unavailable" },
+    { label: "Primary issue", value: concentration?.value ?? "Not evaluated" },
     { label: "Main exposure", value: exposureValue(exposure) },
-    { label: "Worst observed downside", value: downside?.value ?? "Unavailable", tone: downside?.value ? "red" : "slate" },
+    { label: "Worst observed downside", value: downside?.value ?? "Not evaluated", tone: downside?.value ? "red" : "slate" },
     { label: "Evidence quality", value: quality, tone: quality === "Limited" ? "amber" : "slate" }
   ];
 }

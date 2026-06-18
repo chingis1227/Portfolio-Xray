@@ -180,172 +180,140 @@ Main blocks:
 
 ## `/portfolio-input`
 
-Role: Step 01, define the current portfolio and run diagnosis.
+Role: Step 01, define the current portfolio case file and run diagnosis.
 
-Header:
+Diagnostic Case File order:
 
-- Kicker: `Step 01 / Portfolio to diagnose`.
-- H1: `Define the current portfolio`.
-- Description: enter the portfolio as it stands today before any alternative is tested.
+1. `Portfolio to diagnose` top card: holdings count and total weight for the current allocation.
+2. `Input readiness` top card: the readiness blocker or ready state in investor language.
+3. `Client Fit context` top card: profile presence as non-binding diagnostic context.
+4. Client Fit profile detail and intake adjustment.
+5. Holdings and weights input with investor currency.
+6. Validation / readiness state and `Run diagnosis` CTA.
+7. Saved portfolio, recovery, staged-progress, and technical validation details stay secondary or collapsed.
 
-Main blocks:
+Top-layer metrics: holdings count, total weight, investor currency, and Client Fit profile presence.
 
-1. Client Fit profile card
-   - Shows profile label such as `Balanced`.
-   - Shows target return, volatility, temporary loss, horizon.
-   - CTA: `Adjust intake`; saving manual target rows reclassifies the displayed profile label from the edited return, volatility, drawdown, and horizon.
-
-2. Current allocation only explanation
-   - Explains that the diagnosis checks the current allocation before alternatives.
-
-3. Investor currency
-   - Select values: USD or EUR.
-
-4. Holdings and weights table
-   - Ticker / cash, instrument, weight, actions.
-   - CTAs: `Add holding`, `Add cash position`, `Remove row`.
-   - First-time entry starts with empty input fields, not a prefilled demo allocation.
-   - Empty guidance tells the user to add at least two current positions and treats cash as a position.
-   - Empty ticker fields use a neutral light shimmering border; red appears only after invalid user input.
-   - Cash is treated as a portfolio position.
-
-5. Validation / readiness state
-   - Shows whether instruments, weights, currency, and Client Fit profile are ready.
-   - CTA: `Run diagnosis` when valid.
-
-6. Recovery panel
-   - H2: `Reload an existing review by ID`.
-   - CTA: `Recover active review`.
+The user should understand: the current portfolio to diagnose has been entered, or the exact missing input is clear. The first viewport must not behave like an optimizer setup screen and must not lead with raw recovery IDs or staged backend progress.
 
 ## `/diagnosis`
 
 Role: Step 02, current portfolio diagnosis before candidate tests.
 
-Primary first-read hierarchy:
+Diagnostic Case File order:
 
-- Compact utility header: current-portfolio scope, evidence coverage, and Stress Lab as the next step.
-- Controlled diagnosis hero: dominant current-portfolio diagnosis from the active review, one concise interpretation, and the diagnostic-only boundary.
-- Four-item evidence strip: `Primary issue`, `Main exposure`, `Worst observed downside`, and `Evidence quality`.
-- Primary two-column diagnostic canvas: material drivers on the left and the next risk review on the right.
-- CTA: `Open Stress Lab`.
-- Advanced diagnostics and technical evidence are collapsed below the first-read answer.
+1. `Main diagnosis`: dominant current-portfolio finding.
+2. `Why it matters`: investor interpretation of why the issue matters.
+3. `Key evidence`: primary issue, main exposure, downside evidence, and evidence quality.
+4. Primary diagnostic canvas naming material drivers and the next risk review.
+5. Stress Lab CTA as the next safe decision.
+6. `Detailed diagnostics` collapsed below the first-read answer.
 
-Locked state:
+Top-layer metrics: primary issue, main exposure, concentration, worst observed downside, and evidence quality.
 
-- H2: `Complete Portfolio Input first to unlock Diagnosis.`
-- Copy asks the user to enter the current portfolio and run diagnosis.
-- CTA: `Go to Portfolio Input`.
-
-Ready state:
-
-- Shows the persistent compact `PlatformTopHeader`, then a controlled diagnosis statement hero rather than a tall dashboard card.
-- Shows a four-item floating evidence strip: `Primary issue`, `Main exposure`, `Worst observed downside`, and `Evidence quality`. Only the downside value uses muted red; the strip does not repeat generic evidence badges.
-- Shows one two-column primary diagnostic canvas immediately after the evidence strip. Left side is `What is material in the current portfolio` with concentration, dominant exposure, and downside evidence. Right side is `What risk should be reviewed next` and keeps candidate testing blocked until Stress Lab evidence is reviewed.
-- Shows the Stress Lab CTA only after the primary diagnostic canvas.
-- Does not show the standalone `Diagnosis explanation` wall, card-wall metric summaries, or the MetricMatrix before the main diagnosis is understood.
-- Moves `MetricMatrix`, professional metrics such as VaR, ES, skewness, kurtosis, beta, Sharpe, Sortino, Treynor, full X-Ray detail, evidence-chain notes, and limitations behind `Advanced diagnostics and technical evidence`.
-- Metrics are shown through matrix rows only inside secondary/advanced areas, not as raw backend JSON or repeated unavailable/evidence badges.
+Drill-down contains the grouped MetricMatrix, VaR/ES/skewness/kurtosis/beta/Sharpe/Sortino/Treynor, full X-Ray detail, evidence-chain notes, provenance, and limitations. The page must not recommend a rebalance from diagnosis alone.
 
 ## `/evidence`
 
-Role: Step 03, Stress Test Lab for current portfolio only.
+Role: Step 03, Stress Test Lab for the current portfolio only.
 
-Primary structure:
+Diagnostic Case File order:
 
-- Shared `VerdictHero` with compact context `Step 3 of 8 - Stress Lab`.
-- Headline is the current-portfolio stress answer, such as material stress vulnerability or limited stress evidence.
-- Interpretation states the worst visible stress behavior and the current-portfolio-only boundary.
-- `EvidenceSummary` shows worst scenario, estimated loss, loss drivers/protection behavior, and evidence quality when available.
-- A grouped `MetricMatrix` shows stress vulnerability and scenario evidence rows.
-- A single analytical canvas keeps scenario contribution and hedge protection together.
-- Scenario library, selected scenario detail, factor attribution, evidence trace, and limitations remain secondary technical details.
+1. `Stress failure mode`: the main way the current portfolio breaks under stress.
+2. `Worst scenario`: scenario name and estimated loss when available.
+3. `Loss drivers and protection gap`: drivers, offset behavior, and evidence quality.
+4. Stress evidence summary and grouped stress metrics with investor meaning.
+5. Scenario contribution and protection canvas.
+6. Scenario library, selected scenario detail, factor attribution, evidence trace, and limitations remain secondary technical details.
+7. Next decision: continue to Client Fit.
 
-Locked or compact-history states explain the missing stress model and route the user back to Portfolio Input.
+Top-layer metrics: worst scenario, estimated stress loss, loss drivers, hedge/protection gap, and evidence confidence.
 
 The page must not create candidate, verdict, rebalance, or trade-advice language.
 
-
 ## `/client-fit`
 
-Role: Step 04, non-binding profile-fit check after Stress Lab.
+Role: Step 04, non-binding profile-fit interpretation after Stress Lab.
 
-Primary structure:
+Diagnostic Case File order:
 
-- Shared `VerdictHero` with compact context `Step 4 of 8 - Client Fit`.
-- Hero states the main alignment or mismatch with the provided profile.
-- Boundary note states that Client Fit is diagnostic context only, not suitability approval, not trade advice, and not a replacement for diagnosis.
-- `EvidenceSummary` shows the main mismatch dimensions.
-- `MetricMatrix` shows portfolio value, profile target/reference, restrained row status, and explanation for each target row.
-- Missing profile and evidence-required states remain visible and non-failing.
-- Technical evidence details remain collapsed below the main fit read.
+1. `Fit interpretation`: one profile-fit conclusion in plain language.
+2. `Main mismatch`: the most important portfolio-vs-profile conflict, when present.
+3. `Profile context`: source quality and diagnostic-only boundary.
+4. Profile metric rows with investor meaning.
+5. `How we checked this` collapsed detail for technical evidence and raw profile context.
+6. Next decision: continue to Hypothesis.
 
-The page reduces repeated `Outside`/aligned badges and keeps Client Fit from clearing material diagnosis issues.
+Top-layer metrics: drawdown tolerance versus portfolio downside, horizon context, meaningful target/volatility mismatch, and profile source quality.
 
+Client Fit remains diagnostic context only. It is not suitability approval, not trade advice, and not proof that no portfolio issue exists.
 
 ## `/hypothesis`
 
 Role: Step 05, select one diagnostic hypothesis and prepare/generate one candidate test.
 
-Primary structure:
+The route remains a merged MVP route, but visible content is split into four sections:
 
-- Shared `VerdictHero` with compact context `Step 5 of 8 - Hypothesis`.
-- Hero names the proposed diagnostic test and states that the candidate is a test, not a rebalance recommendation.
-- `EvidenceSummary` shows why this test was selected, first success criterion, trade-off to watch, and candidate boundary.
-- The primary diagnosis recap and proposed test panel appear before the builder controls.
-- The builder action console is visually secondary and prepares one candidate attempt only.
-- Client Fit context, alternative tests, and evidence/technical details are secondary panels.
-- The page intentionally does not use `MetricMatrix` as the primary pattern.
+1. `Problem Classification`: named problem, severity/confidence, and evidence behind classification.
+2. `Candidate Launchpad`: investment hypothesis, mathematical method, and why the method fits the problem.
+3. `Alternatives Builder`: test setup, success criteria, and trade-off to watch.
+4. `Candidate Generation Result`: candidate created/failed, method used, and readiness for comparison.
 
-Generated candidate weights are not the main Hypothesis content; they are reviewed on `/comparison`.
+Top-layer metrics: problem severity, problem confidence, selected investment hypothesis, selected mathematical method such as Minimum CVaR, first success criterion, and main trade-off.
 
+Other tests, monitor/data paths, method internals, min/max asset weights, capped/uncapped settings, and developer details remain secondary. Generated candidate weights are not the main Hypothesis answer; they are reviewed on `/comparison`.
 
 ## `/comparison`
 
-Role: Step 06, compare current portfolio with one generated diagnostic candidate.
+Role: Step 06, compare the current portfolio with one generated diagnostic test candidate.
 
-Primary structure:
+Diagnostic Case File order:
 
-- Shared `VerdictHero` with compact context `Step 6 of 8 - Comparison`.
-- Hero states whether comparison evidence is available and repeats that this is diagnostic comparison only.
-- `EvidenceSummary` promotes only selected material comparison facts when comparison evidence is available.
-- Empty, unavailable, ready-to-run, retry, read-only history, and candidate-not-comparable states remain visible.
-- Ready state uses comparison `MetricMatrix` groups: risk improvement, trade-offs, fit impact, and evidence quality.
-- Allocation lists, warnings, and technical comparison notes are secondary details.
+1. `What improved`: the strongest improvement signal.
+2. `What worsened`: the main cost or trade-off.
+3. `Is the trade-off meaningful?`: materiality and evidence confidence.
+4. Comparison evidence summary and matrix with investor interpretation.
+5. Client Fit impact if meaningful.
+6. Allocation tables, warnings, and technical notes stay in secondary detail.
+7. Next decision: continue to Verdict.
+
+Top-layer metrics: main improvement, main cost/trade-off, materiality, Client Fit impact when meaningful, and evidence confidence.
 
 The page must show trade-offs without winner, switch, recommendation, or final-verdict framing.
-
 
 ## `/verdict`
 
 Role: Step 07, non-binding decision-support verdict.
 
-Primary structure:
+Diagnostic Case File order:
 
-- Shared `VerdictHero` with compact context `Step 7 of 8 - Verdict`.
-- Hero presents the cautious decision interpretation and a visible boundary: diagnostic interpretation only, not trade advice or suitability approval.
-- `EvidenceSummary` shows selected verdict evidence, rationale, major trade-off or limitation, and boundary.
-- Ready state uses narrative cards for decision interpretation, rationale, evidence quality, and what would change the verdict.
-- Client Fit is shown as one input to the verdict, not as an approval.
-- Evidence-insufficient and candidate-failed states remain valid outcomes with recovery paths.
+1. `Decision stance`: one of `Keep current`, `Review rebalance`, `Test another candidate`, or `Evidence insufficient`.
+2. `Reason`: the primary evidence supporting the stance.
+3. `What would change the verdict`: the main limitation or monitoring trigger.
+4. Selected verdict evidence and rationale.
+5. Client Fit as one input, not approval.
+6. Detailed rationale, provenance, limitations, and lineage details stay secondary.
+7. Next decision: open Report or test another hypothesis.
 
-The page avoids recommendation, approval, safety, and trade-instruction language.
+Top-layer metrics: decision status, confidence, main evidence, main limitation, and next action.
 
+The page avoids recommendation, approval, safety, guarantee, and trade-instruction language.
 
 ## `/report`
 
 Role: Step 08, grounded client-ready report preview.
 
-Primary structure:
+Diagnostic Case File order:
 
-- Shared `VerdictHero` with compact context `Step 8 of 8 - Report`.
-- Hero frames the page as a narrative report preview grounded in active evidence.
-- `EvidenceSummary` includes selected evidence only: main diagnosis, stress evidence, Client Fit/comparison context when returned, and final verdict.
-- Report grounding trace is secondary detail.
-- Ready state shows `ClientReadyReportPreview` as a narrative executive summary with supporting sections, next observation, and boundary.
-- Evidence used, warnings, unavailable evidence, and timestamp are secondary support, not a dashboard wall.
+1. `Plain-English explanation`: narrative summary of the active review.
+2. `Evidence used`: selected diagnosis, stress, Client Fit, comparison, and verdict evidence.
+3. `Limitations`: warnings, unavailable evidence, and next observation point.
+4. ClientReadyReportPreview narrative.
+5. Evidence used, warnings, unavailable evidence, timestamp, and grounding trace stay secondary.
 
-The report does not duplicate every metric from every page and does not add unsupported conclusions.
+Top-layer metrics: main diagnosis, stress evidence, comparison result, and verdict stance.
 
+The report does not duplicate every page metric, does not expose raw provenance as the first answer, and does not add unsupported conclusions.
 
 ## `/client-profile`
 

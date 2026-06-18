@@ -55,7 +55,7 @@ export function RequiredSignInPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-pmri-bg px-5 py-10 text-pmri-text">
+    <main id="main-content" className="relative flex min-h-screen items-center justify-center overflow-hidden bg-pmri-bg px-5 py-10 text-pmri-text">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_12%,rgba(96,165,250,0.17),transparent_28%),radial-gradient(circle_at_18%_80%,rgba(170,183,198,0.08),transparent_25%),linear-gradient(180deg,rgba(255,255,255,0.035),transparent_46%)]" />
       <div className="pointer-events-none absolute inset-x-0 bottom-[-160px] h-[520px] border-t border-pmri-blue/10 opacity-70 pmri-moving-grid" />
 

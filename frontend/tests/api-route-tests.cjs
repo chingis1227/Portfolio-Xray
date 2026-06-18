@@ -1306,7 +1306,7 @@ test("Client Fit screen is a required non-binding step before Hypothesis", () =>
   assert.match(source, /hasSummary\(summary\)/);
   assert.match(source, /isMissingProfile\(summary\)/);
   assert.match(source, /Backend-compatible runs can preserve a missing-profile state/);
-  assert.match(source, /the normal web journey uses your profile before testing a hypothesis/);
+  assert.match(source, /the normal web journey uses your profile/);
   assert.match(source, /href="\/hypothesis"/);
   assert.match(source, /!\s*missingProfile\s*\?\s*\(/);
   assert.doesNotMatch(source, /href="\/comparison"|href="\/verdict"|href="\/report"/);
@@ -1372,7 +1372,7 @@ test("sample Hypothesis review includes provided Client Fit context before Build
   const model = buildHypothesisScreenModel({ activeReview: sampleLikeReview });
 
   assert.match(source, /Sample Client Fit context is available for the demo journey/);
-  assert.match(source, /Client Fit is non-binding context and does not approve a rebalance/);
+  assert.match(source, /Client Fit context is available for this review/);
   assert.equal(model.pageState, "ready");
   assert.equal(model.action.state, "generate");
 });
@@ -3162,7 +3162,7 @@ test("Hypothesis probes backend review status before Builder and diagnostic test
   assert.ok(probeIndex > 0, "Hypothesis should probe live backend lineage before downstream actions.");
   assert.ok(builderIndex > probeIndex, "Builder prepare must happen after the status probe.");
   assert.ok(candidateIndex > builderIndex, "Candidate generation must happen after Builder prepare.");
-  assert.match(source, /Run a new diagnosis before generating a test candidate/);
+  assert.match(source, /Start a fresh diagnosis to continue/);
   assert.match(source, /markLiveLineageUnavailable\(message\)/);
 });
 
