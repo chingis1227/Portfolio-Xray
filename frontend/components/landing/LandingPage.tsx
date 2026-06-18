@@ -87,7 +87,7 @@ export function LandingPage() {
           <div className="mt-12 grid gap-px overflow-hidden rounded-lg border border-pmri-border bg-pmri-border md:grid-cols-5">
             {workflow.map(([number, title, text], index) => (
               <Reveal key={number} delay={index * 70}>
-                <article className="min-h-[280px] bg-pmri-surface p-6">
+                <article className="h-full min-h-[280px] bg-pmri-surface p-6">
                   <p className="font-mono text-xs uppercase tracking-[0.18em] text-pmri-muted">{number}</p>
                   <h3 className="mt-8 text-2xl font-normal tracking-[-0.03em] text-pmri-text">{title}</h3>
                   <p className="mt-5 text-sm leading-7 text-pmri-text2">{text}</p>
@@ -112,9 +112,9 @@ export function LandingPage() {
           <div className="grid gap-px overflow-hidden rounded-lg border border-pmri-border bg-pmri-border md:grid-cols-2">
             {architecture.map(([title, text], index) => (
               <Reveal key={title} delay={index * 55}>
-                <article className="bg-pmri-surface p-6 transition hover:bg-pmri-surface2">
+                <article className="h-full bg-pmri-surface p-6 transition hover:bg-pmri-surface2">
                   <h3 className="text-xl font-normal tracking-[-0.025em] text-pmri-text">{title}</h3>
-                  <p className="mt-3 text-sm leading-7 text-pmri-muted">{text}</p>
+                  <p className="mt-3 text-sm leading-7 text-pmri-text2">{text}</p>
                 </article>
               </Reveal>
             ))}

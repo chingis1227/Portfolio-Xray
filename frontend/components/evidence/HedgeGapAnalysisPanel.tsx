@@ -20,7 +20,7 @@ export function HedgeGapAnalysisPanel({ hedgeGap }: { hedgeGap: HedgeGapSummary 
         badge={hedgeGap.statusLabel}
         badgeTone={hedgeGap.statusTone}
       />
-      <div className="mt-6 grid gap-5 2xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+      <div className="mt-6 grid gap-5">
         <article className="min-w-0 rounded-2xl border border-pmri-border/55 bg-white/[0.024] p-5">
           <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-start 2xl:justify-between">
             <div className="min-w-0">
@@ -32,7 +32,7 @@ export function HedgeGapAnalysisPanel({ hedgeGap }: { hedgeGap: HedgeGapSummary 
               <StatusBadge tone={hedgeGap.statusTone}>{hedgeGap.statusLabel}</StatusBadge>
             </div>
           </div>
-          <div className="mt-6 grid gap-3 2xl:grid-cols-3">
+          <div className="mt-6 grid gap-3 md:grid-cols-3">
             <div className="min-w-0 rounded-2xl border border-pmri-risk/18 bg-pmri-risk/[0.035] p-4">
               <p className="pmri-label">Gross hurt loss</p>
               <p className="data-figure mt-2 text-xl text-pmri-text 2xl:text-2xl">{grossLossDisplay}</p>
@@ -62,7 +62,7 @@ export function HedgeGapAnalysisPanel({ hedgeGap }: { hedgeGap: HedgeGapSummary 
         </article>
 
         <article className="min-w-0 rounded-2xl border border-pmri-border/55 bg-white/[0.024] p-5">
-          <div className="grid gap-5 2xl:grid-cols-2">
+          <div className="grid gap-5 md:grid-cols-2">
             <div className="min-w-0">
               <h3 className="mb-4 text-base font-semibold text-pmri-text">Assets that hurt in main hedge gap scenario</h3>
               <ContributionBars rows={hedgeGap.assetsHurt} emptyMessage="Hurt assets unavailable for the main hedge gap." />
