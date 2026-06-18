@@ -321,3 +321,9 @@ npm.cmd run build
 
 `tests/test_frontend_review_bridge.py` remains available for the legacy/debug script helper, but it
 is no longer the normal frontend route-path gate.
+
+## Design-system sandbox
+
+Use `/sandbox/components` for local UI foundation review before changing production routes. It previews shared primitives from `frontend/components/ui/`, the active diagnostic-test context strip, product-facing state shells, evidence/matrix components, and diagnosis product components without calling backend review APIs or changing journey gating.
+
+For the current benchmark route, `/diagnosis` should remain composed as `DiagnosisHero -> EvidenceStrip -> DiagnosticCanvas -> AdvancedDiagnostics`, with technical metrics collapsed below the first-read diagnosis.

@@ -47,7 +47,7 @@ export function SavedReviewsPanel() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="pmri-label text-pmri-text2">Saved cloud reviews</p>
-          <p className="mt-1 text-[11px] leading-4 text-pmri-muted">Compact summaries only; full artifacts stay local.</p>
+          <p className="mt-1 text-[11px] leading-4 text-pmri-muted">Compact summaries only; full evidence files stay local.</p>
         </div>
         <button
           type="button"

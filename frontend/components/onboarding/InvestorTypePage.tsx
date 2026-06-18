@@ -23,10 +23,10 @@ type Option<T extends string> = {
 };
 
 const stressReactionOptions: Array<Option<OnboardingStressReaction>> = [
-  { id: "sell_all", label: "Sell all risky positions", detail: "Avoid a deeper loss even if the portfolio may rebound later." },
-  { id: "sell_some", label: "Sell some and wait", detail: "Cut risk first, then decide whether to re-enter." },
+  { id: "sell_all", label: "Exit risky positions", detail: "Avoid a deeper loss even if the portfolio may rebound later." },
+  { id: "sell_some", label: "Reduce risk and wait", detail: "Cut risk first, then decide whether to re-enter." },
   { id: "hold", label: "Hold and review evidence", detail: "Do not panic, but check whether the portfolio still fits the plan." },
-  { id: "buy_more", label: "Buy more if fundamentals hold", detail: "Use the drawdown as an opportunity if the evidence remains strong." }
+  { id: "buy_more", label: "Add risk if fundamentals hold", detail: "Use the drawdown as an opportunity if the evidence remains strong." }
 ];
 
 const horizonOptions: Array<Option<OnboardingHorizon>> = [

@@ -184,3 +184,36 @@ Any meaningful UI change must update:
 - `docs/contracts/DESIGN_SYSTEM_CONTRACT.md` when enforceable design rules change;
 - `docs/contracts/SCREEN_CONTRACTS.md` and `docs/specs/frontend_screen_contracts.md` when route responsibilities change;
 - `frontend/README.md` and demo runbooks when operator flow changes.
+
+## Foundation-first redesign workflow
+
+Visible product UI changes now follow a foundation-first workflow rather than local page polishing:
+
+```text
+user journey
+-> screen contracts
+-> design tokens
+-> primitive components
+-> product components
+-> sandbox/gallery
+-> page templates
+-> real screens
+```
+
+The reusable frontend foundation lives in `frontend/components/ui/` and includes primitive actions, surfaces, section headers, evidence items, disclosure, and product-facing state components. Product-specific diagnosis composition lives in `frontend/components/diagnosis/` and keeps the first-read diagnosis separate from advanced technical evidence.
+
+Local design iteration should use `frontend/app/sandbox/components/page.tsx` at `/sandbox/components` before changing production routes. Sandbox content is not a product route and must not change journey gating, backend behavior, review state logic, or API contracts.
+
+The foundation-first UX artifacts are `docs/design/ux_product_brief.md`, `docs/design/screen_job_matrix.md`, and `docs/design/component_state_matrix.md`. Use them before broad route refactors so every route keeps one screen job, product-facing state language, and diagnostic-test wording.
+
+`/diagnosis` is the current benchmark screen for this foundation. Its production composition is:
+
+```text
+PlatformTopHeader
+-> DiagnosisHero
+-> EvidenceStrip
+-> DiagnosticCanvas
+-> AdvancedDiagnostics collapsed below
+```
+
+The first viewport must answer the main diagnosis, supporting evidence, next risk area, and next safe action before showing MetricMatrix, professional metrics, full X-Ray details, raw evidence-chain notes, or technical limitations.

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
 import { ClientFitContextCard } from "@/components/client-fit/ClientFitContextCard";
+import { ActiveDiagnosticTestContext } from "@/components/ui/ActiveDiagnosticTestContext";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { VerdictHero } from "@/components/ui/VerdictHero";
 import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
@@ -126,8 +127,8 @@ function comparisonMissingReasons({
   candidateNotComparable?: boolean;
 }) {
   const reasons = new Set<string>();
-  if (candidateNotComparable) reasons.add("The generated candidate is not compare-ready for this review.");
-  if (!candidateNotComparable) reasons.add("Candidate metrics are unavailable");
+  if (candidateNotComparable) reasons.add("The generated test candidate is not compare-ready for this review.");
+  if (!candidateNotComparable) reasons.add("Test candidate metrics are unavailable");
   reasons.add("Trade-off comparison evidence could not be completed");
   if (comparison?.comparisonStatus && statusKey(comparison.comparisonStatus) !== "available") {
     reasons.add(formatUnknownValue(comparison.comparisonStatus, "Comparison unavailable"));
@@ -160,7 +161,7 @@ function EmptyState({
         <div className="mt-5 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
           <p className="pmri-label">What is missing</p>
           <ul className="mt-3 space-y-2 text-sm leading-6 text-pmri-text2">
-            {missing.map((item) => <li key={item}>• {item}</li>)}
+            {missing.map((item) => <li key={item}>- {item}</li>)}
           </ul>
         </div>
       ) : null}
@@ -292,22 +293,22 @@ export function ComparisonScreen() {
     : undefined;
 
   const comparisonAvailabilityTitle = showCandidateNotComparableState
-    ? "Candidate cannot be compared yet"
+    ? "Test candidate cannot be compared yet"
     : "Comparison metrics unavailable";
   const comparisonAvailabilityDescription = showCandidateNotComparableState
-    ? "A candidate was generated, but it is not ready for a current-vs-candidate trade-off comparison."
-    : "The candidate exists, but Portfolio MRI does not have enough current candidate metrics to compare it against the current portfolio.";
+    ? "A diagnostic test candidate was generated, but it is not ready for a trade-off comparison."
+    : "The test candidate exists, but Portfolio MRI does not have enough current metrics to compare it against the current portfolio.";
 
   return (
     <div>
       <div className="mb-6 space-y-5">
         <VerdictHero
           stepContext="Step 6 of 8 - Comparison"
-          headline={validComparisonAvailable ? "Candidate test changes the evidence, with trade-offs" : "Current vs candidate evidence is required"}
-          interpretation="This page compares the current portfolio with one generated candidate and highlights the main trade-offs."
+          headline={validComparisonAvailable ? "Diagnostic test changes the evidence, with trade-offs" : "Current vs diagnostic test evidence is required"}
+          interpretation="This page compares the current portfolio with one generated diagnostic test candidate and highlights the main trade-offs."
           facts={[
             { label: "Current portfolio", value: currentWeights.length ? `${currentWeights.length} holdings` : "Unavailable" },
-            { label: "Candidate portfolio", value: candidateGeneration?.methodLabel ?? "Unavailable" }
+            { label: "Test candidate", value: candidateGeneration?.methodLabel ?? "Unavailable" }
           ]}
         />
         {validComparisonForDisplay ? (
@@ -323,6 +324,17 @@ export function ComparisonScreen() {
         ) : null}
       </div>
 
+      <div className="mb-6">
+        <ActiveDiagnosticTestContext
+          testName={candidateGeneration?.methodLabel ?? "Diagnostic test candidate not generated"}
+          purpose="Comparison checks whether the generated test candidate changes the current portfolio evidence enough to support a cautious verdict."
+          candidateName={candidateGeneration?.methodLabel}
+          evidenceQuality={validComparisonAvailable ? "Comparison available" : "Comparison pending"}
+          limitation="Comparison is trade-off evidence only. It is not a final verdict or trade instruction."
+          tone={validComparisonAvailable ? "blue" : "amber"}
+        />
+      </div>
+
       {validComparisonAvailable ? (
         <SiteExplanationHierarchy bundle={siteExplanation} screen="comparison" fallbackTitle="Comparison explanation" />
       ) : null}
@@ -331,7 +343,7 @@ export function ComparisonScreen() {
         <section className="mb-6 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
           <StatusBadge tone="slate">Historical</StatusBadge>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-text2">
-            This is compact review history. Run-local lineage is not recovered, so Portfolio MRI will not reuse this comparison to create a new verdict.
+            This is compact review history. Same-run evidence is not recoverable from this compact snapshot, so Portfolio MRI will not reuse this comparison to create a new verdict.
           </p>
         </section>
       ) : null}
@@ -340,9 +352,9 @@ export function ComparisonScreen() {
         <section className="mb-6 pmri-card rounded-3xl p-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="pmri-label">Generated diagnostic candidate</p>
+              <p className="pmri-label">Generated diagnostic test candidate</p>
               <h2 className="mt-2 pmri-heading-section text-xl text-pmri-text">
-                Current portfolio vs {candidateGeneration?.methodLabel ?? "generated candidate"}
+                Current portfolio vs {candidateGeneration?.methodLabel ?? "generated test candidate"}
               </h2>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
                 These are the two portfolios being compared.
@@ -357,9 +369,9 @@ export function ComparisonScreen() {
 
       {showCandidateMissingState ? (
         <EmptyState
-          title="Generate a test candidate first"
-          description="Portfolio MRI needs one generated diagnostic test candidate before it can compare current vs candidate trade-offs."
-          nextStep="Return to Hypothesis Builder and generate a candidate."
+          title="Generate a diagnostic test candidate first"
+          description="Portfolio MRI needs one generated diagnostic test candidate before it can compare trade-offs against the current portfolio."
+          nextStep="Return to Hypothesis Builder and generate a diagnostic test candidate."
         />
       ) : null}
 
@@ -377,7 +389,7 @@ export function ComparisonScreen() {
             <span className="font-medium text-pmri-text">Next step:</span>{" "}
             {canGenerateEvidenceVerdict
               ? "Generate an evidence-insufficient verdict, or return to Hypothesis Builder to test another setup."
-              : "Regenerate candidate, adjust setup, or resolve data quality."}
+              : "Regenerate the test candidate, adjust setup, or resolve data quality."}
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             {comparisonError && canRunComparison ? (
@@ -420,7 +432,7 @@ export function ComparisonScreen() {
               <p className="pmri-label">Ready for comparison</p>
               <h2 className="mt-2 pmri-heading-section text-xl text-pmri-text">Run diagnostic comparison</h2>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
-                The generated candidate is compare-ready. This step creates the comparison evidence.
+                The generated diagnostic test candidate is compare-ready. This step creates the comparison evidence.
               </p>
             </div>
             <StatusBadge tone="slate">Diagnostic comparison</StatusBadge>
@@ -435,7 +447,7 @@ export function ComparisonScreen() {
                 : "pmri-focus border-pmri-blue/50 bg-pmri-blue text-pmri-bg shadow-decision hover:bg-pmri-blueSoft"
             }`}
           >
-            {isComparing ? "Comparing candidate..." : "Compare candidate"}
+            {isComparing ? "Comparing test candidate..." : "Compare test candidate"}
           </button>
           {comparisonError ? (
             <p className="mt-4 rounded-xl border border-pmri-red/35 bg-pmri-red/10 p-3 text-sm leading-6 text-pmri-red">
@@ -459,12 +471,12 @@ export function ComparisonScreen() {
                 title: "Trade-offs",
                 rows: [
                   ...validComparisonForDisplay.metrics.filter((metric) => metric.tone === "amber" || metric.tone === "red" || /worsen|cost|turnover|higher/i.test(metric.direction)).map((metric) => ({ metric: metric.metric, currentPortfolio: metric.current, candidatePortfolio: metric.candidate, change: metric.direction, status: metric.tone === "red" || metric.tone === "amber" ? { label: metric.direction, tone: metric.tone } : undefined, interpretation: metric.tradeoff, material: true })),
-                  { metric: "Turnover", currentPortfolio: "Current allocation", candidatePortfolio: candidateGeneration?.methodLabel ?? "Candidate", change: validComparisonForDisplay.turnover, interpretation: validComparisonForDisplay.estimatedCost }
+                  { metric: "Turnover", currentPortfolio: "Current allocation", candidatePortfolio: candidateGeneration?.methodLabel ?? "Test candidate", change: validComparisonForDisplay.turnover, interpretation: validComparisonForDisplay.estimatedCost }
                 ]
               },
               {
                 title: "Fit impact",
-                rows: [{ metric: "Client Fit context", currentPortfolio: clientFitForStage?.status_label ?? "Unavailable", candidatePortfolio: "Candidate fit impact", change: "Limited", interpretation: "Profile context for the comparison." }]
+                rows: [{ metric: "Client Fit context", currentPortfolio: clientFitForStage?.status_label ?? "Unavailable", candidatePortfolio: "Test impact", change: "Limited", interpretation: "Profile context for the comparison." }]
               },
               {
                 title: "Evidence quality",
@@ -476,9 +488,9 @@ export function ComparisonScreen() {
           />
           <ClientFitContextCard
             clientFit={clientFitForStage}
-            title="Current vs candidate vs Client Fit"
-            description="This comparison can show whether the candidate changes profile-fit evidence."
-            structuralIssueNote="Compare the candidate against both diagnosis evidence and profile targets."
+            title="Current vs diagnostic test vs Client Fit"
+            description="This comparison can show whether the diagnostic test candidate changes profile-fit evidence."
+            structuralIssueNote="Compare the diagnostic test candidate against both diagnosis evidence and profile targets."
             compact
           />
           <details className="pmri-card rounded-3xl p-5 md:p-6">
@@ -488,7 +500,7 @@ export function ComparisonScreen() {
             </summary>
             <div className="mt-5 grid gap-4 lg:grid-cols-2">
               <AllocationList title="Current portfolio" subtitle="Input allocation" weightUnit="percent" items={currentWeights} />
-              <AllocationList title={candidateGeneration?.methodLabel ?? "Generated candidate"} subtitle="Candidate allocation" weightUnit="fraction" items={candidateWeights} />
+              <AllocationList title={candidateGeneration?.methodLabel ?? "Generated test candidate"} subtitle="Test candidate allocation" weightUnit="fraction" items={candidateWeights} />
             </div>
             <ul className="mt-5 space-y-2 text-sm leading-7 text-pmri-muted">
               {(validComparisonForDisplay.warnings.length ? validComparisonForDisplay.warnings : ["No additional comparison warnings are available."]).map((item) => <li key={item}>- {item}</li>)}

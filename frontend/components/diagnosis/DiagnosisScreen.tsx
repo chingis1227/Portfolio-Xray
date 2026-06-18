@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { DiagnosisSummaryPanel } from "@/components/diagnosis/DiagnosisSummaryPanel";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { BackToPortfolioInputAction, ErrorState, LoadingState, LockedState, PortfolioInputAction } from "@/components/ui/States";
 import { buildDiagnosisFromReview, diagnosisStageChainReady, useReviewState, type ReviewHolding, type ReviewResult, type StagedReviewProgress } from "@/lib/reviewState";
 import type { StagedReviewStatusResponse } from "@/lib/generated/api-types";
 
@@ -58,41 +57,22 @@ function currencyFromRecoveredReview(result: ReviewResult | undefined) {
 
 function FailedDiagnosisState() {
   return (
-    <section className="pmri-card rounded-2xl border-pmri-risk/35 p-6 md:p-8">
-      <StatusBadge tone="amber">Needs retry</StatusBadge>
-      <h2 className="mt-4 pmri-heading-section text-2xl text-pmri-text">
-        Diagnosis is taking longer than expected
-      </h2>
-      <p className="mt-3 max-w-2xl text-sm leading-7 text-pmri-text2">
-        Please try again. Your portfolio input is still saved on this device.
-      </p>
-      <Link
-        href="/portfolio-input"
-        className="pmri-focus mt-6 inline-flex rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg transition hover:bg-pmri-blueSoft"
-      >
-        Review portfolio input
-      </Link>
-    </section>
+    <ErrorState
+      title="Diagnosis is taking longer than expected"
+      description="Please try again. Your portfolio input is still saved on this device."
+      action={<PortfolioInputAction />}
+    />
   );
 }
 
 function LockedDiagnosisState() {
   return (
-    <section className="pmri-card rounded-2xl p-6 md:p-8">
-      <StatusBadge tone="amber">Diagnosis locked</StatusBadge>
-      <h2 className="mt-4 pmri-heading-section text-2xl text-pmri-text">
-        Complete Portfolio Input first to unlock Diagnosis.
-      </h2>
-      <p className="mt-3 max-w-2xl text-sm leading-7 text-pmri-muted">
-        Enter the current portfolio and run diagnosis so this page can reflect the active review.
-      </p>
-      <Link
-        href="/portfolio-input"
-        className="pmri-focus mt-6 inline-flex rounded-full border border-pmri-blue/50 bg-pmri-blue px-5 py-2.5 text-sm font-medium text-pmri-bg transition hover:bg-pmri-blueSoft"
-      >
-        Go to Portfolio Input
-      </Link>
-    </section>
+    <LockedState
+      title="Complete Portfolio Input first to unlock Diagnosis."
+      description="Enter the current portfolio and run diagnosis so this page can reflect the active review."
+      missing={["Current holdings and weights", "A completed current-portfolio diagnosis run"]}
+      action={<PortfolioInputAction />}
+    />
   );
 }
 
@@ -104,20 +84,11 @@ function RunningDiagnosisState({
   recoveryError?: string | null;
 }) {
   return (
-    <section className="pmri-card rounded-2xl p-6 md:p-8">
-      <h2 className="mt-4 pmri-heading-section text-2xl text-pmri-text">
-        Portfolio MRI is preparing your diagnosis.
-      </h2>
-      <p className="mt-3 max-w-2xl text-sm leading-7 text-pmri-muted">
-        This usually takes a moment.
-      </p>
-      <Link
-        href="/portfolio-input"
-        className="pmri-focus mt-6 inline-flex rounded-full border border-pmri-border/60 px-5 py-2.5 text-sm font-semibold text-pmri-text2 transition hover:border-pmri-blue/40 hover:text-pmri-text"
-      >
-        Back to Portfolio Input
-      </Link>
-    </section>
+    <LoadingState
+      title="Portfolio MRI is preparing your diagnosis."
+      description="This usually takes a moment."
+      action={<BackToPortfolioInputAction />}
+    />
   );
 }
 

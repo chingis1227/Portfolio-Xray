@@ -74,7 +74,7 @@ export function HypothesisCard({
         <div>
           <dt className="pmri-label">Success criteria</dt>
           <dd className="mt-1 leading-6 text-pmri-text2">
-            <ListOrText items={hypothesis.successCriteria?.map((item) => normalizeDisplaySentence(item))} fallback="Success criteria will be checked in Current vs Candidate Comparison." />
+            <ListOrText items={hypothesis.successCriteria?.map((item) => normalizeDisplaySentence(item))} fallback="Success criteria will be checked in the current-vs-test-candidate comparison." />
           </dd>
         </div>
         <div>

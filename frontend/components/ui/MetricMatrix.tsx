@@ -90,7 +90,7 @@ export function ComparisonMetricMatrix({ groups }: { groups: Array<{ title: stri
   return (
     <section className="pmri-card rounded-3xl p-5 md:p-6">
       <p className="pmri-type-meta text-pmri-text2">Comparison matrix</p>
-      <h2 className="pmri-type-section-title mt-2 text-pmri-text">Current portfolio vs candidate</h2>
+      <h2 className="pmri-type-section-title mt-2 text-pmri-text">Current portfolio vs test candidate</h2>
       <div className="mt-6 space-y-6">
         {groups.map((group) => (
           <div key={group.title}>

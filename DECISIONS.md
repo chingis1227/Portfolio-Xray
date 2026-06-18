@@ -60,6 +60,20 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-06-18-001
+Title: Use sandbox-first diagnostic-test UX foundation
+
+- Status: accepted
+- Date: 2026-06-18
+- Decision: The UX/UI audit implementation uses a foundation-first workflow with a self-directed investor as the primary user, `Diagnostic test` as the preferred user-facing wording for candidate work, `/sandbox/components` as the first isolated UI workflow, `/diagnosis` as the benchmark route, and `/onboarding/goals` classified as a legacy compatibility route rather than a canonical journey step.
+- Context: The UX/UI audit found strong product foundations but gaps in user/job documentation, isolated component-state coverage, shared state patterns, and downstream candidate wording.
+- Rationale: Expanding the existing sandbox avoids new Storybook dependencies while giving immediate state coverage. Diagnostic-test language reduces recommendation and trade-instruction risk.
+- Alternatives considered: Adopt Storybook immediately (deferred due dependency and maintenance cost); keep `Candidate` as primary user wording (rejected for advice-like interpretation risk); remove `/onboarding/goals` immediately (rejected because compatibility references still exist).
+- Assumptions: Backend field names, route names, and current API envelopes remain unchanged; this decision governs primary UI wording and UX workflow only.
+- Consequences: UX foundation docs, shared state components, sandbox coverage, and downstream route copy should use diagnostic-test framing and product-facing states.
+- Related documents: [UX/UI Product Audit Sprint](docs/audits/2026-06-18_ux_ui_product_audit_sprint.md), [UX Product Brief](docs/design/ux_product_brief.md), [Screen Job Matrix](docs/design/screen_job_matrix.md), [Component State Matrix](docs/design/component_state_matrix.md), [ExecPlan](docs/exec_plans/2026-06-18_ux_ui_product_audit_implementation_plan.md).
+- Review trigger: Revisit if Storybook is adopted, `/candidate` becomes a public route, or backend candidate terminology is intentionally renamed.
+
 Decision ID: DEC-2026-06-15-002
 Title: Keep Correlation Concentration non-PCA in product diagnostics
 

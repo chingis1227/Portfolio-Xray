@@ -25,7 +25,7 @@ const SYNTHETIC_ORDER = [
 const HISTORICAL_ORDER = ["dotcom", "2008", "2020", "2022", "banking_2023"];
 
 const SCENARIO_LABELS: Record<string, string> = {
-  equity_shock: "Equity sell-off",
+  equity_shock: "Equity shock",
   credit_shock: "Credit shock",
   rates_shock: "Interest-rate shock",
   inflation_stagflation: "Inflation / stagflation",
@@ -41,7 +41,7 @@ const SCENARIO_LABELS: Record<string, string> = {
 };
 
 const PROTECTION_LABELS: Record<string, string> = {
-  equity_crash_protection: "Equity sell-off protection",
+  equity_crash_protection: "Equity shock protection",
   rates_up_shock_protection: "Interest-rate shock protection",
   stagflation_protection: "Inflation / stagflation protection",
   liquidity_shock_protection: "Liquidity shock protection",

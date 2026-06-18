@@ -68,7 +68,7 @@ There is no current `/candidate`, `/monitoring`, `/what-changed`, optimizer-aren
 | `/onboarding/loading` | Setup transition. | Setup progress and Client Fit context save messaging. | Auto-redirect to `/workspace` when saved workspace/history exists for a returning user; otherwise `/portfolio-input`. | Platform sidebar. |
 | `/workspace` | Signed-in account home and review-history hub. | Current review, active portfolio, saved review count, portfolio library, past reviews, archive states, and clear no-auto-recalculation copy. | Continue latest review, start new review, open past review, or use a saved portfolio for a new review. | Act as a calculation step, auto-run diagnosis on login, imply a historical verdict applies to edited input, expose raw artifact paths, or replace the 8-step review rail. |
 | `/portfolio-input` | Step 01: define current portfolio. | Client Fit summary, empty-by-default holdings/weights input, validation, recovery, and clear draft/new-review semantics when loaded from workspace. | Run diagnosis -> `/diagnosis`. | Prefilled demo allocation, optimizer targets, tax settings, suitability approval, technical staged-progress table, silent overwrite of completed review evidence. |
-| `/diagnosis` | Step 02: current portfolio diagnosis. | Verdict-first hero with compact step context, one dominant current-portfolio diagnosis, one-sentence interpretation, up to three supporting facts, four-item Evidence Summary, grouped Metric Matrix, collapsed advanced diagnostics, locked state, or simple product-facing running state. | Continue to Stress Lab or return to Portfolio Input. | Rebalance recommendation from diagnosis alone, standalone explanation wall, repeated generic evidence badges, equal-weight card grid as the primary read, Macro Dashboard/PCA diagnostics, technical staged-progress table. |
+| `/diagnosis` | Step 02: current portfolio diagnosis. | Compact utility header, controlled diagnosis hero, four-item Evidence Summary, primary two-column diagnostic canvas, Stress Lab CTA, collapsed advanced diagnostics with grouped Metric Matrix, locked state, or simple product-facing running state. | Continue to Stress Lab or return to Portfolio Input. | Rebalance recommendation from diagnosis alone, standalone explanation wall, repeated generic evidence badges, equal-weight card grid as the primary read, Metric Matrix before the diagnosis is understood, Macro Dashboard/PCA diagnostics, technical staged-progress table. |
 | `/evidence` | Step 03: Stress Test Lab. | Verdict-first current-portfolio stress answer, Evidence Summary, grouped stress Metric Matrix, scenario contribution/protection canvas, secondary technical drill-downs, or locked/limited state. | Continue to Client Fit. | Candidate/comparison/verdict language or rebalance implication. |
 | `/client-fit` | Step 04: profile-fit interpretation. | Verdict-first fit interpretation, explicit diagnostic-only boundary, Evidence Summary of mismatch dimensions, profile-check Metric Matrix, collapsed evidence details, or locked/missing-profile state. | Continue to Hypothesis. | Suitability approval, hiding diagnostic issues, raw evidence walls, repeated outside/aligned badges, or technical provenance in the primary UI. |
 | `/hypothesis` | Step 05: one diagnostic test path. | Verdict-first proposed diagnostic test, why-selected evidence, success criteria before controls, primary diagnosis recap, secondary builder/action console, Client Fit context, alternatives, and evidence details. | Generate one test candidate and hand off to Comparison. | Candidate weights/results as the main content, candidate as recommendation, auto-generated action without an explicit click, Client Fit suitability approval, Metric Matrix as the primary pattern, or technical evidence competing with the primary CTA. |
@@ -92,3 +92,95 @@ There is no current `/candidate`, `/monitoring`, `/what-changed`, optimizer-aren
 - [ ] Monitoring / What Changed remains deferred unless a route decision promotes it.
 - [ ] Same-review, same-selected-card, same-candidate, and same-stage-order lineage is preserved before unlocking downstream screens.
 - [ ] Documentation impact was checked against `docs/contracts/DOC_SYNC_CONTRACT.md`.
+
+## Screen hierarchy contracts
+
+Every product screen must guide the user from problem to evidence to decision/action. The fields below are design-facing contracts; they do not change backend schemas or calculations.
+
+### Portfolio Input
+
+- Primary user question: What current portfolio is being diagnosed?
+- Primary answer: the user has supplied a valid current allocation, investor currency, and diagnostic context.
+- Top evidence items: holdings count, weight total, instrument/cash validation, Client Fit context presence.
+- Primary CTA: Run diagnosis.
+- Secondary CTA: adjust intake or recover an active review.
+- Hidden/collapsed: technical validation detail and recovery mechanisms unless needed.
+- States: empty holdings, invalid weight total, loading diagnosis, backend error, recovered review.
+- Never first viewport: optimizer targets, candidate weights, tax-aware controls, suitability approval, or demo allocation as canonical input.
+
+### Diagnosis
+
+- Primary user question: What is wrong or material in the current portfolio before any candidate is tested?
+- Primary answer: a dominant current-portfolio diagnosis with one supporting interpretation.
+- Top evidence items: primary issue, main exposure, worst observed downside, evidence quality.
+- Primary CTA: Review Stress Lab evidence.
+- Secondary CTA: export report or test one candidate hypothesis when journey state allows.
+- Hidden/collapsed: MetricMatrix, professional metrics, full X-Ray, technical evidence, provenance, and limitations.
+- States: locked before Portfolio Input, running diagnosis, failed/retry, partial evidence, complete diagnosis.
+- Never first viewport: VaR/ES/skewness/kurtosis/Treynor/beta wall, correlation matrix, raw JSON, repeated evidence badges, optimizer recommendation.
+
+### Stress Lab
+
+- Primary user question: Which stress behavior should be reviewed next for the current portfolio?
+- Primary answer: the worst material stress behavior and its current-portfolio-only boundary.
+- Top evidence items: worst scenario, estimated loss, drivers/protection behavior, evidence quality.
+- Primary CTA: Continue to Client Fit.
+- Secondary CTA: return to Diagnosis.
+- Hidden/collapsed: scenario library drill-down, factor attribution detail, data limitations, technical replay notes.
+- States: locked before Diagnosis, limited stress evidence, unavailable stress model, ready stress result.
+- Never first viewport: candidate comparison, rebalance language, trade instructions, or optimizer cockpit controls.
+
+### Client Fit
+
+- Primary user question: Does the current portfolio conflict with the provided diagnostic profile context?
+- Primary answer: a non-binding fit interpretation that cannot clear material portfolio issues.
+- Top evidence items: main mismatch, drawdown tolerance, horizon/target context, evidence quality.
+- Primary CTA: Continue to Hypothesis.
+- Secondary CTA: adjust profile/intake.
+- Hidden/collapsed: raw profile rows, provenance, detailed target matrix.
+- States: missing profile compatibility state, locked before Stress Lab, partial fit evidence, ready fit check.
+- Never first viewport: suitability approval, trade advice, proof that no action is needed, or optimizer mandate.
+
+### Hypothesis
+
+- Primary user question: Which one diagnostic candidate test should be prepared?
+- Primary answer: one proposed test path with success criteria and trade-off boundaries.
+- Top evidence items: selected problem, why this test, first success criterion, main trade-off.
+- Primary CTA: Generate one test candidate.
+- Secondary CTA: review alternatives or return to Client Fit.
+- Hidden/collapsed: alternative tests, technical builder details, raw factory IDs.
+- States: locked before Client Fit, ready-to-generate, generation running, failed candidate attempt, candidate ready.
+- Never first viewport: final candidate weights as the answer, recommendation language, automatic action without click.
+
+### Comparison
+
+- Primary user question: What changes between the current portfolio and the generated diagnostic candidate?
+- Primary answer: trade-off evidence, not a winner or final verdict.
+- Top evidence items: material improvement, material cost, Client Fit impact, comparison evidence quality.
+- Primary CTA: Continue to Verdict.
+- Secondary CTA: return to Hypothesis or retry generation when safe.
+- Hidden/collapsed: allocation tables, warnings, technical comparison notes.
+- States: locked before candidate, candidate-not-comparable, comparison unavailable, ready comparison.
+- Never first viewport: `best portfolio`, `switch`, `recommended`, trade order, final verdict.
+
+### Verdict
+
+- Primary user question: What non-binding decision-support interpretation follows from the evidence?
+- Primary answer: a cautious verdict with evidence, limitations, and what would change it.
+- Top evidence items: main diagnosis, comparison outcome, major trade-off, evidence limitation.
+- Primary CTA: Open Report.
+- Secondary CTA: test another hypothesis.
+- Hidden/collapsed: raw artifact references and detailed provenance.
+- States: evidence insufficient, candidate failed, ready verdict, stale/mismatched lineage.
+- Never first viewport: suitability approval, guaranteed improvement, `trade now`, `safe`, or mandate language.
+
+### Report
+
+- Primary user question: What client-ready narrative can be grounded in this review?
+- Primary answer: an executive preview based on selected evidence from the active review.
+- Top evidence items: diagnosis, stress evidence, Client Fit/comparison context, verdict boundary.
+- Primary CTA: create/open report preview when evidence is ready.
+- Secondary CTA: return to Workspace or Verdict.
+- Hidden/collapsed: full evidence used/unavailable/warnings and grounding trace.
+- States: locked before verdict, evidence unavailable, ready report preview, partial report context.
+- Never first viewport: unsupported AI recommendations, raw artifact viewer, every page metric repeated as a report wall.

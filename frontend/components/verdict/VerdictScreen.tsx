@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
 import { ClientFitContextCard } from "@/components/client-fit/ClientFitContextCard";
+import { ActiveDiagnosticTestContext } from "@/components/ui/ActiveDiagnosticTestContext";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { VerdictHero } from "@/components/ui/VerdictHero";
 import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
@@ -66,7 +67,7 @@ function EmptyState({
         <div className="mt-5 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
           <p className="pmri-label">What we know</p>
           <ul className="mt-3 space-y-2 text-sm leading-6 text-pmri-text2">
-            {details.map((item) => <li key={item}>• {item}</li>)}
+            {details.map((item) => <li key={item}>- {item}</li>)}
           </ul>
         </div>
       ) : null}
@@ -140,7 +141,7 @@ export function VerdictScreen() {
   const hasLiveLineage = Boolean(activeReview?.lineageAvailable && !activeReview?.readOnlyHistory);
   const selectedCardId = candidateGeneration?.selectedCardId;
   const candidateId = candidateGeneration?.candidateId;
-  const candidateDisplayName = formatUnknownValue(comparison?.candidateName ?? candidateId, "generated diagnostic candidate");
+  const candidateDisplayName = formatUnknownValue(comparison?.candidateName ?? candidateId, "Diagnostic test not selected");
   const comparisonMatchesCandidate = Boolean(
     comparison
     && selectedCardId
@@ -229,9 +230,9 @@ export function VerdictScreen() {
           <VerdictHero
             stepContext="Step 7 of 8 - Verdict"
             headline={verdictMatchesCandidate && verdict ? normalizeDisplaySentence(verdict.headline, "Decision-support verdict is available") : "Decision-support verdict is required"}
-            interpretation={verdictMatchesCandidate && verdict ? normalizeDisplaySentence(verdict.explanation, "Review the selected evidence before forming an implementation view.") : "The verdict evaluates one generated diagnostic candidate against active comparison evidence. Evidence-insufficient outcomes are normal."}
+            interpretation={verdictMatchesCandidate && verdict ? normalizeDisplaySentence(verdict.explanation, "Review the selected evidence before forming an implementation view.") : "The verdict evaluates one generated diagnostic test candidate against active comparison evidence. Evidence-insufficient outcomes are normal."}
             facts={[
-              { label: "Candidate", value: candidateDisplayName },
+              { label: "Diagnostic test", value: candidateDisplayName },
               { label: "Confidence", value: verdictMatchesCandidate && verdict ? formatUnknownValue(verdict.confidence, "Unknown") : "Unavailable" }
             ]}
           />
@@ -247,6 +248,16 @@ export function VerdictScreen() {
             />
           ) : null}
         </div>
+        <div className="mb-6">
+          <ActiveDiagnosticTestContext
+            testName={candidateDisplayName}
+            purpose="The verdict interprets the active diagnostic test against current comparison evidence and visible limitations."
+            candidateName={candidateId ? candidateDisplayName : undefined}
+            evidenceQuality={verdictMatchesCandidate && verdict ? formatUnknownValue(verdict.evidenceQuality, "Evidence quality unavailable") : "Verdict pending"}
+            limitation="Decision Verdict is non-binding decision support, not a trading instruction or suitability approval."
+            tone={evidenceInsufficient || staleVerdictIgnored || staleComparisonIgnored ? "amber" : verdictMatchesCandidate ? "blue" : "slate"}
+          />
+        </div>
         <SiteExplanationHierarchy
           bundle={siteExplanation}
           screen="verdict"
@@ -257,7 +268,7 @@ export function VerdictScreen() {
           <section className="mb-6 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
             <StatusBadge tone="slate">Historical</StatusBadge>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-text2">
-              This verdict belongs to a saved compact snapshot. It is visible for review, but it cannot unlock new report or downstream actions without live same-run lineage.
+              This verdict belongs to a saved compact snapshot. It is visible for review, but it cannot unlock new report or downstream actions without active same-run evidence.
             </p>
           </section>
         ) : null}
@@ -266,16 +277,16 @@ export function VerdictScreen() {
           <section className="mb-6 rounded-2xl border border-pmri-amber/35 bg-pmri-amber/10 p-4">
             <StatusBadge tone="amber">Previous verdict ignored</StatusBadge>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-text2">
-              A prior verdict does not match the active candidate test. Generate a new verdict only after the active comparison is current.
+              A prior verdict does not match the active diagnostic test. Generate a new verdict only after the active comparison is current.
             </p>
           </section>
         ) : null}
 
         {generationFailed && !verdictMatchesCandidate ? (
           <EmptyState
-            title="Candidate test could not be used"
-            description="The selected candidate attempt failed or was infeasible, so Portfolio MRI cannot form an evidence-supported verdict from it."
-            why="A verdict needs a feasible candidate and current comparison evidence. Failed or infeasible tests are treated as evidence-insufficient outcomes."
+            title="Diagnostic test candidate could not be used"
+            description="The selected diagnostic test candidate failed or was infeasible, so Portfolio MRI cannot form an evidence-supported verdict from it."
+            why="A verdict needs a feasible diagnostic test candidate and current comparison evidence. Failed or infeasible diagnostic tests are treated as evidence-insufficient outcomes."
             nextStep="Return to Hypothesis Builder and test another diagnostic path."
           />
         ) : null}
@@ -283,9 +294,9 @@ export function VerdictScreen() {
         {staleComparisonIgnored && !canRunVerdict && !verdictMatchesCandidate && !generationFailed ? (
           <EmptyState
             title="Previous comparison ignored"
-            description="The saved comparison does not match the active candidate test, so no verdict is shown from it."
-            why="Verdict evidence must belong to the same active review, selected test path, generated candidate, and comparison."
-            nextStep="Return to Comparison and regenerate evidence for the active candidate."
+            description="The saved comparison does not match the active diagnostic test, so no verdict is shown from it."
+            why="Verdict evidence must belong to the same active review, selected test path, generated test candidate, and comparison."
+            nextStep="Return to Comparison and regenerate evidence for the active diagnostic test."
             href="/comparison"
             action="Return to Comparison"
           />
@@ -295,9 +306,9 @@ export function VerdictScreen() {
           !generationFailed && !staleComparisonIgnored ? (
           <EmptyState
             title="Verdict unavailable"
-            description="A valid Current vs Candidate Comparison is required before a decision-support verdict can be formed."
-            why="Portfolio MRI cannot determine whether changing the portfolio improves the diagnosed weakness without a valid candidate comparison."
-            nextStep={candidateGeneration ? "Return to Comparison and complete a valid same-candidate comparison." : "Return to Hypothesis Builder and generate a valid candidate."}
+            description="A valid current-vs-test-candidate comparison is required before a decision-support verdict can be formed."
+            why="Portfolio MRI cannot determine whether changing the portfolio improves the diagnosed weakness without a valid diagnostic test comparison."
+            nextStep={candidateGeneration ? "Return to Comparison and complete a valid same-candidate comparison." : "Return to Hypothesis Builder and generate a valid diagnostic test candidate."}
             href={candidateGeneration ? "/comparison" : "/hypothesis"}
             action={candidateGeneration ? "Return to Comparison" : "Return to Hypothesis Builder"}
           />
@@ -311,7 +322,7 @@ export function VerdictScreen() {
                 <p className="pmri-label">Ready for verdict</p>
                 <h2 className="mt-2 pmri-heading-section text-xl text-pmri-text">Generate decision-support verdict</h2>
                 <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
-                  The <span className="font-medium text-pmri-text2">{candidateDisplayName}</span> has active comparison evidence. This step creates the verdict evidence.
+                  The <span className="font-medium text-pmri-text2">{candidateDisplayName}</span> diagnostic test has active comparison evidence. This step creates the verdict evidence.
                 </p>
               </div>
               <StatusBadge tone="slate">Decision-support only</StatusBadge>
@@ -339,8 +350,8 @@ export function VerdictScreen() {
         {candidateFailed && verdict ? (
           <div className="space-y-6">
             <EmptyState
-              title="Candidate failed or infeasible"
-              description="The selected candidate test did not produce usable comparison evidence."
+              title="Test candidate failed or infeasible"
+              description="The selected diagnostic test candidate did not produce usable comparison evidence."
               why="A failed or infeasible candidate can explain why the evidence is not usable for a clear verdict."
               nextStep="Test another diagnostic hypothesis or keep the current portfolio under monitoring."
               details={evidenceInsufficientDetails.length ? evidenceInsufficientDetails : ["The verdict did not return enough evidence to support action review."]}
@@ -353,8 +364,8 @@ export function VerdictScreen() {
             <EmptyState
               title="Evidence insufficient"
               description="Do not make a portfolio decision from this evidence yet."
-              why="The candidate comparison is incomplete or degraded. Portfolio MRI cannot determine whether the candidate improves the diagnosed weakness."
-              nextStep="Generate a valid candidate, test another hypothesis, or keep the current portfolio under monitoring."
+              why="The diagnostic test comparison is incomplete or degraded. Portfolio MRI cannot determine whether the diagnostic test improves the diagnosed weakness."
+              nextStep="Generate a valid diagnostic test candidate, test another diagnostic path, or keep the current portfolio under monitoring."
               details={evidenceInsufficientDetails.length ? evidenceInsufficientDetails : ["The verdict did not return enough evidence to support an action/no-action decision."]}
             />
             <section className="grid gap-4 lg:grid-cols-2">
@@ -401,7 +412,7 @@ export function VerdictScreen() {
               clientFit={clientFitForStage}
               title="Client Fit is one input to the verdict"
               description="The verdict combines Client Fit, objective diagnosis, comparison evidence, and confidence limitations without letting any single profile alignment result override a material issue."
-              structuralIssueNote="Client Fit alignment plus a material diagnosis issue should still lead to monitor, review, or test-candidate framing rather than an automatic no-action conclusion."
+              structuralIssueNote="Client Fit alignment plus a material diagnosis issue should still lead to monitor, review, or diagnostic-test framing rather than an automatic no-action conclusion."
               compact
             />
             <div className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">

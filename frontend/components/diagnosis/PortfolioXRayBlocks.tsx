@@ -666,7 +666,7 @@ function hiddenWhyItMatters(alert: XRayHiddenRiskAlert) {
   if (alert.id === "duration_concentration") return "Interest-rate shocks can affect defensive holdings and reduce diversification when rates move sharply.";
   if (alert.id === "credit_liquidity_risk") return "Credit or liquidity stress can create losses even when headline asset-class weights look diversified.";
   if (alert.id === "correlation_concentration") return "Diversification can weaken when holdings share the same economic driver.";
-  if (alert.id === "weak_hedge_behavior") return "The portfolio may have less protection than expected when the main risk factor sells off.";
+  if (alert.id === "weak_hedge_behavior") return "The portfolio may have less protection than expected when the main risk factor drops sharply.";
   if (alert.id === "tail_risk") return "Large-loss periods can matter more for decisions than average volatility.";
   return "This risk should be reviewed before using the diagnosis to test a candidate.";
 }

@@ -227,13 +227,14 @@ Main blocks:
 
 Role: Step 02, current portfolio diagnosis before candidate tests.
 
-Primary hero:
+Primary first-read hierarchy:
 
-- Shared `VerdictHero` with compact context `Step 02 of 8 - Portfolio Diagnosis`.
-- Headline: dominant current-portfolio diagnosis from the active review.
-- Interpretation: one concise sentence explaining why the diagnosis matters.
-- Supporting facts: review scope, evidence quality, and next safe step.
-- Boundary note: diagnostic current-portfolio review, not a rebalance recommendation.
+- Compact utility header: current-portfolio scope, evidence coverage, and Stress Lab as the next step.
+- Controlled diagnosis hero: dominant current-portfolio diagnosis from the active review, one concise interpretation, and the diagnostic-only boundary.
+- Four-item evidence strip: `Primary issue`, `Main exposure`, `Worst observed downside`, and `Evidence quality`.
+- Primary two-column diagnostic canvas: material drivers on the left and the next risk review on the right.
+- CTA: `Open Stress Lab`.
+- Advanced diagnostics and technical evidence are collapsed below the first-read answer.
 
 Locked state:
 
@@ -245,7 +246,8 @@ Ready state:
 
 - Shows the persistent compact `PlatformTopHeader`, then a controlled diagnosis statement hero rather than a tall dashboard card.
 - Shows a four-item floating evidence strip: `Primary issue`, `Main exposure`, `Worst observed downside`, and `Evidence quality`. Only the downside value uses muted red; the strip does not repeat generic evidence badges.
-- Shows one two-column primary diagnostic canvas immediately after the evidence strip. Left side is `What is driving the diagnosis` with concentration, equity exposure, and diversification-benefit explanations. Right side is `Where to review next` with `USD shock risk`, `Interest-rate shock`, `Equity sell-off`, and CTA `Review Stress Lab evidence`.
+- Shows one two-column primary diagnostic canvas immediately after the evidence strip. Left side is `What is material in the current portfolio` with concentration, dominant exposure, and downside evidence. Right side is `What risk should be reviewed next` and keeps candidate testing blocked until Stress Lab evidence is reviewed.
+- Shows the Stress Lab CTA only after the primary diagnostic canvas.
 - Does not show the standalone `Diagnosis explanation` wall, card-wall metric summaries, or the MetricMatrix before the main diagnosis is understood.
 - Moves `MetricMatrix`, professional metrics such as VaR, ES, skewness, kurtosis, beta, Sharpe, Sortino, Treynor, full X-Ray detail, evidence-chain notes, and limitations behind `Advanced diagnostics and technical evidence`.
 - Metrics are shown through matrix rows only inside secondary/advanced areas, not as raw backend JSON or repeated unavailable/evidence badges.
@@ -377,3 +379,19 @@ Main blocks:
 - Client Fit target rows are diagnostic context, not mandates.
 - Comparison metrics must balance improvements and costs.
 - Report copy must stay grounded in active review evidence and limitations.
+
+## `/sandbox/components`
+
+Role: local design-system and product-component gallery for iterating on the Portfolio MRI dark decision-room foundation without breaking production routes.
+
+Main content:
+
+- Verdict-style sandbox hero explaining the foundation.
+- Primitive controls: primary, secondary, ghost, risk, disabled, long-label, and mobile-width actions; restrained status badges.
+- Surface previews for glass, raised, subtle, warning, and risk panels.
+- Evidence item, EvidenceStrip, EvidenceSummary, MetricMatrix, and ComparisonMetricMatrix previews.
+- Active diagnostic-test context preview for downstream route consistency.
+- Empty, loading, error, locked, partial evidence, read-only history, stale lineage, evidence-insufficient, test-candidate unavailable, and failed-generation state previews.
+- Collapsed AdvancedDisclosure preview for technical or long-form states.
+
+This route is not part of the user journey, does not alter the 8-step gated rail, and must not call backend review APIs.

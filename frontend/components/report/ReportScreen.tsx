@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { SiteExplanationHierarchy } from "@/components/explanation/SiteExplanationHierarchy";
 import { ClientReadyReportPreview } from "@/components/report/ClientReadyReportPreview";
+import { ActiveDiagnosticTestContext } from "@/components/ui/ActiveDiagnosticTestContext";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { VerdictHero } from "@/components/ui/VerdictHero";
 import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
@@ -130,7 +131,7 @@ export function ReportScreen() {
   const hasLiveLineage = Boolean(activeReview?.lineageAvailable && !activeReview?.readOnlyHistory);
   const selectedCardId = candidateGeneration?.selectedCardId;
   const candidateId = candidateGeneration?.candidateId;
-  const candidateDisplayName = displayTitleLabel(comparison?.candidateName ?? candidateId, "Selected Test Candidate");
+  const candidateDisplayName = displayTitleLabel(comparison?.candidateName ?? candidateId, "Diagnostic test not selected");
   const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
   const comparisonMatchesCandidate = Boolean(
     comparison
@@ -176,8 +177,8 @@ export function ReportScreen() {
     }
     if (candidateGeneration?.status !== "completed" || !selectedCardId || !candidateId) {
       return {
-        title: "Generate one test candidate first.",
-        description: "A grounded report preview needs a selected diagnostic test candidate before comparison and verdict evidence can be explained.",
+        title: "Generate one diagnostic test candidate first.",
+        description: "A grounded report preview needs one selected diagnostic test candidate before comparison and verdict evidence can be explained.",
         ctaHref: "/hypothesis",
         ctaLabel: "Back to Hypothesis"
       };
@@ -185,7 +186,7 @@ export function ReportScreen() {
     if (!activeReview?.comparisonReady || !comparisonMatchesCandidate) {
       return {
         title: "Complete the active comparison first.",
-        description: "The report preview is blocked until the current portfolio and selected test candidate have a matching trade-off comparison.",
+        description: "The report preview is blocked until the current portfolio and selected diagnostic test candidate have a matching trade-off comparison.",
         ctaHref: "/comparison",
         ctaLabel: "Back to Comparison"
       };
@@ -273,7 +274,7 @@ export function ReportScreen() {
           interpretation={report ? report.subtitle : "The report summarizes selected diagnosis, stress, Client Fit, comparison, and verdict evidence only after the active review is complete."}
           facts={[
             { label: "Main diagnosis", value: activeReview?.reviewSummary?.primaryProblem ?? activeReview?.reviewSummary?.diagnosis?.headline ?? "Unavailable" },
-            { label: "Selected candidate", value: candidateDisplayName }
+            { label: "Diagnostic test", value: candidateDisplayName }
           ]}
         />
         {report ? (
@@ -288,6 +289,16 @@ export function ReportScreen() {
             ]}
           />
         ) : null}
+      </div>
+      <div className="mb-6">
+        <ActiveDiagnosticTestContext
+          testName={candidateDisplayName}
+          purpose="The report preview summarizes the active diagnosis, comparison, verdict, and limitations for this diagnostic test."
+          candidateName={candidateId ? candidateDisplayName : undefined}
+          evidenceQuality={report ? "Preview available" : "Preview gated"}
+          limitation="Report is a grounded preview only. It is not a polished PDF product or a trading recommendation."
+          tone={report ? "blue" : "amber"}
+        />
       </div>
       <details className="mb-6 pmri-card rounded-3xl p-5 md:p-6">
         <summary className="cursor-pointer list-none">
@@ -307,7 +318,7 @@ export function ReportScreen() {
         <section className="mb-6 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
           <StatusBadge tone="slate">Historical</StatusBadge>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-text2">
-            This report preview is compact history. It can be read, but it does not prove the current portfolio input is unchanged and cannot unlock new actions.
+            This report preview is compact history. It can be read, but it does not prove the current portfolio input is unchanged and cannot unlock new same-run actions.
           </p>
         </section>
       ) : null}
@@ -321,7 +332,7 @@ export function ReportScreen() {
               <p className="pmri-label">Grounded explanation</p>
               <h2 className="mt-2 pmri-heading-section text-xl text-pmri-text">Create report preview from active evidence</h2>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-muted">
-                This preview explains the current diagnosis, selected test candidate{" "}
+                This preview explains the current diagnosis, selected diagnostic test candidate{" "}
                 <span className="font-medium text-pmri-text2">{candidateDisplayName}</span>, comparison, verdict, and known limitations.
               </p>
             </div>
@@ -355,7 +366,7 @@ export function ReportScreen() {
               <StatusBadge tone="slate">Evidence used</StatusBadge>
               <ul className="mt-3 space-y-2 text-sm leading-7 text-pmri-muted">
                 {(report.evidenceUsed.length ? report.evidenceUsed : ["No confirmed evidence list was returned for this preview."]).slice(0, 5).map((item) => (
-                  <li key={item}>• {item}</li>
+                  <li key={item}>- {item}</li>
                 ))}
               </ul>
             </article>
@@ -367,7 +378,7 @@ export function ReportScreen() {
               <StatusBadge tone={report.warnings.length ? "amber" : "slate"}>Limitations</StatusBadge>
               <ul className="mt-3 space-y-2 text-sm leading-7 text-pmri-muted">
                 {(report.warnings.length ? report.warnings.slice(0, 3) : report.unavailableEvidence.slice(0, 3)).map((item) => (
-                  <li key={item}>• {item}</li>
+                  <li key={item}>- {item}</li>
                 ))}
               </ul>
             </article>
