@@ -206,6 +206,7 @@ A task is done only when the requested change is implemented, relevant docs are 
 
 For frontend visual QA or browser click-throughs, avoid stale dev servers, stale browser state, and stale Playwright element references.
 
+- Every frontend UI change must be visually checked with Playwright or an equivalent browser-based QA flow, even for small copy, spacing, styling, visibility, responsive, or component changes. If browser visual QA cannot be completed, explicitly report that it was not completed and why.
 - Start from a clean, active local target: use a fresh localhost port when possible, confirm the exact URL, and do not assume an already-open tab or old server is the current build.
 - Check dev-server terminal/logs before judging the screen. If Next reports missing `.next` chunks, React Client Manifest errors, or a failed compile, fix/restart the server before making product/UI conclusions from the browser.
 - Do not run `next build`, `next dev`, typecheck generation, or other `.next` writers concurrently against the same `frontend/.next` directory during visual QA.
