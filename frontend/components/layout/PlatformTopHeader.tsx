@@ -38,19 +38,6 @@ function routeForPath(pathname: string): RouteMeta {
     ?? { eyebrow: "Investment Decision Room", title: "Portfolio MRI" };
 }
 
-function normalizeStatus(value?: string | null) {
-  if (!value) return "No active review";
-  const normalized = value
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-  if (/completed/i.test(normalized)) return "Review completed";
-  if (/running|pending/i.test(normalized)) return "Review running";
-  if (/partial/i.test(normalized)) return "Review partial";
-  if (/failed|blocked/i.test(normalized)) return "Review needs attention";
-  if (/draft/i.test(normalized)) return "Draft review";
-  return normalized;
-}
-
 function formatDateTime(value?: string | null) {
   if (!value) return "";
   const date = new Date(value);
@@ -159,15 +146,13 @@ export function PlatformTopHeader() {
     ?? (activeReview?.holdings.length ? "Current portfolio" : "No active portfolio");
   const currency = activeReview?.investorCurrency || activeReview?.reviewSummary?.investorCurrency || "USD";
   const holdingsCount = activeReview?.reviewSummary?.holdingsCount ?? activeReview?.holdings.length ?? 0;
-  const reviewStatus = activeReview?.stagedProgress?.status ?? activeReview?.runStatus;
   const analysisWindow = readOutputSummaryField(activeReview?.reviewResult?.outputs, "analysis_window");
   const updatedAt = formatDateTime(activeReview?.reviewSummary?.generatedAt ?? activeReview?.updatedAt);
   const cta = ctaForPath({ pathname, flags: journeyFlags, runStatus: activeReview?.runStatus });
   const metadata = [
     portfolioName,
     currency,
-    holdingsCount ? `${holdingsCount} holdings` : "No holdings",
-    normalizeStatus(reviewStatus)
+    holdingsCount ? `${holdingsCount} holdings` : "No holdings"
   ];
   const actions: HeaderAction[] = [
     ...secondaryActionsForPath(pathname),

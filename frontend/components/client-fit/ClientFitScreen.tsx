@@ -136,7 +136,7 @@ export function ClientFitScreen() {
                 eyebrow: "Profile context",
                 title: presentation.sourceLabel,
                 value: presentation.nextBestTest,
-                description: "Client Fit is diagnostic context only. It is not suitability approval, trade advice, or an optimizer mandate.",
+                description: "Profile context stays separate from the diagnosis and stress evidence.",
                 tone: /limited|missing|not/i.test(presentation.sourceLabel) ? "amber" : "slate"
               }
             ]}

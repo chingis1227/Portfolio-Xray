@@ -17,8 +17,8 @@ export function AdvancedDiagnostics({ model, metricGroups, xraySummary }: { mode
   return (
     <AdvancedDisclosure
       id="advanced-diagnostics"
-      title="Advanced diagnostics and technical evidence"
-      summary="Metric matrix, professional measures, evidence notes, and full x-ray stay below the main diagnostic answer."
+      title="Detailed diagnostics"
+      summary="Metric matrix, professional measures, notes, and full x-ray detail stay below the main answer."
     >
       <MetricMatrix
         title="Compact metric matrix"
@@ -40,7 +40,7 @@ export function AdvancedDiagnostics({ model, metricGroups, xraySummary }: { mode
 
       {model.technicalEvidence.length || model.limitations.length ? (
         <Surface tone="default" radius="3xl" padding="md">
-          <h3 className="text-sm font-semibold text-pmri-text">Evidence chain notes</h3>
+          <h3 className="text-sm font-semibold text-pmri-text">Review notes</h3>
           {model.technicalEvidence.length ? (
             <ul className="mt-3 space-y-2 text-sm leading-6 text-pmri-text2">
               {model.technicalEvidence.map((item) => <li key={item}>- {item}</li>)}

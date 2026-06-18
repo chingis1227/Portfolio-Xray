@@ -24,8 +24,7 @@ export function DiagnosticCanvas({ model }: { model: DiagnosisDisplayModel }) {
   const downside = downsideFact(model);
   const reviewItems = [
     { label: "Worst risk to review", value: downside?.value ?? "Stress evidence", tone: downside?.tone ?? "amber" },
-    { label: "Stress Lab focus", value: model.nextStep, tone: "blue" as const },
-    { label: "Candidate testing", value: "Only after stress evidence is reviewed", tone: "slate" as const }
+    { label: "Stress Lab focus", value: model.nextStep, tone: "blue" as const }
   ];
   const drivingItems = [
     {
@@ -49,7 +48,7 @@ export function DiagnosticCanvas({ model }: { model: DiagnosisDisplayModel }) {
     <section className="pmri-diagnostic-canvas">
       <div className="grid gap-0 lg:grid-cols-[1.25fr_0.75fr]">
         <div className="p-5 md:p-6 lg:p-7">
-          <SectionHeader eyebrow="Diagnostic canvas" title="What is material in the current portfolio" />
+          <SectionHeader eyebrow="Diagnostic canvas" title="What matters now" />
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <MetricValue label="Primary issue" value={concentration?.value ?? "Not evaluated"} detail={evidenceToneLabel(concentration)} tone={concentration?.tone} size="sm" />
             <MetricValue label="Main exposure" value={exposure?.value ?? "Not evaluated"} detail={exposure?.detail ?? evidenceToneLabel(exposure)} tone={exposure?.tone} size="sm" />

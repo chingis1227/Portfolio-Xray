@@ -151,8 +151,10 @@ Use this current source-of-truth hierarchy:
 9. Data rules: `DATA.md` and owning `docs/specs/*.md` files.
 10. Testing and QA: `TESTING.md`, `docs/contracts/QA_CONTRACT.md`, `KNOWN_ISSUES.md`.
 11. Design: `DESIGN.md`, `docs/design/current_website_structure.md`, `docs/design/portfolio_mri_design_system.md`.
-12. Decisions and history: `DECISIONS.md`, `CHANGELOG.md`, `docs/audits/README.md`, `docs/exec_plans/README.md`.
-13. ExecPlan rules for large/risky work: `PLANS.md`.
+12. Information architecture and UI copy discipline:
+   `docs/contracts/INFORMATION_ARCHITECTURE_COPY_CONTRACT.md`.
+13. Decisions and history: `DECISIONS.md`, `CHANGELOG.md`, `docs/audits/README.md`, `docs/exec_plans/README.md`.
+14. ExecPlan rules for large/risky work: `PLANS.md`.
 
 Product concept documents, historical audits, completed ExecPlans, and archived legacy docs are traceability only. They do not override current specs, contracts, code, frontend routes, formulas, output contracts, or runtime behavior.
 
@@ -183,6 +185,7 @@ If these capabilities exist in code or generated outputs, classify them as `Adva
 - Keep changes scoped to the requested behavior and owning files.
 - Prefer existing helpers and repo patterns over new parallel implementations.
 - Treat diagnostics as non-binding unless a canonical spec says otherwise.
+- Treat diagnosis-first, current-portfolio-first, and decision-support boundaries as authoring constraints, not repeated primary UI disclaimers. Follow `docs/contracts/INFORMATION_ARCHITECTURE_COPY_CONTRACT.md` for visible copy.
 - Do not manually require final weights in `config.yml`; optimization writes `portfolio_weights.yml` and `run_result.json`.
 - ETF and stock taxonomy are annotation-only in V1 unless a canonical spec changes that boundary.
 - Preserve full precision during calculations; round only at final export/report stage when governed by metric specs.

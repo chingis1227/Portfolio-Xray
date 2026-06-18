@@ -12,6 +12,9 @@ Update this file when the general implementation contract, workflows, inputs/out
 
 The current product is a diagnosis-first, current-portfolio-first investment decision-support system. Product concept documents can describe target direction, but active product interpretation must follow current specs, contracts, code, and frontend routes.
 
+Visible product UI must not turn those boundaries into repeated defensive copy. Information architecture and primary copy discipline are governed by
+`docs/contracts/INFORMATION_ARCHITECTURE_COPY_CONTRACT.md`.
+
 Older optimizer/report/scorecard-heavy modules may remain implemented as backend evidence, technical artifacts, generated support, legacy compatibility, or advanced research, but they are not the current Core MVP product flow unless explicitly promoted by specs and code.
 
 They do not change formulas, scenarios, optimizer policy, data rules, output contracts, or code behavior until this spec and the relevant detailed specs are updated.

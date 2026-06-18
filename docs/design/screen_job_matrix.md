@@ -35,7 +35,7 @@ Hero: define the current portfolio for diagnosis. Show Client Fit summary if pre
 
 ### `/diagnosis`
 
-Hero: one current-portfolio diagnosis and one interpretation sentence. Evidence strip: up to four facts. Canvas: drivers and next stress review. CTA: Review Stress Lab. Advanced diagnostics: collapsed. Mobile: hero, evidence, CTA, drivers, advanced disclosure.
+Hero: one diagnosis and one interpretation sentence. Evidence strip: up to four facts. Canvas: drivers and next stress review. CTA: open Stress Lab. Advanced diagnostics: collapsed. Do not repeat generic current-only, evidence-quality, or candidate-boundary copy in the hero, cards, canvas, or CTA. Mobile: hero, evidence, CTA, drivers, advanced disclosure.
 
 ### `/hypothesis`
 

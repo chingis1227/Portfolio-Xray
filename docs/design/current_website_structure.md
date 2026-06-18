@@ -207,7 +207,7 @@ Diagnostic Case File order:
 3. `Key evidence`: primary issue, main exposure, downside evidence, and evidence quality.
 4. Primary diagnostic canvas naming material drivers and the next risk review.
 5. Stress Lab CTA as the next safe decision.
-6. `Advanced diagnostics and technical evidence` collapsed below the first-read answer.
+6. `Detailed diagnostics` collapsed below the first-read answer.
 
 Top-layer metrics: primary issue, main exposure, concentration, worst observed downside, and evidence quality.
 

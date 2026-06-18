@@ -70,7 +70,7 @@ async function probeLiveReviewLineage(reviewId: string) {
   });
   const status = await response.json() as (StagedReviewStatusResponse & { error?: string; details?: unknown });
   if (!response.ok) {
-    const message = safeErrorText(status, "This review is compact history. Run a new diagnosis before generating a test candidate.");
+    const message = safeErrorText(status, "This review is compact history. Start a fresh diagnosis to continue.");
     return {
       ok: false,
       stale: response.status === 403 || response.status === 404 || /not found|forbidden|different authenticated user/i.test(message),
@@ -81,7 +81,7 @@ async function probeLiveReviewLineage(reviewId: string) {
     return {
       ok: false,
       stale: false,
-      message: "Portfolio diagnosis is still preparing. Wait for Diagnosis, Stress Lab, and Hypothesis setup to finish before generating a test candidate."
+      message: "Portfolio diagnosis is still preparing. Wait for Diagnosis, Stress Lab, and Hypothesis setup to finish."
     };
   }
   return { ok: true, stale: false, message: "" };
@@ -178,10 +178,10 @@ function sampleActiveReview(generated: boolean): ActiveReviewState {
       outputPaths: {},
       diagnosis: {
         status: "Diagnosis ready",
-        headline: "Weak crisis resilience is the main issue to test before comparison.",
+        headline: "Weak crisis resilience is the main issue to test in comparison.",
         evidenceQuality: "Moderate evidence",
         nextStep: "Improve Crisis Resilience",
-        boundaryNote: "Diagnosis is diagnostic-only.",
+        boundaryNote: "Diagnosis context is ready.",
         drivers: [],
         metrics: [],
         sourceArtifacts: [],
@@ -202,7 +202,7 @@ function sampleActiveReview(generated: boolean): ActiveReviewState {
         profile_label: "Balanced",
         source_quality_label: "Sample profile",
         main_explanation: "Sample Client Fit context is available for the demo journey.",
-        decision_boundary: "Client Fit is non-binding context and does not approve a rebalance.",
+        decision_boundary: "Client Fit context is available for this review.",
         next_best_test: "Continue only because the sample diagnosis includes a testable hypothesis.",
         target_rows: []
       },
@@ -225,7 +225,7 @@ function sampleActiveReview(generated: boolean): ActiveReviewState {
             "Reduce top stress-loss concentration without excessive turnover."
           ],
           tradeoff_to_watch: "Lower tail loss vs lower expected return and higher turnover.",
-          decision_boundary: "Review this diagnostic test candidate in comparison before forming the verdict.",
+          decision_boundary: "Review this diagnostic test in comparison.",
           is_rebalance_recommendation: false,
           generates_portfolio: false
         },
@@ -240,7 +240,7 @@ function sampleActiveReview(generated: boolean): ActiveReviewState {
           default_method: "minimum_variance",
           success_criteria: ["Lower credit or liquidity shock loss.", "Reduce fragile carry exposure without over-penalizing intentional income sleeves."],
           tradeoff_to_watch: "Less credit/carry vs income yield.",
-          decision_boundary: "Review this diagnostic test candidate in comparison before forming the verdict.",
+          decision_boundary: "Review this diagnostic test in comparison.",
           is_rebalance_recommendation: false,
           generates_portfolio: false
         }
@@ -290,7 +290,7 @@ function WorkstationHeader({ model }: { model: HypothesisScreenModel }) {
         <EvidenceSummary
           title="Hypothesis evidence summary"
           description="The investment hypothesis and mathematical method are explained before builder controls."
-          emptyMessage="No test path is available yet; return to Diagnosis or rerun the review before generating a candidate."
+          emptyMessage="No test path is available yet; return to Diagnosis or rerun the review."
           items={[
             { label: "Investment hypothesis", value: test.hypothesis },
             { label: "Mathematical method", value: test.selectedMethodLabel ?? test.methods[0] ?? "Method not selected" },
@@ -417,7 +417,7 @@ function BuilderControls({
     <div className="mt-5 rounded-2xl border border-white/10 bg-black/15 p-4">
       <p className="pmri-label text-pmri-blueSoft">Alternatives Builder / Test setup</p>
       <p className="mt-2 text-xs leading-5 text-pmri-muted">
-        These fields prepare one diagnostic test candidate. They do not approve a rebalance or hide portfolio issues.
+        These fields prepare one diagnostic test. Review the setup, then generate the test.
       </p>
 
       <div className="mt-4 grid gap-3">
@@ -506,7 +506,7 @@ function ProposedDiagnosticTestPanel({ test }: { test?: HypothesisTestModel }) {
       <section className="rounded-3xl border border-pmri-amber/30 bg-pmri-amber/10 p-5">
         <p className="pmri-label text-pmri-amber">Candidate Launchpad</p>
         <h2 className="pmri-heading-section mt-2 text-xl text-pmri-text">No diagnostic test is available</h2>
-        <p className="mt-3 text-sm leading-7 text-pmri-text2">Resolve data quality or rerun diagnosis before generating a test candidate.</p>
+        <p className="mt-3 text-sm leading-7 text-pmri-text2">Resolve data quality or rerun diagnosis to continue.</p>
       </section>
     );
   }
@@ -537,7 +537,7 @@ function ProposedDiagnosticTestPanel({ test }: { test?: HypothesisTestModel }) {
               eyebrow: "Mathematical method",
               title: test.selectedMethodLabel ?? test.methods[0] ?? "Method not selected",
               value: test.methods.join(", "),
-              description: "The method is visible because the candidate is a diagnostic experiment, not a black-box recommendation.",
+              description: "The method is visible so the experiment can be reviewed clearly.",
               tone: "slate"
             },
             {
@@ -793,7 +793,7 @@ function HypothesisWorkstation({
         <section className="mb-5 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
           <StatusBadge tone="slate">Needs new diagnosis</StatusBadge>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-text2">
-            This saved review is compact history. Generate a new diagnosis for the loaded portfolio before creating or comparing a new diagnostic test candidate.
+            This saved review is compact history. Generate a new diagnosis for the loaded portfolio to continue the test flow.
           </p>
         </section>
       ) : null}
@@ -896,7 +896,7 @@ export function HypothesisScreen() {
       const lineageProbe = await probeLiveReviewLineage(reviewId);
       if (!lineageProbe.ok) {
         const message = lineageProbe.stale
-          ? "This review is compact history. Run a new diagnosis before generating a test candidate."
+          ? "This review is compact history. Start a fresh diagnosis to continue."
           : lineageProbe.message;
         if (lineageProbe.stale) markLiveLineageUnavailable(message);
         setGenerationError(message);

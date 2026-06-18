@@ -280,6 +280,6 @@ export function buildDiagnosisDisplayModel(input: DiagnosisDisplayModelInput): D
     technicalEvidence,
     limitations: userRelevantLimitations(input),
     nextStep: normalizeDisplaySentence(input.nextStep, "Review supporting evidence before testing one candidate hypothesis."),
-    boundaryNote: normalizeDisplaySentence(input.boundaryNote, "This is a diagnostic review of the current portfolio, not a rebalance recommendation.")
+    boundaryNote: normalizeDisplaySentence(input.boundaryNote, "Diagnostic review context is available.")
   };
 }

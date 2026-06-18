@@ -23,6 +23,11 @@ Every analytical route uses this first-read hierarchy:
 
 Primary UI must not lead with vague operational states such as Evidence available, Evidence unavailable, Current portfolio only, Diagnostic only, No rebalancing, Comparison pending, Unavailable, or Evidence required. Those states may appear only as compact secondary status, limitation detail, or a specific explanation of what conclusion is blocked and what the user should do next.
 
+The active copy discipline is now governed by
+`docs/contracts/INFORMATION_ARCHITECTURE_COPY_CONTRACT.md`: diagnosis-first,
+current-portfolio-first, and decision-support boundaries are authoring constraints, not repeated
+primary UI disclaimers.
+
 ## Visual direction
 
 The existing DESIGN.md direction remains authoritative: restrained dark decision room, flat case-file panels, hairline borders, sparse badges, no glassy dashboard wall, no optimizer-first language, no new visual theme. Motion should stay subtle and purposeful. Buttons and interactive cards should feel responsive without becoming playful; use short transform/opacity transitions only where they clarify press or reveal state.
@@ -107,6 +112,7 @@ Remove or compress:
 - utility text that says current only as the main answer;
 - repeated evidence badges;
 - MetricMatrix before the diagnosis is understood.
+- generic candidate-boundary copy in the hero, top cards, canvas, or primary CTA.
 
 User should understand: This is the current portfolio's main problem and why it is investment-relevant.
 
