@@ -21,12 +21,14 @@ function ContributionBar({ row, maxAbs }: { row: BarRow; maxAbs: number }) {
 
   return (
     <div className="pmri-interactive-bar-row rounded-2xl border border-pmri-border/50 bg-white/[0.018] p-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-pmri-text">{row.label}</p>
           <p className="mt-1 text-xs text-pmri-muted">{row.status}</p>
         </div>
-        <StatusBadge tone={toneForValue(row.value)}>{formatStressPercent(row.value, { signed: true })}</StatusBadge>
+        <div className="shrink-0">
+          <StatusBadge tone={toneForValue(row.value)}>{formatStressPercent(row.value, { signed: true })}</StatusBadge>
+        </div>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-1">
         <div className="flex h-2 items-center justify-end rounded-l-full bg-black/20">
