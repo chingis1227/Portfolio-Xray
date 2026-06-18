@@ -1,22 +1,23 @@
 ﻿import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Inter, Roboto_Mono } from "next/font/google";
+import { DM_Sans, IBM_Plex_Mono } from "next/font/google";
 import "../styles/globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 import { ReviewStateProvider } from "@/lib/reviewState";
 import { SupabaseAuthProvider } from "@/lib/supabase/auth";
 import { SupabasePersistenceProvider } from "@/lib/supabase/persistence";
 
-const interSans = Inter({
+const dmSans = DM_Sans({
   subsets: ["latin"],
   display: "swap",
-  weight: ["400", "500", "600", "700"],
+  weight: ["400"],
   variable: "--font-pmri-sans"
 });
 
-const robotoMono = Roboto_Mono({
+const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
   display: "swap",
+  weight: ["400"],
   variable: "--font-pmri-mono"
 });
 
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${interSans.variable} ${robotoMono.variable}`}>
+    <html lang="en" className={`${dmSans.variable} ${plexMono.variable}`}>
       <body>
         <SupabaseAuthProvider>
           <SupabasePersistenceProvider>

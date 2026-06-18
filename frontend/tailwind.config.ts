@@ -10,38 +10,38 @@ const config: Config = {
     extend: {
       colors: {
         pmri: {
-          bg: "#050608",
-          secondary: "#0B0D10",
-          surface: "#111318",
-          surface2: "#16191F",
-          panel: "#1A1E25",
-          border: "#20242B",
-          borderSoft: "#303640",
-          text: "#ECEFF3",
-          text2: "#C4C9D1",
-          muted: "#949BA6",
-          ivory: "#ECE7DC",
-          steelBlue: "#6EA8D7",
-          copperRed: "#B66A61",
-          amberGold: "#C3A15F",
-          blue: "#6EA8D7",
-          blueSoft: "#9DCCF0",
-          positive: "#ECE7DC",
-          amber: "#C3A15F",
-          risk: "#B66A61",
-          gold: "#AAB7C6",
-          red: "#B66A61"
+          bg: "#0A0A0A",
+          secondary: "#0A0A0A",
+          surface: "#191919",
+          surface2: "#1A1C20",
+          panel: "#191919",
+          border: "#212327",
+          borderSoft: "rgba(255,255,255,0.25)",
+          text: "#FFFFFF",
+          text2: "#DADBDF",
+          muted: "#7D8187",
+          ivory: "#FFFFFF",
+          steelBlue: "#A0C3EC",
+          copperRed: "#FF7A17",
+          amberGold: "#FFC285",
+          blue: "#A0C3EC",
+          blueSoft: "#C4B5FD",
+          positive: "#FFFFFF",
+          amber: "#FFC285",
+          risk: "#FF7A17",
+          gold: "#DADBDF",
+          red: "#FF7A17"
         }
       },
       fontFamily: {
-        sans: ["var(--font-pmri-sans)", "Inter", "Manrope", "\"Helvetica Neue\"", "Arial", "sans-serif"],
-        mono: ["var(--font-pmri-mono)", "SF Mono", "Roboto Mono", "ui-monospace", "SFMono-Regular", "monospace"]
+        sans: ["var(--font-pmri-sans)", "DM Sans", "Inter", "system-ui", "sans-serif"],
+        mono: ["var(--font-pmri-mono)", "IBM Plex Mono", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"]
       },
       boxShadow: {
-        decision: "0 26px 70px rgba(0, 0, 0, 0.34)"
+        decision: "none"
       },
       backgroundImage: {
-        "decision-radial": "radial-gradient(circle at 76% 4%, rgba(126, 166, 200, 0.085), transparent 30%), radial-gradient(circle at 18% -10%, rgba(236, 239, 243, 0.045), transparent 28%), linear-gradient(180deg, #050608 0%, #030405 100%)"
+        "decision-radial": "linear-gradient(180deg, #0a0a0a 0%, #0a0a0a 100%)"
       }
     }
   },
