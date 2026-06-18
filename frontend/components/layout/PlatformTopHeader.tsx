@@ -2,10 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { buildJourneySteps } from "@/lib/journey";
 import { useReviewState } from "@/lib/reviewState";
-import type { StatusTone } from "@/lib/types";
 
 type RouteMeta = {
   title: string;
@@ -16,6 +14,10 @@ type HeaderCta = {
   label: string;
   href?: string;
   disabled?: boolean;
+};
+
+type HeaderAction = HeaderCta & {
+  variant: "primary" | "secondary";
 };
 
 const routeMeta: Array<{ prefix: string; meta: RouteMeta }> = [
@@ -38,25 +40,15 @@ function routeForPath(pathname: string): RouteMeta {
 
 function normalizeStatus(value?: string | null) {
   if (!value) return "No active review";
-  return value
+  const normalized = value
     .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function reviewStatusTone(status?: string | null): StatusTone {
-  const normalized = String(status ?? "").toLowerCase();
-  if (normalized.includes("fail") || normalized.includes("blocked")) return "red";
-  if (normalized.includes("running") || normalized.includes("pending")) return "blue";
-  if (normalized.includes("draft") || normalized.includes("partial")) return "amber";
-  return "slate";
-}
-
-function evidenceTone(label?: string | null): StatusTone {
-  const normalized = String(label ?? "").toLowerCase();
-  if (!normalized || normalized.includes("unavailable") || normalized.includes("missing")) return "slate";
-  if (normalized.includes("limited") || normalized.includes("partial") || normalized.includes("insufficient")) return "amber";
-  if (normalized.includes("failed") || normalized.includes("blocked")) return "red";
-  return "slate";
+  if (/completed/i.test(normalized)) return "Review completed";
+  if (/running|pending/i.test(normalized)) return "Review running";
+  if (/partial/i.test(normalized)) return "Review partial";
+  if (/failed|blocked/i.test(normalized)) return "Review needs attention";
+  if (/draft/i.test(normalized)) return "Draft review";
+  return normalized;
 }
 
 function formatDateTime(value?: string | null) {
@@ -132,12 +124,33 @@ function ctaForPath({
   return nextAvailableStep ? { label: `Continue to ${nextAvailableStep.shortLabel}`, href: nextAvailableStep.href } : { label: "Open Workspace", href: "/workspace" };
 }
 
-function UtilityItem({ label, value }: { label: string; value: string }) {
+function secondaryActionsForPath(pathname: string): HeaderAction[] {
+  if (pathname.startsWith("/diagnosis")) {
+    return [{ label: "Export Report", href: "/report", variant: "secondary" }];
+  }
+  return [];
+}
+
+function HeaderLinkAction({ action }: { action: HeaderAction }) {
+  const baseClass = "pmri-focus rounded-full px-4 py-2 text-xs font-semibold transition";
+  const secondaryClass = "border border-white/10 bg-white/[0.026] text-pmri-text2 hover:border-pmri-blue/35 hover:bg-white/[0.045] hover:text-pmri-text";
+  const primaryClass = "pmri-primary-action";
+
+  if (action.disabled || !action.href) {
+    return (
+      <span className={`${baseClass} border border-white/[0.08] bg-white/[0.022] text-pmri-muted`}>
+        {action.label}
+      </span>
+    );
+  }
+
   return (
-    <div className="min-w-0 border-l border-pmri-border/45 pl-3">
-      <p className="pmri-type-meta text-pmri-muted">{label}</p>
-      <p className="mt-0.5 truncate text-sm font-medium text-pmri-text2">{value}</p>
-    </div>
+    <Link
+      href={action.href}
+      className={`${baseClass} ${action.variant === "primary" ? primaryClass : secondaryClass}`}
+    >
+      {action.label}
+    </Link>
   );
 }
 
@@ -150,53 +163,51 @@ export function PlatformTopHeader() {
   const currency = activeReview?.investorCurrency || activeReview?.reviewSummary?.investorCurrency || "USD";
   const holdingsCount = activeReview?.reviewSummary?.holdingsCount ?? activeReview?.holdings.length ?? 0;
   const reviewStatus = activeReview?.stagedProgress?.status ?? activeReview?.runStatus;
-  const evidenceQuality = pathname.startsWith("/comparison")
-    ? activeReview?.comparisonResult?.evidenceQuality ?? activeReview?.reviewSummary?.diagnosis.evidenceQuality
-    : pathname.startsWith("/verdict")
-      ? activeReview?.verdictResult?.evidenceQuality ?? activeReview?.comparisonResult?.evidenceQuality ?? activeReview?.reviewSummary?.diagnosis.evidenceQuality
-      : activeReview?.reviewSummary?.evidence?.quality ?? activeReview?.reviewSummary?.diagnosis.evidenceQuality;
   const analysisWindow = readOutputSummaryField(activeReview?.reviewResult?.outputs, "analysis_window");
   const updatedAt = formatDateTime(activeReview?.reviewSummary?.generatedAt ?? activeReview?.updatedAt);
   const cta = ctaForPath({ pathname, flags: journeyFlags, runStatus: activeReview?.runStatus });
+  const metadata = [
+    portfolioName,
+    currency,
+    holdingsCount ? `${holdingsCount} holdings` : "No holdings",
+    normalizeStatus(reviewStatus)
+  ];
+  const actions: HeaderAction[] = [
+    ...secondaryActionsForPath(pathname),
+    { ...cta, variant: "primary" }
+  ];
 
   return (
-    <header className="sticky top-0 z-30 border-b border-pmri-border/38 bg-pmri-bg/88 shadow-[0_18px_44px_rgba(0,0,0,0.18)] backdrop-blur-xl">
-      <div className="mx-auto flex w-full max-w-[1240px] flex-col gap-3 px-4 py-3 md:px-6 lg:px-8 xl:px-0">
+    <header className="sticky top-0 z-30 border-b border-white/[0.045] bg-[#050608]/[0.82] shadow-[0_18px_52px_rgba(0,0,0,0.26)] backdrop-blur-2xl">
+      <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-2.5 px-4 py-3 md:px-6 lg:px-8 xl:px-0">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <p className="pmri-type-meta text-pmri-blueSoft">Portfolio MRI · {meta.eyebrow}</p>
-            <p className="mt-1 truncate text-lg font-semibold tracking-[-0.03em] text-pmri-text md:text-xl">
-              {meta.title}
+            <p className="text-[0.68rem] font-medium tracking-[0.08em] text-pmri-muted">
+              Portfolio MRI · {meta.eyebrow}
             </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <StatusBadge tone={reviewStatusTone(reviewStatus)} dot={Boolean(reviewStatus)}>
-              {normalizeStatus(reviewStatus)}
-            </StatusBadge>
-            {evidenceQuality ? (
-              <StatusBadge tone={evidenceTone(evidenceQuality)} dot={evidenceTone(evidenceQuality) !== "slate"}>
-                Evidence · {evidenceQuality}
-              </StatusBadge>
+            <h1 className="mt-1 truncate text-lg font-semibold tracking-[-0.035em] text-pmri-text md:text-[1.35rem]">
+              {meta.title}
+            </h1>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-pmri-muted">
+              {metadata.map((item, index) => (
+                <span key={`${item}-${index}`} className="flex items-center gap-x-2">
+                  {index > 0 ? <span className="h-1 w-1 rounded-full bg-pmri-muted/[0.36]" aria-hidden="true" /> : null}
+                  <span>{item}</span>
+                </span>
+              ))}
+            </div>
+            {!analysisWindow ? (
+              <p className="mt-1 text-xs text-pmri-muted/[0.72]" title={updatedAt ? `Last update ${updatedAt}` : undefined}>
+                Data window unavailable
+              </p>
             ) : null}
-            {cta.href && !cta.disabled ? (
-              <Link href={cta.href} className="pmri-focus pmri-primary-action rounded-full px-4 py-2 text-xs font-semibold transition">
-                {cta.label}
-              </Link>
-            ) : (
-              <span className="rounded-full border border-pmri-border/65 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-pmri-muted">
-                {cta.label}
-              </span>
-            )}
           </div>
-        </div>
 
-        <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
-          <UtilityItem label="Portfolio" value={portfolioName} />
-          <UtilityItem label="Currency" value={currency} />
-          <UtilityItem label="Holdings" value={holdingsCount ? `${holdingsCount} holdings` : "No holdings"} />
-          <UtilityItem label="Data window" value={analysisWindow || "Not provided"} />
-          <UtilityItem label="Updated" value={updatedAt || "Not saved"} />
+          <div className="flex flex-wrap items-center gap-2">
+            {actions.map((action) => (
+              <HeaderLinkAction key={`${action.variant}-${action.label}`} action={action} />
+            ))}
+          </div>
         </div>
       </div>
     </header>

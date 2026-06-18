@@ -112,26 +112,26 @@ function ReportIcon({ className }: SidebarIconProps) {
 function statusClasses(status: JourneyStepStatus) {
   switch (status) {
     case "active":
-      return "border-white/55 bg-white/[0.05] text-pmri-text shadow-[inset_0_1px_0_rgba(255,255,255,0.075),0_12px_30px_rgba(0,0,0,0.24),0_0_0_1px_rgba(110,168,215,0.08)]";
+      return "border-white/[0.12] bg-white/[0.035] text-pmri-text shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_10px_28px_rgba(0,0,0,0.18)]";
     case "completed":
-      return "border-transparent text-pmri-text2/78 hover:border-pmri-border/45 hover:bg-white/[0.026]";
+      return "border-transparent text-pmri-text2/[0.72] hover:border-white/[0.08] hover:bg-white/[0.022]";
     case "available":
-      return "border-transparent text-pmri-muted/88 hover:border-pmri-border/50 hover:bg-white/[0.026]";
+      return "border-transparent text-pmri-muted/[0.84] hover:border-white/[0.08] hover:bg-white/[0.022]";
     case "locked":
-      return "cursor-not-allowed border-transparent text-pmri-muted/58";
+      return "cursor-not-allowed border-transparent text-pmri-muted/48";
   }
 }
 
 function iconClasses(status: JourneyStepStatus) {
   switch (status) {
     case "active":
-      return "text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.18)]";
+      return "text-pmri-text drop-shadow-[0_0_10px_rgba(157,204,240,0.12)]";
     case "completed":
-      return "text-pmri-blueSoft";
+      return "text-pmri-blueSoft/[0.72]";
     case "available":
-      return "text-pmri-blueSoft/90";
+      return "text-pmri-blueSoft/[0.64]";
     case "locked":
-      return "text-pmri-muted/52";
+      return "text-pmri-muted/[0.42]";
   }
 }
 
@@ -155,15 +155,15 @@ export function Sidebar() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <aside className="hidden min-h-screen w-60 shrink-0 border-r border-pmri-border/32 bg-pmri-secondary/76 px-4 py-5 shadow-[12px_0_48px_rgba(0,0,0,0.11)] lg:flex lg:flex-col">
+    <aside className="hidden min-h-screen w-56 shrink-0 border-r border-white/[0.045] bg-[#07080a]/58 px-3.5 py-5 shadow-[18px_0_58px_rgba(0,0,0,0.18)] backdrop-blur-2xl lg:flex lg:flex-col">
       <div>
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-pmri-border/55 bg-white/[0.035] shadow-decision">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.026] shadow-[0_16px_40px_rgba(0,0,0,0.2)]">
             <BrandMark size="sm" />
           </div>
           <div className="min-w-0">
-            <p className="text-base font-semibold tracking-[-0.025em] text-pmri-text">Portfolio MRI</p>
-            <p className="pmri-microcopy mt-1">Investment Decision Room</p>
+            <p className="text-sm font-semibold tracking-[-0.025em] text-pmri-text">Portfolio MRI</p>
+            <p className="mt-0.5 text-[0.72rem] leading-5 text-pmri-muted">Investment Decision Room</p>
           </div>
         </div>
       </div>
@@ -171,7 +171,7 @@ export function Sidebar() {
       <AnimatePresence initial={false}>
         {lockMessage ? (
           <motion.div
-            className="mt-6 rounded-2xl border border-pmri-amber/30 bg-pmri-amber/10 px-3 py-3 text-xs leading-5 text-pmri-text2"
+            className="mt-6 rounded-2xl border border-pmri-amber/[0.22] bg-pmri-amber/[0.08] px-3 py-3 text-xs leading-5 text-pmri-text2"
             role="status"
             initial={reduceMotion ? false : { opacity: 0, y: -6, scale: 0.98 }}
             animate={reduceMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
@@ -186,12 +186,12 @@ export function Sidebar() {
       <nav className="mt-8 space-y-1.5" aria-label="Portfolio MRI account navigation">
         <Link
           href="/workspace"
-          className={`pmri-focus pmri-nav-text group flex w-full items-center justify-between rounded-2xl border px-3.5 py-3 text-left transition ${pathname.startsWith("/workspace") ? "border-white/62 bg-white/[0.052] text-pmri-text shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_34px_rgba(0,0,0,0.28),0_0_0_1px_rgba(110,168,215,0.10)]" : "border-transparent text-pmri-text2 hover:border-pmri-border/70 hover:bg-white/[0.035]"}`}
+          className={`pmri-focus pmri-nav-text group flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left transition ${pathname.startsWith("/workspace") ? "border-white/[0.12] bg-white/[0.032] text-pmri-text shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_10px_28px_rgba(0,0,0,0.18)]" : "border-transparent text-pmri-text2/[0.78] hover:border-white/[0.08] hover:bg-white/[0.022]"}`}
           onClick={() => setLockMessage(null)}
         >
           <span className="flex min-w-0 items-center gap-3">
-            <span className={`flex h-6 w-6 shrink-0 items-center justify-center ${pathname.startsWith("/workspace") ? "text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.18)]" : "text-pmri-blueSoft/90"}`} aria-hidden="true">
-              <WorkspaceIcon className="h-5 w-5" />
+            <span className={`flex h-5 w-5 shrink-0 items-center justify-center ${pathname.startsWith("/workspace") ? "text-pmri-text" : "text-pmri-blueSoft/[0.62]"}`} aria-hidden="true">
+              <WorkspaceIcon className="h-[1.125rem] w-[1.125rem]" />
             </span>
             <span className="truncate">Workspace</span>
           </span>
@@ -219,7 +219,7 @@ export function Sidebar() {
             </>
           );
 
-          const className = `pmri-focus pmri-nav-text group flex w-full items-center justify-between rounded-2xl border px-3 py-2.5 text-left transition ${statusClasses(step.status)}`;
+          const className = `pmri-focus pmri-nav-text group flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left transition ${statusClasses(step.status)}`;
 
           return (
             <motion.div key={step.id} variants={reduceMotion ? undefined : listItemVariants} layout>
@@ -242,7 +242,7 @@ export function Sidebar() {
                   {step.status === "active" ? (
                     <motion.span
                       layoutId="sidebar-active-step"
-                      className="absolute inset-0 rounded-2xl bg-[linear-gradient(135deg,rgba(236,239,243,0.055),rgba(110,168,215,0.035)_46%,rgba(255,255,255,0.018))]"
+                      className="absolute inset-y-1 left-1 w-0.5 rounded-full bg-pmri-blueSoft/[0.46]"
                       transition={pmriSpring}
                       aria-hidden="true"
                     />
@@ -256,8 +256,8 @@ export function Sidebar() {
       </motion.nav>
       </LayoutGroup>
       {enabled ? (
-        <div className="mt-auto rounded-2xl border border-pmri-border/45 bg-white/[0.02] p-3">
-          <p className="pmri-label text-pmri-text2">Account</p>
+        <div className="mt-auto rounded-2xl border border-white/[0.055] bg-white/[0.018] p-3">
+          <p className="text-[0.68rem] font-medium tracking-[0.06em] text-pmri-muted">Account</p>
           {authStatus === "signed_in" ? (
             <>
               <p className="mt-2 truncate text-xs text-pmri-muted" title={user?.email ?? undefined}>
@@ -266,7 +266,7 @@ export function Sidebar() {
               <button
                 type="button"
                 onClick={() => void signOut()}
-                className="pmri-focus mt-3 w-full rounded-xl border border-pmri-border/55 px-3 py-2 text-xs font-semibold text-pmri-text2 transition hover:border-pmri-border hover:bg-white/[0.04]"
+                className="pmri-focus mt-3 w-full rounded-xl border border-white/[0.075] px-3 py-2 text-xs font-semibold text-pmri-text2 transition hover:border-white/[0.14] hover:bg-white/[0.035]"
               >
                 Sign out
               </button>
@@ -274,7 +274,7 @@ export function Sidebar() {
           ) : (
             <Link
               href="/onboarding/sign-in"
-              className="pmri-focus mt-3 block rounded-xl border border-pmri-border/55 px-3 py-2 text-center text-xs font-semibold text-pmri-text2 transition hover:border-pmri-border hover:bg-white/[0.04]"
+              className="pmri-focus mt-3 block rounded-xl border border-white/[0.075] px-3 py-2 text-center text-xs font-semibold text-pmri-text2 transition hover:border-white/[0.14] hover:bg-white/[0.035]"
             >
               Sign in
             </Link>

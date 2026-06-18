@@ -10,13 +10,13 @@ const config: Config = {
     extend: {
       colors: {
         pmri: {
-          bg: "#090A0C",
-          secondary: "#101114",
-          surface: "#17181B",
-          surface2: "#1D1F23",
-          panel: "#202329",
-          border: "#2A2D33",
-          borderSoft: "#3A3E46",
+          bg: "#050608",
+          secondary: "#0B0D10",
+          surface: "#111318",
+          surface2: "#16191F",
+          panel: "#1A1E25",
+          border: "#20242B",
+          borderSoft: "#303640",
           text: "#ECEFF3",
           text2: "#C4C9D1",
           muted: "#949BA6",
@@ -38,10 +38,10 @@ const config: Config = {
         mono: ["var(--font-pmri-mono)", "SF Mono", "Roboto Mono", "ui-monospace", "SFMono-Regular", "monospace"]
       },
       boxShadow: {
-        decision: "0 20px 54px rgba(0, 0, 0, 0.26)"
+        decision: "0 26px 70px rgba(0, 0, 0, 0.34)"
       },
       backgroundImage: {
-        "decision-radial": "radial-gradient(circle at 80% 12%, rgba(143, 177, 216, 0.08), transparent 32%), radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.04), transparent 22%)"
+        "decision-radial": "radial-gradient(circle at 76% 4%, rgba(126, 166, 200, 0.085), transparent 30%), radial-gradient(circle at 18% -10%, rgba(236, 239, 243, 0.045), transparent 28%), linear-gradient(180deg, #050608 0%, #030405 100%)"
       }
     }
   },

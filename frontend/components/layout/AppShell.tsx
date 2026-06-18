@@ -42,13 +42,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-decision-radial">
-      <div className="flex min-h-screen">
+    <div className="pmri-platform-workspace">
+      <div className="pmri-shell-layer flex min-h-screen">
         <Sidebar />
         <div className="min-w-0 flex-1">
           <PlatformTopHeader />
           {hideTopJourneyProgress ? null : <TopJourneyProgress />}
-          <main className="mx-auto w-full max-w-[1240px] px-4 py-6 md:px-6 lg:px-8 xl:px-0">
+          <main className="mx-auto w-full max-w-[1220px] px-4 py-5 md:px-6 lg:px-8 xl:px-0">
             {children}
           </main>
         </div>

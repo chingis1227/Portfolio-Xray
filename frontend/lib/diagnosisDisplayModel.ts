@@ -9,6 +9,7 @@ import {
 export type DiagnosisDisplayFact = {
   label: string;
   value: string;
+  detail?: string;
   note: string;
   tone: StatusTone;
 };
@@ -129,7 +130,7 @@ function whyItMatters(input: DiagnosisDisplayModelInput) {
   const weakness = findMetric(metrics, "Worst pre-stress weakness") ?? findMetric(metrics, "Primary weakness");
   const drawdown = findMetric(metrics, "Max drawdown");
   if (weakness && drawdown) {
-    return `The main weakness to review is ${formatDiagnosisDisplayValue(weakness.value).toLowerCase()}, with ${formatDiagnosisDisplayValue(drawdown.value)} observed downside in the diagnostic window.`;
+    return `The main weakness to review is ${formatDiagnosisDisplayValue(weakness.value)}, with ${formatDiagnosisDisplayValue(drawdown.value)} observed downside in the diagnostic window.`;
   }
   const explanation = input.siteExplanation?.screens?.diagnosis?.executive?.[0]?.text;
   return normalizeDisplaySentence(explanation || input.drivers[0], "Diagnosis summarizes the current portfolio before any candidate test.");
@@ -157,32 +158,37 @@ function whatMatters(input: DiagnosisDisplayModelInput): DiagnosisDisplayFact[] 
   const drawdown = findMetric(metrics, "Max drawdown");
   const weakness = findMetric(metrics, "Worst pre-stress weakness") ?? findMetric(metrics, "Primary weakness");
   const top3Pct = parsePercent(top3?.value);
-  return [
+  const items: Array<DiagnosisDisplayFact | null> = [
     top3 && !isUnavailable(top3.value) ? {
       label: "Concentration",
       value: `Top 3 = ${formatDiagnosisDisplayValue(top3.value)}`,
+      detail: formatDiagnosisDisplayValue(top3.value),
       note: top3Pct !== null && top3Pct >= 50 ? "Largest holdings drive a material share of capital." : "Capital is less concentrated in the largest holdings.",
       tone: top3Pct !== null && top3Pct >= 65 ? "red" : top3Pct !== null && top3Pct >= 50 ? "amber" : "slate"
     } : null,
     exposure && !isUnavailable(exposure.value) ? {
       label: "Main exposure",
       value: formatDiagnosisDisplayValue(exposure.value),
+      detail: exposure.detail && !isUnavailable(exposure.detail) ? formatDiagnosisDisplayValue(exposure.detail) : undefined,
       note: exposure.detail && !isUnavailable(exposure.detail) ? formatDiagnosisDisplayValue(exposure.detail) : "Dominant economic risk sleeve.",
       tone: severityFromTone(exposure.tone, "slate")
     } : null,
     drawdown && !isUnavailable(drawdown.value) ? {
       label: "Downside pain",
       value: formatDiagnosisDisplayValue(drawdown.value),
+      detail: formatDiagnosisDisplayValue(drawdown.value),
       note: drawdown.detail && !isUnavailable(drawdown.detail) ? formatDiagnosisDisplayValue(drawdown.detail) : "Largest observed loss in the diagnostic window.",
       tone: severityFromTone(drawdown.tone, "slate")
     } : null,
     weakness && !isUnavailable(weakness.value) ? {
       label: "Main weakness",
       value: formatDiagnosisDisplayValue(weakness.value),
+      detail: weakness.detail && !isUnavailable(weakness.detail) ? formatDiagnosisDisplayValue(weakness.detail) : undefined,
       note: "Review this in Stress Lab before testing a candidate.",
       tone: severityFromTone(weakness.tone, "slate")
     } : null
-  ].filter((item): item is DiagnosisDisplayFact => Boolean(item)).slice(0, 4);
+  ];
+  return items.filter((item): item is DiagnosisDisplayFact => Boolean(item)).slice(0, 4);
 }
 
 function behaviorSnapshot(input: DiagnosisDisplayModelInput): DiagnosisDisplayFact[] {

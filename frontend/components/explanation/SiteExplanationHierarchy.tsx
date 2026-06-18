@@ -28,7 +28,7 @@ function ExplanationItems({ items, compact = false }: { items: PublicSiteExplana
         <article key={item.id} className={`rounded-2xl border p-4 ${toneClass[item.tone] ?? toneClass.neutral}`}>
           <div className="flex items-start justify-between gap-3">
             <p className="text-sm leading-6 text-pmri-text2">{item.text}</p>
-            {item.evidenceLabel !== "Available" ? (
+            {item.evidenceLabel !== "Evidence available" ? (
               <StatusBadge tone={item.evidenceTone}>
                 {item.evidenceLabel}
               </StatusBadge>

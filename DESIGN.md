@@ -32,7 +32,7 @@ The product must present candidates as diagnostic tests and verdicts as non-bind
 
 ## Current Visual Language
 
-The implemented frontend uses a near-black graphite decision-room style with cool slate surfaces, restrained blue action accents, muted semantic statuses, large rounded cards, subtle glass rails, and controlled depth.
+The implemented frontend uses a deeper cinematic-black decision-room style with cool slate glass surfaces, restrained blue action accents, muted semantic statuses, floating case-file panels, fewer hard borders, and controlled depth.
 
 The atmosphere should feel:
 
@@ -58,13 +58,13 @@ The current frontend tokens live in `frontend/styles/globals.css` and `frontend/
 
 | Role | Token / Tailwind role | Hex | Current use |
 | --- | --- | --- | --- |
-| App background | `pmri.bg`, `--pmri-bg-primary` | `#090A0C` | Main shell and landing background. |
-| Secondary surface | `pmri.secondary`, `--pmri-bg-secondary` | `#101114` | Sidebar, onboarding panels, secondary sections. |
-| Card surface | `pmri.surface`, `--pmri-surface-card` | `#17181B` | Evidence cards and standard decision cards. |
-| Raised surface | `pmri.surface2`, `--pmri-surface-raised` | `#1D1F23` | Lifted cards and nested panels. |
-| Panel surface | `pmri.panel` | `#202329` | Dense form/table panels. |
-| Border | `pmri.border`, `--pmri-border` | `#2A2D33` / `#25282E` | Dividers, cards, table rules. |
-| Soft border | `pmri.borderSoft` | `#3A3E46` | Secondary outlines and separators. |
+| App background | `pmri.bg`, `--pmri-bg-primary` | `#050608` | Main shell and cinematic platform workspace background. |
+| Secondary surface | `pmri.secondary`, `--pmri-bg-secondary` | `#0B0D10` | Sidebar, onboarding panels, secondary sections. |
+| Card surface | `pmri.surface`, `--pmri-surface-card` | `#111318` | Floating case-file panels and standard decision cards. |
+| Raised surface | `pmri.surface2`, `--pmri-surface-raised` | `#16191F` | Lifted cards and nested panels. |
+| Panel surface | `pmri.panel`, `--pmri-surface-panel` | `#1A1E25` | Forms and dense panels that remain secondary to the first-read diagnosis. |
+| Border | `pmri.border`, `--pmri-border` | `#20242B` | Dividers, cards, table rules. |
+| Soft border | `pmri.borderSoft` | `#303640` | Secondary outlines and separators. |
 | Primary text | `pmri.text`, `--pmri-text-primary` | `#ECEFF3` | Headings, values, key labels. |
 | Secondary text | `pmri.text2`, `--pmri-text-secondary` | `#C4C9D1` | Body copy and interpretation. |
 | Muted text | `pmri.muted`, `--pmri-text-muted` | `#949BA6` | Captions, inactive steps, metadata. |
@@ -113,8 +113,8 @@ Onboarding routes are public-frame screens without the platform sidebar. Canonic
 
 Platform routes use:
 
-- a persistent `PlatformTopHeader` above platform content, showing the route title, active portfolio name, investor currency, holdings count, review status, one screen-level evidence-quality indicator when available, data window when provided, last update, and a primary route CTA area;
-- a vertical graphite journey rail on wide platform screens, with 8 icon-led gated journey steps and a white active capsule beside the content blocks;
+- a persistent compact `PlatformTopHeader` above platform content, showing the route title, a quiet metadata row with active portfolio name, investor currency, holdings count, and review state, a quiet missing-data-window note only when needed, and restrained route actions;
+- a vertical graphite journey rail on wide platform screens, with 8 icon-led gated journey steps and a small active marker instead of a bulky active capsule;
 - a bottom floating glass dock on narrower screens, using the same gated step icons and compact Workspace/account controls;
 - a sticky compact step context rail instead of a full horizontal journey stepper on redesigned routes;
 - a verdict-first page hero on redesigned analytical routes;
@@ -153,9 +153,9 @@ Cards use rounded corners, thin borders, subtle gradients, and `shadow-decision`
 
 Platform screens should not show more than three major surface blocks before the first scroll. Avoid card-inside-card stacks unless the inner surface is a clear drill-down or disclosure. Advanced technical detail, provenance, and full x-ray/stress drill-downs stay collapsed by default.
 
-Redesigned analytical pages use shared `VerdictHero`, `EvidenceSummary`, and `MetricMatrix` patterns. `VerdictHero` carries the page-level message with compact step context, one interpretation sentence, up to three supporting facts, and an optional boundary note. `EvidenceSummary` is capped at four items in one quiet strip. `MetricMatrix` groups rows with metric, portfolio value, reference/threshold, status, and meaning; material/problem rows sort first inside fixed groups.
+Redesigned analytical pages use shared `VerdictHero`, `EvidenceSummary`, and `MetricMatrix` patterns. `VerdictHero` carries the page-level message with compact step context, one interpretation sentence, optional supporting facts, and restrained actions. `EvidenceSummary` is capped at four items in one floating glass strip with subtle dividers and no repeated generic evidence badges. `MetricMatrix` groups rows with metric, portfolio value, reference/threshold, status, and meaning; material/problem rows sort first inside fixed groups and should stay secondary to the first-read diagnosis.
 
-Portfolio Diagnosis is the benchmark institutional decision-room screen: persistent `PlatformTopHeader`, one dominant `VerdictHero`, a maximum four-item evidence summary, one primary diagnostic canvas combining concentration, exposure, and weakness, a compact Metric Matrix, and advanced diagnostics hidden by default. Professional metrics such as VaR, ES, skewness, kurtosis, beta, Sharpe, Sortino, and Treynor remain available behind disclosure controls rather than dominating the first read.
+Portfolio Diagnosis is the benchmark institutional case-file screen: persistent compact `PlatformTopHeader`, one controlled diagnosis statement hero, one four-item floating evidence strip, one primary two-column diagnostic canvas combining drivers and next stress review, and advanced diagnostics hidden by default. MetricMatrix, full X-Ray detail, and professional metrics such as VaR, ES, skewness, kurtosis, beta, Sharpe, Sortino, and Treynor remain available behind disclosure controls rather than dominating the first read.
 
 Score-style values use a compact percent-plus-five-bar indicator instead of long progress bars or raw `/100` text. The indicator should inherit the evidence/status tone, stay small enough for cards and tables, and remain secondary to the diagnostic interpretation.
 
@@ -165,7 +165,7 @@ Motion should make the decision room feel calmer and more legible, not flashier.
 
 ### Badges
 
-Badges must communicate evidence-backed state. Do not use badges as decoration. One primary badge per card header is preferred. Do not repeat generic evidence badges such as `Evidence available` or `Strong evidence` across every fact. Use one global screen-level evidence-quality indicator in `PlatformTopHeader`; reserve per-row badges for material issue, watch, unavailable, or workflow state. Blue, amber, and red badges use a small colored signal dot plus subdued glow; slate and ivory/neutral badges stay quieter.
+Badges must communicate evidence-backed state. Do not use badges as decoration. One primary badge per card header is preferred. Do not repeat generic evidence badges such as `Evidence available` or `Strong evidence` across every fact. The main top header must not carry noisy review-status or evidence-quality pills; place global evidence quality in the page evidence strip or advanced detail instead. Reserve per-row badges for material issue, watch, unavailable, or workflow state. Blue, amber, and red badges use a small colored signal dot plus subdued glow; slate and ivory/neutral badges stay quieter.
 
 ### CTAs
 

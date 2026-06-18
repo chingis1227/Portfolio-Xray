@@ -2,12 +2,10 @@ import Link from "next/link";
 import type { Metric, SiteExplanationBundle, StatusTone } from "@/lib/types";
 import type { XRaySummary } from "@/lib/reviewState";
 import { buildDiagnosisDisplayModel, type DiagnosisDisplayFact } from "@/lib/diagnosisDisplayModel";
-import { riskSeverityLabel } from "@/lib/displayLabels";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { EvidenceSummary, type EvidenceSummaryItem } from "@/components/ui/EvidenceSummary";
 import { MetricMatrix, type MetricMatrixGroup, type MetricMatrixRow } from "@/components/ui/MetricMatrix";
 import { ScoreIndicator } from "@/components/ui/ScoreIndicator";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { VerdictHero } from "@/components/ui/VerdictHero";
 import {
   CompositionPanel,
@@ -29,60 +27,65 @@ type DiagnosisSummaryPanelProps = {
   siteExplanation?: SiteExplanationBundle;
 };
 
-function toneLabel(tone: StatusTone) {
-  if (tone === "green") return "Aligned";
-  if (tone === "amber") return "Medium risk";
-  if (tone === "red") return "High risk";
-  return riskSeverityLabel(tone) === "Unavailable" ? "Review" : riskSeverityLabel(tone);
+type DiagnosisDisplayModel = ReturnType<typeof buildDiagnosisDisplayModel>;
+
+function factByLabel(facts: DiagnosisDisplayFact[], label: string) {
+  return facts.find((fact) => fact.label.toLowerCase() === label.toLowerCase());
 }
 
-function DiagnosisHero({ model }: { model: ReturnType<typeof buildDiagnosisDisplayModel> }) {
-  return (
-    <VerdictHero
-      stepContext="Step 02 of 8 - Portfolio Diagnosis"
-      headline={model.mainFinding}
-      interpretation={model.whyItMatters}
-      facts={[
-        { label: "Review scope", value: "Current portfolio first; no candidate or optimizer output is treated as the answer here." },
-        { label: "Next safe step", value: model.nextStep }
-      ]}
-      actions={(
-        <>
-          <Link href="/evidence" className="pmri-focus pmri-primary-action rounded-full px-5 py-2.5 text-sm font-medium transition">
-            Review Stress Lab evidence
-          </Link>
-          <Link href="/hypothesis" className="pmri-focus rounded-full border border-pmri-border bg-white/[0.035] px-5 py-2.5 text-sm font-medium text-pmri-text2 transition hover:border-pmri-blue/45 hover:text-pmri-text">
-            Test one candidate hypothesis
-          </Link>
-        </>
-      )}
-    />
-  );
+function extractPercent(value?: string) {
+  return value?.match(/-?\d+(?:\.\d+)?%/)?.[0];
 }
 
-function evidenceSummaryItems(model: ReturnType<typeof buildDiagnosisDisplayModel>): EvidenceSummaryItem[] {
-  const primaryIssue = model.whatMatters.find((fact) => fact.tone === "red" || fact.tone === "amber") ?? model.whatMatters[0];
-  const mainDrivers = model.primaryEvidence.length ? model.primaryEvidence.join(" ") : "Unavailable in the compact review.";
+function evidenceQualityValue(model: DiagnosisDisplayModel) {
+  return model.dataCoverage === "Limited" || model.dataCoverage === "Unavailable" ? "Limited" : "Strong";
+}
+
+function concentrationFact(model: DiagnosisDisplayModel) {
+  return factByLabel(model.whatMatters, "Concentration");
+}
+
+function exposureFact(model: DiagnosisDisplayModel) {
+  return factByLabel(model.whatMatters, "Main exposure");
+}
+
+function downsideFact(model: DiagnosisDisplayModel) {
+  return factByLabel(model.whatMatters, "Downside pain")
+    ?? factByLabel(model.behaviorSnapshot, "Pain")
+    ?? factByLabel(model.whatMatters, "Main weakness");
+}
+
+function exposureValue(exposure?: DiagnosisDisplayFact) {
+  if (!exposure) return "Unavailable";
+  const percent = extractPercent(exposure.detail) ?? extractPercent(exposure.note);
+  if (percent && !extractPercent(exposure.value)) return `${exposure.value} = ${percent}`;
+  return exposure.value;
+}
+
+function evidenceSummaryItems(model: DiagnosisDisplayModel): EvidenceSummaryItem[] {
+  const concentration = concentrationFact(model);
+  const exposure = exposureFact(model);
+  const downside = downsideFact(model);
+  const quality = evidenceQualityValue(model);
+
   return [
     {
       label: "Primary issue",
-      value: primaryIssue ? `${primaryIssue.label}: ${primaryIssue.value}` : "Unavailable",
-      tone: primaryIssue?.tone ?? "slate"
+      value: concentration?.value ?? "Unavailable"
     },
     {
-      label: "Materiality",
-      value: primaryIssue ? toneLabel(primaryIssue.tone) : "Unavailable",
-      tone: primaryIssue?.tone ?? "slate"
+      label: "Main exposure",
+      value: exposureValue(exposure)
     },
     {
-      label: "Supporting evidence",
-      value: mainDrivers,
-      tone: "slate"
+      label: "Worst observed downside",
+      value: downside?.value ?? "Unavailable",
+      tone: downside?.value ? "red" : "slate"
     },
     {
-      label: "Next safe step",
-      value: model.nextStep,
-      tone: "slate"
+      label: "Evidence quality",
+      value: quality,
+      tone: quality === "Limited" ? "amber" : "slate"
     }
   ];
 }
@@ -116,7 +119,7 @@ function metricRow(metric: Metric): MetricMatrixRow {
   };
 }
 
-function diagnosisMetricGroups(model: ReturnType<typeof buildDiagnosisDisplayModel>): MetricMatrixGroup[] {
+function diagnosisMetricGroups(model: DiagnosisDisplayModel): MetricMatrixGroup[] {
   const riskLabels = new Set(["Downside pain", "Main weakness", "Pain", "Risk level", "Market dependence"]);
   const structureLabels = new Set(["Concentration", "Main exposure"]);
   const riskRows = [
@@ -147,75 +150,152 @@ function diagnosisMetricGroups(model: ReturnType<typeof buildDiagnosisDisplayMod
   }));
 }
 
-function fallbackFact(label: string, note: string): DiagnosisDisplayFact {
-  return {
-    label,
-    value: "Unavailable",
-    note,
-    tone: "slate"
-  };
+function concentrationCanvasTitle(fact?: DiagnosisDisplayFact) {
+  const percent = extractPercent(fact?.detail ?? fact?.value);
+  return percent ? `Top 3 holdings drive ${percent} of capital` : "Top 3 holdings drive a material share of capital";
 }
 
-function diagnosticCanvasItems(model: ReturnType<typeof buildDiagnosisDisplayModel>) {
-  const concentration = model.whatMatters.find((fact) => fact.label === "Concentration")
-    ?? fallbackFact("Concentration", "Concentration detail was not returned in the compact diagnosis.");
-  const exposure = model.whatMatters.find((fact) => fact.label === "Main exposure")
-    ?? fallbackFact("Main exposure", "Dominant exposure detail was not returned in the compact diagnosis.");
-  const weakness = model.whatMatters.find((fact) => fact.label === "Main weakness")
-    ?? model.whatMatters.find((fact) => fact.label === "Downside pain")
-    ?? fallbackFact("Main weakness", "Weakness detail was not returned in the compact diagnosis.");
-
-  return [concentration, exposure, weakness];
+function exposureCanvasTitle(fact?: DiagnosisDisplayFact) {
+  const percent = extractPercent(fact?.detail ?? fact?.note);
+  if (fact?.value && percent) return `${fact.value} is the dominant exposure at ${percent}`;
+  if (fact?.value) return `${fact.value} is the dominant exposure`;
+  return "Dominant exposure requires review";
 }
 
-function PrimaryDiagnosticCanvas({ model }: { model: ReturnType<typeof buildDiagnosisDisplayModel> }) {
-  const items = diagnosticCanvasItems(model);
+function DiagnosisHero({ model }: { model: DiagnosisDisplayModel }) {
+  return (
+    <VerdictHero
+      stepContext="Step 02 of 8 - Portfolio Diagnosis"
+      headline={model.mainFinding}
+      interpretation={model.whyItMatters}
+      actions={(
+        <>
+          <Link href="/evidence" className="pmri-focus pmri-primary-action rounded-full px-5 py-2.5 text-sm font-medium transition">
+            Review Stress Lab evidence
+          </Link>
+          <Link href="/hypothesis" className="pmri-focus rounded-full border border-white/10 bg-white/[0.026] px-5 py-2.5 text-sm font-medium text-pmri-text2 transition hover:border-pmri-blue/40 hover:bg-white/[0.045] hover:text-pmri-text">
+            Test one candidate hypothesis
+          </Link>
+        </>
+      )}
+    />
+  );
+}
+
+function PrimaryDiagnosticCanvas({ model }: { model: DiagnosisDisplayModel }) {
+  const concentration = concentrationFact(model);
+  const exposure = exposureFact(model);
+  const reviewItems = ["USD shock risk", "Interest-rate shock", "Equity sell-off"];
+
+  const drivingItems = [
+    {
+      title: concentrationCanvasTitle(concentration),
+      copy: "High concentration makes a few positions drive most portfolio behavior."
+    },
+    {
+      title: exposureCanvasTitle(exposure),
+      copy: "Portfolio behavior is meaningfully linked to equity-market conditions."
+    },
+    {
+      title: "Diversification benefit may be limited by concentration",
+      copy: "Diversification benefit may weaken under macro stress and should be verified in Stress Lab."
+    }
+  ];
 
   return (
-    <section className="pmri-card rounded-3xl p-5 md:p-6">
-      <div>
-        <p className="pmri-type-meta text-pmri-blueSoft">Diagnostic canvas</p>
-        <h2 className="pmri-type-section-title mt-2 text-pmri-text">Concentration, exposure, and weakness</h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-pmri-text2">
-          One combined read of the current portfolio before the screen moves into secondary metrics.
-        </p>
-      </div>
-      <div className="mt-5 grid overflow-hidden rounded-2xl border border-pmri-border/50 bg-white/[0.018] lg:grid-cols-3">
-        {items.map((item, index) => (
-          <article key={`${item.label}-${index}`} className="border-b border-pmri-border/35 p-5 last:border-b-0 lg:border-b-0 lg:border-r lg:last:border-r-0">
-            <div className="flex items-start justify-between gap-3">
-              <p className="pmri-type-meta text-pmri-text2">{item.label}</p>
-              {item.tone === "red" || item.tone === "amber" ? (
-                <StatusBadge tone={item.tone}>{item.tone === "red" ? "Material issue" : "Watch"}</StatusBadge>
-              ) : null}
-            </div>
-            <p className="pmri-type-data mt-4 text-pmri-text">{item.value}</p>
-            <p className="mt-3 text-sm leading-6 text-pmri-text2">{item.note}</p>
-          </article>
-        ))}
+    <section className="pmri-diagnostic-canvas">
+      <div className="grid gap-0 lg:grid-cols-[1.28fr_0.72fr]">
+        <div className="p-5 md:p-6 lg:p-7">
+          <p className="text-[0.68rem] font-medium tracking-[0.08em] text-pmri-muted">Diagnostic canvas</p>
+          <h2 className="mt-2 text-[clamp(1.35rem,2vw,1.9rem)] font-semibold leading-tight tracking-[-0.035em] text-pmri-text">
+            What is driving the diagnosis
+          </h2>
+          <div className="mt-5 space-y-4">
+            {drivingItems.map((item, index) => (
+              <article key={item.title} className="grid gap-3 border-t border-white/[0.055] pt-4 md:grid-cols-[2rem_1fr]">
+                <p className="data-figure text-sm text-pmri-muted">0{index + 1}</p>
+                <div>
+                  <h3 className="text-base font-semibold tracking-[-0.02em] text-pmri-text">{item.title}</h3>
+                  <p className="mt-1.5 text-sm leading-6 text-pmri-text2">{item.copy}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+        <aside className="border-t border-white/[0.06] bg-black/[0.14] p-5 md:p-6 lg:border-l lg:border-t-0 lg:p-7">
+          <p className="text-[0.68rem] font-medium tracking-[0.08em] text-pmri-muted">Next review</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-pmri-text">Where to review next</h2>
+          <div className="mt-5 space-y-3">
+            {reviewItems.map((item) => (
+              <div key={item} className="flex items-center justify-between border-t border-white/[0.055] pt-3 text-sm text-pmri-text2">
+                <span>{item}</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-pmri-blueSoft/[0.62]" aria-hidden="true" />
+              </div>
+            ))}
+          </div>
+          <Link href="/evidence" className="pmri-focus pmri-primary-action mt-6 inline-flex rounded-full px-5 py-2.5 text-sm font-medium transition">
+            Review Stress Lab evidence
+          </Link>
+        </aside>
       </div>
     </section>
   );
 }
 
-function AdvancedDiagnostics({ model, xraySummary }: { model: ReturnType<typeof buildDiagnosisDisplayModel>; xraySummary?: XRaySummary }) {
+function AdvancedDiagnostics({
+  model,
+  metricGroups,
+  xraySummary
+}: {
+  model: DiagnosisDisplayModel;
+  metricGroups: MetricMatrixGroup[];
+  xraySummary?: XRaySummary;
+}) {
   return (
-    <details id="advanced-diagnostics" className="pmri-card rounded-3xl p-5 md:p-6">
-      <summary className="pmri-focus cursor-pointer list-none rounded-2xl border border-pmri-border/55 bg-white/[0.024] px-4 py-3 text-sm font-semibold text-pmri-text transition hover:border-pmri-blue/45">
+    <details id="advanced-diagnostics" className="pmri-technical-disclosure rounded-3xl p-5 md:p-6">
+      <summary className="pmri-focus cursor-pointer list-none rounded-2xl border border-white/[0.075] bg-white/[0.022] px-4 py-3 text-sm font-semibold text-pmri-text transition hover:border-pmri-blue/35 hover:bg-white/[0.04]">
         Advanced diagnostics and technical evidence
       </summary>
       <div className="mt-5 space-y-5">
+        <MetricMatrix
+          title="Compact metric matrix"
+          description="Secondary metrics are grouped here after the primary diagnosis is understood."
+          groups={metricGroups}
+        />
+
         {model.advancedMetrics.length ? (
-          <section>
+          <section className="pmri-card rounded-3xl p-5 md:p-6">
             <h3 className="text-sm font-semibold text-pmri-text">Professional metrics</h3>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <p className="mt-2 text-sm leading-6 text-pmri-text2">
+              These metrics support the case file but do not lead the first-read diagnosis.
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {model.advancedMetrics.map((metric) => <MetricCard key={metric.label} metric={metric} />)}
             </div>
           </section>
         ) : null}
 
+        {model.technicalEvidence.length || model.limitations.length ? (
+          <section className="pmri-card rounded-3xl p-5 md:p-6">
+            <h3 className="text-sm font-semibold text-pmri-text">Evidence chain notes</h3>
+            {model.technicalEvidence.length ? (
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-pmri-text2">
+                {model.technicalEvidence.map((item) => <li key={item}>- {item}</li>)}
+              </ul>
+            ) : null}
+            {model.limitations.length ? (
+              <div className="mt-4 border-t border-white/[0.06] pt-4">
+                <p className="text-xs font-semibold text-pmri-muted">Limitations</p>
+                <ul className="mt-2 space-y-2 text-sm leading-6 text-pmri-text2">
+                  {model.limitations.map((item) => <li key={item}>- {item}</li>)}
+                </ul>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
         {xraySummary ? (
-          <details className="rounded-2xl border border-pmri-border/60 bg-black/10 p-4">
+          <details className="rounded-2xl border border-white/[0.07] bg-black/10 p-4">
             <summary className="pmri-focus cursor-pointer list-none rounded-xl text-sm font-semibold text-pmri-text2 transition hover:text-pmri-text">
               Full portfolio x-ray detail
             </summary>
@@ -253,23 +333,14 @@ export function DiagnosisSummaryPanel({
     xraySummary,
     siteExplanation
   });
+  const metricGroups = diagnosisMetricGroups(model);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-5">
       <DiagnosisHero model={model} />
-      <EvidenceSummary
-        title="Why this diagnosis is showing"
-        description="The first read is limited to the main issue, materiality, supporting facts, and next safe step."
-        items={evidenceSummaryItems(model)}
-      />
+      <EvidenceSummary items={evidenceSummaryItems(model)} showHeader={false} />
       <PrimaryDiagnosticCanvas model={model} />
-      <MetricMatrix
-        title="Compact metric matrix"
-        description="Secondary metrics are grouped by decision relevance after the primary diagnosis is understood."
-        groups={diagnosisMetricGroups(model)}
-      />
-      <AdvancedDiagnostics model={model} xraySummary={xraySummary} />
-
+      <AdvancedDiagnostics model={model} metricGroups={metricGroups} xraySummary={xraySummary} />
     </div>
   );
 }

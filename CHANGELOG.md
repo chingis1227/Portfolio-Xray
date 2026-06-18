@@ -2,7 +2,7 @@
 
 ## 2026-06-18
 
-- Reset the frontend platform presentation around a persistent top utility header, narrower decision-room content width, quieter journey rail, stricter badge discipline, and a Diagnosis benchmark screen with a dominant verdict hero, compact evidence strip, primary diagnostic canvas, compact metric matrix, and collapsed advanced diagnostics.
+- Reset the frontend platform presentation around a deeper cinematic workspace, compact metadata-led top utility header, quieter journey rail, stricter badge discipline, and a Diagnosis case-file screen with a controlled statement hero, four-item floating evidence strip, primary diagnostic canvas, and collapsed advanced diagnostics.
 
 ## 2026-06-17
 

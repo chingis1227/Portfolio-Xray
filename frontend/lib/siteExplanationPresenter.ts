@@ -35,10 +35,10 @@ export type PublicSiteExplanationDisplayModel = {
 };
 
 const evidenceStatusPresentation: Record<PublicEvidenceStatus, { label: string; tone: StatusTone }> = {
-  available: { label: "Available", tone: "slate" },
-  limited: { label: "Limited", tone: "amber" },
-  missing: { label: "Unavailable", tone: "amber" },
-  preliminary: { label: "Preliminary", tone: "slate" }
+  available: { label: "Evidence available", tone: "slate" },
+  limited: { label: "Limited evidence", tone: "amber" },
+  missing: { label: "Evidence unavailable", tone: "amber" },
+  preliminary: { label: "Preliminary evidence", tone: "slate" }
 };
 
 const unsafePublicTextPattern = /\b(?:stress_report|portfolio_xray|problem_classification|candidate_generation|current_vs_candidate|decision_verdict|site_explanation_bundle|schema_version|field_path|source_refs|artifact|frontend_review|trade now|must rebalance|best portfolio|suitability approved)\b|\.json\b|\bbuy\b|\bsell\b(?!-off)/i;
