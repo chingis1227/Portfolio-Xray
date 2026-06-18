@@ -108,3 +108,11 @@ Before accepting UI/design changes, verify:
 4. Colors match the current token contract or docs are updated with intentional changes.
 5. Candidate, verdict, Client Fit, and report wording remains non-binding and evidence-grounded.
 6. Browser QA uses a fresh localhost server and fresh browser state.
+
+## Foundation and sandbox contract
+
+Implementation must prefer shared primitives in `frontend/components/ui/` before page-local styling. Repeated actions, surfaces, evidence facts, disclosure controls, and empty/loading/error states should be represented by reusable components such as `Button`, `Surface`, `GlassPanel`, `SectionHeader`, `EvidenceItem`, `AdvancedDisclosure`, and state components.
+
+Product-specific blocks should compose primitives and live near their domain. The Diagnosis benchmark uses `DiagnosisHero`, `EvidenceStrip`, `DiagnosticCanvas`, and `AdvancedDiagnostics` in `frontend/components/diagnosis/`.
+
+`/sandbox/components` is the local component gallery for foundation review. It may show sample copy and sample values, but it must not become a canonical product journey route and must not call backend review APIs.

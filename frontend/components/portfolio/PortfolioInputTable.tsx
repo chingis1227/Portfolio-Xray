@@ -641,7 +641,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
 
     return {
       title: "Ready for diagnosis",
-      text: `${validHoldingCount} holdings · 100% allocated`,
+      text: `${validHoldingCount} holdings В· 100% allocated`,
       tone: "green"
     };
   }, [clientProfileReady, hasStartedPortfolio, instrumentsComplete, totalWeight, validHoldingCount, weightsComplete]);
@@ -759,7 +759,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
             safeError.message,
             safeError.code ? `Code: ${safeError.code}` : "",
             safeError.stage ? `Stage: ${safeError.stage}` : "",
-            safeError.retryable ? "Retry after confirming the backend/frontend servers are freshly restarted." : ""
+            safeError.retryable ? "Retry after confirming the local services are freshly restarted." : ""
           ].filter(Boolean).join(" ")
           : "Portfolio diagnosis failed during staged execution.";
         throw new Error(safeErrorMessage);
@@ -1240,7 +1240,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
             </button>
             {!clientProfileReady ? (
               <p className="mt-3 rounded-xl border border-pmri-amber/35 bg-pmri-amber/10 px-4 py-3 text-sm leading-6 text-pmri-amber">
-                Complete Client Profile first. The backend and CLI remain compatible with missing profile data, but this web journey requires it before diagnosis.
+                Complete Client Profile first. The command-line workflow remains compatible with missing profile data, but this web journey requires it before diagnosis.
               </p>
             ) : null}
             {diagnosisError ? (
@@ -1342,7 +1342,7 @@ export function PortfolioInputTable({ investorCurrency, holdings }: PortfolioInp
                         <div className="min-w-0">
                           <h3 className="truncate text-sm font-semibold text-pmri-text">{portfolio.name}</h3>
                           <p className="mt-1 text-xs leading-5 text-pmri-muted">
-                            {portfolio.holdings.length} holdings · {portfolio.baseCurrency} base currency
+                            {portfolio.holdings.length} holdings В· {portfolio.baseCurrency} base currency
                           </p>
                           {portfolio.description ? (
                             <p className="mt-1 text-xs leading-5 text-pmri-muted">{portfolio.description}</p>

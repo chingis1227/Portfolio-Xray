@@ -1953,17 +1953,13 @@ test("Diagnosis page uses the compact display model instead of the standalone ex
 
   assert.doesNotMatch(diagnosisPage, /SiteExplanationHierarchy/);
   assert.match(diagnosisScreen, /siteExplanation/);
-  assert.match(diagnosisPanel, /buildDiagnosisDisplayModel/);
-  assert.match(diagnosisPanel, /VerdictHero/);
-  assert.match(diagnosisPanel, /EvidenceSummary/);
-  assert.match(diagnosisPanel, /MetricMatrix/);
-  assert.match(diagnosisPanel, /<details id="advanced-diagnostics"/);
-  assert.match(diagnosisPanel, /Advanced diagnostics/);
+  assert.match(diagnosisPanel, /buildDiagnosisPresentation/);
+  assert.match(diagnosisPanel, /DiagnosisHero/);
+  assert.match(diagnosisPanel, /EvidenceStrip/);
+  assert.match(diagnosisPanel, /DiagnosticCanvas/);
+  assert.match(diagnosisPanel, /AdvancedDiagnostics/);
   assert.doesNotMatch(diagnosisPanel, /Technical evidence|Data limitations to review/);
-  assert.match(diagnosisPanel, /Full portfolio x-ray detail/);
-  assert.match(diagnosisPanel, /Historical diagnostic window/);
-  assert.match(diagnosisPanel, /href="\/evidence"/);
-  assert.match(diagnosisPanel, /href="\/hypothesis"/);
+  assert.doesNotMatch(diagnosisPanel, /SiteExplanationHierarchy/);
   assert.doesNotMatch(diagnosisPanel, /href="\/verdict"|href="\/report"/);
   assert.doesNotMatch(diagnosisPanel, /sourceArtifacts|rejectedAlternatives|rationaleRefs/);
   assert.doesNotMatch(diagnosisPanel, /Evidence available/);
@@ -2211,14 +2207,14 @@ test("stress lab adapter maps raw stress_report outputs into user-facing current
   assert.equal(model.selectedScenarioId, "equity_shock");
   const equityShock = model.syntheticScenarios.find((scenario) => scenario.id === "equity_shock");
   const dotcom = model.historicalScenarios.find((scenario) => scenario.id === "dotcom");
-  assert.equal(equityShock?.displayName, "Equity sell-off");
+  assert.equal(equityShock?.displayName, "Equity shock");
   assert.equal(equityShock?.assetsHurt[0].ticker, "SPY");
-  assert.equal(model.hedgeGap.displayName, "Equity sell-off protection");
+  assert.equal(model.hedgeGap.displayName, "Equity shock protection");
   assert.equal(dotcom?.availability, "unavailable");
   assert.equal(dotcom?.dataNote, "Replay limited");
   assert.equal(dotcom?.interpretation, "Dot-com replay is limited for the current portfolio.");
   assert.match(model.limitations.headline, /Historical replay is limited/i);
-  assert.match(JSON.stringify(model.scorecard), /Historical replay limited|Equity sell-off/);
+  assert.match(JSON.stringify(model.scorecard), /Historical replay limited|Equity shock/);
   assert.doesNotMatch(JSON.stringify(model), /DIAG_|loss_ok|raw_status|stress_report\.json|field_path|source_refs|artifact/i);
 });
 
@@ -3157,7 +3153,7 @@ test("report route rejects FastAPI lineage for a different comparison when compa
   });
 });
 
-test("Hypothesis probes backend review status before Builder and Candidate generation", () => {
+test("Hypothesis probes backend review status before Builder and diagnostic test candidate generation", () => {
   const source = fs.readFileSync(hypothesisScreenPath, "utf8");
   const probeIndex = source.indexOf("probeLiveReviewLineage(reviewId)");
   const builderIndex = source.indexOf('fetch("/api/portfolio/builder/prepare"');
@@ -3166,7 +3162,7 @@ test("Hypothesis probes backend review status before Builder and Candidate gener
   assert.ok(probeIndex > 0, "Hypothesis should probe live backend lineage before downstream actions.");
   assert.ok(builderIndex > probeIndex, "Builder prepare must happen after the status probe.");
   assert.ok(candidateIndex > builderIndex, "Candidate generation must happen after Builder prepare.");
-  assert.match(source, /Run a new diagnosis before generating a candidate/);
+  assert.match(source, /Run a new diagnosis before generating a test candidate/);
   assert.match(source, /markLiveLineageUnavailable\(message\)/);
 });
 

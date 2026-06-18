@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useRouter } from "next/navigation";
 import { useReviewState } from "@/lib/reviewState";
@@ -16,7 +16,7 @@ export function CandidateReadyAction() {
         router.push("/comparison");
       }}
     >
-      Compare candidate
+      Compare test candidate
     </button>
   );
 }

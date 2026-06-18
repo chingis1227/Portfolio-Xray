@@ -63,7 +63,7 @@ export function ClientFitContextCard({
                 <StatusBadge tone={row.status_tone}>{formatUnknownValue(row.status_label, "Status")}</StatusBadge>
               </div>
               <p className="mt-2 text-xs leading-5 text-pmri-muted">
-                Current: {formatUnknownValue(row.portfolio_value_label, "n/a")} · Target/limit: {formatUnknownValue(row.target_or_limit_label, "n/a")}
+                Current: {formatUnknownValue(row.portfolio_value_label, "Not available")} · Target/limit: {formatUnknownValue(row.target_or_limit_label, "Not available")}
               </p>
             </article>
           ))}

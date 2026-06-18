@@ -26,8 +26,8 @@ const routeMeta: Array<{ prefix: string; meta: RouteMeta }> = [
   { prefix: "/diagnosis", meta: { eyebrow: "Step 02 / Diagnosis", title: "Portfolio Diagnosis" } },
   { prefix: "/evidence", meta: { eyebrow: "Step 03 / Stress Lab", title: "Stress Test Lab" } },
   { prefix: "/client-fit", meta: { eyebrow: "Step 04 / Client Fit", title: "Client Fit Check" } },
-  { prefix: "/hypothesis", meta: { eyebrow: "Step 05 / Hypothesis", title: "Candidate Launchpad" } },
-  { prefix: "/comparison", meta: { eyebrow: "Step 06 / Comparison", title: "Current vs Candidate" } },
+  { prefix: "/hypothesis", meta: { eyebrow: "Step 05 / Hypothesis", title: "Diagnostic Test" } },
+  { prefix: "/comparison", meta: { eyebrow: "Step 06 / Comparison", title: "Current vs Test Candidate" } },
   { prefix: "/verdict", meta: { eyebrow: "Step 07 / Verdict", title: "Decision Verdict" } },
   { prefix: "/report", meta: { eyebrow: "Step 08 / Report", title: "Grounded Report" } },
   { prefix: "/client-profile", meta: { eyebrow: "Advanced / Client Fit", title: "Manual diagnostic context" } }
@@ -91,7 +91,7 @@ function ctaForPath({
   }
   if (pathname.startsWith("/diagnosis")) {
     return flags.diagnosisGenerated
-      ? { label: "Review Stress Lab", href: "/evidence" }
+      ? { label: "Review diagnosis below", disabled: true }
       : { label: "Complete input", href: "/portfolio-input" };
   }
   if (pathname.startsWith("/evidence")) {
@@ -106,8 +106,8 @@ function ctaForPath({
   }
   if (pathname.startsWith("/hypothesis")) {
     return flags.candidateReady
-      ? { label: "Compare candidate", href: "/comparison" }
-      : { label: "Generate candidate below", disabled: true };
+      ? { label: "Compare test candidate", href: "/comparison" }
+      : { label: "Generate test candidate below", disabled: true };
   }
   if (pathname.startsWith("/comparison")) {
     return flags.comparisonReady
@@ -125,9 +125,6 @@ function ctaForPath({
 }
 
 function secondaryActionsForPath(pathname: string): HeaderAction[] {
-  if (pathname.startsWith("/diagnosis")) {
-    return [{ label: "Export Report", href: "/report", variant: "secondary" }];
-  }
   return [];
 }
 

@@ -33,23 +33,23 @@ const workflow = [
   {
     number: "05",
     title: "Verdict",
-    text: "Test one candidate hypothesis and get a grounded, non-binding decision-support verdict."
+    text: "Test one diagnostic path and get a grounded, non-binding decision-support verdict."
   }
 ];
 
 const architecture = [
   ["Portfolio Diagnosis", "Composition, factor sensitivity, hidden exposure, risk budget, and weakness map."],
   ["Stress Test Lab", "Synthetic and historical pressure tests with helped/hurt evidence and hedge-gap context."],
-  ["Problem Classification", "Turns evidence into a diagnosis before any candidate portfolio is tested."],
-  ["Candidate Launchpad", "Suggests one diagnostic test path from the actual problem, not from generic optimization."],
-  ["Current vs Candidate", "Shows what improves, what worsens, what is neutral, and what remains unclear."],
-  ["Grounded Report", "Client-ready commentary tied to run-local evidence and explicit limitations."]
+  ["Problem Classification", "Turns evidence into a diagnosis before any diagnostic test is prepared."],
+  ["Diagnostic Test Launchpad", "Suggests one diagnostic test path from the actual problem, not from generic optimization."],
+  ["Current vs Test Candidate", "Shows what improves, what worsens, what is neutral, and what remains unclear."],
+  ["Grounded Report", "Client-ready commentary tied to active review evidence and explicit limitations."]
 ];
 
 const precisionStats = [
   ["Current first", "Diagnosis begins with the existing portfolio."],
   ["1 path", "One hypothesis is tested at a time."],
-  ["Run-local", "Evidence is tied to the active review chain."],
+  ["Same review", "Evidence is tied to the active review chain."],
   ["Non-binding", "Verdict frames support, not orders."]
 ];
 
@@ -107,7 +107,7 @@ export function LandingPage() {
             <span className="text-pmri-blueSoft">•</span>
             <span>Stress-tested evidence</span>
             <span className="text-pmri-blueSoft">•</span>
-            <span>Candidate tests, not orders</span>
+            <span>Diagnostic tests, not orders</span>
           </div>
         </Reveal>
       </section>
@@ -176,7 +176,7 @@ export function LandingPage() {
               Diagnosis architecture, not an optimizer cockpit.
             </h2>
             <p className="mt-7 text-lg leading-8 text-pmri-text2">
-              Portfolio MRI connects diagnosis evidence, stress behavior, Client Fit context, candidate testing, comparison, verdict, and grounded commentary into one portfolio-first workflow.
+              Portfolio MRI connects diagnosis evidence, stress behavior, Client Fit context, diagnostic testing, comparison, verdict, and grounded commentary into one portfolio-first workflow.
             </p>
           </Reveal>
           <div className="grid gap-4 md:grid-cols-2">
@@ -212,7 +212,7 @@ export function LandingPage() {
               Every screen is designed to answer a decision question: what did we receive, what is the diagnosis, what evidence supports it, what hypothesis is being tested, what changed, and whether the evidence is strong enough for a non-binding verdict.
             </p>
             <p className="mt-6 text-sm leading-7 text-pmri-muted">
-              The product keeps generated artifacts, stale runs, legacy optimizer outputs, and technical diagnostics separated from the current user-facing decision path.
+              The product keeps generated evidence files, stale runs, legacy optimizer outputs, and technical diagnostics separated from the current user-facing decision path.
             </p>
           </Reveal>
         </div>

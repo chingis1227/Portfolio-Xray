@@ -102,10 +102,10 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 
 ### Diagnosis `/diagnosis`
 
-- Must lead with a shared `VerdictHero` using compact context `Step 02 of 8 - Portfolio Diagnosis`.
+- Must lead with the production diagnosis hierarchy: compact utility header, controlled diagnosis hero, four-item evidence strip, two-column diagnostic canvas, Stress Lab CTA, then collapsed advanced diagnostics.
 - Locked state must say `Complete Portfolio Input first to unlock Diagnosis.` and link to Portfolio Input.
-- Ready state must explain current portfolio evidence before any candidate test through one dominant diagnosis headline, one interpretation sentence, up to three supporting facts, and a four-item Evidence Summary covering primary issue, severity, drivers, and evidence quality.
-- Ready state must use a grouped Metric Matrix for diagnosis metrics: risk pressure, portfolio structure, evidence quality, and secondary observations.
+- Ready state must explain current portfolio evidence before any candidate test through one dominant diagnosis headline, one interpretation sentence, a four-item Evidence Summary covering primary issue, main exposure, worst observed downside, and evidence quality, and a primary canvas that names the material drivers and next risk review.
+- Ready state must keep the grouped Metric Matrix for diagnosis metrics behind collapsed advanced diagnostics.
 - Ready state must keep professional metrics and technical evidence secondary behind collapsed advanced diagnostics instead of returning to a card wall by default.
 - Ready state must not render a standalone `Diagnosis explanation` wall or repeat generic `Evidence available` badges across every fact.
 - Must not recommend rebalance from Portfolio Diagnosis alone.

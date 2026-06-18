@@ -69,7 +69,7 @@ async function probeLiveReviewLineage(reviewId: string) {
   });
   const status = await response.json() as (StagedReviewStatusResponse & { error?: string; details?: unknown });
   if (!response.ok) {
-    const message = safeErrorText(status, "This review is compact history. Run a new diagnosis before generating a candidate.");
+    const message = safeErrorText(status, "This review is compact history. Run a new diagnosis before generating a test candidate.");
     return {
       ok: false,
       stale: response.status === 403 || response.status === 404 || /not found|forbidden|different authenticated user/i.test(message),
@@ -80,7 +80,7 @@ async function probeLiveReviewLineage(reviewId: string) {
     return {
       ok: false,
       stale: false,
-      message: "Portfolio diagnosis is still preparing. Wait for Diagnosis, Stress Lab, and Hypothesis setup to finish before generating a candidate."
+      message: "Portfolio diagnosis is still preparing. Wait for Diagnosis, Stress Lab, and Hypothesis setup to finish before generating a test candidate."
     };
   }
   return { ok: true, stale: false, message: "" };
@@ -131,10 +131,10 @@ function formatGenerationError(value: unknown, fallback: string) {
   const raw = safeErrorText(value, fallback);
   const serialized = `${raw} ${JSON.stringify(value)}`;
   if (/max_asset_weight_too_low_for_asset_count|infeasible_constraints_risk/i.test(serialized)) {
-    return "This cap cannot create a full 100% test portfolio with the current number of holdings. Increase the max asset weight or add more holdings, then generate the candidate again.";
+    return "This cap cannot create a full 100% test portfolio with the current number of holdings. Increase the max asset weight or add more holdings, then generate the test candidate again.";
   }
   if (/candidate_weights_exceed_builder_max_asset_weight/i.test(serialized)) {
-    return "The generated candidate violated the selected max asset weight, so Portfolio MRI blocked comparison. Increase the cap or regenerate with a different setup.";
+    return "The generated test candidate violated the selected max asset weight, so Portfolio MRI blocked comparison. Increase the cap or regenerate with a different setup.";
   }
   if (/max_asset_weight_below_min_asset_weight/i.test(serialized)) {
     return "Max asset weight must be greater than or equal to min asset weight.";
@@ -224,7 +224,7 @@ function sampleActiveReview(generated: boolean): ActiveReviewState {
             "Reduce top stress-loss concentration without excessive turnover."
           ],
           tradeoff_to_watch: "Lower tail loss vs lower expected return and higher turnover.",
-          decision_boundary: "Review this candidate in comparison before forming the verdict.",
+          decision_boundary: "Review this diagnostic test candidate in comparison before forming the verdict.",
           is_rebalance_recommendation: false,
           generates_portfolio: false
         },
@@ -232,14 +232,14 @@ function sampleActiveReview(generated: boolean): ActiveReviewState {
           card_id: "sample_reduce_credit_liquidity",
           title: "Reduce Credit / Liquidity Risk",
           goal: "Reduce credit / liquidity risk",
-          hypothesis_to_test: "Test whether defensive candidates reduce credit and liquidity fragility.",
+          hypothesis_to_test: "Test whether a defensive diagnostic test reduces credit and liquidity fragility.",
           card_type: "targeted_hypothesis_test",
           source_problem_label: "Credit / liquidity fragility",
           suggested_methods: [{ candidate_method_id: "minimum_variance", method_role: "targeted_hypothesis" }],
           default_method: "minimum_variance",
           success_criteria: ["Lower credit or liquidity shock loss.", "Reduce fragile carry exposure without over-penalizing intentional income sleeves."],
           tradeoff_to_watch: "Less credit/carry vs income yield.",
-          decision_boundary: "Review this candidate in comparison before forming the verdict.",
+          decision_boundary: "Review this diagnostic test candidate in comparison before forming the verdict.",
           is_rebalance_recommendation: false,
           generates_portfolio: false
         }
@@ -257,7 +257,7 @@ function sampleActiveReview(generated: boolean): ActiveReviewState {
       stage: "candidate_generation",
       selectedCardId,
       candidateId: "minimum_cvar_sample_candidate",
-      methodLabel: "Minimum CVaR diagnostic candidate",
+      methodLabel: "Minimum CVaR diagnostic test candidate",
       generationStatus: "generated",
       canCompare: true,
       weights: [
@@ -414,7 +414,7 @@ function BuilderControls({
     <div className="mt-5 rounded-2xl border border-white/10 bg-black/15 p-4">
       <p className="pmri-label text-pmri-blueSoft">Builder setup</p>
       <p className="mt-2 text-xs leading-5 text-pmri-muted">
-        These fields prepare one diagnostic candidate. They do not approve a rebalance or hide portfolio issues.
+        These fields prepare one diagnostic test candidate. They do not approve a rebalance or hide portfolio issues.
       </p>
 
       <div className="mt-4 grid gap-3">
@@ -502,8 +502,8 @@ function ProposedDiagnosticTestPanel({ test }: { test?: HypothesisTestModel }) {
     return (
       <section className="rounded-3xl border border-pmri-amber/30 bg-pmri-amber/10 p-5">
         <p className="pmri-label text-pmri-amber">Proposed diagnostic test</p>
-        <h2 className="pmri-heading-section mt-2 text-xl text-pmri-text">No candidate test is available</h2>
-        <p className="mt-3 text-sm leading-7 text-pmri-text2">Resolve data quality or rerun diagnosis before generating a candidate.</p>
+        <h2 className="pmri-heading-section mt-2 text-xl text-pmri-text">No diagnostic test is available</h2>
+        <p className="mt-3 text-sm leading-7 text-pmri-text2">Resolve data quality or rerun diagnosis before generating a test candidate.</p>
       </section>
     );
   }
@@ -585,7 +585,7 @@ function HypothesisActionConsole({
           <dd className="mt-1 text-sm text-pmri-text">{test?.selectedMethodLabel ?? "No method available"}</dd>
         </div>
         <div>
-          <dt className="pmri-label">Candidate state</dt>
+          <dt className="pmri-label">Test candidate state</dt>
           <dd className="mt-1 text-sm text-pmri-text2">{action.statusLabel}</dd>
         </div>
       </dl>
@@ -762,7 +762,7 @@ function HypothesisWorkstation({
         <section className="mb-5 rounded-2xl border border-pmri-border/45 bg-white/[0.026] p-4">
           <StatusBadge tone="slate">Needs new diagnosis</StatusBadge>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-pmri-text2">
-            This saved review is compact history. Generate a new diagnosis for the loaded portfolio before creating or comparing a new candidate.
+            This saved review is compact history. Generate a new diagnosis for the loaded portfolio before creating or comparing a new diagnostic test candidate.
           </p>
         </section>
       ) : null}
@@ -865,7 +865,7 @@ export function HypothesisScreen() {
       const lineageProbe = await probeLiveReviewLineage(reviewId);
       if (!lineageProbe.ok) {
         const message = lineageProbe.stale
-          ? "This review is compact history. Run a new diagnosis before generating a candidate."
+          ? "This review is compact history. Run a new diagnosis before generating a test candidate."
           : lineageProbe.message;
         if (lineageProbe.stale) markLiveLineageUnavailable(message);
         setGenerationError(message);
@@ -887,7 +887,7 @@ export function HypothesisScreen() {
         return;
       }
       if (prepareResult.can_generate_candidate !== true) {
-        setGenerationError(formatGenerationError(prepareResult, "The selected setup cannot generate a candidate. Adjust the cap or choose another preset."));
+        setGenerationError(formatGenerationError(prepareResult, "The selected setup cannot generate a test candidate. Adjust the cap or choose another preset."));
         return;
       }
       recordBuilderSetup(prepareResult);
@@ -910,7 +910,7 @@ export function HypothesisScreen() {
         return;
       }
       if (result.can_compare !== true) {
-        setGenerationError(formatGenerationError(result, "The candidate could not be compared. Adjust the setup and generate it again."));
+        setGenerationError(formatGenerationError(result, "The test candidate could not be compared. Adjust the setup and generate it again."));
         return;
       }
       recordCandidateGeneration(result);
