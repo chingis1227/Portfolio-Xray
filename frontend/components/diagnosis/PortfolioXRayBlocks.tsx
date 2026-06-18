@@ -22,6 +22,7 @@ import {
 } from "@/lib/displayLabels";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { ScoreIndicator } from "@/components/ui/ScoreIndicator";
 
 const CHART_COLORS = [
   "rgba(236,239,243,0.9)",
@@ -75,10 +76,6 @@ function pct(value?: number) {
 function numberText(value?: number) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "Unavailable";
   return value.toFixed(2).replace(/\.0+$/, "");
-}
-
-function scoreText(score?: number) {
-  return typeof score === "number" && Number.isFinite(score) ? `${Math.round(score)}/100` : "Unavailable";
 }
 
 function severityTone(level?: string): StatusTone {
@@ -621,7 +618,7 @@ function HiddenAlertCard({ alert }: { alert: XRayHiddenRiskAlert }) {
   const evidenceLabel = evidenceQualityLabel(alert.confidence);
   return (
     <article className={`${softPanel} pmri-interactive-card p-4`}>
-      <div className="flex items-start justify-between gap-3"><div><h3 className="text-base font-semibold text-pmri-text">{cleanLabel(alert.title)}</h3><div className="mt-2 flex flex-wrap gap-2"><StatusBadge tone={tone}>Risk level: {severityLabel(alert.level)}</StatusBadge><StatusBadge tone={evidenceTone(alert.confidence)}>Evidence quality: {evidenceLabel}</StatusBadge></div></div>{alert.score !== undefined ? <span className="data-figure text-sm text-pmri-text2">{scoreText(alert.score)}</span> : null}</div>
+      <div className="flex items-start justify-between gap-3"><div><h3 className="text-base font-semibold text-pmri-text">{cleanLabel(alert.title)}</h3><div className="mt-2 flex flex-wrap gap-2"><StatusBadge tone={tone}>Risk level: {severityLabel(alert.level)}</StatusBadge><StatusBadge tone={evidenceTone(alert.confidence)}>Evidence quality: {evidenceLabel}</StatusBadge></div></div>{alert.score !== undefined ? <ScoreIndicator score={alert.score} tone={tone} size="xs" /> : null}</div>
       <div className="mt-4 grid gap-3">
         <div>
           <p className="text-xs font-medium text-pmri-text">What was detected</p>
@@ -742,13 +739,12 @@ export function RiskBudgetPanel({ xray }: { xray?: XRaySummary }) {
 function WeaknessTile({ tile }: { tile: XRayWeaknessTile }) {
   const tone = severityTone(tile.severity);
   const evidence = tile.evidence.length ? tile.evidence : ["Insufficient evidence for this weakness tile."];
-  const width = tile.score !== undefined ? Math.min(100, Math.max(5, tile.score)) : 0;
   const drivers = tile.linkedAssets.length ? tile.linkedAssets.slice(0, 3).map((asset) => cleanLabel(asset)).join(", ") : "Assets unavailable";
   const nextTest = tile.nextTests[0] ? cleanLabel(tile.nextTests[0]) : "Stress review needed";
   return (
     <article className={`${softPanel} pmri-interactive-card pmri-weakness-tile ${tile.score === undefined ? "opacity-80" : ""} p-4`}>
-      <div className="flex items-start justify-between gap-3"><div><h3 className="text-base font-semibold text-pmri-text">{cleanLabel(tile.title)}</h3><p className="mt-1 text-xs text-pmri-text2">{severityLabel(tile.severity)} · {scoreText(tile.score)}</p></div><StatusBadge tone={tone}>{severityLabel(tile.severity)}</StatusBadge></div>
-      <div className="mt-4"><div className="flex items-center justify-between text-xs text-pmri-text2"><span>Score</span><span className="data-figure text-pmri-text">{scoreText(tile.score)}</span></div><div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/[0.055]"><div className={`pmri-bar-fill h-full rounded-full ${tone === "red" ? "bg-pmri-risk/75" : tone === "amber" ? "bg-pmri-amber/75" : tone === "green" ? "bg-pmri-positive/70" : "bg-pmri-muted/55"}`} style={{ width: `${width}%` }} /></div></div>
+      <div className="flex items-start justify-between gap-3"><div><h3 className="text-base font-semibold text-pmri-text">{cleanLabel(tile.title)}</h3><p className="mt-1 text-xs text-pmri-text2">{severityLabel(tile.severity)}</p></div><StatusBadge tone={tone}>{severityLabel(tile.severity)}</StatusBadge></div>
+      <div className="mt-4 flex items-center justify-between rounded-2xl border border-pmri-border/50 bg-black/10 px-3 py-2"><span className="text-xs font-medium text-pmri-text2">Score</span><ScoreIndicator score={tile.score} tone={tone} /></div>
       <div className="mt-4 space-y-2 text-xs leading-5 text-pmri-text2">
         <p><span className="font-medium text-pmri-text">Main drivers:</span> {drivers}</p>
         <p><span className="font-medium text-pmri-text">Next stress test:</span> {nextTest}</p>
@@ -768,7 +764,7 @@ export function WeaknessMapGrid({ xray }: { xray?: XRaySummary }) {
   return (
     <section id="weakness-map" className="pmri-card pmri-animated-border-panel pmri-section-reveal scroll-mt-28 rounded-3xl p-5 [--pmri-reveal-delay:240ms] md:p-6">
       <SectionHeader eyebrow="Potential stress weaknesses" title="Where the portfolio may break under stress" insight={xray ? "The map ranks pre-stress areas to review before any candidate test." : "Weakness map unavailable because pre-stress signals are missing."} action="Review supporting evidence" />
-      {topWeaknesses.length ? <div className="mt-6 grid gap-3 md:grid-cols-3">{topWeaknesses.map((tile, index) => <article key={`${tile.id}-summary`} className={`${raisedPanel} p-4`}><p className="pmri-label text-pmri-text2">Top weakness {index + 1}</p><h3 className="mt-2 text-base font-semibold text-pmri-text">{cleanLabel(tile.title)}</h3><p className="mt-2 text-sm text-pmri-text2">{severityLabel(tile.severity)} · {scoreText(tile.score)}</p></article>)}</div> : null}
+      {topWeaknesses.length ? <div className="mt-6 grid gap-3 md:grid-cols-3">{topWeaknesses.map((tile, index) => <article key={`${tile.id}-summary`} className={`${raisedPanel} p-4`}><p className="pmri-label text-pmri-text2">Top weakness {index + 1}</p><h3 className="mt-2 text-base font-semibold text-pmri-text">{cleanLabel(tile.title)}</h3><div className="mt-3"><ScoreIndicator score={tile.score} tone={severityTone(tile.severity)} /></div></article>)}</div> : null}
       <div className="pmri-weakness-grid mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{xray?.weaknessMap.tiles.length ? xray.weaknessMap.tiles.map((tile) => <WeaknessTile key={tile.id} tile={tile} />) : <UnavailableState message="Portfolio Weakness Map unavailable: insufficient evidence." />}</div>
     </section>
   );

@@ -6,6 +6,7 @@ import { riskSeverityLabel } from "@/lib/displayLabels";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { EvidenceSummary, type EvidenceSummaryItem } from "@/components/ui/EvidenceSummary";
 import { MetricMatrix, type MetricMatrixGroup, type MetricMatrixRow } from "@/components/ui/MetricMatrix";
+import { ScoreIndicator } from "@/components/ui/ScoreIndicator";
 import { VerdictHero } from "@/components/ui/VerdictHero";
 import {
   CompositionPanel,
@@ -104,12 +105,13 @@ function factRow(fact: DiagnosisDisplayFact, reference: string): MetricMatrixRow
 }
 
 function metricRow(metric: Metric): MetricMatrixRow {
+  const scoreMatch = typeof metric.detail === "string" ? metric.detail.match(/^Score\s+(\d+(?:\.\d+)?)\/100$/i) : null;
   return {
     metric: metric.label,
     portfolioValue: metric.value,
     reference: "Diagnostic reference",
     status: metric.tone ? rowStatus(metric.tone) : undefined,
-    meaning: metric.detail ?? "Supporting diagnostic metric.",
+    meaning: scoreMatch ? <ScoreIndicator score={Number(scoreMatch[1])} tone={metric.tone ?? "slate"} /> : metric.detail ?? "Supporting diagnostic metric.",
     material: metric.tone === "red" || metric.tone === "amber"
   };
 }

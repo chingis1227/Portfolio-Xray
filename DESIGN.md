@@ -152,6 +152,8 @@ Redesigned analytical pages use shared `VerdictHero`, `EvidenceSummary`, and `Me
 
 Portfolio Diagnosis uses a diagnosis-first simplification pattern: one dominant hero finding, a maximum four-item evidence summary, an expanded Metric Matrix, and advanced diagnostics hidden by default. Professional metrics such as VaR, ES, skewness, kurtosis, beta, Sharpe, Sortino, and Treynor remain available behind disclosure controls rather than dominating the first read.
 
+Score-style values use a compact percent-plus-five-bar indicator instead of long progress bars or raw `/100` text. The indicator should inherit the evidence/status tone, stay small enough for cards and tables, and remain secondary to the diagnostic interpretation.
+
 ### Motion and micro-interactions
 
 Motion should make the decision room feel calmer and more legible, not flashier. Use Framer Motion for route fades, section reveals, active-rail movement, onboarding question changes, and selected/hovered decision surfaces where the motion clarifies hierarchy or state. Prefer opacity and transform with restrained spring physics, keep stagger timing subtle, and always respect reduced-motion preferences. Pressed CTAs and compact control pills may use a small tactile scale/translate response. Do not add decorative movement that competes with portfolio evidence, stress results, Client Fit boundaries, candidate trade-offs, or verdict language.
