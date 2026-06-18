@@ -13,7 +13,6 @@ import type {
   XRayWeaknessTile
 } from "@/lib/reviewState";
 import {
-  evidenceQualityLabel,
   evidenceTone,
   normalizeDisplayLabel,
   normalizeDisplaySentence,
@@ -450,7 +449,9 @@ function RiskMetricGroupCard({ title, metrics, interpretation }: { title: string
     <article className={`${softPanel} pmri-interactive-card p-4`}>
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-sm font-semibold text-pmri-text">{title}</h3>
-        {tone ? <StatusBadge tone={tone}>{tone === "red" || tone === "amber" || tone === "green" ? severityLabel(tone === "red" ? "high" : tone === "amber" ? "medium" : "low") : "Strong evidence"}</StatusBadge> : null}
+        {tone === "red" || tone === "amber" ? (
+          <StatusBadge tone={tone}>{tone === "red" ? "Material issue" : "Watch"}</StatusBadge>
+        ) : null}
       </div>
       <div className="mt-4 grid gap-3">
         {metrics.map((metric) => (
@@ -510,11 +511,11 @@ export function RiskProfilePanel({ xray }: { xray?: XRaySummary }) {
 function FactorCard({ factor, maxValue }: { factor: XRayFactor; maxValue: number }) {
   const magnitude = Math.max(Math.abs(factor.beta ?? 0), Math.abs(factor.contributionPct ?? 0));
   const width = magnitude > 0 ? Math.min(100, Math.max(5, (magnitude / maxValue) * 100)) : 5;
-  const evidence = evidenceQualityLabel(factor.confidence);
+  const evidence = factorEvidenceDisplay(factor.confidence);
   const exposure = factorExposureLevel(factor);
   return (
     <article className={`${softPanel} pmri-interactive-card p-4`}>
-      <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-sm font-semibold text-pmri-text">{cleanLabel(factor.factor)}</p><p className="mt-1 text-xs text-pmri-text2">Exposure level: {exposure}</p></div><StatusBadge tone={evidenceTone(factor.confidence)}>{evidence}</StatusBadge></div>
+      <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-sm font-semibold text-pmri-text">{cleanLabel(factor.factor)}</p><p className="mt-1 text-xs text-pmri-text2">Exposure level: {exposure}</p></div>{evidence.badge ? <StatusBadge tone={evidence.tone}>{evidence.label}</StatusBadge> : null}</div>
       <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.055]"><div className="pmri-bar-fill h-full rounded-full bg-pmri-blueSoft/75" style={{ width: `${width}%` }} /></div>
       <dl className="mt-4 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-xl border border-pmri-border/45 bg-white/[0.018] p-3"><dt className="text-pmri-muted">Sensitivity</dt><dd className="data-figure mt-1 text-pmri-text">{numberText(factor.beta)}</dd></div>
@@ -523,6 +524,12 @@ function FactorCard({ factor, maxValue }: { factor: XRayFactor; maxValue: number
       <p className="mt-3 text-sm leading-6 text-pmri-text2">{factorInterpretation(factor)}</p>
     </article>
   );
+}
+
+function factorEvidenceDisplay(confidence?: string) {
+  const tone = evidenceTone(confidence);
+  if (tone === "red" || tone === "amber") return { label: "Limited", tone, badge: true };
+  return { label: "Available", tone: "slate" as const, badge: false };
 }
 
 function factorExposureLevel(factor: XRayFactor) {
@@ -596,7 +603,13 @@ export function FactorExposurePanel({ xray }: { xray?: XRaySummary }) {
                       <td className="border-b border-pmri-border/35 px-3 py-3 font-medium text-pmri-text">{cleanLabel(factor.factor)}</td>
                       <td className="data-figure border-b border-pmri-border/35 px-3 py-3 text-pmri-text2">{numberText(factor.beta)}</td>
                       <td className="data-figure border-b border-pmri-border/35 px-3 py-3 text-pmri-text2">{pct(factor.contributionPct)}</td>
-                      <td className="border-b border-pmri-border/35 px-3 py-3"><StatusBadge tone={evidenceTone(factor.confidence)}>{evidenceQualityLabel(factor.confidence)}</StatusBadge></td>
+                      <td className="border-b border-pmri-border/35 px-3 py-3">
+                        {factorEvidenceDisplay(factor.confidence).badge ? (
+                          <StatusBadge tone={factorEvidenceDisplay(factor.confidence).tone}>{factorEvidenceDisplay(factor.confidence).label}</StatusBadge>
+                        ) : (
+                          <span className="text-xs font-medium text-pmri-muted">Available</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -615,10 +628,9 @@ export function FactorExposurePanel({ xray }: { xray?: XRaySummary }) {
 function HiddenAlertCard({ alert }: { alert: XRayHiddenRiskAlert }) {
   const tone = severityTone(alert.level);
   const evidence = alert.evidence.length ? alert.evidence : ["Insufficient evidence for this alert."];
-  const evidenceLabel = evidenceQualityLabel(alert.confidence);
   return (
     <article className={`${softPanel} pmri-interactive-card p-4`}>
-      <div className="flex items-start justify-between gap-3"><div><h3 className="text-base font-semibold text-pmri-text">{cleanLabel(alert.title)}</h3><div className="mt-2 flex flex-wrap gap-2"><StatusBadge tone={tone}>Risk level: {severityLabel(alert.level)}</StatusBadge><StatusBadge tone={evidenceTone(alert.confidence)}>Evidence quality: {evidenceLabel}</StatusBadge></div></div>{alert.score !== undefined ? <ScoreIndicator score={alert.score} tone={tone} size="xs" /> : null}</div>
+      <div className="flex items-start justify-between gap-3"><div><h3 className="text-base font-semibold text-pmri-text">{cleanLabel(alert.title)}</h3><div className="mt-2 flex flex-wrap gap-2"><StatusBadge tone={tone}>Risk level: {severityLabel(alert.level)}</StatusBadge></div></div>{alert.score !== undefined ? <ScoreIndicator score={alert.score} tone={tone} size="xs" /> : null}</div>
       <div className="mt-4 grid gap-3">
         <div>
           <p className="text-xs font-medium text-pmri-text">What was detected</p>

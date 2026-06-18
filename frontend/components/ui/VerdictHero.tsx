@@ -27,11 +27,11 @@ export function VerdictHero({
       <div className="absolute -right-12 -top-16 h-56 w-56 rounded-full bg-pmri-blue/[0.045] blur-3xl" aria-hidden="true" />
       <div className="absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-pmri-blueSoft/20 to-transparent" aria-hidden="true" />
       <div className="relative">
-        <p className="pmri-label text-pmri-blueSoft">{stepContext}</p>
-        <h1 className="mt-4 max-w-5xl text-4xl font-semibold leading-[1.02] tracking-[-0.055em] text-pmri-text md:text-6xl">
+        <p className="pmri-type-meta text-pmri-blueSoft">{stepContext}</p>
+        <h1 className="pmri-type-page-title mt-4 max-w-5xl text-pmri-text">
           {headline}
         </h1>
-        <p className="mt-5 max-w-3xl text-base leading-7 text-pmri-text2 md:text-lg">
+        <p className="pmri-type-body mt-5 max-w-3xl md:text-lg">
           {interpretation}
         </p>
 
@@ -39,7 +39,7 @@ export function VerdictHero({
           <div className="mt-7 grid gap-3 md:grid-cols-3">
             {visibleFacts.map((fact, index) => (
               <div key={`${fact.label ?? "fact"}-${index}`} className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
-                {fact.label ? <p className="pmri-label text-pmri-text2">{fact.label}</p> : null}
+                {fact.label ? <p className="pmri-type-meta text-pmri-text2">{fact.label}</p> : null}
                 <p className="mt-2 text-sm leading-6 text-pmri-text2">{fact.value}</p>
               </div>
             ))}

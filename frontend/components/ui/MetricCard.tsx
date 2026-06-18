@@ -8,23 +8,24 @@ type MetricCardProps = {
 };
 
 const toneLabel = {
-  blue: "Strong evidence",
-  gold: "Moderate evidence",
+  blue: "Info",
+  gold: "Context",
   green: "Aligned",
   amber: "Medium risk",
   red: "High risk",
-  slate: "Insufficient data"
+  slate: "Unavailable"
 } satisfies Record<NonNullable<Metric["tone"]>, string>;
 
 export function MetricCard({ metric }: MetricCardProps) {
   const badgeLabel = metric.delta ? normalizeDisplayLabel(metric.delta) : toneLabel[metric.tone ?? "slate"];
   const scoreMatch = metric.detail?.match(/^Score\s+(\d+(?:\.\d+)?)\/100$/i);
+  const showBadge = Boolean(metric.delta || metric.tone === "red" || metric.tone === "amber" || badgeLabel === "Unavailable");
 
   return (
     <article className="pmri-card pmri-interactive-card rounded-2xl p-5">
       <div className="flex items-start justify-between gap-3">
         <p className="pmri-label">{normalizeDisplayLabel(metric.label)}</p>
-        {metric.tone ? <StatusBadge tone={metric.tone}>{badgeLabel}</StatusBadge> : null}
+        {metric.tone && showBadge ? <StatusBadge tone={metric.tone}>{badgeLabel}</StatusBadge> : null}
       </div>
       <p className="data-figure mt-5 text-2xl font-medium text-pmri-text">{normalizeDisplayLabel(metric.value)}</p>
       {scoreMatch ? (

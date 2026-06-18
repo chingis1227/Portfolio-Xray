@@ -1,5 +1,9 @@
 # CHANGELOG.md
 
+## 2026-06-18
+
+- Reset the frontend platform presentation around a persistent top utility header, narrower decision-room content width, quieter journey rail, stricter badge discipline, and a Diagnosis benchmark screen with a dominant verdict hero, compact evidence strip, primary diagnostic canvas, compact metric matrix, and collapsed advanced diagnostics.
+
 ## 2026-06-17
 
 - Removed the shell-level fade/remount animation from internal platform route changes so sidebar

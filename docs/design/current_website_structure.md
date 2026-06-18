@@ -28,12 +28,14 @@ Public routes (`/` and `/onboarding/*`) do not show the platform journey rail, n
 
 Platform routes show:
 
+- a persistent top utility header above platform content, with product/route title, active portfolio name, investor currency, holdings count, review status, a single screen-level evidence-quality indicator when available, data window when provided, last update, and a primary route CTA area;
 - a fixed vertical graphite journey rail on wide screens, positioned beside the content blocks;
 - account navigation entry for `Workspace` outside the 8-step review rail;
 - a bottom glass journey dock on narrower screens, with compact `Workspace` and optional account controls;
 - gated journey navigation with 8 icon-led steps: Portfolio, Diagnosis, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report;
 - no sticky top journey rail on redesigned analytical routes; compact step context appears inside `VerdictHero`;
 - verdict-first page hero on redesigned analytical routes;
+- platform content constrained to roughly 1180-1240px so analytical screens read as a focused decision room instead of a dashboard wall;
 - content cards, tables, badges, and locked states.
 
 ## `/` Landing
@@ -240,8 +242,9 @@ Locked state:
 
 Ready state:
 
-- Shows the shared `VerdictHero`, then an `EvidenceSummary` with primary issue, severity, drivers, and evidence quality.
-- Replaces the previous first-read card grid with a grouped `MetricMatrix`: risk pressure, portfolio structure, evidence quality, and secondary observations.
+- Shows the persistent `PlatformTopHeader`, then the shared `VerdictHero`, an `EvidenceSummary` with primary issue, materiality, supporting evidence, and next safe step.
+- Shows one primary diagnostic canvas combining concentration, dominant exposure, and main weakness before any metric matrix.
+- Replaces the previous first-read card grid with a compact grouped `MetricMatrix`: risk pressure, portfolio structure, and secondary observations.
 - Does not show the standalone `Diagnosis explanation` wall in the normal ready state. Evidence-chain and technical text are integrated into collapsed advanced diagnostics when available.
 - Professional metrics such as VaR, ES, skewness, kurtosis, beta, Sharpe, Sortino, and Treynor remain secondary behind `Advanced diagnostics and technical evidence`.
 - Metrics are shown through matrix rows, not as raw backend JSON or repeated unavailable/evidence badges.

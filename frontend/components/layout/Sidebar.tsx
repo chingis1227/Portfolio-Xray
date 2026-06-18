@@ -112,13 +112,13 @@ function ReportIcon({ className }: SidebarIconProps) {
 function statusClasses(status: JourneyStepStatus) {
   switch (status) {
     case "active":
-      return "border-white/62 bg-white/[0.052] text-pmri-text shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_34px_rgba(0,0,0,0.28),0_0_0_1px_rgba(110,168,215,0.10)]";
+      return "border-white/55 bg-white/[0.05] text-pmri-text shadow-[inset_0_1px_0_rgba(255,255,255,0.075),0_12px_30px_rgba(0,0,0,0.24),0_0_0_1px_rgba(110,168,215,0.08)]";
     case "completed":
-      return "border-transparent text-pmri-text2/85 hover:border-pmri-border/55 hover:bg-white/[0.028]";
+      return "border-transparent text-pmri-text2/78 hover:border-pmri-border/45 hover:bg-white/[0.026]";
     case "available":
-      return "border-transparent text-pmri-muted hover:border-pmri-border/60 hover:bg-white/[0.03]";
+      return "border-transparent text-pmri-muted/88 hover:border-pmri-border/50 hover:bg-white/[0.026]";
     case "locked":
-      return "cursor-not-allowed border-transparent text-pmri-muted/40 opacity-70";
+      return "cursor-not-allowed border-transparent text-pmri-muted/58";
   }
 }
 
@@ -131,7 +131,7 @@ function iconClasses(status: JourneyStepStatus) {
     case "available":
       return "text-pmri-blueSoft/90";
     case "locked":
-      return "text-pmri-muted/45";
+      return "text-pmri-muted/52";
   }
 }
 
@@ -155,14 +155,14 @@ export function Sidebar() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <aside className="hidden min-h-screen w-64 shrink-0 border-r border-pmri-border/45 bg-pmri-secondary/88 px-5 py-6 shadow-[16px_0_64px_rgba(0,0,0,0.14)] lg:flex lg:flex-col">
+    <aside className="hidden min-h-screen w-60 shrink-0 border-r border-pmri-border/32 bg-pmri-secondary/76 px-4 py-5 shadow-[12px_0_48px_rgba(0,0,0,0.11)] lg:flex lg:flex-col">
       <div>
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-pmri-border/55 bg-white/[0.035] shadow-decision">
             <BrandMark size="sm" />
           </div>
           <div className="min-w-0">
-            <p className="text-lg font-semibold tracking-[-0.025em] text-pmri-text">Portfolio MRI</p>
+            <p className="text-base font-semibold tracking-[-0.025em] text-pmri-text">Portfolio MRI</p>
             <p className="pmri-microcopy mt-1">Investment Decision Room</p>
           </div>
         </div>
@@ -200,7 +200,7 @@ export function Sidebar() {
 
       <LayoutGroup>
       <motion.nav
-        className="mt-3 space-y-1.5"
+        className="mt-3 space-y-1"
         aria-label="Portfolio MRI gated journey rail"
         variants={reduceMotion ? undefined : listContainerVariants}
         initial={reduceMotion ? false : "hidden"}
@@ -219,7 +219,7 @@ export function Sidebar() {
             </>
           );
 
-          const className = `pmri-focus pmri-nav-text group flex w-full items-center justify-between rounded-2xl border px-3.5 py-3 text-left transition ${statusClasses(step.status)}`;
+          const className = `pmri-focus pmri-nav-text group flex w-full items-center justify-between rounded-2xl border px-3 py-2.5 text-left transition ${statusClasses(step.status)}`;
 
           return (
             <motion.div key={step.id} variants={reduceMotion ? undefined : listItemVariants} layout>

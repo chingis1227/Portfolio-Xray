@@ -22,7 +22,7 @@ const sectionLinks = [
   ["scenario-drilldown", "Scenarios"],
   ["loss-drivers-drilldown", "Loss drivers"],
   ["hedge-protection-drilldown", "Protection"],
-  ["evidence-quality-drilldown", "Evidence quality"]
+  ["data-quality-drilldown", "Data quality"]
 ] as const;
 
 function StoryMetricCard({ metric }: { metric: StressStoryMetric }) {
@@ -158,14 +158,6 @@ export function StressTestLab({ model, siteExplanation }: { model: StressLabMode
                 status: model.hedgeGap.statusTone === "red" || model.hedgeGap.statusTone === "amber" ? { label: model.hedgeGap.statusTone === "red" ? "Weak" : "Partial", tone: model.hedgeGap.statusTone } : undefined,
                 meaning: model.hedgeGap.interpretation,
                 material: model.hedgeGap.statusTone === "red" || model.hedgeGap.statusTone === "amber"
-              },
-              {
-                metric: "Evidence quality",
-                portfolioValue: model.limitations.evidenceQualityLabel,
-                reference: "Scenario coverage",
-                status: model.limitations.evidenceTone === "red" || model.limitations.evidenceTone === "amber" ? { label: "Limited", tone: "amber" } : undefined,
-                meaning: story.confidenceDetail,
-                material: model.limitations.evidenceTone === "red" || model.limitations.evidenceTone === "amber"
               }
             ]
           }
@@ -223,8 +215,8 @@ export function StressTestLab({ model, siteExplanation }: { model: StressLabMode
         </DetailDisclosure>
 
         <DetailDisclosure
-          id="evidence-quality-drilldown"
-          title="Evidence quality"
+          id="data-quality-drilldown"
+          title="Data quality"
           summary="Coverage, historical replay limitations, and diagnosis confirmation detail."
         >
           <DataLimitationsPanel

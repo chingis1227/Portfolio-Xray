@@ -48,8 +48,8 @@ export function MetricMatrix({
   return (
     <section className="pmri-card rounded-3xl p-5 md:p-6">
       <div>
-        <p className="pmri-label text-pmri-text2">Metric matrix</p>
-        <h2 className="pmri-heading-section mt-2 text-2xl text-pmri-text md:text-3xl">{title}</h2>
+        <p className="pmri-type-meta text-pmri-text2">Metric matrix</p>
+        <h2 className="pmri-type-section-title mt-2 text-pmri-text">{title}</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-pmri-text2">
           {description}
         </p>
@@ -58,7 +58,7 @@ export function MetricMatrix({
         {groups.map((group) => (
           <div key={group.title}>
             <div className="mb-3">
-              <h3 className="text-sm font-semibold text-pmri-text">{group.title}</h3>
+              <h3 className="pmri-type-card-title text-pmri-text">{group.title}</h3>
               {group.description ? <p className="mt-1 text-xs leading-5 text-pmri-muted">{group.description}</p> : null}
             </div>
             <div className="overflow-hidden rounded-2xl border border-pmri-border/50 bg-white/[0.018]">
@@ -89,12 +89,12 @@ export function MetricMatrix({
 export function ComparisonMetricMatrix({ groups }: { groups: Array<{ title: string; description?: string; rows: ComparisonMetricMatrixRow[] }> }) {
   return (
     <section className="pmri-card rounded-3xl p-5 md:p-6">
-      <p className="pmri-label text-pmri-text2">Comparison matrix</p>
-      <h2 className="pmri-heading-section mt-2 text-2xl text-pmri-text md:text-3xl">Current portfolio vs candidate</h2>
+      <p className="pmri-type-meta text-pmri-text2">Comparison matrix</p>
+      <h2 className="pmri-type-section-title mt-2 text-pmri-text">Current portfolio vs candidate</h2>
       <div className="mt-6 space-y-6">
         {groups.map((group) => (
           <div key={group.title}>
-            <h3 className="mb-3 text-sm font-semibold text-pmri-text">{group.title}</h3>
+            <h3 className="pmri-type-card-title mb-3 text-pmri-text">{group.title}</h3>
             <div className="overflow-hidden rounded-2xl border border-pmri-border/50 bg-white/[0.018]">
               <div className="hidden grid-cols-[1fr_0.8fr_0.8fr_0.75fr_1.35fr] border-b border-pmri-border/45 px-4 py-3 text-xs font-medium text-pmri-muted md:grid">
                 <span>Metric</span>

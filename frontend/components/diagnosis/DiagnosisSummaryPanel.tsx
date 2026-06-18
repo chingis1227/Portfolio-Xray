@@ -7,6 +7,7 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { EvidenceSummary, type EvidenceSummaryItem } from "@/components/ui/EvidenceSummary";
 import { MetricMatrix, type MetricMatrixGroup, type MetricMatrixRow } from "@/components/ui/MetricMatrix";
 import { ScoreIndicator } from "@/components/ui/ScoreIndicator";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { VerdictHero } from "@/components/ui/VerdictHero";
 import {
   CompositionPanel,
@@ -42,8 +43,8 @@ function DiagnosisHero({ model }: { model: ReturnType<typeof buildDiagnosisDispl
       headline={model.mainFinding}
       interpretation={model.whyItMatters}
       facts={[
-        { label: "Evidence quality", value: `${model.dataCoverage} diagnostic evidence.` },
-        { label: "Next review step", value: model.nextStep }
+        { label: "Review scope", value: "Current portfolio first; no candidate or optimizer output is treated as the answer here." },
+        { label: "Next safe step", value: model.nextStep }
       ]}
       actions={(
         <>
@@ -69,19 +70,19 @@ function evidenceSummaryItems(model: ReturnType<typeof buildDiagnosisDisplayMode
       tone: primaryIssue?.tone ?? "slate"
     },
     {
-      label: "Severity",
+      label: "Materiality",
       value: primaryIssue ? toneLabel(primaryIssue.tone) : "Unavailable",
       tone: primaryIssue?.tone ?? "slate"
     },
     {
-      label: "Drivers",
+      label: "Supporting evidence",
       value: mainDrivers,
       tone: "slate"
     },
     {
-      label: "Evidence quality",
-      value: `${model.dataCoverage} diagnostic evidence`,
-      tone: model.dataCoverageTone
+      label: "Next safe step",
+      value: model.nextStep,
+      tone: "slate"
     }
   ];
 }
@@ -89,7 +90,6 @@ function evidenceSummaryItems(model: ReturnType<typeof buildDiagnosisDisplayMode
 function rowStatus(tone: StatusTone): { label: string; tone: StatusTone } | undefined {
   if (tone === "red") return { label: "Material issue", tone };
   if (tone === "amber") return { label: "Watch", tone };
-  if (tone === "slate" || tone === "gold" || tone === "blue" || tone === "green") return { label: "Context", tone: "slate" };
   return undefined;
 }
 
@@ -126,16 +126,6 @@ function diagnosisMetricGroups(model: ReturnType<typeof buildDiagnosisDisplayMod
   const structureRows = model.whatMatters
     .filter((fact) => structureLabels.has(fact.label))
     .map((fact) => factRow(fact, "Current portfolio composition"));
-  const evidenceRows: MetricMatrixRow[] = [
-    {
-      metric: "Evidence quality",
-      portfolioValue: model.dataCoverage,
-      reference: "Strong / Moderate / Limited / Unavailable",
-      status: rowStatus(model.dataCoverageTone),
-      meaning: model.dataCoverage === "Limited" ? "Read results with caution and review omissions." : "Shows how much support exists for the diagnosis.",
-      material: model.dataCoverageTone === "amber"
-    }
-  ];
   const secondaryRows = [
     ...model.behaviorSnapshot.filter((fact) => !riskLabels.has(fact.label)).map((fact) => factRow(fact, "Historical diagnostic window")),
     ...model.advancedMetrics.slice(0, 4).map(metricRow)
@@ -144,7 +134,6 @@ function diagnosisMetricGroups(model: ReturnType<typeof buildDiagnosisDisplayMod
   return [
     { title: "Risk pressure", description: "Downside, stress-adjacent, and sensitivity metrics.", rows: riskRows },
     { title: "Portfolio structure", description: "Concentration and dominant exposure context.", rows: structureRows },
-    { title: "Evidence quality", description: "Data availability and confidence boundaries.", rows: evidenceRows },
     { title: "Secondary observations", description: "Useful supporting metrics that should not dominate the first read.", rows: secondaryRows }
   ].map((group) => ({
     ...group,
@@ -158,11 +147,62 @@ function diagnosisMetricGroups(model: ReturnType<typeof buildDiagnosisDisplayMod
   }));
 }
 
+function fallbackFact(label: string, note: string): DiagnosisDisplayFact {
+  return {
+    label,
+    value: "Unavailable",
+    note,
+    tone: "slate"
+  };
+}
+
+function diagnosticCanvasItems(model: ReturnType<typeof buildDiagnosisDisplayModel>) {
+  const concentration = model.whatMatters.find((fact) => fact.label === "Concentration")
+    ?? fallbackFact("Concentration", "Concentration detail was not returned in the compact diagnosis.");
+  const exposure = model.whatMatters.find((fact) => fact.label === "Main exposure")
+    ?? fallbackFact("Main exposure", "Dominant exposure detail was not returned in the compact diagnosis.");
+  const weakness = model.whatMatters.find((fact) => fact.label === "Main weakness")
+    ?? model.whatMatters.find((fact) => fact.label === "Downside pain")
+    ?? fallbackFact("Main weakness", "Weakness detail was not returned in the compact diagnosis.");
+
+  return [concentration, exposure, weakness];
+}
+
+function PrimaryDiagnosticCanvas({ model }: { model: ReturnType<typeof buildDiagnosisDisplayModel> }) {
+  const items = diagnosticCanvasItems(model);
+
+  return (
+    <section className="pmri-card rounded-3xl p-5 md:p-6">
+      <div>
+        <p className="pmri-type-meta text-pmri-blueSoft">Diagnostic canvas</p>
+        <h2 className="pmri-type-section-title mt-2 text-pmri-text">Concentration, exposure, and weakness</h2>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-pmri-text2">
+          One combined read of the current portfolio before the screen moves into secondary metrics.
+        </p>
+      </div>
+      <div className="mt-5 grid overflow-hidden rounded-2xl border border-pmri-border/50 bg-white/[0.018] lg:grid-cols-3">
+        {items.map((item, index) => (
+          <article key={`${item.label}-${index}`} className="border-b border-pmri-border/35 p-5 last:border-b-0 lg:border-b-0 lg:border-r lg:last:border-r-0">
+            <div className="flex items-start justify-between gap-3">
+              <p className="pmri-type-meta text-pmri-text2">{item.label}</p>
+              {item.tone === "red" || item.tone === "amber" ? (
+                <StatusBadge tone={item.tone}>{item.tone === "red" ? "Material issue" : "Watch"}</StatusBadge>
+              ) : null}
+            </div>
+            <p className="pmri-type-data mt-4 text-pmri-text">{item.value}</p>
+            <p className="mt-3 text-sm leading-6 text-pmri-text2">{item.note}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function AdvancedDiagnostics({ model, xraySummary }: { model: ReturnType<typeof buildDiagnosisDisplayModel>; xraySummary?: XRaySummary }) {
   return (
     <details id="advanced-diagnostics" className="pmri-card rounded-3xl p-5 md:p-6">
       <summary className="pmri-focus cursor-pointer list-none rounded-2xl border border-pmri-border/55 bg-white/[0.024] px-4 py-3 text-sm font-semibold text-pmri-text transition hover:border-pmri-blue/45">
-        Advanced diagnostics
+        Advanced diagnostics and technical evidence
       </summary>
       <div className="mt-5 space-y-5">
         {model.advancedMetrics.length ? (
@@ -219,10 +259,15 @@ export function DiagnosisSummaryPanel({
       <DiagnosisHero model={model} />
       <EvidenceSummary
         title="Why this diagnosis is showing"
-        description="The first read is limited to the main issue, severity, drivers, and evidence quality."
+        description="The first read is limited to the main issue, materiality, supporting facts, and next safe step."
         items={evidenceSummaryItems(model)}
       />
-      <MetricMatrix groups={diagnosisMetricGroups(model)} />
+      <PrimaryDiagnosticCanvas model={model} />
+      <MetricMatrix
+        title="Compact metric matrix"
+        description="Secondary metrics are grouped by decision relevance after the primary diagnosis is understood."
+        groups={diagnosisMetricGroups(model)}
+      />
       <AdvancedDiagnostics model={model} xraySummary={xraySummary} />
 
     </div>

@@ -443,6 +443,52 @@ a.pmri-focus:active,
   letter-spacing: -0.018em;
 }
 
+.pmri-type-page-title {
+  font-size: clamp(2.35rem, 4vw, 4.65rem);
+  font-weight: 600;
+  letter-spacing: -0.055em;
+  line-height: 1.01;
+}
+
+.pmri-type-section-title {
+  font-size: clamp(1.35rem, 1.85vw, 1.95rem);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+}
+
+.pmri-type-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.pmri-type-body {
+  color: var(--pmri-text-secondary);
+  font-size: 0.95rem;
+  font-weight: var(--pmri-body-weight);
+  line-height: 1.65;
+}
+
+.pmri-type-meta {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.055em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.pmri-type-data {
+  font-family: var(--pmri-font-sans);
+  font-size: clamp(1.45rem, 2.1vw, 2.1rem);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "ss01" 1;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
 .pmri-heading-hero {
   font-size: clamp(2.65rem, 4.9vw, 5.55rem);
   font-weight: var(--pmri-heading-weight);

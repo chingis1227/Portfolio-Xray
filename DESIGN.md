@@ -91,6 +91,7 @@ Current implementation uses a modern sans stack through `--font-pmri-sans`, with
 
 Rules:
 
+- Use the shared type scale: `.pmri-type-page-title` for page-level hero H1, `.pmri-type-section-title` for H2 sections, `.pmri-type-card-title` for card titles, `.pmri-type-body` for body copy, `.pmri-type-meta` for compact labels, and `.pmri-type-data` or `.data-figure` only for key tabular metrics.
 - Large page titles use restrained negative tracking and medium weight.
 - Section titles are compact and clear.
 - Body copy is short, concrete, and explanatory.
@@ -112,10 +113,12 @@ Onboarding routes are public-frame screens without the platform sidebar. Canonic
 
 Platform routes use:
 
+- a persistent `PlatformTopHeader` above platform content, showing the route title, active portfolio name, investor currency, holdings count, review status, one screen-level evidence-quality indicator when available, data window when provided, last update, and a primary route CTA area;
 - a vertical graphite journey rail on wide platform screens, with 8 icon-led gated journey steps and a white active capsule beside the content blocks;
 - a bottom floating glass dock on narrower screens, using the same gated step icons and compact Workspace/account controls;
 - a sticky compact step context rail instead of a full horizontal journey stepper on redesigned routes;
 - a verdict-first page hero on redesigned analytical routes;
+- a platform content width around 1180-1240px so pages feel like a focused decision room, not a wide dashboard canvas;
 - dark cards and panels;
 - sparse badges;
 - explicit boundary notes;
@@ -148,9 +151,11 @@ Current platform steps:
 
 Cards use rounded corners, thin borders, subtle gradients, and `shadow-decision`. Depth is allowed when it supports hierarchy. Metric cards show a label, optional status badge, a tabular value, and one short explanation. Avoid all-at-once metric walls.
 
+Platform screens should not show more than three major surface blocks before the first scroll. Avoid card-inside-card stacks unless the inner surface is a clear drill-down or disclosure. Advanced technical detail, provenance, and full x-ray/stress drill-downs stay collapsed by default.
+
 Redesigned analytical pages use shared `VerdictHero`, `EvidenceSummary`, and `MetricMatrix` patterns. `VerdictHero` carries the page-level message with compact step context, one interpretation sentence, up to three supporting facts, and an optional boundary note. `EvidenceSummary` is capped at four items in one quiet strip. `MetricMatrix` groups rows with metric, portfolio value, reference/threshold, status, and meaning; material/problem rows sort first inside fixed groups.
 
-Portfolio Diagnosis uses a diagnosis-first simplification pattern: one dominant hero finding, a maximum four-item evidence summary, an expanded Metric Matrix, and advanced diagnostics hidden by default. Professional metrics such as VaR, ES, skewness, kurtosis, beta, Sharpe, Sortino, and Treynor remain available behind disclosure controls rather than dominating the first read.
+Portfolio Diagnosis is the benchmark institutional decision-room screen: persistent `PlatformTopHeader`, one dominant `VerdictHero`, a maximum four-item evidence summary, one primary diagnostic canvas combining concentration, exposure, and weakness, a compact Metric Matrix, and advanced diagnostics hidden by default. Professional metrics such as VaR, ES, skewness, kurtosis, beta, Sharpe, Sortino, and Treynor remain available behind disclosure controls rather than dominating the first read.
 
 Score-style values use a compact percent-plus-five-bar indicator instead of long progress bars or raw `/100` text. The indicator should inherit the evidence/status tone, stay small enough for cards and tables, and remain secondary to the diagnostic interpretation.
 
@@ -160,7 +165,7 @@ Motion should make the decision room feel calmer and more legible, not flashier.
 
 ### Badges
 
-Badges must communicate evidence-backed state. Do not use badges as decoration. One primary badge per card header is preferred. Do not repeat generic evidence badges such as `Evidence available` across every Diagnosis fact; use one global data-coverage state and reserve per-row badges for material risk or review state. Blue, amber, and red badges use a small colored signal dot plus subdued glow; slate and ivory/neutral badges stay quieter.
+Badges must communicate evidence-backed state. Do not use badges as decoration. One primary badge per card header is preferred. Do not repeat generic evidence badges such as `Evidence available` or `Strong evidence` across every fact. Use one global screen-level evidence-quality indicator in `PlatformTopHeader`; reserve per-row badges for material issue, watch, unavailable, or workflow state. Blue, amber, and red badges use a small colored signal dot plus subdued glow; slate and ivory/neutral badges stay quieter.
 
 ### CTAs
 
