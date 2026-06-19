@@ -46,34 +46,41 @@ Role: public product page that explains Portfolio MRI before the platform opens.
 Block order:
 
 1. Header navigation
-   - Brand: `Portfolio MRI` / `Decision Room`.
-   - Links: `Workflow`, `System`, `Boundaries`.
+   - Brand: `Portfolio MRI` / `Investment Decision Room`.
+   - Links: `Workflow`, `Evidence`, `System`, `Boundaries`.
    - CTA: `Enter Platform` to `/onboarding/sign-in`.
 
 2. Hero
    - Eyebrow: `Diagnosis-first portfolio intelligence`.
-   - H1: `Diagnose before you rebalance.`
+   - H1: `Understand the portfolio before changing it`
    - Body: `Portfolio MRI turns current holdings into stress-tested evidence, then tests one bounded candidate path only after the problem is named.`
    - CTAs: `Enter Platform`, `Read workflow`.
-   - Boundary row: `Current portfolio first`, `Stress evidence before candidates`, `Diagnostic support, not advice`.
+   - Boundary row: `Current portfolio first`, `Stress evidence before candidates`, `One review lineage`.
 
-3. Workflow section
-   - H2: `A strict chain from raw holdings to a grounded verdict.`
+3. Evidence problem section
+   - H2: `Most portfolio tools jump straight to the fix`
+   - Explains that Portfolio MRI makes current holdings, stress behavior, and the named problem visible before a candidate path appears.
+   - Cards: `Optimize first`, `Stress later`, `Lose lineage`.
+
+4. Workflow section
+   - H2: `A strict chain from raw holdings to a grounded verdict`
    - Shows five high-level cards: Input Portfolio, Diagnosis, Stress Lab, Client Fit, Verdict.
    - This is a public explanation, not the full platform sidebar.
 
-4. System map section
-   - H2: `Not an optimizer cockpit.`
+5. System map section
+   - H2: `A decision room for portfolio evidence`
+   - Body explains the same review context moving through current portfolio, stress behavior, Client Fit context, candidate test, comparison, and verdict.
    - Cards: Portfolio Diagnosis, Stress Test Lab, Problem Classification, Candidate Launchpad, Current vs Candidate, Decision Verdict.
 
-5. Boundaries section
-   - H2: `Built to preserve diagnostic discipline.`
-   - Stats/cards: `Current first`, `One path`, `Same run`, `Non-binding`.
+6. Boundaries section
+   - H2: `Built to preserve diagnostic discipline`
+   - Stats/cards: `Current first`, `Evidence first`, `One path`, `Same run`.
 
-6. Final CTA
-   - H2: `Open the decision room.`
-   - Copy says the user signs in, answers setup questions, then enters tickers and weights.
+7. Final CTA
+   - H2: `Open the investment decision room`
+   - Copy says the user signs in, answers setup questions, and enters the current portfolio. The first output is diagnosis: exposure, stress behavior, and the problem worth testing.
    - CTA: `Enter Platform`.
+   - Legal line: `Portfolio MRI provides non-binding diagnostic decision support. It does not provide investment advice, suitability approval, or trade instructions.`
 
 ## `/onboarding/sign-in`
 

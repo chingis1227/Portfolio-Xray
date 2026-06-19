@@ -5,25 +5,31 @@ import { Reveal } from "@/components/onboarding/Reveal";
 const workflow = [
   ["01", "Input Portfolio", "Enter current holdings, weights, currency, and cash as the evidence source."],
   ["02", "Diagnosis", "Read concentration, exposure, risk contribution, and weakness signals first."],
-  ["03", "Stress Lab", "Replay pressure scenarios before any candidate path is considered."],
-  ["04", "Client Fit", "Layer profile context without treating it as approval or advice."],
-  ["05", "Verdict", "Compare the current portfolio with one diagnostic test candidate."],
+  ["03", "Stress Lab", "Replay pressure scenarios and see which exposures drive losses."],
+  ["04", "Client Fit", "Layer investor context beside the portfolio evidence."],
+  ["05", "Verdict", "Compare the current portfolio with one bounded test path."],
+];
+
+const evidenceProblems = [
+  ["Optimize first", "Many tools jump to allocation changes before the portfolio problem is visible."],
+  ["Stress later", "Risk often appears as a score, not as a pressure path with contributors."],
+  ["Lose lineage", "The reasoning chain between holdings, evidence, test path, and verdict gets fragmented."],
 ];
 
 const architecture = [
-  ["Portfolio Diagnosis", "Current portfolio evidence, not generic optimization."],
+  ["Portfolio Diagnosis", "Current holdings become the primary evidence source."],
   ["Stress Test Lab", "Loss paths, helped/hurt contributors, and hedge gaps."],
-  ["Problem Classification", "A diagnosis that names the problem before testing fixes."],
+  ["Problem Classification", "A diagnosis that names the portfolio problem clearly."],
   ["Candidate Launchpad", "One bounded test path, tied to the same review."],
   ["Current vs Candidate", "What improves, worsens, stays neutral, or remains unclear."],
-  ["Decision Verdict", "Non-binding support with explicit grounding and limits."],
+  ["Decision Verdict", "A grounded trade-off readout with evidence and limits."],
 ];
 
 const precisionStats = [
   ["Current first", "The existing portfolio stays the subject."],
-  ["One path", "The launchpad tests one hypothesis at a time."],
+  ["Evidence first", "The portfolio problem is visible before a path is tested."],
+  ["One path", "The launchpad keeps the comparison readable."],
   ["Same run", "Screens follow the same review lineage."],
-  ["Non-binding", "The system supports decisions; it does not issue orders."],
 ];
 
 const platformEntryHref = "/onboarding/sign-in";
@@ -31,18 +37,19 @@ const platformEntryHref = "/onboarding/sign-in";
 export function LandingPage() {
   return (
     <main id="main-content" className="relative min-h-screen overflow-hidden bg-pmri-bg text-pmri-text">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_72%_10%,rgba(255,122,23,0.10),transparent_24%),radial-gradient(ellipse_at_78%_18%,rgba(196,181,253,0.08),transparent_28%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_72%_10%,rgba(160,195,236,0.09),transparent_24%),radial-gradient(ellipse_at_80%_18%,rgba(196,181,253,0.07),transparent_30%)]" />
 
       <header className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-5 md:px-8">
         <Link href="/" className="pmri-focus flex items-center gap-3 rounded-full">
           <BrandMark size="md" />
           <div>
             <p className="text-sm font-normal tracking-[-0.01em] text-pmri-text">Portfolio MRI</p>
-            <p className="font-mono text-[0.65rem] uppercase tracking-[0.16em] text-pmri-muted">Decision Room</p>
+            <p className="font-mono text-[0.65rem] uppercase tracking-[0.16em] text-pmri-muted">Investment Decision Room</p>
           </div>
         </Link>
         <nav className="hidden items-center gap-6 text-sm text-pmri-text2 md:flex" aria-label="Landing navigation">
           <a href="#workflow" className="transition hover:text-pmri-text">Workflow</a>
+          <a href="#evidence" className="transition hover:text-pmri-text">Evidence</a>
           <a href="#architecture" className="transition hover:text-pmri-text">System</a>
           <a href="#precision" className="transition hover:text-pmri-text">Boundaries</a>
           <Link href={platformEntryHref} className="pmri-focus rounded-full border border-white/25 px-5 py-2.5 text-pmri-text transition hover:border-white/50 hover:bg-white/[0.04]">
@@ -55,7 +62,7 @@ export function LandingPage() {
         <Reveal layout="hero">
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-pmri-muted">Diagnosis-first portfolio intelligence</p>
           <h1 className="mt-7 max-w-6xl text-[clamp(4rem,11vw,8.7rem)] font-normal leading-[0.9] tracking-[-0.055em] text-pmri-text">
-            Diagnose before you rebalance.
+            Understand the portfolio before changing it
           </h1>
           <p className="mt-8 max-w-3xl text-lg leading-8 text-pmri-text2 md:text-xl">
             Portfolio MRI turns current holdings into stress-tested evidence, then tests one bounded candidate path only after the problem is named.
@@ -71,17 +78,41 @@ export function LandingPage() {
           <div className="mt-12 grid max-w-4xl gap-3 border-y border-pmri-border py-5 font-mono text-[0.68rem] uppercase tracking-[0.16em] text-pmri-muted md:grid-cols-3">
             <span>Current portfolio first</span>
             <span>Stress evidence before candidates</span>
-            <span>Diagnostic support, not advice</span>
+            <span>One review lineage</span>
           </div>
         </Reveal>
       </section>
 
-      <section id="workflow" className="relative z-10 border-y border-pmri-border px-5 py-20 md:px-8">
+      <section id="evidence" className="relative z-10 border-y border-pmri-border px-5 py-16 md:px-8">
+        <div className="mx-auto max-w-7xl">
+          <Reveal>
+            <p className="pmri-label">Evidence first</p>
+            <h2 className="mt-4 max-w-5xl text-4xl font-normal leading-[1.02] tracking-[-0.04em] text-pmri-text md:text-6xl">
+              Most portfolio tools jump straight to the fix
+            </h2>
+            <p className="mt-6 max-w-3xl text-lg leading-8 text-pmri-text2">
+              Portfolio MRI slows the moment down: current holdings become evidence, stress behavior becomes visible, and the candidate path only appears after the problem is named.
+            </p>
+          </Reveal>
+          <div className="mt-10 grid gap-px overflow-hidden rounded-lg border border-pmri-border bg-pmri-border md:grid-cols-3">
+            {evidenceProblems.map(([title, text], index) => (
+              <Reveal key={title} delay={index * 60}>
+                <article className="h-full bg-pmri-surface p-6">
+                  <h3 className="text-2xl font-normal tracking-[-0.03em] text-pmri-text">{title}</h3>
+                  <p className="mt-4 text-sm leading-7 text-pmri-text2">{text}</p>
+                </article>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="workflow" className="relative z-10 border-b border-pmri-border px-5 py-20 md:px-8">
         <div className="mx-auto max-w-7xl">
           <Reveal>
             <p className="pmri-label">Canonical flow</p>
             <h2 className="mt-4 max-w-5xl text-4xl font-normal leading-[1.02] tracking-[-0.04em] text-pmri-text md:text-6xl">
-              A strict chain from raw holdings to a grounded verdict.
+              A strict chain from raw holdings to a grounded verdict
             </h2>
           </Reveal>
           <div className="mt-12 grid gap-px overflow-hidden rounded-lg border border-pmri-border bg-pmri-border md:grid-cols-5">
@@ -103,10 +134,10 @@ export function LandingPage() {
           <Reveal>
             <p className="pmri-label">System map</p>
             <h2 className="mt-4 text-4xl font-normal leading-[1.02] tracking-[-0.04em] text-pmri-text md:text-6xl">
-              Not an optimizer cockpit.
+              A decision room for portfolio evidence
             </h2>
             <p className="mt-7 text-lg leading-8 text-pmri-text2">
-              The interface is intentionally sparse: dark canvas, hairline evidence cards, mono labels, and pill actions. The design keeps attention on diagnosis lineage.
+              Portfolio MRI keeps the same review context moving forward: current portfolio, stress behavior, client fit context, candidate test, comparison, and verdict.
             </p>
           </Reveal>
           <div className="grid gap-px overflow-hidden rounded-lg border border-pmri-border bg-pmri-border md:grid-cols-2">
@@ -127,7 +158,7 @@ export function LandingPage() {
           <Reveal>
             <p className="pmri-label">Product boundaries</p>
             <h2 className="mt-4 max-w-5xl text-4xl font-normal tracking-[-0.04em] text-pmri-text md:text-6xl">
-              Built to preserve diagnostic discipline.
+              Built to preserve diagnostic discipline
             </h2>
           </Reveal>
           <div className="mt-12 grid gap-px overflow-hidden rounded-lg border border-pmri-border bg-pmri-border md:grid-cols-4">
@@ -140,13 +171,16 @@ export function LandingPage() {
           </div>
           <div className="mt-12 max-w-4xl rounded-lg border border-white/25 bg-pmri-bg p-7">
             <p className="font-mono text-xs uppercase tracking-[0.18em] text-pmri-muted">Ready</p>
-            <h2 className="mt-3 text-4xl font-normal tracking-[-0.04em] text-pmri-text md:text-6xl">Open the decision room.</h2>
+            <h2 className="mt-3 text-4xl font-normal tracking-[-0.04em] text-pmri-text md:text-6xl">Open the investment decision room</h2>
             <p className="mt-5 max-w-2xl text-base leading-7 text-pmri-text2">
-              Sign in, answer the short setup questions, and enter the current portfolio. The first answer is diagnosis, not a trade instruction.
+              Sign in, answer the short setup questions, and enter the current portfolio. The first output is diagnosis: exposure, stress behavior, and the problem worth testing.
             </p>
             <Link href={platformEntryHref} className="pmri-focus pmri-primary-action mt-7 inline-flex items-center justify-center rounded-full px-7 py-3 text-sm transition">
               Enter Platform
             </Link>
+            <p className="mt-8 max-w-3xl border-t border-pmri-border pt-5 text-xs leading-6 text-pmri-muted">
+              Portfolio MRI provides non-binding diagnostic decision support. It does not provide investment advice, suitability approval, or trade instructions.
+            </p>
           </div>
         </div>
       </section>
