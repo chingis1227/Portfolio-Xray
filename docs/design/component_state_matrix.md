@@ -11,9 +11,9 @@ The official isolated UI workflow for this wave is the existing `/sandbox/compon
 | Component | Required examples |
 | --- | --- |
 | `Button` | primary, secondary, ghost, danger, disabled, long label, mobile-width action. |
-| `StatusBadge` | blue active, amber watch/partial, red material issue/failure, slate neutral, long label. |
-| `Surface` | default, glass, raised, subtle, warning, risk. |
-| `EvidenceSummary` | no items, one item, four items, long text, amber/red/blue tones. |
+| `StatusBadge` | active/current with white or neutral emphasis, amber watch/partial, red material issue/failure, slate neutral, long label. |
+| `Surface` | default, raised, subtle, warning, risk. |
+| `EvidenceSummary` | no items, one item, four items, long text, amber/red/neutral tones, and only rare informational accent use. |
 | `MetricMatrix` | normal rows, unavailable rows, material rows, mobile stacking. |
 | `VerdictHero` | no facts, three facts, long interpretation, boundary note, action row. |
 | `States` | loading, empty, locked, partial evidence, stale lineage, read-only history, evidence insufficient, candidate unavailable, generation failed. |

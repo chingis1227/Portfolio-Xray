@@ -37,11 +37,11 @@ function PortfolioIcon({ className }: SidebarIconProps) {
 
 function DiagnosisIcon({ className }: SidebarIconProps) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="4" y="4" width="16" height="16" rx="2.4" fill="currentColor" />
-      <path d="M8 15v-3.5M12 15V8.5M16 15v-5" stroke="rgb(5 8 12)" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="8" cy="9" r="1" fill="rgb(5 8 12)" />
-      <circle cx="16" cy="7" r="1" fill="rgb(5 8 12)" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="4" y="4" width="16" height="16" rx="2.4" />
+      <path d="M8 15v-3.5M12 15V8.5M16 15v-5" />
+      <circle cx="8" cy="9" r="1" fill="currentColor" stroke="none" />
+      <circle cx="16" cy="7" r="1" fill="currentColor" stroke="none" />
     </svg>
   );
 }
@@ -112,24 +112,24 @@ function ReportIcon({ className }: SidebarIconProps) {
 function statusClasses(status: JourneyStepStatus) {
   switch (status) {
     case "active":
-      return "border-white/[0.12] bg-white/[0.035] text-pmri-text shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_10px_28px_rgba(0,0,0,0.18)]";
+      return "border-white bg-white text-[#0a0a0a] shadow-none";
     case "completed":
-      return "border-transparent text-pmri-text2/[0.72] hover:border-white/[0.08] hover:bg-white/[0.022]";
+      return "border-transparent text-pmri-muted/[0.76] hover:border-white/[0.10] hover:bg-white/[0.026] hover:text-pmri-text2";
     case "available":
-      return "border-transparent text-pmri-muted/[0.84] hover:border-white/[0.08] hover:bg-white/[0.022]";
+      return "border-transparent text-pmri-muted/[0.70] hover:border-white/[0.10] hover:bg-white/[0.026] hover:text-pmri-text2";
     case "locked":
-      return "cursor-not-allowed border-transparent text-pmri-muted/48";
+      return "cursor-not-allowed border-transparent text-pmri-muted/40";
   }
 }
 
 function iconClasses(status: JourneyStepStatus) {
   switch (status) {
     case "active":
-      return "text-pmri-text drop-shadow-[0_0_10px_rgba(157,204,240,0.12)]";
+      return "text-[#0a0a0a]";
     case "completed":
-      return "text-pmri-blueSoft/[0.72]";
+      return "text-pmri-muted/[0.66]";
     case "available":
-      return "text-pmri-blueSoft/[0.64]";
+      return "text-pmri-muted/[0.58]";
     case "locked":
       return "text-pmri-muted/[0.42]";
   }
@@ -186,11 +186,11 @@ export function Sidebar() {
       <nav className="mt-8 space-y-1.5" aria-label="Portfolio MRI account navigation">
         <Link
           href="/workspace"
-          className={`pmri-focus pmri-nav-text group flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left transition ${pathname.startsWith("/workspace") ? "border-white/[0.12] bg-white/[0.032] text-pmri-text shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_10px_28px_rgba(0,0,0,0.18)]" : "border-transparent text-pmri-text2/[0.78] hover:border-white/[0.08] hover:bg-white/[0.022]"}`}
+          className={`pmri-focus pmri-nav-text group flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left transition ${pathname.startsWith("/workspace") ? "border-white bg-white text-[#0a0a0a] shadow-none" : "border-transparent text-pmri-muted/[0.76] hover:border-white/[0.10] hover:bg-white/[0.026] hover:text-pmri-text2"}`}
           onClick={() => setLockMessage(null)}
         >
           <span className="flex min-w-0 items-center gap-3">
-            <span className={`flex h-5 w-5 shrink-0 items-center justify-center ${pathname.startsWith("/workspace") ? "text-pmri-text" : "text-pmri-blueSoft/[0.62]"}`} aria-hidden="true">
+            <span className={`flex h-5 w-5 shrink-0 items-center justify-center ${pathname.startsWith("/workspace") ? "text-[#0a0a0a]" : "text-pmri-muted/[0.58]"}`} aria-hidden="true">
               <WorkspaceIcon className="h-[1.125rem] w-[1.125rem]" />
             </span>
             <span className="truncate">Workspace</span>
@@ -242,7 +242,7 @@ export function Sidebar() {
                   {step.status === "active" ? (
                     <motion.span
                       layoutId="sidebar-active-step"
-                      className="absolute inset-y-1 left-1 w-0.5 rounded-full bg-pmri-blueSoft/[0.46]"
+                      className="absolute inset-y-1 left-1 w-0.5 rounded-full bg-[#0a0a0a]/55"
                       transition={pmriSpring}
                       aria-hidden="true"
                     />

@@ -22,7 +22,7 @@ export function OnboardingNamePage() {
     <OnboardingFrame
       currentStep={1}
       eyebrow="Personal setup"
-      title="What should we call you..."
+      title="What should we call you?"
       description="This is only used to make the intake feel personal before the portfolio screen opens."
     >
       <div className="mx-auto max-w-xl lg:mx-0">
@@ -35,11 +35,11 @@ export function OnboardingNamePage() {
             onKeyDown={(event) => {
               if (event.key === "Enter") continueToProfile();
             }}
-            className="pmri-focus mt-3 w-full border-0 border-b border-pmri-border/80 bg-transparent px-1 py-4 text-center text-3xl font-semibold tracking-[-0.035em] text-pmri-text outline-none placeholder:text-pmri-muted/50 focus:border-pmri-blue lg:text-left"
+            className="pmri-focus mt-3 w-full border-0 border-b border-pmri-border bg-transparent px-1 py-4 text-center text-3xl font-normal tracking-[-0.035em] text-pmri-text outline-none placeholder:text-pmri-muted/50 focus:border-white/40 lg:text-left"
           />
         </label>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <button type="button" onClick={continueToProfile} className="pmri-focus pmri-primary-action rounded-full px-6 py-3 text-sm font-semibold transition">
+          <button type="button" onClick={continueToProfile} className="pmri-focus pmri-primary-action rounded-full px-6 py-3 text-sm font-normal transition">
             Continue
           </button>
         </div>

@@ -38,26 +38,6 @@ function routeForPath(pathname: string): RouteMeta {
     ?? { eyebrow: "Investment Decision Room", title: "Portfolio MRI" };
 }
 
-function formatDateTime(value?: string | null) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(date);
-}
-
-function readOutputSummaryField(outputs: unknown, field: "analysis_window") {
-  if (!outputs || typeof outputs !== "object" || Array.isArray(outputs)) return "";
-  const summary = (outputs as Record<string, unknown>).review_summary;
-  if (!summary || typeof summary !== "object" || Array.isArray(summary)) return "";
-  const value = (summary as Record<string, unknown>)[field];
-  return typeof value === "string" ? value : "";
-}
-
 function ctaForPath({
   pathname,
   flags,
@@ -142,18 +122,7 @@ export function PlatformTopHeader() {
   const pathname = usePathname();
   const { activeReview, journeyFlags } = useReviewState();
   const meta = routeForPath(pathname);
-  const portfolioName = activeReview?.cloudPortfolio?.name
-    ?? (activeReview?.holdings.length ? "Current portfolio" : "No active portfolio");
-  const currency = activeReview?.investorCurrency || activeReview?.reviewSummary?.investorCurrency || "USD";
-  const holdingsCount = activeReview?.reviewSummary?.holdingsCount ?? activeReview?.holdings.length ?? 0;
-  const analysisWindow = readOutputSummaryField(activeReview?.reviewResult?.outputs, "analysis_window");
-  const updatedAt = formatDateTime(activeReview?.reviewSummary?.generatedAt ?? activeReview?.updatedAt);
   const cta = ctaForPath({ pathname, flags: journeyFlags, runStatus: activeReview?.runStatus });
-  const metadata = [
-    portfolioName,
-    currency,
-    holdingsCount ? `${holdingsCount} holdings` : "No holdings"
-  ];
   const actions: HeaderAction[] = [
     ...secondaryActionsForPath(pathname),
     { ...cta, variant: "primary" }
@@ -165,24 +134,11 @@ export function PlatformTopHeader() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
             <p className="text-[0.68rem] font-medium tracking-[0.08em] text-pmri-muted">
-              Portfolio MRI · {meta.eyebrow}
+              Portfolio MRI / {meta.eyebrow}
             </p>
-            <h1 className="mt-1 truncate text-lg font-semibold tracking-[-0.035em] text-pmri-text md:text-[1.35rem]">
+            <h1 className="mt-1.5 text-2xl font-semibold leading-tight tracking-[-0.045em] text-pmri-text [text-wrap:wrap] md:text-[2rem]">
               {meta.title}
             </h1>
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-pmri-muted">
-              {metadata.map((item, index) => (
-                <span key={`${item}-${index}`} className="flex items-center gap-x-2">
-                  {index > 0 ? <span className="h-1 w-1 rounded-full bg-pmri-muted/[0.36]" aria-hidden="true" /> : null}
-                  <span>{item}</span>
-                </span>
-              ))}
-            </div>
-            {!analysisWindow ? (
-              <p className="mt-1 text-xs text-pmri-muted/[0.72]" title={updatedAt ? `Last update ${updatedAt}` : undefined}>
-                Data window unavailable
-              </p>
-            ) : null}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

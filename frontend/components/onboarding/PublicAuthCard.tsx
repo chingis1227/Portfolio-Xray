@@ -25,9 +25,9 @@ export function PublicAuthCard() {
 
   if (!enabled) {
     return (
-      <div className="pmri-card rounded-3xl p-5">
-        <p className="pmri-label text-pmri-blueSoft">Local session</p>
-        <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-pmri-text">Start without an account</h2>
+      <div className="pmri-card rounded-lg p-5">
+        <p className="pmri-label text-pmri-muted">Local session</p>
+        <h2 className="mt-2 text-xl font-normal tracking-[-0.03em] text-pmri-text">Start without an account</h2>
         <p className="mt-3 text-sm leading-6 text-pmri-muted">
           Your onboarding profile stays in this browser. Cloud save can be enabled later without changing the diagnostic flow.
         </p>
@@ -36,11 +36,11 @@ export function PublicAuthCard() {
   }
 
   return (
-    <div className="pmri-card rounded-3xl p-5" aria-live="polite">
+    <div className="pmri-card rounded-lg p-5" aria-live="polite">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="pmri-label text-pmri-blueSoft">Save your workspace</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-pmri-text">
+          <p className="pmri-label text-pmri-muted">Save your workspace</p>
+          <h2 className="mt-2 text-xl font-normal tracking-[-0.03em] text-pmri-text">
             {status === "signed_in" ? "Workspace connected" : "Optional secure sign-in"}
           </h2>
         </div>
@@ -48,12 +48,12 @@ export function PublicAuthCard() {
       </div>
 
       {status === "loading" ? (
-        <p className="mt-4 text-sm text-pmri-muted">Checking saved workspace…</p>
+        <p className="mt-4 text-sm text-pmri-muted">Checking saved workspace...</p>
       ) : status === "signed_in" ? (
         <div className="mt-4 space-y-4">
           <p className="truncate text-sm text-pmri-text2" title={user?.email ?? undefined}>{user?.email ?? "Signed-in user"}</p>
           <p className="text-sm leading-6 text-pmri-muted">You can continue onboarding now. Saved portfolios and review history unlock inside the platform.</p>
-          <button type="button" onClick={() => void signOut()} className="pmri-focus rounded-full border border-pmri-border/60 px-4 py-2 text-sm font-medium text-pmri-text2 transition hover:border-pmri-border hover:bg-white/[0.04]">
+          <button type="button" onClick={() => void signOut()} className="pmri-focus rounded-full border border-pmri-border px-4 py-2 text-sm font-normal text-pmri-text2 transition hover:border-white/25 hover:bg-white/[0.04]">
             Sign out
           </button>
         </div>
@@ -70,11 +70,11 @@ export function PublicAuthCard() {
                 setEmail(event.target.value);
               }}
               placeholder="you@example.com"
-              className="pmri-focus mt-2 w-full rounded-xl border border-pmri-border/55 bg-pmri-secondary/85 px-3 py-2.5 text-sm text-pmri-text placeholder:text-pmri-muted/60"
+              className="pmri-focus mt-2 w-full rounded-lg border border-pmri-border bg-pmri-panel px-3 py-2.5 text-sm text-pmri-text placeholder:text-pmri-muted/60"
             />
           </label>
-          <button type="submit" disabled={isSending} className="pmri-focus w-full rounded-full border border-pmri-blue/40 bg-pmri-blue px-4 py-2.5 text-sm font-semibold text-pmri-text transition hover:bg-pmri-blueSoft disabled:cursor-not-allowed disabled:opacity-60">
-            {isSending ? "Sending code…" : "Send secure email code"}
+          <button type="submit" disabled={isSending} className="pmri-focus pmri-primary-action w-full rounded-full px-4 py-2.5 text-sm font-normal transition disabled:cursor-not-allowed disabled:opacity-60">
+            {isSending ? "Sending code..." : "Send secure email code"}
           </button>
           <div className="border-t border-pmri-border/35 pt-3">
             <label className="block">
@@ -88,17 +88,17 @@ export function PublicAuthCard() {
                   setOtpCode(event.target.value);
                 }}
                 placeholder="123456"
-                className="pmri-focus mt-2 w-full rounded-xl border border-pmri-border/55 bg-pmri-secondary/85 px-3 py-2.5 text-sm text-pmri-text placeholder:text-pmri-muted/60"
+                className="pmri-focus mt-2 w-full rounded-lg border border-pmri-border bg-pmri-panel px-3 py-2.5 text-sm text-pmri-text placeholder:text-pmri-muted/60"
               />
             </label>
-            <button type="button" disabled={isVerifying} onClick={() => void handleVerifyOtp()} className="pmri-focus mt-3 w-full rounded-full border border-pmri-border/60 px-4 py-2.5 text-sm font-semibold text-pmri-text2 transition hover:border-pmri-border hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-60">
-              {isVerifying ? "Verifying…" : "Verify code"}
+            <button type="button" disabled={isVerifying} onClick={() => void handleVerifyOtp()} className="pmri-focus mt-3 w-full rounded-full border border-pmri-border px-4 py-2.5 text-sm font-normal text-pmri-text2 transition hover:border-white/25 hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-60">
+              {isVerifying ? "Verifying..." : "Verify code"}
             </button>
           </div>
         </form>
       )}
 
-      {message ? <p className="mt-3 text-sm leading-6 text-pmri-positive">{message}</p> : null}
+      {message ? <p className="mt-3 text-sm leading-6 text-pmri-text2">{message}</p> : null}
       {error ? <p className="mt-3 text-sm leading-6 text-pmri-amber">{error}</p> : null}
     </div>
   );

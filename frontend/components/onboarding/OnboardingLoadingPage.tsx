@@ -65,24 +65,24 @@ export function OnboardingLoadingPage() {
   }, [hydrated, router, saveClientFitProfile, state, status]);
 
   return (
-    <main id="main-content" className="relative flex min-h-screen items-center justify-center overflow-hidden bg-pmri-bg px-5 text-pmri-text">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_32%,rgba(59,130,246,0.22),transparent_26%),radial-gradient(circle_at_50%_50%,rgba(170,183,198,0.08),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.035),transparent_50%)]" />
-      <div className="pointer-events-none absolute h-[520px] w-[520px] rounded-full border border-pmri-blue/15 [background:repeating-radial-gradient(circle,rgba(96,165,250,0.22)_0_1px,transparent_1px_20px)] motion-safe:animate-[pmri-spin_18s_linear_infinite]" />
+    <main id="main-content" className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-pmri-bg px-5 text-pmri-text">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_32%,rgba(255,255,255,0.055),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.026),transparent_50%)]" />
+      <div className="pointer-events-none absolute h-[520px] w-[520px] rounded-full border border-white/[0.045] [background:repeating-radial-gradient(circle,rgba(255,255,255,0.055)_0_1px,transparent_1px_20px)]" />
       <section className="relative z-10 w-full max-w-xl text-center">
-        <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-[2rem] border border-pmri-border/55 bg-white/[0.035] shadow-decision">
+        <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-lg border border-pmri-border bg-pmri-surface">
           <BrandMark size="xl" />
         </div>
-        <p className="data-figure mt-10 text-5xl font-semibold tracking-[-0.045em] text-pmri-text">{progress}%</p>
-        <h1 className="mt-4 text-3xl font-semibold tracking-[-0.045em] text-pmri-text md:text-5xl">Setting up your experience</h1>
+        <p className="data-figure mt-10 text-5xl font-normal tracking-[-0.045em] text-pmri-text">{progress}%</p>
+        <h1 className="mt-4 text-3xl font-normal tracking-[-0.045em] text-pmri-text md:text-4xl">Setting up your experience</h1>
         <p className="mt-4 text-base leading-7 text-pmri-text2">
           Personalizing the diagnostic room with a {profileLabel} profile.
         </p>
-        <div className="mx-auto mt-8 h-2 max-w-md overflow-hidden rounded-full bg-pmri-border/45">
-          <div className="h-full rounded-full bg-pmri-blue transition-all duration-300" style={{ width: `${progress}%` }} />
+        <div className="mx-auto mt-8 h-2 max-w-md overflow-hidden rounded-full bg-pmri-border">
+          <div className="h-full rounded-full bg-pmri-text transition-all duration-300" style={{ width: `${progress}%` }} />
         </div>
         <div className="mx-auto mt-8 grid max-w-md gap-3 text-left">
           {setupSteps.map((step, index) => (
-            <div key={step} className={`rounded-2xl border px-4 py-3 text-sm transition ${index <= activeIndex ? "border-pmri-blue/35 bg-pmri-blue/[0.08] text-pmri-text" : "border-pmri-border/45 bg-white/[0.02] text-pmri-muted"}`}>
+            <div key={step} className={`rounded-lg border px-4 py-3 text-sm transition ${index <= activeIndex ? "border-white/35 bg-white/[0.06] text-pmri-text" : "border-pmri-border bg-white/[0.02] text-pmri-muted"}`}>
               {step}
             </div>
           ))}

@@ -29,26 +29,26 @@ export function DiagnosticCanvas({ model }: { model: DiagnosisDisplayModel }) {
   const drivingItems = [
     {
       title: concentrationCanvasTitle(model),
-      copy: concentration?.note ?? "High concentration can make a few positions drive most portfolio behavior.",
+      copy: concentration?.note ?? "High concentration can make a few positions drive most portfolio behavior",
       fact: concentration
     },
     {
       title: exposureCanvasTitle(model),
-      copy: exposure?.note ?? "Portfolio behavior should be read through its dominant economic exposure.",
+      copy: exposure?.note ?? "Portfolio behavior should be read through its dominant economic exposure",
       fact: exposure
     },
     {
       title: downside ? `Worst observed downside is ${downside.value}` : "Downside evidence should be reviewed next",
-      copy: downside?.note ?? "Stress Lab should verify whether downside risk is temporary, concentrated, or structural.",
+      copy: downside?.note ?? "Stress Lab should verify whether downside risk is temporary, concentrated, or structural",
       fact: downside
     }
   ];
 
   return (
     <section className="pmri-diagnostic-canvas">
-      <div className="grid gap-0 lg:grid-cols-[1.25fr_0.75fr]">
+      <div className="grid gap-0 lg:grid-cols-2">
         <div className="p-5 md:p-6 lg:p-7">
-          <SectionHeader eyebrow="Diagnostic canvas" title="What matters now" />
+          <SectionHeader eyebrow="Diagnostic canvas" title="What matters now" className="[&>div:first-child]:max-w-none" />
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <MetricValue label="Primary issue" value={concentration?.value ?? "Not evaluated"} detail={evidenceToneLabel(concentration)} tone={concentration?.tone} size="sm" />
             <MetricValue label="Main exposure" value={exposure?.value ?? "Not evaluated"} detail={exposure?.detail ?? evidenceToneLabel(exposure)} tone={exposure?.tone} size="sm" />
@@ -68,13 +68,12 @@ export function DiagnosticCanvas({ model }: { model: DiagnosisDisplayModel }) {
           </div>
         </div>
         <aside className="border-t border-white/[0.06] bg-black/[0.14] p-5 md:p-6 lg:border-l lg:border-t-0 lg:p-7">
-          <SectionHeader eyebrow="Next review" title="What risk should be reviewed next" />
+          <SectionHeader eyebrow="Next review" title="What risk should be reviewed next" className="[&>div:first-child]:max-w-none [&_h2]:[text-wrap:wrap]" />
           <div className="mt-5 space-y-3">
             {reviewItems.map((item) => (
               <div key={item.label} className="rounded-2xl border border-white/[0.055] bg-white/[0.018] p-4">
                 <div className="flex items-start justify-between gap-3">
                   <p className="pmri-type-meta text-pmri-muted">{item.label}</p>
-                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-pmri-blueSoft/[0.62]" aria-hidden="true" />
                 </div>
                 <p className="mt-2 text-sm leading-6 text-pmri-text2">{item.value}</p>
               </div>

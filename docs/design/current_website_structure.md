@@ -29,8 +29,8 @@ Public routes (`/` and `/onboarding/*`) do not show the platform journey rail, n
 Platform routes show:
 
 - a near-black workspace with restrained radial accent only where helpful, hairline separation, and flat dark evidence surfaces rather than glassy dashboard panels;
-- a persistent compact top utility header above platform content, with product/route title, active portfolio name, investor currency, holdings count, review state as quiet metadata, optional `Data window unavailable` text only when missing, and restrained route actions;
-- a fixed quiet near-black journey rail on wide screens, positioned beside the content blocks;
+- a persistent compact top utility header above platform content, with a larger product/route title and restrained route actions; active portfolio, currency, holdings count, last update, and missing data-window labels are not shown in the header;
+- a fixed quiet near-black journey rail on wide screens, positioned beside the content blocks; the current route uses a light active pill while other unlocked or locked steps stay muted;
 - account navigation entry for `Workspace` outside the 8-step review rail;
 - a bottom compact dark journey dock on narrower screens, with compact `Workspace` and optional account controls;
 - gated journey navigation with 8 icon-led steps: Portfolio, Diagnosis, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report;

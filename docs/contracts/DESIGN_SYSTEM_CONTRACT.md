@@ -20,7 +20,7 @@ Old external-reference and prototype documents are not current design authority.
 
 ## Design promise
 
-Portfolio MRI must feel like a premium dark institutional investment decision room: calm, precise, trustworthy, analytical, and client-ready. It must not look like a trading terminal, optimizer cockpit, crypto app, colorful dashboard, or Excel clone.
+Portfolio MRI must feel like a restrained dark institutional investment decision room: calm, precise, trustworthy, analytical, and client-ready. It must not look like a trading terminal, optimizer cockpit, crypto app, colorful dashboard, glossy glass prototype, or Excel clone.
 
 ## Current token contract
 
@@ -28,39 +28,41 @@ The current frontend token set is the contract baseline:
 
 | Meaning | Hex | Required behavior |
 | --- | --- | --- |
-| Background | `#050608` | Dominant cinematic platform shell. |
-| Secondary surface | `#0B0D10` | Sidebar, onboarding, section panels. |
-| Card surface | `#111318` | Floating case-file panels and standard content cards. |
-| Raised surface | `#16191F` | Nested or lifted surfaces. |
-| Panel | `#1A1E25` | Forms and dense panels. |
-| Border | `#20242B` | Card/table/divider outlines. |
-| Text | `#ECEFF3` | Headings and decisive values. |
-| Secondary text | `#C4C9D1` | Body copy and interpretation. |
-| Muted text | `#949BA6` | Captions and inactive states. |
-| Steel Blue | `#4F7EA8` / `#7EA6C8` | Active/current/selected state, primary action, focus, and safe information emphasis. |
-| Muted Copper Red | `#B66A61` | Material issue, error, failure, destructive action, and high-risk evidence. |
-| Muted Amber Gold | `#C3A15F` | Watch, caution, partial evidence, locked, evidence required, and degraded confidence. |
-| Ivory / neutral aligned | `#ECE7DC` | Normal, aligned, completed, generated, unavailable-neutral, unchanged, and secondary context. |
-| Premium accent | `#AAB7C6` | Formal slate accent only. |
+| Background | `#0A0A0A` | Dominant near-black app canvas. |
+| Secondary background | `#0A0A0A` | Section bands and shell chrome. |
+| Card surface | `#191919` | Flat evidence cards and product panels. |
+| Raised surface | `#1A1C20` | Hovered or nested surfaces without shadow elevation. |
+| Panel | `#191919` | Forms and dense panels. |
+| Border | `#212327` | Card, table, divider, and input outlines. |
+| Soft border | `rgba(255,255,255,0.25)` | Secondary outlines and pill borders. |
+| Text | `#FFFFFF` | Headings, key values, active state, focus, and rare filled primary action. |
+| Secondary text | `#DADBDF` | Body copy and interpretation. |
+| Muted text | `#7D8187` | Captions, metadata, and inactive states. |
+| Breeze Blue | `#A0C3EC` | Rare illustrative or informational accent only. |
+| Twilight | `#C4B5FD` | Rare illustrative accent and subtle emphasis only. |
+| Sunset Orange | `#FF7A17` | Material issue, error, failure, destructive action, and high-risk evidence. |
+| Sunset Soft | `#FFC285` | Watch, caution, partial evidence, locked, evidence required, and degraded confidence. |
+| Neutral accent | `#DADBDF` | Formal neutral accent, not decorative gold. |
 
 Any intentional code-token change must update this table and `DESIGN.md` in the same change.
 
 ## Color semantics
 
-- Steel Blue is for action, active/current navigation, focus, selected state, and safe informational emphasis.
-- Ivory and neutral gray are for normal, aligned, completed, generated, metadata, unavailable, unchanged, and secondary states.
-- Muted Amber Gold is for watch, caution, evidence required, partial evidence, blocked or locked states.
-- Muted Copper Red is for material issues, actual errors, failures, destructive actions, material worsening, and high-risk evidence.
+- White is for foreground, active/current state, focus, and the rare filled primary action.
+- Breeze Blue and Twilight are rare illustrative accents, not default action or navigation colors.
+- Neutral gray is for normal, aligned, completed, generated, metadata, unavailable, unchanged, and secondary states.
+- Sunset Soft is for watch, caution, evidence required, partial evidence, blocked or locked states.
+- Sunset Orange is for material issues, actual errors, failures, destructive actions, material worsening, and high-risk evidence.
 - Green is not a Portfolio MRI product/system status semantic. Legacy enum values may exist in adapters, but visible Core MVP status color must normalize them to neutral/ivory treatment unless a future contract explicitly changes this.
 
-No neon, rainbow, crypto-style glow systems, or decorative red/green chart coloring are allowed in Core MVP UI.
+No neon, rainbow, crypto-style glow systems, decorative blue action gradients, or decorative red/green chart coloring are allowed in Core MVP UI.
 
 ## Layout contract
 
 - Landing and onboarding must not show the platform sidebar or top journey rail.
-- Platform screens must show the visible left 8-step rail: Portfolio, Diagnosis, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report.
-- The platform workspace must use a deep cinematic black background with subtle radial gradients and glass depth. It must not fall back to a flat gray dashboard wall.
-- Platform top headers must be compact utility bars. They may show route title and quiet metadata, but must not show noisy review-status or evidence-quality pills as the main header treatment.
+- Platform screens must show the visible left 8-step rail: Portfolio, Diagnosis, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report. The current route uses a light active pill; inactive unlocked steps stay muted.
+- The platform workspace must use a restrained near-black background with subtle texture only where it improves orientation. It must not use glossy glass depth, blue-gradient spectacle, or a flat gray dashboard wall.
+- Platform top headers must be compact utility bars. They show the route title and restrained actions, but must not show portfolio/currency/holdings/update metadata, noisy review-status, or evidence-quality pills as the main header treatment.
 - Platform top headers must not translate staged execution states such as `partial` into primary metadata. If a stage is blocked or failed, explain it inside the affected route state.
 - Redesigned platform routes suppress the top journey rail and use compact step context inside `VerdictHero` instead of the full horizontal top stepper.
 - Verdict-first heroes must use matching step numbers and route names.
@@ -113,7 +115,7 @@ Before accepting UI/design changes, verify:
 
 ## Foundation and sandbox contract
 
-Implementation must prefer shared primitives in `frontend/components/ui/` before page-local styling. Repeated actions, surfaces, evidence facts, disclosure controls, and empty/loading/error states should be represented by reusable components such as `Button`, `Surface`, `GlassPanel`, `SectionHeader`, `EvidenceItem`, `AdvancedDisclosure`, and state components.
+Implementation must prefer shared primitives in `frontend/components/ui/` before page-local styling. Repeated actions, surfaces, evidence facts, disclosure controls, and empty/loading/error states should be represented by reusable components such as `Button`, `Surface`, `SectionHeader`, `EvidenceItem`, `AdvancedDisclosure`, and state components.
 
 Product-specific blocks should compose primitives and live near their domain. The Diagnosis benchmark uses `DiagnosisHero`, `EvidenceStrip`, `DiagnosticCanvas`, and `AdvancedDiagnostics` in `frontend/components/diagnosis/`.
 

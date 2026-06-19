@@ -72,6 +72,10 @@ function isUnavailable(value?: unknown) {
   return !normalized || normalized === "n/a" || normalized.includes("not available") || normalized.includes("unavailable");
 }
 
+function withoutTerminalPeriod(value: string) {
+  return value.trim().replace(/\.+$/g, "");
+}
+
 export function formatDiagnosisDisplayValue(value?: unknown, fallback = "Unavailable") {
   if (value === null || value === undefined) return fallback;
   const raw = normalizeDisplayLabel(value, fallback);
@@ -120,9 +124,9 @@ function mainFinding(input: DiagnosisDisplayModelInput) {
   const top3 = parsePercent(findMetric(metrics, "Top 3 concentration")?.value);
   if (exposure && top3 !== null) {
     const concentrationText = top3 >= 50 ? "concentrated in the top holdings" : "not dominated by the top holdings";
-    return `The portfolio is ${formatDiagnosisDisplayValue(exposure).toLowerCase()}-led and ${concentrationText}.`;
+    return `The portfolio is ${formatDiagnosisDisplayValue(exposure).toLowerCase()}-led and ${concentrationText}`;
   }
-  return normalizeDisplaySentence(input.headline, "Current portfolio diagnosis is available.");
+  return withoutTerminalPeriod(normalizeDisplaySentence(input.headline, "Current portfolio diagnosis is available."));
 }
 
 function whyItMatters(input: DiagnosisDisplayModelInput) {
@@ -130,10 +134,10 @@ function whyItMatters(input: DiagnosisDisplayModelInput) {
   const weakness = findMetric(metrics, "Worst pre-stress weakness") ?? findMetric(metrics, "Primary weakness");
   const drawdown = findMetric(metrics, "Max drawdown");
   if (weakness && drawdown) {
-    return `The main weakness to review is ${formatDiagnosisDisplayValue(weakness.value)}, with ${formatDiagnosisDisplayValue(drawdown.value)} observed downside in the diagnostic window.`;
+    return `The main weakness to review is ${formatDiagnosisDisplayValue(weakness.value)}, with ${formatDiagnosisDisplayValue(drawdown.value)} observed downside in the diagnostic window`;
   }
   const explanation = input.siteExplanation?.screens?.diagnosis?.executive?.[0]?.text;
-  return normalizeDisplaySentence(explanation || input.drivers[0], "Diagnosis summarizes the current portfolio before any candidate test.");
+  return withoutTerminalPeriod(normalizeDisplaySentence(explanation || input.drivers[0], "Diagnosis summarizes the current portfolio before any candidate test."));
 }
 
 function primaryEvidence(input: DiagnosisDisplayModelInput) {
@@ -163,28 +167,28 @@ function whatMatters(input: DiagnosisDisplayModelInput): DiagnosisDisplayFact[] 
       label: "Concentration",
       value: `Top 3 = ${formatDiagnosisDisplayValue(top3.value)}`,
       detail: formatDiagnosisDisplayValue(top3.value),
-      note: top3Pct !== null && top3Pct >= 50 ? "Largest holdings drive a material share of capital." : "Capital is less concentrated in the largest holdings.",
+      note: top3Pct !== null && top3Pct >= 50 ? "Largest holdings drive a material share of capital" : "Capital is less concentrated in the largest holdings",
       tone: top3Pct !== null && top3Pct >= 65 ? "red" : top3Pct !== null && top3Pct >= 50 ? "amber" : "slate"
     } : null,
     exposure && !isUnavailable(exposure.value) ? {
       label: "Main exposure",
       value: formatDiagnosisDisplayValue(exposure.value),
       detail: exposure.detail && !isUnavailable(exposure.detail) ? formatDiagnosisDisplayValue(exposure.detail) : undefined,
-      note: exposure.detail && !isUnavailable(exposure.detail) ? formatDiagnosisDisplayValue(exposure.detail) : "Dominant economic risk sleeve.",
+      note: exposure.detail && !isUnavailable(exposure.detail) ? withoutTerminalPeriod(formatDiagnosisDisplayValue(exposure.detail)) : "Dominant economic risk sleeve",
       tone: severityFromTone(exposure.tone, "slate")
     } : null,
     drawdown && !isUnavailable(drawdown.value) ? {
       label: "Downside pain",
       value: formatDiagnosisDisplayValue(drawdown.value),
       detail: formatDiagnosisDisplayValue(drawdown.value),
-      note: drawdown.detail && !isUnavailable(drawdown.detail) ? formatDiagnosisDisplayValue(drawdown.detail) : "Largest observed loss in the diagnostic window.",
+      note: drawdown.detail && !isUnavailable(drawdown.detail) ? withoutTerminalPeriod(formatDiagnosisDisplayValue(drawdown.detail)) : "Largest observed loss in the diagnostic window",
       tone: severityFromTone(drawdown.tone, "slate")
     } : null,
     weakness && !isUnavailable(weakness.value) ? {
       label: "Main weakness",
       value: formatDiagnosisDisplayValue(weakness.value),
       detail: weakness.detail && !isUnavailable(weakness.detail) ? formatDiagnosisDisplayValue(weakness.detail) : undefined,
-      note: "Review this in Stress Lab before testing a candidate.",
+      note: "Review this in Stress Lab before testing a candidate",
       tone: severityFromTone(weakness.tone, "slate")
     } : null
   ];
@@ -202,7 +206,7 @@ function behaviorSnapshot(input: DiagnosisDisplayModelInput): DiagnosisDisplayFa
     cagr && !isUnavailable(cagr.value) ? {
       label: "Growth",
       value: formatDiagnosisDisplayValue(cagr.value),
-      note: cagr.detail && !isUnavailable(cagr.detail) ? formatDiagnosisDisplayValue(cagr.detail) : "Realized growth in the primary diagnostic window.",
+      note: cagr.detail && !isUnavailable(cagr.detail) ? withoutTerminalPeriod(formatDiagnosisDisplayValue(cagr.detail)) : "Realized growth in the primary diagnostic window",
       tone: "slate"
     } : null,
     drawdown && !isUnavailable(drawdown.value) ? {
@@ -210,18 +214,18 @@ function behaviorSnapshot(input: DiagnosisDisplayModelInput): DiagnosisDisplayFa
       value: recovery && !isUnavailable(recovery.value)
         ? `${formatDiagnosisDisplayValue(drawdown.value)} / ${formatDiagnosisDisplayValue(recovery.value)}`
         : formatDiagnosisDisplayValue(drawdown.value),
-      note: "Maximum drawdown and recovery evidence.",
+      note: "Maximum drawdown and recovery evidence",
       tone: severityFromTone(drawdown.tone, "red")
     } : null,
     beta && !isUnavailable(beta.value) ? {
       label: "Market dependence",
       value: formatDiagnosisDisplayValue(beta.value),
-      note: beta.detail && !isUnavailable(beta.detail) ? formatDiagnosisDisplayValue(beta.detail) : "Sensitivity to benchmark movement.",
+      note: beta.detail && !isUnavailable(beta.detail) ? withoutTerminalPeriod(formatDiagnosisDisplayValue(beta.detail)) : "Sensitivity to benchmark movement",
       tone: severityFromTone(beta.tone, "slate")
     } : volatility && !isUnavailable(volatility.value) ? {
       label: "Risk level",
       value: formatDiagnosisDisplayValue(volatility.value),
-      note: "Realized portfolio volatility.",
+      note: "Realized portfolio volatility",
       tone: "slate"
     } : null
   ].filter((item): item is DiagnosisDisplayFact => Boolean(item)).slice(0, 3);
@@ -279,7 +283,7 @@ export function buildDiagnosisDisplayModel(input: DiagnosisDisplayModelInput): D
     advancedMetrics: advancedMetrics(input),
     technicalEvidence,
     limitations: userRelevantLimitations(input),
-    nextStep: normalizeDisplaySentence(input.nextStep, "Review supporting evidence before testing one candidate hypothesis."),
-    boundaryNote: normalizeDisplaySentence(input.boundaryNote, "Diagnostic review context is available.")
+    nextStep: withoutTerminalPeriod(normalizeDisplaySentence(input.nextStep, "Review supporting evidence before testing one candidate hypothesis.")),
+    boundaryNote: withoutTerminalPeriod(normalizeDisplaySentence(input.boundaryNote, "Diagnostic review context is available."))
   };
 }

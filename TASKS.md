@@ -48,10 +48,11 @@ Goal: establish the calm premium visual system shared by all redesigned pages.
 Tasks:
 
 - [x] Define semantic color tokens for:
-  - Soft White / Ivory
-  - Steel Blue
-  - Muted Copper Red
-  - Muted Amber Gold
+  - near-black canvas and charcoal surfaces;
+  - white / neutral active and primary-action treatment;
+  - Breeze Blue and Twilight as rare illustrative accents;
+  - Sunset Orange for material risk and failure;
+  - Sunset Soft for caution, partial, locked, or evidence-required states.
 - [x] Remove or demote green from system-level status semantics.
 - [x] Define neutral dark surface tokens for background, primary surface, secondary surface, borders, dividers, and muted text.
 - [x] Define typography tokens for verdict headlines, explanations, evidence labels, metric values, row text, and technical notes.
@@ -60,7 +61,7 @@ Tasks:
 
 Acceptance checks:
 
-- [x] The four semantic colors are documented and used consistently.
+- [x] The current `DESIGN.md` token palette and color semantics are documented and used consistently.
 - [x] Green is not used for system status language.
 - [x] New tokens support high readability on dark backgrounds.
 - [x] Visual hierarchy relies more on spacing and typography than nested borders.
@@ -84,7 +85,7 @@ Tasks:
   - short subtitle;
   - journey step list;
   - completed, current, and unavailable states.
-- [x] Use Steel Blue only for the active/current sidebar step.
+- [x] Use white or neutral emphasis for the active/current sidebar step; reserve Breeze Blue and Twilight for rare informational or illustrative accents.
 - [x] Reduce heavy borders, bright outlines, dots, repeated micro-elements, and competing badges in navigation.
 
 Acceptance checks:
@@ -122,7 +123,7 @@ Acceptance checks:
 
 - [x] High-metric pages can use Metric Matrix instead of card grids.
 - [x] Evidence Summary never exceeds four primary evidence items.
-- [x] Status badges are sparse and tied to the four-color semantic system.
+- [x] Status badges are sparse and tied to the current `DESIGN.md` semantic color system.
 - [x] Technical details are secondary but still accessible.
 
 ## Phase 4: Diagnosis Page Redesign
@@ -312,7 +313,7 @@ Acceptance checks:
 - [x] The sidebar remains visible but visually quieter.
 - [x] High-metric pages use Metric Matrix instead of card overload.
 - [x] Repeated badges are reduced.
-- [x] The visual system uses the four documented colors consistently.
+- [x] The visual system uses the current `DESIGN.md` token palette consistently.
 - [x] Green is not used as a system status color.
 - [x] Diagnostic and non-binding product boundaries remain intact.
 - [x] Verification results and unverified areas are reported.

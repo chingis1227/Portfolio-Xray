@@ -221,8 +221,9 @@ Onboarding collects a friendly profile and creates non-binding Client Fit contex
 Platform routes use:
 
 - persistent compact `PlatformTopHeader`;
-- active portfolio metadata as quiet text, not noisy badges;
+- route title as the top-header focus, without portfolio/currency/holdings metadata in the header;
 - near-black journey rail on wide screens;
+- current journey rail item as a light active pill with inactive steps muted;
 - compact dark dock on smaller screens;
 - gated journey navigation with 8 icon-led steps: Portfolio, Diagnosis, Stress Lab, Client Fit, Hypothesis, Comparison, Verdict, Report;
 - platform content width around 1180-1240 px;

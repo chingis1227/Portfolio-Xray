@@ -44,11 +44,13 @@ function metricByLabels(metrics: Metric[], labels: string[]) {
 function metricFact(metrics: Metric[], labels: string[], label: string, note: string): DiagnosisDisplayFact | undefined {
   const metric = metricByLabels(metrics, labels);
   if (!metric || !metric.value || /unavailable|n\/a/i.test(String(metric.value))) return undefined;
+  const cleanNote = note.replace(/\.+$/g, "");
+  const cleanDetail = typeof metric.detail === "string" ? metric.detail.replace(/\.+$/g, "") : undefined;
   return {
     label,
     value: String(metric.value),
-    detail: typeof metric.detail === "string" ? metric.detail : undefined,
-    note: typeof metric.detail === "string" && metric.detail.trim() ? metric.detail : note,
+    detail: cleanDetail,
+    note: cleanDetail && cleanDetail.trim() ? cleanDetail : cleanNote,
     tone: metric.tone ?? "slate"
   };
 }
@@ -59,19 +61,19 @@ export function evidenceQualityValue(model: DiagnosisDisplayModel) {
 
 export function concentrationFact(model: DiagnosisDisplayModel, metrics: Metric[] = []) {
   return factByLabel(model.whatMatters, "Concentration")
-    ?? metricFact(metrics, ["Top 3 concentration", "Concentration"], "Concentration", "Largest holdings drive a material share of capital.");
+    ?? metricFact(metrics, ["Top 3 concentration", "Concentration"], "Concentration", "Largest holdings drive a material share of capital");
 }
 
 export function exposureFact(model: DiagnosisDisplayModel, metrics: Metric[] = []) {
   return factByLabel(model.whatMatters, "Main exposure")
-    ?? metricFact(metrics, ["Dominant exposure", "Main exposure", "Equity sleeve"], "Main exposure", "Dominant economic risk sleeve.");
+    ?? metricFact(metrics, ["Dominant exposure", "Main exposure", "Equity sleeve"], "Main exposure", "Dominant economic risk sleeve");
 }
 
 export function downsideFact(model: DiagnosisDisplayModel, metrics: Metric[] = []) {
   return factByLabel(model.whatMatters, "Downside pain")
     ?? factByLabel(model.behaviorSnapshot, "Pain")
     ?? factByLabel(model.whatMatters, "Main weakness")
-    ?? metricFact(metrics, ["Max drawdown", "Downside pain", "Worst observed downside"], "Downside pain", "Largest observed loss in the diagnostic window.");
+    ?? metricFact(metrics, ["Max drawdown", "Downside pain", "Worst observed downside"], "Downside pain", "Largest observed loss in the diagnostic window");
 }
 
 function exposureValue(exposure?: DiagnosisDisplayFact) {

@@ -84,15 +84,16 @@ Implementation constraint:
 
 ## Status and color constraints
 
-Current frontend types include `green` in `StatusTone`, and current screens use green/positive styles for ready, completed, improved, generated, and limitation-free states.
+Current frontend types include legacy tone names such as `blue` and `green` in `StatusTone`. These names may remain as adapter compatibility labels, but the current design system normalizes visible Core MVP presentation to the `DESIGN.md` palette.
 
 Redesign constraints:
 
 - Do not use green as a product or system status semantic on redesigned analytical pages.
-- Use Steel Blue for active/current/selected.
-- Use Muted Copper Red for material issue or serious risk.
-- Use Muted Amber Gold for watch/caution/partial/evidence required.
-- Use Ivory/neutral gray for aligned, normal, unavailable, completed, read-only, or secondary states.
+- Use white or neutral emphasis for active/current/selected state and the rare filled primary action.
+- Use Breeze Blue and Twilight only as rare illustrative or informational accents, not as default action or navigation colors.
+- Use Sunset Orange for material issue or serious risk.
+- Use Sunset Soft for watch/caution/partial/evidence required.
+- Use white, `#DADBDF`, and neutral gray for aligned, normal, unavailable, completed, read-only, or secondary states.
 - Put the page-level status in `VerdictHero`.
 - Use row-level status only where a specific metric row needs interpretation.
 

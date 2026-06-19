@@ -9,10 +9,10 @@ export function DiagnosisHero({ model }: { model: DiagnosisDisplayModel }) {
       <div className="relative">
         <div>
           <p className="pmri-type-meta text-pmri-blueSoft">Step 02 / Portfolio Diagnosis</p>
-          <h1 className="mt-3 max-w-4xl text-[clamp(1.72rem,3.1vw,3rem)] font-semibold leading-[1.02] tracking-[-0.055em] text-pmri-text">
+          <h1 className="mt-3 max-w-[58rem] text-[clamp(1.72rem,3.1vw,3rem)] font-semibold leading-[1.02] tracking-[-0.055em] text-pmri-text [text-wrap:wrap]">
             {model.mainFinding}
           </h1>
-          <p className="mt-3 max-w-3xl text-[0.95rem] leading-7 text-pmri-text2 md:text-base">
+          <p className="mt-3 max-w-[66rem] text-[0.95rem] leading-7 text-pmri-text2 [text-wrap:wrap] md:text-base">
             {model.whyItMatters}
           </p>
         </div>

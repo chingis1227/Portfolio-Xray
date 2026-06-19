@@ -76,7 +76,7 @@ function Question<T extends string>({
   return (
     <motion.section
       key={number}
-      className={`rounded-[2rem] border border-pmri-border/45 bg-white/[0.022] p-4 shadow-decision transition duration-500 md:p-5 motion-safe:animate-[pmri-section-reveal_520ms_cubic-bezier(0.2,0.8,0.2,1)] ${
+      className={`rounded-lg border border-pmri-border bg-pmri-surface p-4 transition duration-500 md:p-5 motion-safe:animate-[pmri-section-reveal_520ms_cubic-bezier(0.2,0.8,0.2,1)] ${
         active ? "opacity-100" : "opacity-0"
       }`}
       initial={reduceMotion ? false : { opacity: 0, x: 18 }}
@@ -86,10 +86,10 @@ function Question<T extends string>({
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-pmri-blue/30 bg-pmri-blue/[0.07] data-figure text-xs text-pmri-blueSoft">{number}</span>
-          <h2 className="text-lg font-semibold tracking-[-0.025em] text-pmri-text">{title}</h2>
+          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/25 bg-white/[0.04] data-figure text-xs text-pmri-text2">{number}</span>
+          <h2 className="text-lg font-normal tracking-[-0.025em] text-pmri-text">{title}</h2>
         </div>
-        <span className="rounded-full border border-pmri-border/45 bg-white/[0.025] px-3 py-1 text-xs text-pmri-muted">
+        <span className="rounded-full border border-pmri-border bg-white/[0.025] px-3 py-1 text-xs text-pmri-muted">
           Choose one answer
         </span>
       </div>
@@ -99,10 +99,10 @@ function Question<T extends string>({
             key={option.id}
             type="button"
             onClick={() => onChange(option.id)}
-            className={`pmri-focus cursor-pointer rounded-2xl border p-4 text-left transition ${value === option.id ? "border-pmri-blue/60 bg-pmri-blue/[0.11]" : "border-pmri-border/55 bg-white/[0.02] hover:border-pmri-border hover:bg-white/[0.04]"}`}
+            className={`pmri-focus cursor-pointer rounded-lg border p-4 text-left transition ${value === option.id ? "border-white/55 bg-white/[0.075]" : "border-pmri-border bg-white/[0.02] hover:border-white/25 hover:bg-white/[0.04]"}`}
             {...(reduceMotion ? {} : buttonMotion)}
           >
-            <span className="block text-sm font-semibold text-pmri-text">{option.label}</span>
+            <span className="block text-sm font-normal text-pmri-text">{option.label}</span>
             <span className="mt-1 block text-xs leading-5 text-pmri-muted">{option.detail}</span>
           </motion.button>
         ))}
@@ -205,14 +205,14 @@ export function InvestorTypePage() {
       backHref="/onboarding/name"
     >
       <div className="space-y-5 text-left">
-        <div className="rounded-2xl border border-pmri-border/45 bg-white/[0.018] p-3">
+        <div className="rounded-lg border border-pmri-border bg-pmri-surface p-3">
           <div className="flex items-center justify-between gap-3 text-xs text-pmri-muted">
             <span>Question {activeQuestionIndex + 1} of {questions.length}</span>
             <span className="data-figure">{progressPct}%</span>
           </div>
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-pmri-border/45">
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-pmri-border">
             <motion.div
-              className="h-full origin-left rounded-full bg-pmri-blue"
+              className="h-full origin-left rounded-full bg-pmri-text"
               initial={false}
               animate={reduceMotion ? { width: `${progressPct}%` } : { scaleX: progressPct / 100 }}
               style={reduceMotion ? undefined : { scaleX: progressPct / 100 }}
@@ -238,19 +238,19 @@ export function InvestorTypePage() {
             type="button"
             disabled={activeQuestionIndex === 0}
             onClick={() => setActiveQuestionIndex((current) => Math.max(0, current - 1))}
-            className="pmri-focus rounded-full border border-pmri-border/60 bg-white/[0.025] px-5 py-3 text-sm font-medium text-pmri-text2 transition hover:border-pmri-blue/35 hover:text-pmri-text disabled:cursor-not-allowed disabled:opacity-40"
+            className="pmri-focus rounded-full border border-pmri-border bg-white/[0.025] px-5 py-3 text-sm font-normal text-pmri-text2 transition hover:border-white/25 hover:text-pmri-text disabled:cursor-not-allowed disabled:opacity-40"
           >
             Back
           </button>
           {isLastQuestion ? (
-            <button type="button" onClick={continueToLoading} className="pmri-focus pmri-primary-action rounded-full px-6 py-3 text-sm font-semibold transition">
+            <button type="button" onClick={continueToLoading} className="pmri-focus pmri-primary-action rounded-full px-6 py-3 text-sm font-normal transition">
               Save intake and open Portfolio Input
             </button>
           ) : (
             <button
               type="button"
               onClick={() => setActiveQuestionIndex((current) => Math.min(current + 1, questions.length - 1))}
-              className="pmri-focus rounded-full border border-pmri-blue/35 bg-pmri-blue/[0.08] px-5 py-3 text-sm font-medium text-pmri-text transition hover:bg-pmri-blue/[0.12]"
+              className="pmri-focus rounded-full border border-pmri-border bg-white/[0.025] px-5 py-3 text-sm font-normal text-pmri-text2 transition hover:border-white/25 hover:bg-white/[0.04] hover:text-pmri-text"
             >
               Next question
             </button>
