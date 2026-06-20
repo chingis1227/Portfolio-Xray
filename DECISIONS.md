@@ -61,6 +61,20 @@ Title: Short title
 
 ## Decisions
 
+Decision ID: DEC-2026-06-20-001
+Title: Adopt risk-based TDD instead of strict TDD
+
+- Status: accepted
+- Date: 2026-06-20
+- Decision: Portfolio MRI uses risk-based TDD for meaningful risky behavior changes rather than requiring strict TDD for every edit.
+- Context: The project has high-risk investment diagnosis, calculation, API, staged review, lineage, candidate, comparison, and verdict logic, while many frontend visual, copy, and documentation sessions should remain lightweight.
+- Rationale: Test-first work protects the areas where regressions can change financial evidence, product meaning, or same-run lineage, without slowing pure visual QA or documentation updates with unnecessary unit tests.
+- Alternatives considered: Strict TDD for nearly every behavior change (rejected because it would slow low-risk visual and documentation work); advisory-only TDD (rejected because it would not create a durable quality gate for critical logic).
+- Assumptions: Browser / Playwright QA remains mandatory for frontend visual changes, and documentation-only sessions continue to use docs verification and git gates instead of runtime tests.
+- Consequences: `AGENTS.md`, `WORKFLOW.md`, `TESTING.md`, and `docs/contracts/QA_CONTRACT.md` must classify TDD as required, preferred, or not applicable and require an explicit waiver when risky changes skip the test-first step.
+- Related documents: [AGENTS.md](AGENTS.md), [WORKFLOW.md](WORKFLOW.md), [TESTING.md](TESTING.md), [QA Contract](docs/contracts/QA_CONTRACT.md).
+- Review trigger: Revisit if TDD waivers become common in critical logic, if QA speed becomes a blocker, or if the project adopts a stricter release gate.
+
 Decision ID: DEC-2026-06-18-002
 Title: Treat product guardrails as IA constraints, not repeated primary UI copy
 

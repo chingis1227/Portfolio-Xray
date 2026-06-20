@@ -32,7 +32,16 @@ A session is not complete until it reports:
 2. checks run and results;
 3. checks not run and why;
 4. unverified areas or blockers;
-5. whether a commit was made. No commit should be made unless the user explicitly requests it.
+5. TDD status for meaningful behavior changes;
+6. whether a commit was made. No commit should be made unless the user explicitly requests it.
+
+Risk-based TDD is part of this QA contract. A meaningful risky change is not complete without either
+a focused test-first regression/contract step or an explicit documented waiver. Risky changes include
+bug fixes, portfolio math, diagnostics, classifications, API/backend contracts, staged review state,
+active `reviewId` lineage, candidate generation, current-vs-candidate comparison, decision verdict
+logic, workflow changes, output contracts, and shared interfaces. Pure documentation-only,
+investigation-only, or visual/copy/style-only sessions do not require TDD; visual frontend changes
+still require Browser / Playwright QA.
 
 ## Fast local QA shortcuts
 
@@ -230,7 +239,7 @@ Note: this working tree may contain pre-existing dirty files from earlier sessio
 
 | Session type | Minimum checks | Usually not required | Required final-response note |
 | --- | --- | --- | --- |
-| Docs-only contract or plan update | Verify referenced commands/paths are real when changed; targeted `rg` if stale terms or command names changed; `git diff --check`; `git status --short`. | Frontend build, frontend smoke, backend pytest, visual QA, generated-output refresh. | State that no runtime/frontend/backend code changed and why runtime tests were not run. |
+| Docs-only contract or plan update | Verify referenced commands/paths are real when changed; targeted `rg` if stale terms or command names changed; `git diff --check`; `git status --short`. | Frontend build, frontend smoke, backend pytest, visual QA, generated-output refresh, TDD. | State that no runtime/frontend/backend code changed, TDD was not applicable, and why runtime tests were not run. |
 | Docs-only command or QA documentation change | Confirm commands against `frontend/package.json`, `TESTING.md`, runbooks, or entrypoint files; `git diff --check`; `git status --short`. | Full test suite unless executable behavior claims changed. | State which sources were checked for command accuracy. |
 | Frontend route/screen implementation | `npm.cmd run typecheck`; `npm.cmd run build`; `npm.cmd run test:api`; `npm.cmd run test:smoke`; visual QA for changed route; relevant forbidden-term scans; git gates. | Backend full pytest unless API contracts or Python bridge behavior changed. | Include route, URL/port, sample/real mode, screenshots, and unverified states. |
 | Frontend API route / Python bridge / run-local lineage | Standard frontend checks; focused bridge/backend pytest; visual or smoke check if route behavior is user-visible; git gates. | Full pytest unless shared backend contracts changed. | Include active `reviewId` or explain why visual lineage was not exercised. |
@@ -255,12 +264,32 @@ Note: this working tree may contain pre-existing dirty files from earlier sessio
 | Documentation-only source-of-truth update | Verify links/commands touched; optional `python scripts/verify_docs.py` or `python -m pytest tests/test_docs_links.py -q` when links or source maps changed; git gates. |
 | Test or QA workflow change | Verify commands against package/test files; update `TESTING.md` and this contract if permanent; git gates. |
 
+## Risk-based TDD reporting
+
+For every meaningful behavior change, report:
+
+```text
+TDD status:
+- Required: yes/no
+- Test added or updated before implementation: yes/no/not applicable
+- Reason if not applicable:
+- Verification run:
+```
+
+Use `Required: yes` for bug fixes, financial calculations, diagnostics, classifications,
+API/backend contracts, staged state, active `reviewId` lineage, candidate/comparison/verdict logic,
+workflow or output contracts, and shared interfaces. Use `Required: no` for documentation-only,
+investigation-only, generated-output inspection with no source changes, and pure visual/copy/style
+changes. If `Required: yes` but no test was added or updated first, the reason must be specific and
+the alternate verification must match the changed risk.
+
 ## Final response reporting requirements
 
 Final responses must be concise and evidence-based. Include:
 
 - changed files;
 - what changed in plain language;
+- TDD status using the risk-based TDD reporting format when relevant;
 - checks run and whether they passed or failed;
 - checks not run and why;
 - unverified areas, blockers, or assumptions;
@@ -274,6 +303,7 @@ For docs-only sessions, explicitly say that runtime tests were not run because n
 ## Acceptance checklist for future sessions
 
 - [ ] The session selected checks based on the changed risk.
+- [ ] Risk-based TDD was applied or explicitly waived for meaningful risky behavior changes.
 - [ ] Frontend commands match `frontend/package.json` if frontend checks are listed.
 - [ ] Backend pytest selection follows `TESTING.md` and starts narrow.
 - [ ] Visual QA follows AGENTS and the vertical runbook when UI changed.

@@ -2,6 +2,8 @@
 
 ## 2026-06-20
 
+- Adopted a risk-based TDD governance policy for critical behavior changes, with explicit
+  test-first expectations, waiver reporting, and docs-only/visual-work exceptions.
 - Fixed the P1 exhaustive QA frontend production build blocker by running the QA build in an
   isolated `.next-qa-build` directory through a fresh child process; the local static exhaustive
   gate now records zero P0/P1/P2 blockers.

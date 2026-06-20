@@ -204,6 +204,24 @@ If these capabilities exist in code or generated outputs, classify them as `Adva
 - Do not invent formulas, estimators, scenarios, constraints, statuses, or data rules when a canonical spec exists.
 - Do not demote or delete implementation capabilities only because older concept docs omitted them; classify them as `Preserve`, `Advanced`, `Legacy`, or `Requires Review` unless a canonical spec or explicit task says otherwise.
 
+## TDD / Test-first Policy
+
+Use risk-based TDD for meaningful behavior changes. For bug fixes, portfolio math, diagnostics,
+problem classification, API/backend contracts, staged review state, active `reviewId` lineage,
+candidate generation, current-vs-candidate comparison, decision verdict logic, workflow changes,
+output contracts, or shared interfaces, prefer this sequence:
+
+1. add or update the narrowest test that captures the expected behavior and would fail on the old
+   behavior when practical;
+2. implement the minimal scoped change;
+3. refactor only after the focused test passes;
+4. run the verification level required by `TESTING.md` and `docs/contracts/QA_CONTRACT.md`.
+
+For risky changes where a test-first step is not practical, explicitly report the waiver reason and
+the alternate verification used. TDD is not required for documentation-only work, investigations
+with no file changes, or pure visual/copy/style changes; frontend visual changes still require
+Browser / Playwright QA under the rules below.
+
 ## Documentation and Verification
 
 Documentation sync is required for meaningful code, behavior, workflow, output, interface, QA, or source-of-truth changes. Use `WORKFLOW.md` and `docs/contracts/DOC_SYNC_CONTRACT.md` to decide which documents to update. Use `TESTING.md` and `docs/contracts/QA_CONTRACT.md` to decide which checks to run.

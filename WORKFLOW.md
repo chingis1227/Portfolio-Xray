@@ -15,13 +15,14 @@ Use this sequence for meaningful work:
 2. Classify the change area.
 3. Check the source of truth.
 4. Decide whether a plan is required.
-5. Implement scoped changes.
-6. Sync documentation.
-7. Verify with the right checks.
-8. Update project memory if needed.
-9. Review the diff and stale references.
-10. Commit only the intended files when asked.
-11. Report what changed and what was verified.
+5. Decide the test strategy, including whether risk-based TDD applies.
+6. Implement scoped changes.
+7. Sync documentation.
+8. Verify with the right checks.
+9. Update project memory if needed.
+10. Review the diff and stale references.
+11. Commit only the intended files when asked.
+12. Report what changed and what was verified.
 
 ## 1. Task Intake
 
@@ -128,6 +129,24 @@ Rules:
 - Preserve diagnostic-only boundaries unless a canonical spec changes them.
 - Keep assumptions explicit in code, configs, reports, or docs.
 
+## 4.5 Test Strategy And Risk-Based TDD
+
+Before editing implementation code, classify the test strategy:
+
+- `test-first required`: bug fixes; financial calculations; diagnostics; problem classification;
+  API/backend contracts; staged review state; active `reviewId` lineage; candidate generation,
+  comparison, or verdict logic; workflow, output, or shared-interface changes.
+- `test-first preferred`: localized behavior changes where a focused regression test is available
+  but the risk is limited.
+- `not applicable`: documentation-only work, investigation-only sessions, generated-output review
+  without source changes, or pure visual/copy/style updates.
+
+When `test-first required`, first add or update the narrowest failing regression/contract test when
+practical, then implement the behavior and rerun the focused check. If the test-first step is not
+practical, document the waiver reason and the alternate verification in the final response. Pure
+frontend visual changes do not require TDD, but they still require Browser / Playwright QA under
+`AGENTS.md` and `docs/contracts/QA_CONTRACT.md`.
+
 ## 5. Documentation Sync
 
 Documentation sync is part of done for meaningful changes.
@@ -225,6 +244,8 @@ After commit, report the commit hash and mention any remaining uncommitted files
 Final response should be short and evidence-based:
 
 - what changed
+- TDD status: required yes/no, test added or updated before implementation yes/no/not applicable,
+  waiver reason when applicable, and verification run
 - where it changed
 - what verification ran
 - what was not run and why
@@ -239,6 +260,7 @@ Request
 -> classify change
 -> check source of truth
 -> plan if needed
+-> decide test strategy / risk-based TDD status
 -> implement scoped change
 -> sync docs
 -> verify

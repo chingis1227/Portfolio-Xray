@@ -19,6 +19,37 @@ command/path existence checks when the edited docs mention commands or files. Br
 tests only if the documentation change also changes executable examples, required commands,
 acceptance criteria, or behavior expectations.
 
+## Risk-based TDD Gate
+
+Use test-first implementation for changes where an unnoticed regression could change product
+meaning, financial evidence, API compatibility, or review lineage. The expected sequence is:
+
+1. add or update the narrowest regression/contract test that captures the intended behavior and
+   would fail on the old behavior when practical;
+2. implement the minimal scoped change;
+3. rerun the focused test, then broaden according to the verification levels below.
+
+| Change type | TDD expectation | Minimum verification direction |
+| --- | --- | --- |
+| Bug fix | Regression test first | Focused failing-then-passing test for the bug; add adjacent tests by risk. |
+| Calculation, formula, diagnosis, or classification | Focused test first | Narrow pytest for the owning module/spec; broaden for shared math or data alignment. |
+| API schema, backend contract, staged state, or active `reviewId` lineage | Contract/regression test first | FastAPI/bridge/governance tests listed below for the affected boundary. |
+| Candidate generation, current-vs-candidate comparison, or verdict logic | Regression or contract test first | Focused product-bundle/candidate/comparison/verdict tests, then adjacent suites by risk. |
+| Workflow, output contract, or shared interface | Test-first preferred unless docs-only | Focused workflow/output/interface tests plus docs sync and git gates. |
+| Frontend visual, copy, style, spacing, or layout only | TDD not required | Browser / Playwright visual QA and relevant frontend checks/forbidden-term scans. |
+| Documentation-only or investigation-only | TDD not applicable | Docs verification, stale-reference checks when relevant, and git gates. |
+
+If a risky change does not use a test-first step, the final response must include a specific waiver
+reason and the alternate verification used. Report TDD status in this format:
+
+```text
+TDD status:
+- Required: yes/no
+- Test added or updated before implementation: yes/no/not applicable
+- Reason if not applicable:
+- Verification run:
+```
+
 ## Fast Docs-Only Gate
 
 Use this gate for documentation cleanup, source-of-truth routing changes, README/product wording, or
