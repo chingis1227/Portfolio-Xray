@@ -194,7 +194,9 @@ python run_report.py --output-profile full_report
 | `results_csv/` | Tabular metrics, stress, factor, scenario, and diagnostic CSV outputs | Generated |
 | `output/` | Auxiliary runtime output folder where configured | Generated |
 | `cache/` | Cached data/runtime material | Generated |
-| Candidate portfolio folders | Outputs for Equal Weight, Risk Parity, MinVar, CVaR, Robust MV, robust scenario, and other variants | Generated |
+| Candidate portfolio folders | Outputs for Equal Weight, Risk Parity, MinVar, CVaR, Robust MV, robust scenario, and other variants | Generated; ordinary variant folders are ignored and should not be tracked as source |
+| `analysis_mv_lambda_sensitivity/` | Legacy Robust MV lambda sensitivity sweep output | Generated; regenerate only when explicitly running the analysis |
+| `analysis_robust_mv_lambda_calibration/` | Robust MV lambda calibration output, including local `selected_lambda.txt` when calibration has been run | Generated local prerequisite for Robust MV baseline builders; not a source fixture |
 | `pdf files/` | Generated PDF-style report artifacts | Generated only when explicitly requested (`run_portfolio_review.py --with-pdf`, `--legacy-full-pdf`, `run_report.py --output-profile legacy_export`, or `rebuild_pdf_reports.py`); default site/API review does not write PDFs |
 | `pdf_md_sources/` | Generated Markdown sidecars used for PDF-style report builds | Generated |
 | `portfolio_weights.yml` | Optimizer-produced weights | Generated runtime output, not normal manual input |
@@ -234,7 +236,7 @@ Candidate Generation then writes one diagnostic candidate attempt. That candidat
 | **Advanced / research evidence** | `portfolio_health_score.json`, `robustness_scorecard.json`, `assumption_sensitivity.json`, `pareto_dominance.json`, `regret_analysis.json`, `tradeoff_explanation.json`, `model_risk_diagnostics.json` | Useful diagnostics for drill-down, research, review, and confidence checks. Do not frame these as the main Portfolio MRI answer or as automatic recommendations. |
 | **Action / monitoring / journal evidence** | `action_plan.json`, `monitoring_diff.json`, `decision_journal.json`, `decision_package_summary.json` | Current generated evidence for implementation review, change tracking, and reporting. Product-facing summaries should route through `decision_verdict.json` and `what_changed_summary.json` where available. |
 | **Legacy / compatibility artifacts** | `run_result.json`, `portfolio_weights.yml`, root legacy `portfolio_xray.json` / `stress_report.json` from policy runs, `current_vs_policy_status.json`, `portfolio_comparison.json`, `ew_rp_comparison.json` | Preserve for compatibility and historical workflows. Do not treat them as the portfolio-first subject or main diagnosis-first output unless the active workflow explicitly targets the legacy path. |
-| **Generated/export artifacts, not source-of-truth** | CSV/TXT/HTML/PNG/PDF/Markdown sidecars, candidate folders, cache, report exports | Generated output only. They may be refreshed by approved runs, but they are not source documentation or implementation contracts. |
+| **Generated/export artifacts, not source-of-truth** | CSV/TXT/HTML/PNG/PDF/Markdown sidecars, candidate folders, Robust MV calibration/sensitivity folders, cache, report exports | Generated output only. They may be refreshed by approved runs, but they are not source documentation or implementation contracts. |
 
 No files are deleted, renamed, or schema-migrated by this policy. It is a presentation and
 documentation boundary over current generated artifacts.

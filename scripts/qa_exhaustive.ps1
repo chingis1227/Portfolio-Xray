@@ -133,7 +133,9 @@ function Invoke-QaCommand {
         [string]$KnownFailureReason = "",
         [string]$Subsystem = "qa",
         [string]$Severity = "P2",
-        [int]$MaxAttempts = 1
+        [int]$MaxAttempts = 1,
+        [switch]$UseProcessRedirect,
+        [hashtable]$Environment = @{}
     )
     Write-Host ""
     Write-Host "==> $Name" -ForegroundColor Cyan
@@ -159,23 +161,57 @@ function Invoke-QaCommand {
         $output.Add("attempt: $attempt/$MaxAttempts") | Out-Null
 
         Push-Location $WorkingDirectory
+        $previousEnvironment = @{}
         try {
+            foreach ($key in $Environment.Keys) {
+                $previousEnvironment[$key] = [System.Environment]::GetEnvironmentVariable($key, "Process")
+                [System.Environment]::SetEnvironmentVariable($key, [string]$Environment[$key], "Process")
+                $output.Add("env:$key=$($Environment[$key])") | Out-Null
+            }
             $exe = $Command[0]
             $args = @()
             if ($Command.Count -gt 1) { $args = $Command[1..($Command.Count - 1)] }
-            & $exe @args 2>&1 | ForEach-Object {
-                $line = $_.ToString()
-                $output.Add($line) | Out-Null
-                Write-Host $line
+            if ($UseProcessRedirect) {
+                $attemptLogPrefix = Join-Path $LogsRoot ("$safeName-attempt-$attempt")
+                $stdoutPath = "$attemptLogPrefix.stdout.log"
+                $stderrPath = "$attemptLogPrefix.stderr.log"
+                $process = Start-Process `
+                    -FilePath $exe `
+                    -ArgumentList $args `
+                    -WorkingDirectory $WorkingDirectory `
+                    -NoNewWindow `
+                    -Wait `
+                    -PassThru `
+                    -RedirectStandardOutput $stdoutPath `
+                    -RedirectStandardError $stderrPath
+                foreach ($streamPath in @($stdoutPath, $stderrPath)) {
+                    if (-not (Test-Path $streamPath)) { continue }
+                    foreach ($line in Get-Content -LiteralPath $streamPath) {
+                        $output.Add($line) | Out-Null
+                        Write-Host $line
+                    }
+                }
+                $exitCode = $process.ExitCode
+            } else {
+                & $exe @args 2>&1 | ForEach-Object {
+                    $line = $_.ToString()
+                    $output.Add($line) | Out-Null
+                    Write-Host $line
+                }
+                $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }
             }
-            $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }
         }
         catch {
             $exitCode = if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -eq 0) { 1 } else { $LASTEXITCODE }
             $output.Add($_.Exception.Message) | Out-Null
             Write-Host $_.Exception.Message -ForegroundColor Red
         }
-        finally { Pop-Location }
+        finally {
+            foreach ($key in $previousEnvironment.Keys) {
+                [System.Environment]::SetEnvironmentVariable($key, $previousEnvironment[$key], "Process")
+            }
+            Pop-Location
+        }
 
         $output.Add("attempt_exit_code: $exitCode") | Out-Null
         if ($exitCode -eq 0) { break }
@@ -251,6 +287,25 @@ function Invoke-QaCommand {
         command = $commandText
         duration_seconds = $duration
         attempts_used = $attemptsUsed
+    }
+}
+
+function Remove-QaGeneratedDirectory {
+    param(
+        [Parameter(Mandatory = $true)][string]$Root,
+        [Parameter(Mandatory = $true)][string]$RelativePath
+    )
+    if ([System.IO.Path]::IsPathRooted($RelativePath) -or $RelativePath.Contains("..")) {
+        throw "Refusing to remove unsafe generated path: $RelativePath"
+    }
+    $rootFull = [System.IO.Path]::GetFullPath($Root)
+    $targetFull = [System.IO.Path]::GetFullPath((Join-Path $Root $RelativePath))
+    if (-not $targetFull.StartsWith($rootFull, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to remove generated path outside root: $targetFull"
+    }
+    if (Test-Path $targetFull) {
+        Write-Host "Removing generated QA directory: $targetFull" -ForegroundColor Yellow
+        Remove-Item -LiteralPath $targetFull -Recurse -Force
     }
 }
 
@@ -786,7 +841,9 @@ function Invoke-Session02LocalGate {
     $null = Invoke-QaCommand "Focused FastAPI public contract pytest" $RepoRoot ($python + @("-m", "pytest", "tests\test_fastapi_app.py", "tests\test_fastapi_contract_governance.py", "-q", "--basetemp=tmp\qa_exhaustive_fastapi_contract")) -Subsystem "FastAPI" -Severity "P1"
     $null = Invoke-QaCommand "Full backend pytest" $RepoRoot ($python + @("-m", "pytest")) -KnownFailureReason "Known full-suite baseline tracked in KNOWN_ISSUES.md: Session 02 exhaustive QA reported 34 failed, 1887 passed, 3 skipped on 2026-06-14." -Subsystem "backend" -Severity "P1"
     $null = Invoke-QaCommand "Frontend typecheck" $FrontendRoot @("npm.cmd", "run", "typecheck") -Subsystem "frontend" -Severity "P1"
-    $null = Invoke-QaCommand "Frontend production build" $FrontendRoot @("npm.cmd", "run", "build") -KnownFailureReason "Known Session 02 runner baseline tracked as KI-2026-06-14-001: npm.cmd run build can return -1 inside the long exhaustive gate after full pytest, while the same build command passes when run standalone." -Subsystem "frontend" -Severity "P1" -MaxAttempts 2
+    $qaBuildDir = ".next-qa-build"
+    Remove-QaGeneratedDirectory -Root $FrontendRoot -RelativePath $qaBuildDir
+    $null = Invoke-QaCommand "Frontend production build" $FrontendRoot @("npm.cmd", "run", "build") -Subsystem "frontend" -Severity "P1" -UseProcessRedirect -Environment @{ PMRI_NEXT_DIST_DIR = $qaBuildDir }
     $null = Invoke-QaCommand "Frontend API route tests" $FrontendRoot @("npm.cmd", "run", "test:api") -Subsystem "frontend API" -Severity "P1"
     $null = Invoke-QaCommand "Frontend smoke tests" $FrontendRoot @("npm.cmd", "run", "test:smoke") -Subsystem "frontend" -Severity "P1"
     $null = Invoke-QaCommand "Docs verification" $RepoRoot ($python + @("scripts\verify_docs.py")) -Subsystem "docs" -Severity "P2"

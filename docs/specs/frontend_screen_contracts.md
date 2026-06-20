@@ -14,7 +14,7 @@ Use with:
 
 ## Current route chain
 
-Canonical user path:
+Canonical new-user path:
 
 ```text
 /
@@ -32,6 +32,11 @@ Canonical user path:
 -> /report
 ```
 
+Returning signed-in users with completed onboarding and saved workspace, portfolio, draft, or review
+history may branch from sign-in/loading to `/workspace` before continuing an existing review or
+starting a new review at `/portfolio-input`. `/workspace` is outside the platform journey rail and
+must not run diagnosis or refresh market data on load.
+
 Local-only preview shortcut:
 
 ```text
@@ -39,6 +44,14 @@ Local-only preview shortcut:
 ```
 
 The shortcut is allowed for local testing while email sign-in is being stabilized. It must not be described as the canonical product path.
+
+Compatibility, advanced, and debug routes:
+
+- `/onboarding/goals` is a compatibility-only redirect to `/onboarding/investor-type`; it is not a
+  current onboarding step.
+- `/client-profile` is an advanced/manual Client Fit editor and must not be treated as Step 01.
+- `/sandbox/components` is a local component/state gallery. Developer provenance panels and
+  legacy/debug helper flows are operator review surfaces, not product journey routes.
 
 ## Platform journey rail
 
@@ -53,7 +66,8 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 | 07 | `/verdict` | Verdict | Produce non-binding decision support. |
 | 08 | `/report` | Report | Produce a grounded client-ready preview. |
 
-`/client-profile` is an advanced/manual Client Fit editor and must not be treated as Step 01.
+`/workspace`, `/client-profile`, `/onboarding/goals`, `/sandbox/components`, and technical auth or
+debug routes are not platform journey rail steps.
 
 ## Global screen rules
 
@@ -91,6 +105,20 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 - Must ask five one-question-at-a-time intake questions on `/onboarding/investor-type`.
 - Must map answers into bounded Client Fit context from stress-loss reaction, withdrawal horizon, temporary-loss limit, return target, and concentration response.
 - Must not call Client Fit suitability approval or investment advice.
+
+### Returning-user Workspace `/workspace`
+
+- Must be treated as an account home and compact history hub outside the 8-step review rail.
+- Must restore saved workspace, portfolio, draft, or review history without running diagnosis,
+  refreshing market data, generating candidates, comparing portfolios, or producing verdict/report
+  artifacts automatically.
+- Must keep historical compact reviews read-only unless same-run FastAPI lineage is confirmed for
+  downstream actions.
+
+### Compatibility redirect `/onboarding/goals`
+
+- Must redirect older links to `/onboarding/investor-type` with safe fallback copy.
+- Must not be listed as a current onboarding step or product goal screen.
 
 ## Platform screen contracts
 
@@ -182,6 +210,12 @@ The shortcut is allowed for local testing while email sign-in is being stabilize
 - Must not be the canonical first step.
 - Must keep Client Fit framed as non-binding context.
 
+### Local Component Sandbox `/sandbox/components`
+
+- Must be treated as a local UI foundation and state-gallery review route.
+- Must not call backend review APIs or appear as a product journey step.
+- May show sample component states, sample copy, and benchmark-route links for design QA.
+
 ## Forbidden primary UI language
 
 Do not show these terms in normal hero copy, CTAs, or primary cards:
@@ -194,8 +228,11 @@ Do not show these terms in normal hero copy, CTAs, or primary cards:
 
 - [ ] Landing CTA goes to `/onboarding/sign-in`.
 - [ ] Dev bypass remains documented only as local preview support.
+- [ ] Returning-user `/workspace` is documented as an account branch, not a review step.
+- [ ] `/onboarding/goals` remains compatibility-only.
 - [ ] Platform rail has 8 steps and page headers use matching numbers.
 - [ ] `/client-profile` is advanced/manual, not Step 01.
+- [ ] Sandbox/debug routes are excluded from canonical journey maps.
 - [ ] Missing/locked states explain the next safe step.
 - [ ] Candidate/verdict/report language remains non-binding and evidence-grounded.
 - [ ] `docs/design/current_website_structure.md` matches current route blocks and copy.

@@ -9,7 +9,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { VerdictHero } from "@/components/ui/VerdictHero";
 import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
 import { CaseFileTopCards } from "@/components/ui/CaseFileCards";
-import { displayTitleLabel, normalizeDisplaySentence } from "@/lib/displayLabels";
+import { displayTitleLabel, sanitizePublicDisplayList, sanitizePublicDisplayText } from "@/lib/displayLabels";
 import { useReviewState } from "@/lib/reviewState";
 
 type JsonRecord = Record<string, unknown>;
@@ -47,12 +47,12 @@ function stringArray(value: unknown) {
 
 function errorTextFromResponse(value: unknown) {
   if (!isRecord(value)) return "The grounded report preview could not be created.";
-  const message = normalizeDisplaySentence(value.error, "The grounded report preview could not be created.");
+  const message = sanitizePublicDisplayText(value.error, "The grounded report preview could not be created.");
   const details = value.details;
-  if (typeof details === "string" && details.trim()) return `${message} ${normalizeDisplaySentence(details)}`;
+  if (typeof details === "string" && details.trim()) return `${message} ${sanitizePublicDisplayText(details)}`;
   if (Array.isArray(details)) {
     const safeDetails = details
-      .map((item) => (typeof item === "string" ? normalizeDisplaySentence(item) : ""))
+      .map((item) => (typeof item === "string" ? sanitizePublicDisplayText(item, "") : ""))
       .filter(Boolean)
       .join(" ");
     return safeDetails ? `${message} ${safeDetails}` : message;
@@ -61,7 +61,7 @@ function errorTextFromResponse(value: unknown) {
 }
 
 function safeReportSentence(value: unknown, fallback = "") {
-  return normalizeDisplaySentence(value, fallback)
+  return sanitizePublicDisplayText(value, fallback)
     .replace(/\bb[u]y\s*\/\s*s[e]ll\b/gi, "make implementation decisions")
     .replace(/\bm[u]st\s+r[e]balance\b/gi, "should review the rebalance evidence")
     .replace(/\bm[u]st\s+(?:b[u]y|s[e]ll)\b/gi, "should review the evidence before changing")
@@ -76,23 +76,42 @@ function reportFromResult(result: unknown): GroundedReport | null {
     const display = result.report_display_model;
     const sections = Array.isArray(display.sections)
       ? display.sections.filter(isRecord).map((section) => ({
-        title: textValue(section.title, "Evidence"),
+        title: safeReportSentence(section.title, "Evidence"),
         body: safeReportSentence(section.body)
       })).filter((section) => section.body)
       : [];
     return {
-      title: textValue(display.title, "Grounded client-ready report summary"),
+      title: safeReportSentence(display.title, "Grounded client-ready report summary"),
       subtitle: safeReportSentence(display.subtitle, "Active review report preview grounded in available evidence."),
       sections,
-      evidenceUsed: stringArray(display.evidenceUsed).map((item) => safeReportSentence(item)),
-      unavailableEvidence: stringArray(display.unavailableEvidence).map((item) => safeReportSentence(item)),
+      evidenceUsed: sanitizePublicDisplayList(stringArray(display.evidenceUsed), "Selected diagnosis, comparison, and verdict evidence."),
+      unavailableEvidence: sanitizePublicDisplayList(stringArray(display.unavailableEvidence), "Some supporting comparison evidence is incomplete."),
       nextObservation: safeReportSentence(display.nextObservation, "Retest if diagnosis, comparison, or verdict evidence changes."),
       boundaryNote: safeReportSentence(display.boundaryNote, "Decision-support only."),
-      warnings: stringArray(display.warnings).map((warning) => safeReportSentence(warning)),
+      warnings: sanitizePublicDisplayList(stringArray(display.warnings), "Some supporting comparison evidence is incomplete."),
       generatedAt: typeof display.generatedAt === "string" ? display.generatedAt : undefined
     };
   }
   return null;
+}
+
+function sanitizeGroundedReport(report: GroundedReport): GroundedReport {
+  return {
+    ...report,
+    title: safeReportSentence(report.title, "Grounded client-ready report summary"),
+    subtitle: safeReportSentence(report.subtitle, "Active review report preview grounded in available evidence."),
+    sections: report.sections
+      .map((section) => ({
+        title: safeReportSentence(section.title, "Evidence"),
+        body: safeReportSentence(section.body)
+      }))
+      .filter((section) => section.body),
+    evidenceUsed: sanitizePublicDisplayList(report.evidenceUsed, "Selected diagnosis, comparison, and verdict evidence."),
+    unavailableEvidence: sanitizePublicDisplayList(report.unavailableEvidence, "Some supporting comparison evidence is incomplete."),
+    nextObservation: safeReportSentence(report.nextObservation, "Retest if diagnosis, comparison, or verdict evidence changes."),
+    boundaryNote: safeReportSentence(report.boundaryNote, "Decision-support only."),
+    warnings: sanitizePublicDisplayList(report.warnings, "Some supporting comparison evidence is incomplete.")
+  };
 }
 
 type ReportBlocker = {
@@ -133,6 +152,18 @@ export function ReportScreen() {
   const selectedCardId = candidateGeneration?.selectedCardId;
   const candidateId = candidateGeneration?.candidateId;
   const candidateDisplayName = displayTitleLabel(comparison?.candidateName ?? candidateId, "Diagnostic test not selected");
+  const publicDiagnosis = sanitizePublicDisplayText(
+    activeReview?.reviewSummary?.primaryProblem ?? activeReview?.reviewSummary?.diagnosis?.headline,
+    "Diagnosis evidence not ready"
+  );
+  const publicComparisonSummary = sanitizePublicDisplayText(
+    comparison?.summary,
+    "The comparison evidence is incomplete."
+  );
+  const publicVerdictStance = sanitizePublicDisplayText(
+    verdict?.headline ?? verdict?.state,
+    "Verdict not ready"
+  );
   const siteExplanation = activeReview?.reviewSummary?.siteExplanation;
   const comparisonMatchesCandidate = Boolean(
     comparison
@@ -223,7 +254,7 @@ export function ReportScreen() {
       && reportMatchesCandidate
       && (hasLiveLineage || activeReview?.readOnlyHistory)
     );
-    setReport(canDisplayReport ? activeReview?.reportResult ?? null : null);
+    setReport(canDisplayReport && activeReview?.reportResult ? sanitizeGroundedReport(activeReview.reportResult) : null);
     setReportError(undefined);
   }, [activeReview?.readOnlyHistory, activeReview?.reportResult, candidateId, hasLiveLineage, reportMatchesCandidate, reviewId, selectedCardId, verdict?.generatedAt]);
 
@@ -255,7 +286,7 @@ export function ReportScreen() {
         setReportError("The grounded report preview was unavailable from the current evidence.");
         return;
       }
-      setReport(mapped);
+      setReport(sanitizeGroundedReport(mapped));
       recordReportResult(result);
     } catch {
       setReportError("The grounded report preview could not be created.");
@@ -274,7 +305,7 @@ export function ReportScreen() {
           headline={report ? report.title : "Narrative report preview is evidence-gated"}
           interpretation={report ? report.subtitle : "The report summarizes selected diagnosis, stress, Client Fit, comparison, and verdict evidence only after the active review is complete."}
           facts={[
-            { label: "Main diagnosis", value: activeReview?.reviewSummary?.primaryProblem ?? activeReview?.reviewSummary?.diagnosis?.headline ?? "Diagnosis not ready" },
+            { label: "Main diagnosis", value: publicDiagnosis },
             { label: "Diagnostic test", value: candidateDisplayName }
           ]}
         />
@@ -291,7 +322,7 @@ export function ReportScreen() {
               {
                 eyebrow: "Evidence used",
                 title: report.evidenceUsed[0] ?? "Selected evidence list not returned",
-                value: activeReview?.reviewSummary?.primaryProblem ?? "Diagnosis evidence",
+                value: publicDiagnosis,
                 description: "The report is grounded in selected diagnosis, stress, Client Fit, comparison, and verdict evidence.",
                 tone: "slate"
               },
@@ -311,10 +342,10 @@ export function ReportScreen() {
             description="The report promotes only the evidence needed for the executive story."
             emptyMessage="The report preview is blocked until diagnosis, comparison, and verdict evidence are ready."
             items={[
-              { label: "Diagnosis", value: activeReview?.reviewSummary?.primaryProblem ?? "Diagnosis not ready" },
+              { label: "Diagnosis", value: publicDiagnosis },
               { label: "Stress evidence", value: report.evidenceUsed.find((item) => /stress|scenario|loss/i.test(item)) ?? "Selected stress evidence included when returned" },
-              { label: "Comparison outcome", value: comparison?.summary ?? "Comparison not ready" },
-              { label: "Verdict stance", value: verdict?.headline ?? verdict?.state ?? "Verdict not ready" }
+              { label: "Comparison outcome", value: publicComparisonSummary },
+              { label: "Verdict stance", value: publicVerdictStance }
             ]}
           />
         ) : null}

@@ -92,7 +92,7 @@ export function ComparisonMetricMatrix({ groups }: { groups: Array<{ title: stri
       <p className="pmri-type-meta text-pmri-text2">Comparison matrix</p>
       <h2 className="pmri-type-section-title mt-2 text-pmri-text">Current portfolio vs test candidate</h2>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-pmri-text2">
-        These comparison metrics are secondary evidence. Read them as investor trade-offs, not as a portfolio winner.
+        These comparison metrics are secondary evidence. Read them as investor trade-offs, not as a ranking or instruction.
       </p>
       <div className="mt-6 space-y-6">
         {groups.map((group) => (

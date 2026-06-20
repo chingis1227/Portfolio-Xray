@@ -256,7 +256,7 @@ PlatformTopHeader
 -> AdvancedDiagnostics collapsed below
 ```
 
-The first viewport must answer the main diagnosis, supporting evidence, next risk area, and next safe action before showing professional metrics, full X-Ray details, raw evidence-chain notes, or technical limitations.
+The first viewport must answer the main diagnosis, supporting evidence, next risk area, and next safe action before showing professional metrics, legacy technical `portfolio_xray.json` details, raw evidence-chain notes, or technical limitations.
 
 ### Hypothesis Builder Workstation
 

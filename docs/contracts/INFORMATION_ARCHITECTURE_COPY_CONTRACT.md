@@ -58,6 +58,18 @@ Badges are for specific risk severity, blocked/unavailable states, or compact ma
 
 Shared platform chrome must stay quiet. It may show route, portfolio label, currency, holding count, and data-window availability. It must not promote staged execution states such as `partial` into the main header metadata.
 
+## Public technical-leakage discipline
+
+Primary UI surfaces and public explanation cards must never expose raw backend, artifact, JSON, factory, lineage, or internal step-status language. This includes raw strings such as `factory step status:succeeded`, `factory profile id:explicit list`, `diff.supporting`, `Previous result ignored`, snake_case stage names, artifact filenames, JSON field paths, or success-status fragments.
+
+When backend evidence is incomplete, stale, or degraded, public copy must translate that state into client-readable language, for example:
+
+- "Some supporting comparison evidence is incomplete."
+- "Earlier evidence was skipped because it did not match the active review."
+- "Success criteria were not returned for this test."
+
+Raw provenance may appear only inside an explicit developer/debug provenance disclosure. Collapsed user-facing limitations may describe methodology or evidence quality, but they must still use product-language labels rather than file names, schema keys, or backend IDs.
+
 ## Regression enforcement
 
 The frontend static copy gate is:

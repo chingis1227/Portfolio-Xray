@@ -82,6 +82,41 @@ product or trading system.
   regenerate `lib/generated/api-types.ts` and update this mapping before fields are surfaced in UI.
 - `styles/` contains global Tailwind and Portfolio MRI CSS variables.
 
+## Frontend route taxonomy
+
+Canonical new-user path:
+
+```text
+/
+-> /onboarding/sign-in
+-> /onboarding/name
+-> /onboarding/investor-type
+-> /onboarding/loading
+-> /portfolio-input
+-> /diagnosis
+-> /evidence
+-> /client-fit
+-> /hypothesis
+-> /comparison
+-> /verdict
+-> /report
+```
+
+Returning signed-in users with completed onboarding and saved workspace, portfolio, draft, or review
+history may branch from sign-in/loading to `/workspace`. `/workspace` restores compact account state
+and review history only; it must not run diagnosis, refresh market data, generate candidates,
+compare portfolios, or create verdict/report artifacts automatically.
+
+Compatibility and local-only routes:
+
+- `/onboarding/goals` is a compatibility-only redirect to `/onboarding/investor-type`; do not add it
+  to journey rails or product route maps.
+- `/onboarding/name?dev_bypass=1` is a local preview shortcut when email sign-in is unavailable.
+- `/client-profile` is the advanced/manual Client Fit editor, not the normal onboarding entry step.
+- `/sandbox/components` is a local component/state gallery. Developer provenance panels and
+  legacy/debug helper flows are operator review surfaces, not product journey routes.
+- `/auth/callback` is a technical Supabase auth callback route, not a product screen.
+
 ## Portfolio Input validation
 
 - The normal web journey starts with the public landing page and requires email sign-in. New users
@@ -115,7 +150,8 @@ product or trading system.
 
 ## Review state and storage
 
-- The real user-facing flow is Landing -> required email sign-in -> Onboarding -> Workspace for returning users -> Portfolio Input ->
+- The real user-facing flow is Landing -> required email sign-in -> Onboarding -> Portfolio Input for
+  new users, with a returning-user branch to Workspace when saved account state exists, then
   Diagnosis -> Stress Test Lab -> Client Fit
   -> Hypothesis / Builder prepare and Candidate Generation -> Current vs Candidate -> Decision Verdict -> Report / grounded
   explanation preview. `/workspace` is an account home and history hub, not a calculation stage. If comparison evidence is current but metrics are unavailable, the UI may still
@@ -124,7 +160,10 @@ product or trading system.
 - The UI stores compact display state in `pmri.activeReview.v2`: the Client Fit profile, `reviewId`, portfolio input, diagnosis/stress/Client Fit evidence, launchpad/builder summaries, selected card/candidate, and stage summaries. Core screens consume display models, not raw backend artifact trees. `/hypothesis` builds a `HypothesisScreenModel` so one primary diagnosis, one recommended diagnostic test, the action console, Client Fit context, alternatives, and evidence details are ranked consistently for every portfolio. Candidate generation is enabled only when the selected Launchpad card has an eligible test method and the current FastAPI backend confirms that the run-local `reviewId` still exists. After candidate generation returns a generated and compare-ready candidate, the UI hands off to `/comparison`, where current and candidate weights are shown together and same-candidate comparison is attempted; blocked or non-comparable attempts stay on Hypothesis and do not mark `candidateReady`.
 - The staged migration adds compact `review_state_v1` progress fields to the active review state:
   overall run status, current stage, per-stage statuses, provider status, mode (`demo_qa` or `live`),
-  and safe stage errors. Portfolio Input saves `reviewId` immediately and moves the user to
+  and safe stage errors. `lib/review/reviewCaseClientState.ts` is the additive client-state helper
+  for projecting that staged progress into screen-ready stage progress, safe artifact availability,
+  progress counts, and diagnosis-chain readiness without changing public API envelopes. Portfolio
+  Input saves `reviewId` immediately and moves the user to
   `/diagnosis` without waiting for the full backend calculation. The Diagnosis route polls staged
   status but keeps per-stage status rows and provider freshness as internal operational state; the
   normal UI shows only a simple product-facing running message and safe errors. It hydrates screen
@@ -270,7 +309,12 @@ when the route chain and stale-card 409 proof pass. If live market data is
 unavailable, treat the failure as a data-provider blocker and inspect the report/logs before making
 frontend or product conclusions.
 
-Open `http://localhost:3000` to start at the landing page. Click `Enter Platform`, sign in with email when auth is available, complete the short onboarding, and the app will open the signed-in workspace when saved workspace/history exists or Portfolio Input when no saved workspace exists yet. For local preview while email sign-in is unavailable, open `http://localhost:3000/onboarding/name?dev_bypass=1`; this is a development shortcut, not the canonical product path.
+Open `http://localhost:3000` to start at the landing page. Click `Enter Platform`, sign in with
+email when auth is available, complete the short onboarding, and the app will open Portfolio Input
+for a new user or the signed-in workspace when saved workspace/history exists. For local preview
+while email sign-in is unavailable, open `http://localhost:3000/onboarding/name?dev_bypass=1`; this
+is a development shortcut, not the canonical product path. Older links to `/onboarding/goals`
+redirect to the current `/onboarding/investor-type` intake and are not part of the current journey.
 Override the FastAPI URL for the Next.js proxy with `PMRI_FASTAPI_BASE_URL` only when intentionally
 using a separately managed backend. `FASTAPI_BASE_URL` is also accepted as a compatibility alias for
 manual local launches.
@@ -278,11 +322,16 @@ manual local launches.
 Optional checks:
 
 ```bash
+npm run lint
 npm run test:api
 npm run test:smoke
 npm run typecheck
 npm run build
 ```
+
+`npm run lint` is configured with `frontend/.eslintrc.json` and should run without opening the
+interactive Next.js ESLint setup prompt. The current lint baseline exits successfully but may report
+existing warnings.
 
 Regenerate FastAPI contract types from the repository root after intentional FastAPI schema changes:
 
@@ -302,7 +351,8 @@ Use [../docs/demo/frontend_backend_vertical_runbook.md](../docs/demo/frontend_ba
 
 - commands for Python bridge tests and frontend typecheck/build;
 - how to start the Next.js frontend;
-- the public Landing -> required email sign-in -> Onboarding entry path before Portfolio Input, plus the local-only `dev_bypass` preview path;
+- the public Landing -> required email sign-in -> Onboarding entry path before Portfolio Input, the
+  returning-user `/workspace` branch, and the local-only `dev_bypass` preview path;
 - the manual Portfolio Input -> Diagnosis -> Stress Test Lab -> Hypothesis / Builder prepare and Candidate Generation -> Comparison -> Verdict -> Report click path;
 - run directory strategy under `runs/frontend_review_*`;
 - stale artifact risks and recovery;
@@ -324,6 +374,10 @@ is no longer the normal frontend route-path gate.
 
 ## Design-system sandbox
 
-Use `/sandbox/components` for local UI foundation review before changing production routes. It previews shared primitives from `frontend/components/ui/`, the active diagnostic-test context strip, product-facing state shells, evidence/matrix components, and diagnosis product components without calling backend review APIs or changing journey gating.
+Use `/sandbox/components` for local UI foundation review before changing production routes. It
+previews shared primitives from `frontend/components/ui/`, the active diagnostic-test context strip,
+product-facing state shells, evidence/matrix components, and diagnosis product components without
+calling backend review APIs or changing journey gating. It is a sandbox/debug route, not a canonical
+product journey step.
 
 For the current benchmark route, `/diagnosis` should remain composed as `DiagnosisHero -> EvidenceStrip -> DiagnosticCanvas -> AdvancedDiagnostics`, with technical metrics collapsed below the first-read diagnosis.

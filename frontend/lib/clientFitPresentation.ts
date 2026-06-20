@@ -1,5 +1,6 @@
 import type { ClientFitDisplaySummary, ClientFitTargetDisplayRow } from "@/lib/generated/api-types";
 import type { SiteExplanationBundle, StatusTone } from "@/lib/types";
+import { sanitizePublicDisplayText } from "@/lib/displayLabels";
 
 export type ClientFitReason = {
   id: string;
@@ -66,13 +67,14 @@ const ROW_STATUS_LABELS: Array<[RegExp, string]> = [
 ];
 
 const unsafeClientFitPublicTextPattern = /\b(?:suitability|suitable|approved|safe portfolio|no action needed|trade now|must rebalance|best portfolio|optimizer mandate)\b|\bsell\b(?!-off)|\bbuy\b/i;
+const NEAR_LIMIT_PERCENT_BREACH = 0.5;
 
 function fallbackText(value: string | null | undefined, fallback: string) {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
 function cleanPublicClientFitText(value: string | null | undefined, fallback: string) {
-  const text = fallbackText(value, fallback).replace(/\s+/g, " ").trim();
+  const text = sanitizePublicDisplayText(fallbackText(value, fallback), fallback).replace(/\s+/g, " ").trim();
   if (!text || unsafeClientFitPublicTextPattern.test(text)) return fallback;
   return text;
 }
@@ -111,19 +113,63 @@ function dimensionLabel(value: string | null | undefined) {
   return DIMENSION_LABELS[raw] ?? raw;
 }
 
+function parsePercentLabel(value: string | null | undefined) {
+  const text = fallbackText(value, "");
+  const match = text.match(/-?\d+(?:\.\d+)?/);
+  if (!match) return null;
+  const parsed = Number(match[0]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatYearCount(value: number) {
+  const rounded = Math.round(value * 10) / 10;
+  const label = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return `${label} year${rounded === 1 ? "" : "s"}`;
+}
+
+function clientFitValueLabel(label: string, row: ClientFitTargetDisplayRow) {
+  const raw = fallbackText(row.portfolio_value_label, "Unavailable");
+  if (/horizon/i.test(label)) {
+    const numeric = parsePercentLabel(raw);
+    if (/%/.test(raw) && numeric !== null) return formatYearCount(numeric / 100);
+    if (/^\s*\d+(?:\.\d+)?\s*$/.test(raw) && numeric !== null) return formatYearCount(numeric);
+  }
+  return sanitizePublicDisplayText(raw, "Unavailable");
+}
+
+function nearLimitReason(label: string, row: ClientFitTargetDisplayRow) {
+  if (!/stress loss|drawdown/i.test(label)) return false;
+  const portfolio = parsePercentLabel(row.portfolio_value_label);
+  const target = parsePercentLabel(row.target_or_limit_label);
+  if (portfolio === null || target === null) return false;
+  const breach = Math.abs(portfolio) - Math.abs(target);
+  return breach > 0 && breach <= NEAR_LIMIT_PERCENT_BREACH;
+}
+
 function rowToReason(row: ClientFitTargetDisplayRow, index: number): ClientFitReason {
+  const label = dimensionLabel(row.dimension_label);
+  const isNearLimit = nearLimitReason(label, row);
   return {
     id: `${row.dimension_label || "client-fit-row"}-${index}`,
-    label: dimensionLabel(row.dimension_label),
-    value: fallbackText(row.portfolio_value_label, "Unavailable"),
-    target: fallbackText(row.target_or_limit_label, "No target returned"),
-    status: shortLabel(row.status_label, ROW_STATUS_LABELS, "Check"),
-    tone: row.status_tone ?? "slate",
-    explanation: cleanPublicClientFitText(row.explanation, "This check compares the current portfolio evidence with your stated profile.")
+    label,
+    value: clientFitValueLabel(label, row),
+    target: sanitizePublicDisplayText(row.target_or_limit_label, "No target returned"),
+    status: isNearLimit ? "Near limit" : shortLabel(row.status_label, ROW_STATUS_LABELS, "Check"),
+    tone: isNearLimit ? "amber" : row.status_tone ?? "slate",
+    explanation: isNearLimit
+      ? "Stress loss is slightly beyond the stated limit; treat this as a review flag, not a hard suitability result."
+      : cleanPublicClientFitText(row.explanation, "This check compares the current portfolio evidence with your stated profile.")
   };
 }
 
-function statusHeadline(statusLabel: string) {
+function hasOnlyNearLimitBreaches(reasons: ClientFitReason[]) {
+  const hardBreaches = reasons.filter((row) => row.tone === "red" || /outside|conflict/i.test(row.status));
+  if (!hardBreaches.length) return reasons.some((row) => /near limit|slightly outside/i.test(row.status));
+  return hardBreaches.every((row) => /near limit|slightly outside/i.test(row.status));
+}
+
+function statusHeadline(statusLabel: string, reasons: ClientFitReason[]) {
+  if (hasOnlyNearLimitBreaches(reasons)) return "The current portfolio is close to the risk limit you described.";
   if (/outside/i.test(statusLabel)) return "The current portfolio is outside the risk level you described.";
   if (/worth reviewing|watch/i.test(statusLabel)) return "The current portfolio is close enough to review carefully.";
   if (/within/i.test(statusLabel)) return "The current portfolio sits within the risk profile you described.";
@@ -135,6 +181,10 @@ function statusHeadline(statusLabel: string) {
 function statusSummary(statusLabel: string, topReasons: ClientFitReason[]) {
   const failed = topReasons.filter((row) => row.tone === "red" || /outside|conflict/i.test(row.status));
   const watch = topReasons.filter((row) => row.tone === "amber" || /watch/i.test(row.status));
+  if (hasOnlyNearLimitBreaches(topReasons)) {
+    const names = watch.slice(0, 2).map((row) => row.label.toLowerCase()).join(" and ");
+    return `${names || "The profile check"} is near the stated boundary. Treat this as diagnostic context before choosing a candidate test.`;
+  }
   if (failed.length) {
     const names = failed.slice(0, 2).map((row) => row.label.toLowerCase()).join(" and ");
     return `Main mismatch: ${names}. Treat this as diagnostic context before choosing a candidate test.`;
@@ -179,13 +229,14 @@ export function buildClientFitPresentation(
   const statusLabel = shortLabel(summary?.status_label, SHORT_STATUS_LABELS, "Profile missing");
   const primaryReasons = rows.filter((row) => row.tone !== "green").slice(0, 3);
   const visibleReasons = primaryReasons.length ? primaryReasons : rows.slice(0, 3);
+  const presentationTone = hasOnlyNearLimitBreaches(visibleReasons) ? "amber" : summary?.status_tone ?? "amber";
 
   return {
     statusLabel,
-    statusTone: summary?.status_tone ?? "amber",
+    statusTone: presentationTone,
     profileLabel: profileLabel(summary?.profile_label),
     sourceLabel: profileLabel(summary?.source_quality_label),
-    headline: statusHeadline(statusLabel),
+    headline: statusHeadline(statusLabel, visibleReasons),
     summary: statusSummary(statusLabel, visibleReasons),
     primaryReasons: visibleReasons,
     secondaryRows: rows.slice(3),

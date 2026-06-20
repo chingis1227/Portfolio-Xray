@@ -251,6 +251,83 @@ def _is_boundary_or_guardrail_line(line: str) -> bool:
     return bool(BOUNDARY_CONTEXT_PATTERN.search(line))
 
 
+def _strip_regex_literals(line: str) -> str:
+    """Remove JavaScript/TypeScript regex literals while preserving string copy.
+
+    Frontend adapters intentionally keep forbidden advice-like phrases inside
+    sanitizer regexes. Those patterns are not public copy, but quoted strings on
+    the same line still need to be scanned.
+    """
+
+    output: list[str] = []
+    index = 0
+    quote: str | None = None
+    escaped_in_quote = False
+    while index < len(line):
+        char = line[index]
+        if quote:
+            output.append(char)
+            if escaped_in_quote:
+                escaped_in_quote = False
+            elif char == "\\":
+                escaped_in_quote = True
+            elif char == quote:
+                quote = None
+            index += 1
+            continue
+
+        if char in {'"', "'", "`"}:
+            quote = char
+            output.append(char)
+            index += 1
+            continue
+
+        if char != "/":
+            output.append(char)
+            index += 1
+            continue
+
+        previous = ""
+        cursor = len(output) - 1
+        while cursor >= 0:
+            if not output[cursor].isspace():
+                previous = output[cursor]
+                break
+            cursor -= 1
+        prefix = "".join(output).rstrip()
+        if previous not in {"=", "(", "[", "{", ",", ":", "!"} and not prefix.endswith("return"):
+            output.append(char)
+            index += 1
+            continue
+
+        end = index + 1
+        escaped = False
+        in_character_class = False
+        while end < len(line):
+            current = line[end]
+            if escaped:
+                escaped = False
+            elif current == "\\":
+                escaped = True
+            elif current == "[":
+                in_character_class = True
+            elif current == "]":
+                in_character_class = False
+            elif current == "/" and not in_character_class:
+                end += 1
+                while end < len(line) and line[end].isalpha():
+                    end += 1
+                output.append(" ")
+                index = end
+                break
+            end += 1
+        else:
+            output.append(char)
+            index += 1
+
+    return "".join(output)
+
+
 def _validate_text_governance(files: list[Path] | None = None) -> list[str]:
     """Scan public display/API copy for unqualified advice-like wording."""
 
@@ -261,10 +338,11 @@ def _validate_text_governance(files: list[Path] | None = None) -> list[str]:
         except UnicodeDecodeError:
             continue
         for lineno, line in enumerate(lines, start=1):
+            scan_line = _strip_regex_literals(line) if path.suffix.lower() in {".ts", ".tsx", ".js", ".cjs"} else line
             for label, pattern in ADVICE_LIKE_PATTERNS:
-                if not pattern.search(line):
+                if not pattern.search(scan_line):
                     continue
-                if _is_boundary_or_guardrail_line(line):
+                if _is_boundary_or_guardrail_line(scan_line):
                     continue
                 rel = path.relative_to(REPO_ROOT) if path.is_relative_to(REPO_ROOT) else path
                 errors.append(

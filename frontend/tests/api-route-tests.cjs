@@ -27,6 +27,7 @@ const reviewStatePath = path.resolve(frontendRoot, "lib", "reviewState.tsx");
 const stagedSafeErrorPath = path.resolve(frontendRoot, "lib", "review", "stagedSafeError.ts");
 const fastApiErrorsPath = path.resolve(frontendRoot, "lib", "server", "fastapi", "errors.ts");
 const candidateGenerationReadinessPath = path.resolve(frontendRoot, "lib", "review", "candidateGenerationReadiness.ts");
+const reviewCaseClientStatePath = path.resolve(frontendRoot, "lib", "review", "reviewCaseClientState.ts");
 const journeyPath = path.resolve(frontendRoot, "lib", "journey.ts");
 const clientFitContextCardPath = path.resolve(frontendRoot, "components", "client-fit", "ClientFitContextCard.tsx");
 const clientFitScreenPath = path.resolve(frontendRoot, "components", "client-fit", "ClientFitScreen.tsx");
@@ -35,6 +36,7 @@ const siteExplanationHierarchyPath = path.resolve(frontendRoot, "components", "e
 const diagnosisPagePath = path.resolve(frontendRoot, "app", "diagnosis", "page.tsx");
 const diagnosisScreenPath = path.resolve(frontendRoot, "components", "diagnosis", "DiagnosisScreen.tsx");
 const diagnosisDisplayModelPath = path.resolve(frontendRoot, "lib", "diagnosisDisplayModel.ts");
+const displayLabelsPath = path.resolve(frontendRoot, "lib", "displayLabels.ts");
 const diagnosisSummaryPanelPath = path.resolve(frontendRoot, "components", "diagnosis", "DiagnosisSummaryPanel.tsx");
 const stressStoryModelPath = path.resolve(frontendRoot, "components", "evidence", "stressStoryModel.ts");
 const stressLabModelPath = path.resolve(frontendRoot, "components", "evidence", "stressLabModel.ts");
@@ -46,6 +48,8 @@ const verdictScreenPath = path.resolve(frontendRoot, "components", "verdict", "V
 const reportScreenPath = path.resolve(frontendRoot, "components", "report", "ReportScreen.tsx");
 const siteExplanationPresenterPath = path.resolve(frontendRoot, "lib", "siteExplanationPresenter.ts");
 const hypothesisScreenModelPath = path.resolve(frontendRoot, "lib", "hypothesis", "hypothesisScreenModel.ts");
+const hypothesisBuilderDefaultsPath = path.resolve(frontendRoot, "lib", "hypothesis", "builderDefaults.ts");
+const comparisonPresentationPath = path.resolve(frontendRoot, "lib", "comparisonPresentation.ts");
 
 function makeJsonRequest(body, url = "http://localhost/api/portfolio/builder/prepare") {
   return new Request(url, {
@@ -1192,13 +1196,97 @@ test("active review state exposes a shared diagnosis chain helper and can downgr
   const source = fs.readFileSync(reviewStatePath, "utf8");
 
   assert.match(source, /export function diagnosisStageChainReady/);
-  assert.match(source, /stageReady\("xray"\)/);
-  assert.match(source, /stageReady\("stress"\)/);
-  assert.match(source, /stageReady\("problem_classification"\)/);
-  assert.match(source, /stageReady\("launchpad_builder"\)/);
+  assert.match(source, /reviewCaseDiagnosisChainReady\(progress\)/);
+  assert.match(source, /REVIEW_CASE_STAGE_NAMES/);
   assert.match(source, /markLiveLineageUnavailable/);
   assert.match(source, /readOnlyHistory:\s*true/);
   assert.match(source, /lineageAvailable:\s*false/);
+});
+
+
+test("active review state compacts staged status through review case client read model", () => {
+  const source = fs.readFileSync(reviewStatePath, "utf8");
+  assert.match(source, /buildReviewCaseClientReadModelFromStatus\(status\)/);
+  assert.match(source, /buildReviewCaseClientReadModel\(progress\)/);
+  assert.match(source, /readModel\.stageProgress\.map/);
+  assert.match(source, /readModel\.stageProgress\.find\(\(row\) => row\.stage === stage\)\?\.isReady/);
+});
+
+test("review case client state helper projects staged status into screen-ready progress", () => {
+  const helper = loadTsModule(reviewCaseClientStatePath);
+  const model = helper.buildReviewCaseClientReadModelFromStatus({
+    schema_version: "review_state_v1",
+    review_id: "frontend_review_case_state",
+    status: "partial",
+    current_stage: "launchpad_builder",
+    mode: "live",
+    provider_status: {
+      freshness: "fresh",
+      message: "Provider data loaded.",
+      source: "test"
+    },
+    updated_at: "2026-06-19T12:00:00.000Z",
+    warnings: ["Test warning"],
+    artifacts: {
+      portfolio_xray: "analysis_subject/portfolio_xray.json",
+      unsafe_absolute: "C:\\private\\portfolio_xray.json",
+      unsafe_parent: "../private/stress_report.json"
+    },
+    stages: {
+      xray: {
+        status: "completed",
+        artifact_refs: ["analysis_subject/portfolio_xray.json", "C:\\private\\portfolio_xray.json"]
+      },
+      stress: {
+        status: "partial",
+        artifact_refs: ["analysis_subject/stress_report.json"]
+      },
+      problem_classification: {
+        status: "completed",
+        artifact_refs: ["logical://problem_classification"]
+      },
+      launchpad_builder: {
+        status: "completed",
+        artifact_refs: ["analysis_subject/candidate_launchpad.json"]
+      }
+    }
+  });
+
+  assert.equal(model.schemaVersion, "review_case_client_state_v1");
+  assert.equal(model.reviewId, "frontend_review_case_state");
+  assert.equal(model.stageProgress.length, helper.REVIEW_CASE_STAGE_NAMES.length);
+  assert.equal(model.diagnosisChainReady, true);
+  assert.equal(model.progressCounts.ready, 4);
+  assert.equal(model.currentStage, "launchpad_builder");
+  assert.equal(model.nextIncompleteStage, "input");
+  assert.deepEqual(
+    model.artifactAvailability.map((artifact) => artifact.ref).sort(),
+    [
+      "analysis_subject/candidate_launchpad.json",
+      "analysis_subject/portfolio_xray.json",
+      "analysis_subject/stress_report.json",
+      "logical://problem_classification"
+    ].sort()
+  );
+  assert.doesNotMatch(JSON.stringify(model), /C:\\\\private|\.\.\/private/);
+});
+
+test("review case client state helper builds started-review progress without changing public started shape", () => {
+  const helper = loadTsModule(reviewCaseClientStatePath);
+  const model = helper.buildReviewCaseClientReadModelFromStarted({
+    schema_version: "review_started_v1",
+    review_id: "frontend_review_started",
+    status: "running",
+    current_stage: "data_load",
+    mode: "demo_qa",
+    warnings: []
+  });
+
+  assert.equal(model.rawStateSchemaVersion, "review_started_v1");
+  assert.equal(model.reviewId, "frontend_review_started");
+  assert.equal(model.mode, "demo_qa");
+  assert.equal(model.stageProgress.find((stage) => stage.stage === "data_load").status, "running");
+  assert.equal(model.diagnosisChainReady, false);
 });
 
 test("Supabase staged persistence keeps canonical stage names and strips raw artifact references", () => {
@@ -1581,13 +1669,23 @@ test("Hypothesis screen model defaults to one actionable Launchpad card and bloc
 
 test("Hypothesis Builder defaults are not derived from Client Fit profile constraints", () => {
   const source = fs.readFileSync(hypothesisScreenPath, "utf8");
-  const resetBuilderDefaults = /setBuilderSettings\(DEFAULT_BUILDER_SETTINGS\)/;
+  const resetBuilderDefaults = /setBuilderSettings\(settingsForConstraintPreset\("balanced", holdingCount\)\)/;
 
   assert.doesNotMatch(source, /CLIENT_FIT_TO_BUILDER_PRESET|builderSettingsForClientFit/);
   assert.doesNotMatch(source, /clientFitProfile\?\.preset_id[\s\S]{0,240}constraintPreset/);
   assert.doesNotMatch(source, /reviewSummary\?\.clientFit\?\.profile_label[\s\S]{0,240}constraintPreset/);
   assert.match(source, resetBuilderDefaults);
+  assert.match(source, /safeMaxAssetWeightForHoldingCount/);
   assert.match(source, /ClientFitContextCard/);
+});
+
+test("Hypothesis Builder default max cap remains feasible for a three-holding smoke portfolio", () => {
+  const defaults = loadTsModule(hypothesisBuilderDefaultsPath);
+
+  assert.equal(defaults.safeMaxAssetWeightForHoldingCount(3, 0.2), 0.34);
+  assert.equal(defaults.safeMaxAssetWeightForHoldingCount(3, 0.5), 0.5);
+  assert.equal(defaults.holdingCountFromReview({ holdings: [{}, {}, {}] }), 3);
+  assert.equal(defaults.holdingCountFromReview({ reviewSummary: { holdingsCount: 3 } }), 3);
 });
 
 test("site explanation presenter strips raw provenance from the public display model", () => {
@@ -1775,6 +1873,45 @@ test("Client Fit pass presentation remains contextual and does not approve inact
   assert.doesNotMatch(serialized, /suitability|suitable|approved|safe portfolio|no action needed|trade now|must rebalance|best portfolio|optimizer mandate/i);
 });
 
+test("Client Fit presentation treats tiny stress-limit breaches as near limit and formats horizon as years", () => {
+  const presenter = loadTsModule(clientFitPresentationPath);
+  const display = presenter.buildClientFitPresentation({
+    status_label: "Outside stated Client Fit limits",
+    status_tone: "red",
+    profile_label: "balanced",
+    source_quality_label: "high",
+    decision_boundary: "Client Fit is non-binding diagnostic context.",
+    next_best_test: "Continue to the hypothesis page.",
+    target_rows: [
+      {
+        dimension_label: "Worst stress loss limit",
+        portfolio_value_label: "-20.3%",
+        target_or_limit_label: "Limit: -20.0%",
+        status_label: "Outside stated Client Fit limits",
+        status_tone: "red",
+        explanation: "Worst stress loss is worse than the stated drawdown limit."
+      },
+      {
+        dimension_label: "Investment horizon",
+        portfolio_value_label: "700.0%",
+        target_or_limit_label: "7 years",
+        status_label: "Within stated Client Fit profile",
+        status_tone: "green",
+        explanation: "Horizon is aligned."
+      }
+    ]
+  });
+
+  const stressRow = display.allRows.find((row) => row.label === "Stress loss");
+  const horizonRow = display.allRows.find((row) => row.label === "Horizon");
+
+  assert.equal(stressRow.status, "Near limit");
+  assert.equal(stressRow.tone, "amber");
+  assert.match(display.headline, /close to the risk limit/i);
+  assert.equal(horizonRow.value, "7 years");
+  assert.doesNotMatch(JSON.stringify(display), /700\.0%|outside the risk level/i);
+});
+
 test("site explanation presenter exposes raw provenance only when explicitly requested", () => {
   const presenter = loadTsModule(siteExplanationPresenterPath);
   const rawBundle = {
@@ -1873,6 +2010,94 @@ test("diagnosis display model keeps the public Diagnosis screen compact", () => 
   assert.ok(model.advancedMetrics.some((metric) => metric.label === "Sharpe"));
   assert.ok(!model.advancedMetrics.some((metric) => metric.label === "Treynor"));
   assert.deepEqual(model.limitations, ["Missing source:stress evidence"]);
+});
+
+test("display labels normalize diagnostic section and block ranges across dash forms", () => {
+  const { normalizeDisplayLabel } = loadTsModule(displayLabelsPath);
+  const expected = "Portfolio behavior and factor evidence";
+
+  [
+    "diagnostic section 2.1 - 2.3",
+    "diagnostic sections 2.1 \u2013 2.3",
+    "diagnostic sections 2.1 \u2014 2.3",
+    "block 2.1-2.3",
+    "blocks 2.1\u20132.3",
+    "blocks 2.1\u20142.3"
+  ].forEach((label) => {
+    assert.equal(normalizeDisplayLabel(label), expected);
+  });
+});
+
+test("public text sanitizer removes technical leakage from user-facing copy", () => {
+  const { containsPublicTechnicalText, sanitizePublicDisplayList, sanitizePublicDisplayText } = loadTsModule(displayLabelsPath);
+  const banned = /factory|artifact|json|diff\.supporting|explicit list|status:succeeded|Previous result ignored|candidate builder step status/i;
+
+  [
+    "factory step status:succeeded",
+    "factory profile id:explicit list",
+    "Previous result ignored because it is outdated",
+    "monitoring diff.supporting data",
+    "status degraded across 20 dimension(s)",
+    "Success criteria: Unavailable",
+    "Evidence is not available yet for this screen."
+  ].forEach((text) => {
+    const sanitized = sanitizePublicDisplayText(text);
+    assert.doesNotMatch(sanitized, banned);
+    assert.doesNotMatch(sanitized, /Evidence is not available yet/i);
+    assert.equal(containsPublicTechnicalText(sanitized), false);
+  });
+
+  const list = sanitizePublicDisplayList([
+    "candidate builder step status:succeeded",
+    "factory profile id:explicit list"
+  ]);
+  assert.ok(list.length > 0);
+  assert.doesNotMatch(JSON.stringify(list), banned);
+});
+
+test("comparison public summary follows improved matrix evidence", () => {
+  const { deriveComparisonPublicSummary } = loadTsModule(comparisonPresentationPath);
+  const summary = deriveComparisonPublicSummary({
+    improved: ["No available comparison metric showed a clear improvement."],
+    worsened: [],
+    evidenceQuality: "limited",
+    materiality: "status degraded across 2 dimension(s)",
+    metrics: [
+      {
+        metric: "Largest holding weight",
+        current: "50%",
+        candidate: "34%",
+        direction: "Improved",
+        tradeoff: "Lower single-name concentration",
+        tone: "blue"
+      },
+      {
+        metric: "Weight concentration HHI",
+        current: "0.39",
+        candidate: "0.33",
+        direction: "Improved",
+        tradeoff: "Broader allocation",
+        tone: "blue"
+      }
+    ]
+  });
+
+  assert.equal(summary.hasImprovedMetric, true);
+  assert.match(summary.improved, /reduces concentration/i);
+  assert.doesNotMatch(summary.improved, /No available comparison metric showed/i);
+  assert.doesNotMatch(summary.materiality, /status degraded|dimension\(s\)/i);
+});
+
+test("Verdict and Report public summaries pass through the technical-text sanitizer", () => {
+  const verdictSource = fs.readFileSync(verdictScreenPath, "utf8");
+  const reportSource = fs.readFileSync(reportScreenPath, "utf8");
+
+  assert.match(verdictSource, /sanitizePublicDisplayText/);
+  assert.match(verdictSource, /sanitizePublicDisplayList/);
+  assert.match(reportSource, /sanitizePublicDisplayText/);
+  assert.match(reportSource, /sanitizePublicDisplayList/);
+  assert.doesNotMatch(verdictSource, /candidate builder step status/);
+  assert.doesNotMatch(reportSource, /factory step status|diff\.supporting|explicit list/);
 });
 
 test("diagnosis display model keeps adversarial optimizer and advice wording out of the primary answer", () => {
@@ -2292,7 +2517,7 @@ test("site explanation presenter sanitizes unsafe public Evidence trace text whi
   assert.ok(display);
   assert.equal(display.title, "Stress evidence trace");
   assert.ok(display.executiveItems.length > 0);
-  assert.match(display.executiveItems[0].text, /developer provenance stays separate/i);
+  assert.match(display.executiveItems[0].text, /supporting comparison evidence is incomplete/i);
   assert.doesNotMatch(serialized, /stress_report\.json|portfolio_xray\.json|field_path|source_refs|artifact|trade now|must rebalance|buy|sell|suitability approved/i);
   assert.equal(display.developerProvenance, undefined);
   assert.ok(developerDisplay.developerProvenance);

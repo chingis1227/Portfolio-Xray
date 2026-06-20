@@ -31,6 +31,11 @@ Baseline runners resolve lambda from:
 - `analysis_robust_mv_lambda_calibration/selected_lambda.txt`
 - `--robust-mv-lambda`
 
+`analysis_robust_mv_lambda_calibration/` is generated local calibration output, not a source
+fixture. Fresh checkouts do not need a tracked `selected_lambda.txt`; operators must run
+`python run_robust_mv_lambda_calibration.py` before Robust MV baseline builders when no CLI lambda
+override is supplied.
+
 YAML `robust_mv_lambda` is not read by calibration or baseline CLIs. Tests may still set it programmatically where needed.
 
 ### Candidate factory disclosure (Block 4 Session 07)

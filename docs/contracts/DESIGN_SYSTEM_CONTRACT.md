@@ -79,7 +79,7 @@ No neon, rainbow, crypto-style glow systems, decorative blue action gradients, o
 - Badges must have nearby explanatory copy.
 - Diagnosis must not repeat generic evidence-availability badges across every fact. Use one global evidence-quality state in the evidence strip or advanced detail, not in the main top header, and reserve row-level badges for material risk, review state, or unavailable states.
 - Primary surfaces must follow [Information Architecture and Copy Contract](INFORMATION_ARCHITECTURE_COPY_CONTRACT.md): product guardrails are authoring constraints, not repeated visible disclaimers.
-- Diagnosis must show the hero, four-item evidence strip, and primary diagnostic canvas before MetricMatrix, professional metrics, full X-Ray detail, technical evidence, or raw evidence-chain details.
+- Diagnosis must show the hero, four-item evidence strip, and primary diagnostic canvas before MetricMatrix, professional metrics, legacy technical `portfolio_xray.json` detail, technical evidence, or raw evidence-chain details.
 - Status labels must be product-facing, not backend enum names or file names.
 - Empty, locked, partial, no-trade, evidence-insufficient, and unavailable states are valid product states and must not look like broken UI.
 

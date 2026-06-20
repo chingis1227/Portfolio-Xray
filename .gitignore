@@ -25,6 +25,8 @@ node_modules/
 **/node_modules/
 .next/
 **/.next/
+.next-qa-build/
+**/.next-qa-build/
 dist/
 build/
 out/
@@ -64,11 +66,21 @@ pdf_md_sources/
 equal-weight portfolio/
 equal-weight by asset-class portfolio/
 risk parity portfolio/
+hierarchical risk parity portfolio/
 robust scenario portfolio/
 minimum variance portfolio/
 minimum variance uncapped portfolio/
 minimum variance advanced portfolio/
+minimum cvar constrained portfolio/
+minimum cvar uncapped portfolio/
 maximum diversification portfolio/
+maximum diversification unconstrained portfolio/
+risk budget by asset portfolio/
+risk budget by asset-class portfolio/
+robust mean variance constrained portfolio/
+robust mean variance uncapped portfolio/
+analysis_mv_lambda_sensitivity/
+analysis_robust_mv_lambda_calibration/
 portfolio_weights.yml
 
 

@@ -6,10 +6,16 @@ This document describes what the current site shows: route order, page blocks, v
 
 ## Canonical entry and local shortcut
 
-Canonical product entry:
+Canonical new-user path:
 
 ```text
-/ -> /onboarding/sign-in -> /onboarding/name -> /onboarding/investor-type -> /onboarding/loading -> /workspace -> /portfolio-input
+/ -> /onboarding/sign-in -> /onboarding/name -> /onboarding/investor-type -> /onboarding/loading -> /portfolio-input
+```
+
+Returning-user branch:
+
+```text
+eligible returning account -> /workspace -> /portfolio-input or same-run continuation
 ```
 
 `/workspace` is the signed-in account home for returning users with saved workspace, portfolio, draft, or review history. First-time users without saved workspace data may continue directly from onboarding to Portfolio Input.
@@ -20,7 +26,7 @@ Local testing shortcut:
 /onboarding/name?dev_bypass=1
 ```
 
-The shortcut is allowed for local preview while email sign-in is still being stabilized. It is not the documented product path and must not replace sign-in in product docs, demo scripts, or public copy.
+The shortcut is allowed for local preview while email sign-in is still being stabilized. It is not the documented product path and must not replace sign-in in product docs, demo scripts, or public copy. `/onboarding/goals` is a compatibility-only redirect to `/onboarding/investor-type`; it is not a current onboarding page. `/client-profile` is an advanced/manual Client Fit editor. `/sandbox/components`, developer provenance panels, and legacy/debug helper flows are local review/debug surfaces, not production journey steps.
 
 ## Global visual frame
 
@@ -218,7 +224,7 @@ Diagnostic Case File order:
 
 Top-layer metrics: primary issue, main exposure, concentration, worst observed downside, and evidence quality.
 
-Drill-down contains the grouped MetricMatrix, VaR/ES/skewness/kurtosis/beta/Sharpe/Sortino/Treynor, full X-Ray detail, evidence-chain notes, provenance, and limitations. The page must not recommend a rebalance from diagnosis alone.
+Drill-down contains the grouped MetricMatrix, VaR/ES/skewness/kurtosis/beta/Sharpe/Sortino/Treynor, legacy technical `portfolio_xray.json` detail, evidence-chain notes, provenance, and limitations. The page must not recommend a rebalance from diagnosis alone.
 
 ## `/evidence`
 
@@ -339,6 +345,16 @@ Main blocks:
 - Editable target rows.
 - CTA: `Use suggested profile`.
 - CTA: `Save profile and continue to Portfolio Input`.
+
+## `/onboarding/goals`
+
+Role: compatibility-only redirect to the current `/onboarding/investor-type` intake.
+
+Visible structure:
+
+- Safe fallback card explaining that onboarding moved.
+- Primary link to continue to `/onboarding/investor-type`.
+- No platform rail, goal-screen semantics, portfolio diagnostics, or Client Fit suitability copy.
 
 ## Metrics and data presentation rules
 

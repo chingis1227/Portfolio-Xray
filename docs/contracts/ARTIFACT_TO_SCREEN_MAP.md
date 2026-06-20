@@ -58,7 +58,7 @@ Use this document for artifact-to-screen routing and UI interpretation. Use lowe
 
 A backend artifact is not automatically a Core MVP screen. Core MVP UI should show product meaning, not raw files. The adapter layer translates artifacts into user-facing states such as diagnosis, stress evidence, hypothesis card, setup-only candidate test, comparison trade-off, decision verdict, grounded report preview, or deferred monitoring.
 
-The current MVP frontend route chain is:
+The current MVP canonical new-user frontend route chain is:
 
 ```text
 /
@@ -76,7 +76,16 @@ The current MVP frontend route chain is:
 -> /report
 ```
 
-Local preview may start at `/onboarding/name?dev_bypass=1` while email sign-in is being stabilized. `/client-profile` remains an advanced/manual Client Fit editor, not the primary route start.
+Returning signed-in users with completed onboarding and saved workspace, portfolio, draft, or review
+history may branch from sign-in/loading to `/workspace`. `/workspace` restores compact account
+context and review history only; it is not a calculation stage and must not treat compact history as
+fresh run-local evidence unless the current FastAPI backend confirms same-run lineage.
+
+Local preview may start at `/onboarding/name?dev_bypass=1` while email sign-in is being stabilized.
+`/onboarding/goals` is a compatibility-only redirect to `/onboarding/investor-type`. `/client-profile`
+remains an advanced/manual Client Fit editor, not the primary route start. `/sandbox/components`,
+developer provenance panels, and legacy/debug helpers are operator review surfaces and must not
+promote backend artifacts into Core MVP screen truth.
 
 There is no current `/candidate`, `/monitoring`, `/what-changed`, optimizer-arena, action-plan, decision-journal, macro-dashboard, or PDF-product route. `/hypothesis` intentionally owns Launchpad, Builder setup, and the candidate-generation action/status for the MVP; generated candidate weights and current-vs-candidate display belong on `/comparison`. Monitoring / What Changed is a backend product projection and deferred UI layer.
 
@@ -152,7 +161,10 @@ references for the active web run. The detailed contract is
 | Screen | Primary artifacts | Supporting artifacts | Must not use as primary truth |
 | --- | --- | --- | --- |
 | `/onboarding/*` | Bounded Client Fit profile request object created from intake. | Sign-in state, name, five-question intake, setup progress. | Portfolio diagnostics, generated artifacts, optimizer constraints, suitability approval. |
+| `/workspace` | Compact workspace state and compact review history only. | Saved portfolios, active draft/review pointer, immutable compact review summaries, archive markers. | Raw generated artifacts, automatic recalculation, or treating compact history as fresh same-run evidence. |
+| `/onboarding/goals` | No artifact ownership; compatibility redirect to current intake. | Safe redirect/fallback copy. | Goal artifact semantics, journey step ownership, generated outputs. |
 | `/client-profile` | Advanced/manual Client Fit profile request object. | Preset metadata and editable target rows. | Treating this as the primary journey start, suitability approval, optimizer constraints. |
+| `/sandbox/components` | No runtime artifact ownership. | Sample component states and local UI review fixtures. | Backend review actions, generated-output truth, or public journey status. |
 | `/portfolio-input` | User input; bounded Client Fit profile request; run-local `review_result.json`; `analysis_setup` / `input_assumptions` after diagnosis. | Instrument universe; recovery metadata. | `portfolio_weights.yml`, root legacy `run_result.json`, optimizer targets, full constraints UI. |
 | `/diagnosis` | `analysis_subject/portfolio_xray.json`; compact `analysis_subject/problem_classification.json` bridge. | `run_metadata.json`; data limitations; stress cross-references only where already cited. | Root legacy diagnosis; health score as main answer; candidate/comparison/verdict artifacts. |
 | `/evidence` | `analysis_subject/stress_report.json`. | `portfolio_xray.json` and `problem_classification.json` for bridge context; scenario library sidecars. | Root legacy stress files; mandate pass/fail as Core MVP outcome; candidate comparison. |

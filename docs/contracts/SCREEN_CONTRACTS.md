@@ -14,7 +14,7 @@ Use with:
 
 ## Current route reality
 
-Canonical visible user path:
+Canonical new-user visible path:
 
 ```text
 /
@@ -22,7 +22,6 @@ Canonical visible user path:
 -> /onboarding/name
 -> /onboarding/investor-type
 -> /onboarding/loading
--> /workspace (returning signed-in account home)
 -> /portfolio-input
 -> /diagnosis
 -> /evidence
@@ -33,13 +32,24 @@ Canonical visible user path:
 -> /report
 ```
 
+Returning signed-in users with completed onboarding and saved workspace, portfolio, draft, or review
+history may branch from sign-in/loading to `/workspace`. `/workspace` is an account home and history
+hub outside the 8-step review rail, not a calculation stage.
+
 Local development shortcut:
 
 ```text
 /onboarding/name?dev_bypass=1
 ```
 
-`/client-profile` exists as an advanced/manual Client Fit profile editor. It is not the first step of the normal web journey.
+Compatibility, advanced, and debug routes:
+
+- `/onboarding/goals` is a compatibility-only redirect to `/onboarding/investor-type`; keep it out
+  of canonical journey maps.
+- `/client-profile` exists as an advanced/manual Client Fit profile editor. It is not the first step
+  of the normal web journey.
+- `/sandbox/components` is a local component/state gallery. Developer provenance panels and
+  legacy/debug helper flows are operator review surfaces, not user journey routes.
 
 There is no current `/candidate`, `/monitoring`, `/what-changed`, optimizer-arena, action-plan, decision-journal, macro-dashboard, or PDF-product route. `/hypothesis` owns Problem Classification handoff, Candidate Launchpad, Builder setup, and the explicit candidate-generation attempt for the MVP. Generated candidate weights are reviewed on `/comparison`, not inside the Hypothesis action console.
 
@@ -89,6 +99,7 @@ first-read answer.
 | `/onboarding/name` | Friendly personal setup. | Name input and Continue CTA. | `/onboarding/investor-type`. | Portfolio diagnostics or suitability language. |
 | `/onboarding/investor-type` | Five-question Client Fit intake. | One question at a time, progress, Back/Next/final save; questions cover stress-loss reaction, withdrawal horizon, temporary-loss limit, return target, and concentration response. | `/onboarding/loading`. | Investment advice or optimizer mandates. |
 | `/onboarding/loading` | Setup transition. | Setup progress and Client Fit context save messaging. | Auto-redirect to `/workspace` when saved workspace/history exists for a returning user; otherwise `/portfolio-input`. | Platform sidebar. |
+| `/onboarding/goals` | Compatibility redirect only. | Safe redirect/fallback copy that sends older links to `/onboarding/investor-type`. | Continue to current onboarding intake. | New product copy, journey rail placement, or goal screen semantics. |
 | `/workspace` | Signed-in account home and review-history hub. | Current review, active portfolio, saved review count, portfolio library, past reviews, archive states, and clear no-auto-recalculation copy. | Continue latest review, start new review, open past review, or use a saved portfolio for a new review. | Act as a calculation step, auto-run diagnosis on login, imply a historical verdict applies to edited input, expose raw artifact paths, or replace the 8-step review rail. |
 | `/portfolio-input` | Step 01: define current portfolio. | Client Fit summary, empty-by-default holdings/weights input, validation, recovery, and clear draft/new-review semantics when loaded from workspace. | Run diagnosis -> `/diagnosis`. | Prefilled demo allocation, optimizer targets, tax settings, suitability approval, technical staged-progress table, silent overwrite of completed review evidence. |
 | `/diagnosis` | Step 02: current portfolio diagnosis. | Compact utility header, controlled diagnosis hero, four-item Evidence Summary, primary two-column diagnostic canvas, Stress Lab CTA, collapsed advanced diagnostics with grouped Metric Matrix, locked state, or simple product-facing running state. | Continue to Stress Lab or return to Portfolio Input. | Rebalance recommendation from diagnosis alone, standalone explanation wall, repeated generic evidence badges, equal-weight card grid as the primary read, Metric Matrix before the diagnosis is understood, Macro Dashboard/PCA diagnostics, technical staged-progress table. |
@@ -99,6 +110,7 @@ first-read answer.
 | `/verdict` | Step 07: decision support. | Verdict-first cautious interpretation, selected evidence summary, narrative rationale, major trade-offs, limitations, Client Fit as one input, and next safe step. | Report or test another. | `recommended`, `approved`, `safe`, `must rebalance`, `trade now`, `best portfolio`, suitability approval. |
 | `/report` | Step 08: grounded report preview. | Verdict-first narrative report frame, selected evidence summary, grounded executive preview, secondary evidence used/unavailable/warnings, and boundary. | Create preview when evidence is ready. | Unsupported conclusions, raw artifact viewer, or duplicating every page metric. |
 | `/client-profile` | Advanced/manual Client Fit editor. | Manual planning inputs, suggested preset, target rows. | Save profile and continue to Portfolio Input. | Treat as canonical Step 01. |
+| `/sandbox/components` | Local UI foundation and state-gallery review. | Shared primitives, product-facing state shells, sample component states, and links back to production routes. | Inspect components or return to Workspace/benchmark route. | Product journey step status, backend review actions, generated-output truth, or public navigation promotion. |
 
 ## QA checklist
 
@@ -140,7 +152,7 @@ Every product screen must guide the user from problem to evidence to decision/ac
 - Top evidence items: primary issue, main exposure, worst observed downside, evidence quality.
 - Primary CTA: Review Stress Lab evidence.
 - Secondary CTA: export report or test one candidate hypothesis when journey state allows.
-- Hidden/collapsed: MetricMatrix, professional metrics, full X-Ray, technical evidence, provenance, and limitations.
+- Hidden/collapsed: MetricMatrix, professional metrics, legacy technical `portfolio_xray.json` detail, technical evidence, provenance, and limitations.
 - States: locked before Portfolio Input, running diagnosis, failed/retry, partial evidence, complete diagnosis.
 - Never first viewport: VaR/ES/skewness/kurtosis/Treynor/beta wall, correlation matrix, raw JSON, repeated evidence badges, optimizer recommendation.
 

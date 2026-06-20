@@ -71,9 +71,9 @@ _TECHNICAL_METHOD_CONTEXT_PATTERN = re.compile(
     r"\b(method|methodology|optimizer|optimization|technical|disclosure)\b",
     re.IGNORECASE,
 )
-_RECOMMENDATION_PATTERN = re.compile(r"\brecommend(...:ation|ed|s|ing)...\b", re.IGNORECASE)
+_RECOMMENDATION_PATTERN = re.compile(r"\brecommend(?:ation|ed|s|ing)?\b", re.IGNORECASE)
 _CANDIDATE_RECOMMENDATION_WORDING = re.compile(
-    r"\brecommend(...:ation|ed|s|ing)...\b",
+    r"\brecommend(?:ation|ed|s|ing)?\b",
     re.IGNORECASE,
 )
 

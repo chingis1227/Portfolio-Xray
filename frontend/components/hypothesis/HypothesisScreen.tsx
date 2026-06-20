@@ -16,6 +16,7 @@ import {
   type HypothesisScreenModel,
   type HypothesisTestModel
 } from "@/lib/hypothesis/hypothesisScreenModel";
+import { holdingCountFromReview, safeMaxAssetWeightForHoldingCount } from "@/lib/hypothesis/builderDefaults";
 
 type JsonRecord = Record<string, unknown>;
 type BuilderMode = "capped" | "uncapped";
@@ -118,13 +119,13 @@ function builderOverrides(settings: BuilderSettings, methodId?: string): Builder
   return overrides;
 }
 
-function settingsForConstraintPreset(preset: ConstraintPreset): BuilderSettings {
+function settingsForConstraintPreset(preset: ConstraintPreset, holdingCount = 0): BuilderSettings {
   const matched = CAPPED_PRESETS.find((item) => item.id === preset);
   return {
     mode: "capped",
     constraintPreset: preset,
     minAssetWeight: matched?.min ?? null,
-    maxAssetWeight: matched?.max ?? null
+    maxAssetWeight: safeMaxAssetWeightForHoldingCount(holdingCount, matched?.max ?? null)
   };
 }
 
@@ -380,11 +381,13 @@ function BulletList({ items, fallback }: { items: string[]; fallback: string }) 
 function BuilderControls({
   settings,
   onChange,
-  disabled
+  disabled,
+  holdingCount
 }: {
   settings: BuilderSettings;
   onChange: (settings: BuilderSettings) => void;
   disabled: boolean;
+  holdingCount: number;
 }) {
   const presetOptions = settings.mode === "uncapped"
     ? [{ id: "uncapped" as const, label: "Uncapped", description: "No maximum asset weight cap." }]
@@ -400,7 +403,7 @@ function BuilderControls({
       });
       return;
     }
-    onChange(settingsForConstraintPreset("balanced"));
+    onChange(settingsForConstraintPreset("balanced", holdingCount));
   }
 
   function applyPreset(preset: ConstraintPreset) {
@@ -409,7 +412,7 @@ function BuilderControls({
       ...settings,
       constraintPreset: preset,
       minAssetWeight: preset === "custom" ? settings.minAssetWeight : matched?.min ?? null,
-      maxAssetWeight: preset === "custom" ? settings.maxAssetWeight : matched?.max ?? null
+      maxAssetWeight: preset === "custom" ? settings.maxAssetWeight : safeMaxAssetWeightForHoldingCount(holdingCount, matched?.max ?? null)
     });
   }
 
@@ -588,13 +591,15 @@ function HypothesisActionConsole({
   builderSettings,
   onBuilderSettingsChange,
   onGenerate,
-  comparisonHref
+  comparisonHref,
+  holdingCount
 }: {
   model: HypothesisScreenModel;
   builderSettings: BuilderSettings;
   onBuilderSettingsChange: (settings: BuilderSettings) => void;
   onGenerate: () => void;
   comparisonHref: string;
+  holdingCount: number;
 }) {
   const test = model.primaryTest;
   const action = model.action;
@@ -625,6 +630,7 @@ function HypothesisActionConsole({
         settings={builderSettings}
         onChange={onBuilderSettingsChange}
         disabled={action.state === "generating" || action.state === "blocked"}
+        holdingCount={holdingCount}
       />
 
       {action.candidateName ? (
@@ -775,7 +781,8 @@ function HypothesisWorkstation({
   onBuilderSettingsChange,
   onSelect,
   onGenerate,
-  comparisonHref
+  comparisonHref,
+  holdingCount
 }: {
   model: HypothesisScreenModel;
   clientFit?: ClientFitDisplaySummary;
@@ -785,6 +792,7 @@ function HypothesisWorkstation({
   onSelect: (id: string) => void;
   onGenerate: () => void;
   comparisonHref: string;
+  holdingCount: number;
 }) {
   return (
     <>
@@ -808,6 +816,7 @@ function HypothesisWorkstation({
           onBuilderSettingsChange={onBuilderSettingsChange}
           onGenerate={onGenerate}
           comparisonHref={comparisonHref}
+          holdingCount={holdingCount}
         />
       </div>
       <SecondaryContextPanels model={model} clientFit={clientFit} selectedCardId={selectedCardId} onSelect={onSelect} />
@@ -833,6 +842,7 @@ export function HypothesisScreen() {
   }, []);
 
   const effectiveReview = sampleMode ? sampleActiveReview(sampleGenerated) : activeReview;
+  const holdingCount = holdingCountFromReview(effectiveReview);
   const model = useMemo(() => buildHypothesisScreenModel({
     activeReview: effectiveReview,
     selectedCardId,
@@ -848,8 +858,8 @@ export function HypothesisScreen() {
 
   useEffect(() => {
     if (sampleMode || !effectiveReview?.reviewId) return;
-    setBuilderSettings(DEFAULT_BUILDER_SETTINGS);
-  }, [effectiveReview?.reviewId, sampleMode]);
+    setBuilderSettings(settingsForConstraintPreset("balanced", holdingCount));
+  }, [effectiveReview?.reviewId, holdingCount, sampleMode]);
 
   useEffect(() => {
     setGenerationError(undefined);
@@ -998,6 +1008,7 @@ export function HypothesisScreen() {
       onSelect={handleSelectCard}
       onGenerate={handleGenerateCandidate}
       comparisonHref={sampleMode ? "/comparison?sample=1" : "/comparison"}
+      holdingCount={holdingCount}
     />
   );
 }

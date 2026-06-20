@@ -10,7 +10,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { VerdictHero } from "@/components/ui/VerdictHero";
 import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
 import { CaseFileTopCards } from "@/components/ui/CaseFileCards";
-import { formatUnknownValue, normalizeDisplaySentence } from "@/lib/displayLabels";
+import { formatUnknownValue, sanitizePublicDisplayList, sanitizePublicDisplayText } from "@/lib/displayLabels";
 import { useReviewState } from "@/lib/reviewState";
 
 type JsonRecord = Record<string, unknown>;
@@ -27,10 +27,10 @@ function errorTextFromResponse(value: unknown) {
   if (!isRecord(value)) return "Verdict unavailable. A valid comparison is required before a decision-support verdict can be formed.";
   const message = textValue(value.error, "Verdict unavailable.");
   const details = value.details;
-  if (typeof details === "string" && details.trim()) return `${message} ${normalizeDisplaySentence(details)}`;
+  if (typeof details === "string" && details.trim()) return `${message} ${sanitizePublicDisplayText(details)}`;
   if (Array.isArray(details)) {
     const safeDetails = details
-      .map((item) => (typeof item === "string" ? normalizeDisplaySentence(item) : ""))
+      .map((item) => (typeof item === "string" ? sanitizePublicDisplayText(item, "") : ""))
       .filter(Boolean)
       .join(" ");
     return safeDetails ? `${message} ${safeDetails}` : message;
@@ -198,14 +198,36 @@ export function VerdictScreen() {
 
   const evidenceInsufficientDetails = useMemo(() => {
     if (!verdictMatchesCandidate || !verdict) return [];
-    return [
+    return sanitizePublicDisplayList([
       ...verdict.keyEvidence,
       ...verdict.limitations
-    ]
-      .map((item) => normalizeDisplaySentence(item))
-      .filter(Boolean)
+    ], "Comparison evidence is incomplete.")
       .slice(0, 5);
   }, [verdict, verdictMatchesCandidate]);
+  const publicKeyEvidence = useMemo(
+    () => verdictMatchesCandidate && verdict
+      ? sanitizePublicDisplayList(verdict.keyEvidence.length ? verdict.keyEvidence : [verdict.explanation], "Comparison evidence is incomplete.")
+      : [],
+    [verdict, verdictMatchesCandidate]
+  );
+  const publicLimitations = useMemo(
+    () => verdictMatchesCandidate && verdict
+      ? sanitizePublicDisplayList(verdict.limitations, "Comparison evidence is incomplete.")
+      : [],
+    [verdict, verdictMatchesCandidate]
+  );
+  const publicActionFraming = verdictMatchesCandidate && verdict
+    ? sanitizePublicDisplayText(verdict.actionFraming, "Review the comparison evidence before making an implementation decision.")
+    : "";
+  const publicMonitoringTrigger = verdictMatchesCandidate && verdict
+    ? sanitizePublicDisplayText(verdict.monitoringTrigger, "Retest if comparison evidence changes.")
+    : "";
+  const publicVerdictExplanation = verdictMatchesCandidate && verdict
+    ? sanitizePublicDisplayText(verdict.explanation, "Review the selected evidence before forming an implementation view.")
+    : "";
+  const publicEvidenceQuality = verdictMatchesCandidate && verdict
+    ? sanitizePublicDisplayText(verdict.evidenceQuality, "Evidence quality unavailable")
+    : "Verdict pending";
 
   async function handleRunVerdict() {
     if (!reviewId || !selectedCardId) return;
@@ -244,7 +266,7 @@ export function VerdictScreen() {
           <VerdictHero
             stepContext="Step 7 of 8 - Verdict"
             headline={verdictMatchesCandidate && verdict ? allowedDecisionStance(verdict) : "Decision stance needs comparison evidence"}
-            interpretation={verdictMatchesCandidate && verdict ? normalizeDisplaySentence(verdict.explanation, "Review the selected evidence before forming an implementation view.") : "The verdict evaluates one generated diagnostic test candidate against active comparison evidence. Evidence-insufficient outcomes are normal."}
+            interpretation={verdictMatchesCandidate && verdict ? publicVerdictExplanation : "The verdict evaluates one generated diagnostic test candidate against active comparison evidence. Evidence-insufficient outcomes are normal."}
             facts={[
               { label: "Diagnostic test", value: candidateDisplayName },
               { label: "Confidence", value: verdictMatchesCandidate && verdict ? formatUnknownValue(verdict.confidence, "Unknown") : "Verdict not ready" }
@@ -262,17 +284,17 @@ export function VerdictScreen() {
                 },
                 {
                   eyebrow: "Reason",
-                  title: verdict.keyEvidence[0] ?? verdict.explanation,
-                  value: formatUnknownValue(verdict.evidenceQuality, "Evidence quality not returned"),
-                  description: normalizeDisplaySentence(verdict.actionFraming),
+                  title: publicKeyEvidence[0] ?? publicVerdictExplanation,
+                  value: publicEvidenceQuality,
+                  description: publicActionFraming,
                   tone: evidenceInsufficient ? "amber" : "slate"
                 },
                 {
                   eyebrow: "What would change the verdict",
-                  title: verdict.limitations[0] ?? "No primary limitation returned",
-                  value: normalizeDisplaySentence(verdict.monitoringTrigger, "Retest if evidence changes."),
+                  title: publicLimitations[0] ?? "Comparison evidence is incomplete.",
+                  value: publicMonitoringTrigger,
                   description: "Limitations define what must improve before a stronger conclusion is used.",
-                  tone: verdict.limitations.length ? "amber" : "slate"
+                  tone: publicLimitations.length ? "amber" : "slate"
                 }
               ]}
             />
@@ -284,8 +306,8 @@ export function VerdictScreen() {
               emptyMessage="Verdict evidence is not ready; complete a same-candidate comparison or treat the outcome as evidence insufficient."
               items={[
                 { label: "Decision stance", value: allowedDecisionStance(verdict) },
-                { label: "Rationale", value: verdict.keyEvidence[0] ?? verdict.explanation },
-                { label: "Major trade-off", value: verdict.limitations[0] ?? "No limitation returned", tone: verdict.limitations.length ? "amber" : "slate" }
+                { label: "Rationale", value: publicKeyEvidence[0] ?? publicVerdictExplanation },
+                { label: "Major trade-off", value: publicLimitations[0] ?? "Comparison evidence is incomplete.", tone: publicLimitations.length ? "amber" : "slate" }
               ]}
             />
           ) : null}
@@ -295,7 +317,7 @@ export function VerdictScreen() {
             testName={candidateDisplayName}
             purpose="The verdict interprets the active diagnostic test against current comparison evidence and visible limitations."
             candidateName={candidateId ? candidateDisplayName : undefined}
-            evidenceQuality={verdictMatchesCandidate && verdict ? formatUnknownValue(verdict.evidenceQuality, "Evidence quality unavailable") : "Verdict pending"}
+            evidenceQuality={publicEvidenceQuality}
             limitation="Decision Verdict is non-binding decision support, not a trading instruction or suitability approval."
             tone={evidenceInsufficient || staleVerdictIgnored || staleComparisonIgnored ? "amber" : verdictMatchesCandidate ? "blue" : "slate"}
           />
@@ -418,7 +440,7 @@ export function VerdictScreen() {
               </article>
               <article className="rounded-2xl border border-pmri-border bg-white/[0.025] p-4">
                 <StatusBadge tone="blue">Monitoring path</StatusBadge>
-                <p className="mt-3 text-sm leading-7 text-pmri-text2">{normalizeDisplaySentence(verdict.monitoringTrigger, "Keep monitoring until stronger comparison evidence is available.")}</p>
+                <p className="mt-3 text-sm leading-7 text-pmri-text2">{publicMonitoringTrigger || "Keep monitoring until stronger comparison evidence is available."}</p>
               </article>
             </section>
           </div>
@@ -429,23 +451,23 @@ export function VerdictScreen() {
             <section className="pmri-card rounded-3xl p-6 md:p-7">
               <p className="pmri-label">Decision interpretation</p>
               <h2 className="pmri-heading-section mt-2 text-2xl text-pmri-text">{allowedDecisionStance(verdict)}</h2>
-              <p className="mt-4 max-w-4xl text-base leading-8 text-pmri-text2">{normalizeDisplaySentence(verdict.actionFraming)}</p>
+              <p className="mt-4 max-w-4xl text-base leading-8 text-pmri-text2">{publicActionFraming}</p>
               <div className="mt-6 grid gap-4 lg:grid-cols-3">
                 <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
                   <p className="pmri-label">Rationale</p>
                   <ul className="mt-3 space-y-2 text-sm leading-7 text-pmri-text2">
-                    {(verdict.keyEvidence.length ? verdict.keyEvidence : [verdict.explanation]).slice(0, 4).map((item) => <li key={item}>- {normalizeDisplaySentence(item)}</li>)}
+                    {publicKeyEvidence.slice(0, 4).map((item) => <li key={item}>- {item}</li>)}
                   </ul>
                 </article>
                 <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
                   <p className="pmri-label">Evidence quality</p>
                   <p className="mt-3 text-sm leading-7 text-pmri-text2">Confidence: {formatUnknownValue(verdict.confidence, "Unknown")}</p>
-                  <p className="mt-2 text-sm leading-7 text-pmri-muted">{formatUnknownValue(verdict.evidenceQuality, "Evidence quality unavailable")}</p>
+                  <p className="mt-2 text-sm leading-7 text-pmri-muted">{publicEvidenceQuality}</p>
                 </article>
                 <article className="rounded-2xl border border-pmri-border/45 bg-white/[0.022] p-4">
                   <p className="pmri-label">What would change it</p>
                   <ul className="mt-3 space-y-2 text-sm leading-7 text-pmri-muted">
-                    {limitationRows.slice(0, 4).map((item) => <li key={item}>- {normalizeDisplaySentence(item)}</li>)}
+                    {(publicLimitations.length ? publicLimitations : sanitizePublicDisplayList(limitationRows, "Comparison evidence is incomplete.")).slice(0, 4).map((item) => <li key={item}>- {item}</li>)}
                   </ul>
                 </article>
               </div>

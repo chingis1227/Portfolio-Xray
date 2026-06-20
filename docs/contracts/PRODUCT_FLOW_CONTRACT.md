@@ -56,7 +56,8 @@ Input Portfolio
 -> Monitoring / What Changed
 ```
 
-Current MVP frontend route reality may merge or defer some backend product steps. As of this contract, the visible frontend path is:
+Current MVP frontend route reality may merge or defer some backend product steps. As of this
+contract, the canonical new-user visible frontend path is:
 
 ```text
 /
@@ -64,7 +65,6 @@ Current MVP frontend route reality may merge or defer some backend product steps
 -> /onboarding/name
 -> /onboarding/investor-type
 -> /onboarding/loading
--> /workspace (returning signed-in account home)
 -> /portfolio-input
 -> /diagnosis
 -> /evidence
@@ -75,7 +75,20 @@ Current MVP frontend route reality may merge or defer some backend product steps
 -> /report
 ```
 
-The public landing opens the required email sign-in step. Local development may use `/onboarding/name?dev_bypass=1` as a preview shortcut while sign-in is being stabilized; that shortcut is not the product path. New users complete onboarding, which captures the planning profile and writes bounded Client Fit context before Portfolio Input. Returning signed-in users with a completed Portfolio MRI onboarding profile may skip the repeated name/questionnaire screens and open `/workspace` when saved workspace, portfolio, draft, or review history exists. `/workspace` is the account home: it restores saved work, shows the latest active review and compact history, and does not run calculations on login. Users without saved workspace data may continue to Portfolio Input with saved Client Fit context restored. `/client-profile` remains an advanced/manual Client Fit editor, not the primary journey start.
+Returning signed-in users with a completed Portfolio MRI onboarding profile may skip the repeated
+name/questionnaire screens and open `/workspace` when saved workspace, portfolio, draft, or review
+history exists. `/workspace` is an account home and history hub: it restores saved work, shows the
+latest active review and compact history, and does not run calculations on login. Users without
+saved workspace data may continue to Portfolio Input with saved Client Fit context restored.
+
+The public landing opens the required email sign-in step. Local development may use
+`/onboarding/name?dev_bypass=1` as a preview shortcut while sign-in is being stabilized; that
+shortcut is not the product path. `/onboarding/goals` is a compatibility-only redirect to
+`/onboarding/investor-type`, retained for older links and not part of the product journey.
+`/client-profile` remains an advanced/manual Client Fit editor, not the primary journey start.
+`/sandbox/components`, explicit developer provenance panels, and legacy/debug helper flows are
+operator review surfaces; they must not be listed as Core MVP journey steps or call backend review
+actions as part of the normal product route.
 
 `/client-fit` displays the bounded fit interpretation after Stress Lab and before Hypothesis. `/hypothesis` may contain Problem Classification handoff, Candidate Launchpad, Builder setup, and the explicit candidate-generation attempt for the current MVP. There is no separate current Monitoring route; Monitoring / What Changed is a light product artifact and may be surfaced later or in report/summary context. Route merges do not change the product step order or boundaries.
 

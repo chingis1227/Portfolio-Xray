@@ -24,6 +24,7 @@ import { buildStressLabModelFromOutputs } from "@/components/evidence/stressLabM
 import type { StressLabModel } from "@/components/evidence/stressLabTypes";
 import { stagedSafeErrorMessage } from "@/lib/review/stagedSafeError";
 import { isCompareReadyCandidateGeneration } from "@/lib/review/candidateGenerationReadiness";
+import { REVIEW_CASE_STAGE_NAMES, buildReviewCaseClientReadModel, buildReviewCaseClientReadModelFromStatus, reviewCaseDiagnosisChainReady } from "@/lib/review/reviewCaseClientState";
 import { buildClientFitProfileFromOnboarding, hasCompletedOnboarding, readOnboardingState } from "@/lib/onboarding";
 import { useSupabaseAuth } from "@/lib/supabase/auth";
 import { persistCompactStageSummariesForReview, persistDiagnosisSummaryForReview, persistStagedProgressForReview, useSupabasePersistence, type SavedReviewRecord } from "@/lib/supabase/persistence";
@@ -801,34 +802,16 @@ function comparisonResultCanGenerateVerdict(value: ComparisonResultSummary | und
   return value.status.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_") === "completed";
 }
 
-const STAGED_STAGE_NAMES = [
-  "input",
-  "data_load",
-  "xray",
-  "stress",
-  "client_fit",
-  "problem_classification",
-  "launchpad_builder",
-  "candidate",
-  "comparison",
-  "verdict",
-  "report"
-] as const;
+const STAGED_STAGE_NAMES = REVIEW_CASE_STAGE_NAMES;
 
 function isStagedStageReady(progress: StagedReviewProgress | undefined, stage: string) {
-  const status = progress?.stages?.[stage]?.status;
-  return status === "completed" || status === "partial";
+  if (!progress) return false;
+  const readModel = buildReviewCaseClientReadModel(progress);
+  return Boolean(readModel.stageProgress.find((row) => row.stage === stage)?.isReady);
 }
 
 export function diagnosisStageChainReady(progress: Pick<StagedReviewStatusResponse, "stages"> | StagedReviewProgress | null | undefined) {
-  const stageReady = (stage: string) => {
-    const status = progress?.stages?.[stage]?.status;
-    return status === "completed" || status === "partial";
-  };
-  return stageReady("xray")
-    && stageReady("stress")
-    && stageReady("problem_classification")
-    && stageReady("launchpad_builder");
+  return reviewCaseDiagnosisChainReady(progress);
 }
 
 function cleanStageRow(value: unknown): StagedStageState {
@@ -866,23 +849,28 @@ function compactStagedProgressFromStarted(started: StagedReviewStartedResponse):
 }
 
 function compactStagedProgressFromStatus(status: StagedReviewStatusResponse): StagedReviewProgress {
-  const sourceStages = isRecord(status.stages) ? status.stages : {};
-  const stages = Object.fromEntries(STAGED_STAGE_NAMES.map((stage) => [
-    stage,
-    cleanStageRow(sourceStages[stage])
+  const readModel = buildReviewCaseClientReadModelFromStatus(status);
+  const stages = Object.fromEntries(readModel.stageProgress.map((stage) => [
+    stage.stage,
+    {
+      status: stage.status,
+      started_at: stage.startedAt,
+      completed_at: stage.completedAt,
+      artifact_refs: stage.artifactRefs
+    }
   ])) as Record<string, StagedStageState>;
 
   return {
     schemaVersion: status.schema_version ?? "review_state_v1",
-    reviewId: status.review_id,
-    status: status.status,
-    currentStage: status.current_stage,
-    mode: status.mode,
+    reviewId: readModel.reviewId,
+    status: readModel.status,
+    currentStage: readModel.currentStage,
+    mode: readModel.mode,
     stages,
     providerStatus: status.provider_status,
-    safeError: status.safe_error ?? null,
-    updatedAt: status.updated_at ?? nowIso(),
-    warnings: status.warnings ?? []
+    safeError: readModel.safeError ?? null,
+    updatedAt: readModel.updatedAt ?? nowIso(),
+    warnings: readModel.warnings
   };
 }
 

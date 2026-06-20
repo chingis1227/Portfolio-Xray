@@ -1,5 +1,86 @@
 # CHANGELOG.md
 
+## 2026-06-20
+
+- Fixed the P1 exhaustive QA frontend production build blocker by running the QA build in an
+  isolated `.next-qa-build` directory through a fresh child process; the local static exhaustive
+  gate now records zero P0/P1/P2 blockers.
+- Completed the Review Case architecture migration closeout with a focused package seam export test,
+  preserving public FastAPI envelopes, CLI commands, generated schemas, formulas, data providers,
+  frontend contracts, and staged raw-state sanitization compatibility.
+- Added an internal Review Case downstream evidence-chain context helper for
+  comparison/verdict/report display context while preserving existing FastAPI response envelopes and
+  generated schemas.
+- Added an internal Review Case downstream-lineage helper for candidate/comparison/verdict artifact
+  consistency while preserving existing FastAPI safe-error envelopes and generated schemas.
+- Added an internal Review Case stage-readiness helper for downstream candidate/comparison/verdict
+  gates while preserving existing FastAPI `stage_not_ready` envelopes and public staged schemas.
+- Added an internal Review Case staged-status projection bundle that pairs the existing public
+  staged status envelope with the internal screen read model while preserving current FastAPI status
+  responses and generated artifact schemas.
+- Added a behavior-preserving Review Case read-model migration step: FastAPI state helpers can
+  project sanitized staged status into the internal screen read model, and frontend active-review
+  progress now compacts staged status through the Review Case client read-model helper without
+  changing public API envelopes.
+- Added an inactive-by-default Review Case artifact storage seam that preserves run-local
+  filesystem artifacts as the source of truth, validates future S3/R2 object keys and configuration
+  metadata, and falls back to local behavior without cloud credentials or public API changes.
+- Hardened the inactive-by-default Review Case execution queue seam with validated internal
+  configuration, bounded operational metadata/logging, and focused RQ/Redis enqueue success and
+  failure coverage while preserving default in-process operation and public staged API envelopes.
+- Added an inactive-by-default Review Case execution queue seam with an opt-in RQ/Redis prototype
+  and in-process fallback, preserving public staged API envelopes, generated artifact schemas,
+  formulas, data providers, and default local operation.
+- Added a narrow internal Review Case MarketDataSnapshot metadata seam that summarizes existing
+  run metadata, provider status, and data-policy evidence for later queue, storage, and screen
+  read-model migration work without changing public staged API envelopes or generated artifact
+  schemas.
+
+## 2026-06-19
+
+- Added a narrow FastAPI staged-review state helper for `review_state.json` IO, owner checks, safe
+  status projection, and legacy raw-ref sanitization while preserving public staged API envelopes.
+- Added a narrow frontend Review Case client-state helper that projects staged progress into screen-ready stage progress, artifact availability, and diagnosis-chain readiness while preserving public FastAPI envelopes and generated artifact schemas.
+- Added a narrow internal Review Case screen read model for projecting typed stage progress,
+  artifact availability, and evidence links for later UI/API migration without changing public
+  staged API envelopes or generated artifact schemas.
+- Added a narrow internal Review Case Evidence Graph for relating canonical stages, artifact
+  manifest entries, and source evidence refs without changing public staged API envelopes or
+  generated artifact schemas.
+- Added a Review Case artifact manifest helper for the existing staged `artifacts` map. It
+  centralizes safe artifact keys and run-local refs for new architecture work while preserving
+  public `review_state_v1` artifacts and stage `artifact_refs` shapes.
+- Added a narrow Review Case stage state machine for staged-review status transitions. The FastAPI
+  staged helper now delegates row-level transitions to `src/review_case/` while preserving the
+  public `review_state_v1` shape and raw-state sanitization compatibility.
+- Added a run-local Review Case repository abstraction for `review_state.json`. New staged-review
+  creation saves the initial `ReviewCase` through the repository while preserving the public
+  `review_state_v1` shape and existing staged API envelopes.
+- Added the first Review Case domain boundary for staged reviews. Initial `review_state_v1`
+  creation now flows through `src/review_case/`, preserving public FastAPI state while centralizing
+  canonical stage order and safe artifact-reference validation.
+- Recorded the Session 12 release-readiness audit: the local static exhaustive gate completed with
+  known failures, full pytest stayed green, and `KI-2026-06-14-001` remains a P1 release blocker.
+- Promoted the FastAPI/frontend governance check into the trusted fast daily QA gate and synced
+  the QA docs around the canonical `qa_fast` coverage.
+- Cleaned live brand and terminology drift in active docs so current reference files lead with
+  Portfolio MRI and old names are labeled as legacy/compatibility terms.
+- Audited active and touched Markdown docs/plans for English-only, mojibake, and machine-local path hygiene; targeted scans found no cleanup targets beyond recording the Session 09 result.
+- Normalized frontend route documentation to separate the canonical new-user path, returning-user
+  `/workspace` branch, compatibility `/onboarding/goals` redirect, advanced `/client-profile`, and
+  sandbox/debug routes.
+- Fixed frontend display-label mojibake in diagnostic section and block range normalization, with
+  coverage for ASCII hyphen, en dash, and em dash forms.
+- Removed tracked generated portfolio variant and Robust MV calibration/sensitivity outputs from
+  source tracking, while keeping them as ignored local generated artifacts.
+- Narrowed the exhaustive QA runner frontend-build instability: standalone and post-run builds pass, but the local static exhaustive gate still reports `Frontend production build` exit `-1` after full pytest and remains not release-ready under `KI-2026-06-14-001`.
+- Refreshed the full pytest baseline to green (**2004 passed, 3 skipped**) and fixed the small site-explanation recommendation guardrail and universe-ingestion warrant/unit cleaning regex regressions found during the run.
+- Added an explicit non-interactive Next.js ESLint setup for the frontend, including the required
+  lint dependencies and QA documentation updates.
+- Fixed the FastAPI/frontend governance gate by ignoring sanitizer regex literals during
+  advice-language scanning while still rejecting real public advice-like copy, and replaced
+  comparison matrix winner wording with neutral ranking/instruction language.
+
 ## 2026-06-18
 
 - Added a global information-architecture/copy contract, TDD copy regression gate, and Diagnosis/header cleanup so product guardrails stay as authoring constraints instead of repeated primary UI disclaimers.

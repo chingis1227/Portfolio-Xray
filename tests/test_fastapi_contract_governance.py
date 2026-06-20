@@ -45,13 +45,26 @@ def test_mapping_note_governance_requires_recommendation_boundary() -> None:
 def test_text_governance_allows_boundary_language_but_rejects_advice_like_claims(tmp_path: Path) -> None:
     bad = tmp_path / "bad.tsx"
     bad.write_text('const hero = "This is the best portfolio for you.";', encoding="utf-8")
+    bad_url_like_copy = tmp_path / "bad_url_like_copy.tsx"
+    bad_url_like_copy.write_text(
+        'const hero = "Read https://example.test/best portfolio as an example.";',
+        encoding="utf-8",
+    )
     safe = tmp_path / "safe.tsx"
     safe.write_text(
         'const boundary = "This is not the best portfolio and not a trade instruction.";',
         encoding="utf-8",
     )
+    sanitizer = tmp_path / "sanitizer.ts"
+    sanitizer.write_text(
+        'const unsafePublicTextPattern = /\\b(?:trade now|must rebalance|best portfolio)\\b/i;\n'
+        'const sanitized = value.replace(/\\bwinner\\b/gi, "ranking language removed");\n',
+        encoding="utf-8",
+    )
 
-    errors = _validate_text_governance([bad, safe])
+    errors = _validate_text_governance([bad, bad_url_like_copy, safe, sanitizer])
 
     assert any("bad.tsx" in error and "best portfolio" in error for error in errors)
+    assert any("bad_url_like_copy.tsx" in error and "best portfolio" in error for error in errors)
     assert all("safe.tsx" not in error for error in errors)
+    assert all("sanitizer.ts" not in error for error in errors)

@@ -41,8 +41,8 @@ DEFAULT_SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers_exchange.js
 _WARRANT_SUFFIXES = re.compile(r"(WS|WT|\+W|-W)$", re.IGNORECASE)
 _PREFERRED_NAME = re.compile(r"\bpreferred\b|\bpfd\b|\bpr\s", re.IGNORECASE)
 _RIGHTS_NAME = re.compile(r"\b(right|rights)\b", re.IGNORECASE)
-_UNIT_NAME = re.compile(r"\bunit(s)...\b", re.IGNORECASE)
-_WARRANT_NAME = re.compile(r"\bwarrant(s)...\b", re.IGNORECASE)
+_UNIT_NAME = re.compile(r"\bunits?\b", re.IGNORECASE)
+_WARRANT_NAME = re.compile(r"\bwarrants?\b", re.IGNORECASE)
 _TEST_NAME = re.compile(r"\btest\b", re.IGNORECASE)
 _UNSUPPORTED_SYMBOL = re.compile(r"[^A-Z0-9.\-]")
 

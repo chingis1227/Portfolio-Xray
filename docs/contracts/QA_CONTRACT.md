@@ -40,20 +40,27 @@ Use these repository-root PowerShell shortcuts when the goal is fast, repeatable
 
 | Gate | Command | Purpose |
 | --- | --- | --- |
-| Fast daily QA | `.\scripts\qa_fast.ps1` (`.\scripts\qa_fast.cmd` if PowerShell policy blocks scripts) | Canonical quick gate: docs verification, staged Run Diagnosis route compatibility, core offline workflow smoke, product-bundle adapter checks, frontend typecheck, and frontend API route tests. It intentionally skips full pytest, live E2E, frontend build, frontend smoke, and browser visual QA. |
-| Contract QA | `.\scripts\qa_contracts.ps1` (`.\scripts\qa_contracts.cmd` if PowerShell policy blocks scripts) | Candidate factory/comparison contract and golden-fixture gate. It intentionally skips networked/live checks, full pytest, and the still-open KI-2026-05-26-001 drift test. |
+| Fast daily QA | `.\scripts\qa_fast.ps1` (`.\scripts\qa_fast.cmd` if PowerShell policy blocks scripts) | Canonical quick gate: docs verification, staged Run Diagnosis route compatibility, FastAPI/frontend contract governance, core offline workflow smoke, product-bundle adapter checks, frontend typecheck, and frontend API route tests. It intentionally skips full pytest, live E2E, frontend build, frontend smoke, and browser visual QA. |
+| Contract QA | `.\scripts\qa_contracts.ps1` (`.\scripts\qa_contracts.cmd` if PowerShell policy blocks scripts) | Candidate factory/comparison contract and golden-fixture gate. It intentionally skips networked/live checks and full pytest. |
 | Exhaustive local QA | `.\scripts\qa_exhaustive.cmd -LocalOnly -SkipLive` | Release-candidate local static gate that writes timestamped summaries, logs, findings, and release-readiness files under `output/qa_runs/`; it runs the staged Run Diagnosis compatibility guard, local backend/frontend/docs/Supabase gates, and classifies failures as `known_failure`, `new_failure`, or `blocked_external`. Browser vertical and staging readiness are intentionally skipped by these flags. |
 | Exhaustive local + browser vertical QA | `.\scripts\qa_exhaustive.cmd -LocalOnly` | Local release-readiness gate that adds `npm.cmd run qa:vertical -- --scenario-limit 5` after the local static gate and records active `reviewId` lineage, selected Launchpad card, Builder/Candidate/Comparison/Verdict/Report ids, screenshots or DOM fallbacks, and stale selected-card HTTP 409 proof. |
 | Exhaustive staging release readiness | `.\scripts\qa_exhaustive.cmd -Staging` plus `PMRI_QA_ALLOW_STAGING=1`, `PMRI_QA_FRONTEND_URL`, and `PMRI_QA_FASTAPI_URL` | Full release-readiness gate that runs local static checks, local browser vertical QA, staging Run Diagnosis compatibility, and the staging frontend route-chain journey through Report. |
 
 Full `python -m pytest` remains a manual/nightly or risk-based check. Live core/full E2E remains operator proof for demos, releases, or explicit requests, not the default daily gate.
 
-Current exhaustive baseline note: the 2026-06-14 Session 02 run completed as
-`passed_with_known_failures`. `KNOWN_ISSUES.md` tracks the current full-pytest count and
-`KI-2026-06-14-001`, where `npm.cmd run build` can return exit `-1` inside the long exhaustive
-runner even though the same build passes standalone. Session 03 changes the report schema to
-`qa_exhaustive_session03_v1` and adds `qa-release-readiness.*`; P0/P1/P2 failures are release
-blockers in that readiness summary even when they are already-known baselines.
+Current exhaustive baseline note: on 2026-06-20, `scripts\qa_exhaustive.ps1` was updated so
+the frontend production build runs in an isolated `.next-qa-build` directory through a fresh child
+process instead of sharing the default `.next` directory with possible local Next.js dev servers.
+`PMRI_NEXT_DIST_DIR` is set only for that QA build step. `frontend/next.config.mjs` uses the
+variable as an opt-in `distDir`, `frontend/tsconfig.json` includes `.next-qa-build/types/**/*.ts`,
+and `.gitignore` excludes `.next-qa-build/` as generated output. After this change,
+`.\scripts\qa_exhaustive.cmd -LocalOnly -SkipLive` completed with status `passed`, release
+readiness `ready`, **0 P0/P1/P2 blockers**, full backend pytest **2094 passed, 3 skipped**, and
+`Frontend production build` passed on the first attempt. Evidence lives under
+`output/qa_runs/20260620T093133Z/`, especially `qa-summary.md`, `qa-release-readiness.md`, and
+`logs/frontend-production-build.log`. Browser vertical QA was still skipped because `-SkipLive` was
+supplied; run the local browser or staging release gates before claiming browser or staging
+readiness.
 The previous browser vertical blocker `KI-2026-06-14-002` is resolved. Downstream Next.js
 compatibility routes must remain deployment-safe: they pass explicit lineage ids from frontend
 state to FastAPI and build screen-compatible responses from FastAPI public envelopes, not from
@@ -76,10 +83,11 @@ The actual scripts in `frontend/package.json` are:
 | `dev:local` | `npm.cmd run dev:local` | Alias for `dev`; kept for explicit local-launch documentation. |
 | `dev:next` | `npm.cmd run dev:next` | Raw Next.js server only. Use only for static frontend work that intentionally does not call FastAPI routes. |
 | `start` | `npm.cmd run start` | Serve a built app: `next start`. |
-| `lint` | `npm.cmd run lint` | Optional lint script currently declared as `next lint`; run when lint or style rules are touched, or when requested. |
+| `lint` | `npm.cmd run lint` | Non-interactive Next.js ESLint gate. It uses `frontend/.eslintrc.json` with `next/core-web-vitals`; run it for frontend implementation sessions, lint/style changes, or when requested. Current baseline exits 0 but may print existing warnings. |
 
 For future frontend implementation sessions, run the standard checks sequentially from `frontend/` unless a narrower or broader set is justified:
 
+    npm.cmd run lint
     npm.cmd run typecheck
     npm.cmd run build
     npm.cmd run test:api

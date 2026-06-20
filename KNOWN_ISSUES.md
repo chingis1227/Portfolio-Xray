@@ -1,6 +1,8 @@
 # KNOWN_ISSUES.md
 
-This file is the living register of known active issues, bugs, weak spots, model limitations, testing gaps, and technical debt for Portfolio X-Ray & Optimization Terminal / Portfolio MRI.
+This file is the living register of known active issues, bugs, weak spots, model limitations,
+testing gaps, and technical debt for Portfolio MRI. `Portfolio X-Ray` and `Optimization Terminal`
+are old compatibility names for legacy diagnosis artifacts and optimizer-era references only.
 
 It is not a roadmap, product concept, or technical specification. It does not override `SPEC.md`, `DATA.md`, `TESTING.md`, `RULES.md`, or `docs/specs/*.md`.
 
@@ -56,43 +58,26 @@ Title: Short title
 
 ## Active Issues
 
-Issue ID: KI-2026-06-14-001
-Title: Exhaustive QA runner can report Next build exit -1 after full pytest
+Issue ID: KI-2026-06-19-001
+Title: Frontend production dependency audit requires a breaking Next.js upgrade
 
 - Status: open
-- Severity: medium
-- Area: testing
-- Risk: `.\scripts\qa_exhaustive.cmd -LocalOnly -SkipLive` may report the frontend production build as failed even when `npm.cmd run build` passes standalone, making release-candidate QA look like a product build regression when the issue is likely runner/order/environment-related.
-- Evidence: Session 02 QA runs `output/qa_runs/20260614T160725Z/qa-summary.md` and `output/qa_runs/20260614T162235Z/qa-summary.md` recorded `Frontend production build` with exit code `-1` after full pytest. A standalone `npm.cmd run build` from `frontend/` passed with exit code 0 in the same session.
-- Current mitigation: The exhaustive gate retries the build step once and records attempts in the per-step log. Treat this as a known QA-runner failure until the command-order or process-capture cause is fixed; do not infer a production build regression without rerunning `npm.cmd run build` standalone.
-- Next action: Isolate whether the failure is caused by command order after full pytest, resource pressure, `.next` state, or PowerShell process capture; then fix the runner or split build into a clean subprocess.
-- Source links: [scripts/qa_exhaustive.ps1](scripts/qa_exhaustive.ps1), [TESTING.md](TESTING.md), [docs/contracts/QA_CONTRACT.md](docs/contracts/QA_CONTRACT.md), [docs/exec_plans/2026-06-14_exhaustive_qa_system_plan.md](docs/exec_plans/2026-06-14_exhaustive_qa_system_plan.md).
-- Remove when: `.\scripts\qa_exhaustive.cmd -LocalOnly -SkipLive` records `Frontend production build` as passed without special classification on a clean local run, and standalone `npm.cmd run build` also passes.
+- Severity: high
+- Area: architecture
+- Risk: `npm.cmd audit --omit=dev` reports production dependency advisories for the current Next.js/PostCSS tree. The suggested fix upgrades Next.js to a new major version, so applying it casually could break the current Next.js 14 frontend.
+- Evidence: On 2026-06-19, `cd frontend; npm.cmd audit --omit=dev` reported one high-severity Next.js advisory group and one moderate PostCSS advisory, with `npm audit fix --force` proposing `next@16.2.9`.
+- Current mitigation: Do not run `npm audit fix --force` during unrelated stabilization sessions. Keep the current Next.js 14 build/typecheck/API gates green, and plan the framework upgrade as a separate dependency session.
+- Next action: Create a scoped dependency-upgrade plan that evaluates Next.js 16 migration impact, then rerun lint, typecheck, build, API tests, smoke tests, and browser QA.
+- Source links: [frontend/package.json](frontend/package.json), [frontend/package-lock.json](frontend/package-lock.json), [docs/contracts/QA_CONTRACT.md](docs/contracts/QA_CONTRACT.md), [docs/exec_plans/2026-06-19_project_stabilization_and_review_case_engine_plan.md](docs/exec_plans/2026-06-19_project_stabilization_and_review_case_engine_plan.md).
+- Remove when: `cd frontend; npm.cmd audit --omit=dev` exits 0 after a verified framework/dependency upgrade.
 
-### Full pytest suite contract drift index (current audit: 2026-06-14)
+### Current full pytest suite status
 
-Latest recorded full-suite audit: `python -m pytest` inside the Session 02 exhaustive QA gate on
-**2026-06-14** reported **34 failed, 1887 passed, 3 skipped**. Treat this as the current full-suite
-status until a newer full run supersedes it. The previous structured failure grouping came from
-[docs/audits/2026-06-12_full_pytest_failure_audit_after_client_fit.md](docs/audits/2026-06-12_full_pytest_failure_audit_after_client_fit.md);
-the grouping table below is therefore a starting index, not a complete classification of all 34
-current failures.
+Latest recorded full-suite audit: `python -m pytest` inside `scripts/qa_exhaustive.cmd -LocalOnly -SkipLive` on **2026-06-20** completed green with
+**2094 passed, 3 skipped** in **830.96 seconds**. There is no active full-pytest drift index as of this audit.
 
-These failures are tracked as broad contract/fixture/test-harness debt, not as blockers for focused
-product-bundle or Client Fit checks unless the touched area overlaps one of the rows below.
-
-| Group | Failing tests | Drift summary | Next action |
-| --- | --- | --- | --- |
-| Block 8-only boundary | `tests/test_block8_current_vs_candidate_boundary.py::test_block8_only_writes_comparison_without_refreshing_stale_verdict` | Block 8-only helper also returns `site_explanation_bundle_json` | Decide whether optional site explanation belongs in Block 8-only output or re-baseline the test/spec |
-| Block 4 confidence/golden drift | `tests/test_block_4_no_trade_gate.py::test_golden_fixture_proceeds_to_launchpad`; `tests/test_block_4_severity_confidence.py::test_golden_fixture_assigns_severity_and_confidence` | Golden expects higher confidence than current partial X-Ray evidence produces | Product/spec decision before code or fixture change |
-| Current-vs-policy / comparison lineage | `tests/test_candidate_comparison.py::test_current_unavailable_in_optimize_mode`; `tests/test_current_vs_policy_workflow.py::test_combined_context_both_available`; `tests/test_current_vs_policy_workflow.py::test_current_weights_without_sidecar` | Current row status and sidecar lineage drift | Fix or intentionally re-accept status/root contract together |
-| Universe seed sizes | `tests/test_etf_universe.py::test_seed_universe_validates_and_has_target_size`; `tests/test_stock_universe.py::test_seed_universe_validates_and_has_expected_size` | Seed universe sizes exceed old expectations | Decide whether expansion is intentional; update data/tests/docs or restore seeds |
-| Factor/macro compatibility | `tests/test_factor_covariance.py::test_factor_covariance_empty_factor_frame_returns_explicit_skip_reason`; two `tests/test_macro_indicators.py` QE frequency tests | Empty factor frame and pandas quarterly alias handling | Add focused compatibility/guard fixes |
-| MVP workflow materialization | `tests/test_mvp_workflow.py::test_policy_current_adds_materialize_when_weights_set` | Policy-current planning misses expected materialization behavior | Inspect config normalization/wrapper path behavior |
-| Portfolio X-Ray golden drift | `tests/test_portfolio_xray_contract.py::test_live_build_matches_golden_document` | Live X-Ray differs from checked golden | Run targeted JSON diff before choosing fix vs fixture refresh |
-
-The older 2026-05-26 six-row index below remains as historical detail for overlapping known rows,
-but the 2026-06-14 audit above is the current full-suite status.
+The older 2026-06-14 and 2026-05-26 full-suite drift entries were compacted after the green run;
+use git history and the related audits for historical failure detail if needed.
 
 ---
 
@@ -286,84 +271,6 @@ Title: Full candidate factory refresh is operationally heavy for one-shot review
   interrupt (`RM-979`), and `--pdf-mode final_only` with Phase 3 instead of per-candidate Pandoc.
 - Source links: [run_portfolio_review.py](run_portfolio_review.py), [portfolio_review_workflow.py](src/portfolio_review_workflow.py), [candidate_factory.py](src/candidate_factory.py), [candidate_comparison.py](src/candidate_comparison.py), [operational_runbook.md](docs/operational_runbook.md), [methodology map G4](docs/audits/2026-05-20_candidate_factory_methodology_map.md).
 - Remove when: Full-run reliably completes within agreed operator time budget without manual staging, including the Phase 3/full-report cases that remain outside lightweight-report parallelism.
-
-Issue ID: KI-2026-05-26-001
-Title: Current row in optimize mode reported as degraded instead of unavailable
-
-- Status: open
-- Severity: medium
-- Area: testing
-- Risk: Comparison and downstream selection treat a non-materialized current portfolio as partially usable (`degraded`) when product contract expects hard `unavailable` with `missing_current_report`.
-- Evidence: `python -m pytest tests/test_candidate_comparison.py::test_current_unavailable_in_optimize_mode` fails (2026-05-26 full suite); actual `cur["status"] == "degraded"`.
-- Current mitigation: Focused suites that do not assert strict unavailable semantics still pass; operators must not infer current is compare-ready from `degraded` alone.
-- Next action: Align `src/candidate_comparison.py` current-row status with spec/tests, or update spec + tests if `degraded` is the new canonical signal (document `unavailable_reason`).
-- Source links: [tests/test_candidate_comparison.py](tests/test_candidate_comparison.py), [candidate_comparison_spec.md](docs/specs/candidate_comparison_spec.md), [DECISIONS.md](DECISIONS.md) (portfolio-first subject).
-- Remove when: `test_current_unavailable_in_optimize_mode` passes and comparison spec matches behavior.
-
-Issue ID: KI-2026-05-26-002
-Title: Candidate factory live build golden fingerprint drift (options_keys)
-
-- Status: resolved 2026-06-12
-- Severity: low
-- Area: testing
-- Risk: Factory contract regressions can slip through if golden `options_keys` are stale; CI/full suite noise hides real breaks.
-- Evidence: `python -m pytest tests/test_candidate_factory_contract.py::test_live_factory_build_matches_golden_document` failed in the 2026-05-26 full-suite audit; the targeted contract test passed after the 2026-06-12 golden refresh.
-- Current mitigation: Use `.\scripts\qa_contracts.ps1` for factory/comparison contract changes and regenerate golden fixtures via `tests/candidate_factory_golden_inputs.py` when the options surface intentionally changes.
-- Next action: Keep the refreshed options surface documented; remove this resolved entry during the next full-suite drift-index compaction.
-- Source links: [tests/test_candidate_factory_contract.py](tests/test_candidate_factory_contract.py), [docs/exec_plans/2026-05-25_code_migration_to_diagnosis_first_portfolio_mri.md](docs/exec_plans/2026-05-25_code_migration_to_diagnosis_first_portfolio_mri.md) (Session 12 noted same drift).
-- Remove when: the next full-suite drift audit compacts resolved entries out of this index.
-
-Issue ID: KI-2026-05-26-003
-Title: Combined current vs policy artifact_root path convention drift
-
-- Status: open
-- Severity: medium
-- Area: architecture
-- Risk: `build_current_vs_policy_status` and no-trade workflow may assume `current_portfolio` sidecar paths that comparison no longer emits, breaking combined-context completeness checks.
-- Evidence: `tests/test_current_vs_policy_workflow.py::test_combined_context_both_available` fails; `cur["artifact_root"].endswith("current_portfolio")` is False (2026-05-26 full suite).
-- Current mitigation: Portfolio-first review paths that materialize subject explicitly may still work on disk; do not rely on comparison `artifact_root` suffix alone without verification.
-- Next action: Reconcile `candidate_comparison` current `artifact_root` with `CURRENT_SIDECAR_SUBDIR` / materialization helpers and `analysis_setup_summary.current_materialization_root`.
-- Source links: [tests/test_current_vs_policy_workflow.py](tests/test_current_vs_policy_workflow.py), [src/candidate_comparison.py](src/candidate_comparison.py), [portfolio_review_workflow.py](src/portfolio_review_workflow.py).
-- Remove when: `test_combined_context_both_available` passes and path contract is documented in spec.
-
-Issue ID: KI-2026-05-26-004
-Title: Current without sidecar should be unavailable, not degraded
-
-- Status: open
-- Severity: medium
-- Area: testing
-- Risk: No-trade and current-vs-policy status may mark workflows actionable when current evidence was never materialized to a sidecar report tree.
-- Evidence: `tests/test_current_vs_policy_workflow.py::test_current_weights_without_sidecar` fails (2026-05-26 full suite); `cur["status"] == "degraded"` vs expected `unavailable` / `missing_current_report`.
-- Current mitigation: Same as KI-2026-05-26-001; treat missing sidecar as operator action required before trusting current row.
-- Next action: Fix with KI-2026-05-26-001/003 in one comparison + materialization alignment pass; verify `build_current_vs_policy_status` `skip_reason == current_not_materialized`.
-- Source links: [tests/test_current_vs_policy_workflow.py](tests/test_current_vs_policy_workflow.py), KI-2026-05-26-001, KI-2026-05-26-003.
-- Remove when: `test_current_weights_without_sidecar` passes.
-
-Issue ID: KI-2026-05-26-005
-Title: Factor covariance empty factor frame should return unavailable
-
-- Status: open
-- Severity: medium
-- Area: factor_macro
-- Risk: Downstream commentary and diagnostics may show factor-covariance analytics as available when no factors loaded, masking data-quality failure.
-- Evidence: `tests/test_factor_covariance.py::test_factor_covariance_empty_factor_frame_returns_explicit_skip_reason` fails (2026-05-26 full suite); `out["status"] == "available"`.
-- Current mitigation: Inspect `factor_load_diagnostics` and missing-factor lists in reports when factors are sparse.
-- Next action: Align `factor_covariance_analytics` empty-input branch in `src/stress_factors.py` (or owning module) with spec/tests for explicit `unavailable` + skip reason.
-- Source links: [tests/test_factor_covariance.py](tests/test_factor_covariance.py), [docs/exec_plans/2026-04-29_factor_covariance_forecast_quality.md](docs/exec_plans/2026-04-29_factor_covariance_forecast_quality.md).
-- Remove when: Empty-frame test passes and export/commentary reflects skip reason.
-
-Issue ID: KI-2026-05-26-006
-Title: MVP workflow policy+current plan missing materialize-current step
-
-- Status: open
-- Severity: medium
-- Area: architecture
-- Risk: `run_mvp_workflow.py` policy+current profile may skip automatic current materialization when `current_weights` are set, leaving comparison/workflow tests and operators without the expected CLI hook.
-- Evidence: `tests/test_mvp_workflow.py::test_policy_current_adds_materialize_when_weights_set` fails (2026-05-26 full suite); joined plan argv lacks `--materialize-current`.
-- Current mitigation: Run materialization explicitly via portfolio-review or materialize script before compare when using MVP workflow.
-- Next action: Add `--materialize-current` to `build_mvp_workflow_plan` for `WORKFLOW_POLICY_CURRENT` when weights present, or update test/spec if materialization moved to another entrypoint.
-- Source links: [tests/test_mvp_workflow.py](tests/test_mvp_workflow.py), [run_mvp_workflow.py](run_mvp_workflow.py), [src/mvp_workflow.py](src/mvp_workflow.py) if present.
-- Remove when: `test_policy_current_adds_materialize_when_weights_set` passes.
 
 Issue ID: KI-2026-05-21-001
 Title: portfolio_xray.json optional in optimization comparison readiness (G10)

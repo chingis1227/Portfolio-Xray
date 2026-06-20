@@ -12,6 +12,7 @@ import { EvidenceSummary } from "@/components/ui/EvidenceSummary";
 import { CaseFileTopCards } from "@/components/ui/CaseFileCards";
 import { ComparisonMetricMatrix } from "@/components/ui/MetricMatrix";
 import { formatUnknownValue, normalizeDisplaySentence } from "@/lib/displayLabels";
+import { deriveComparisonPublicSummary } from "@/lib/comparisonPresentation";
 import { useReviewState } from "@/lib/reviewState";
 
 type JsonRecord = Record<string, unknown>;
@@ -292,6 +293,15 @@ export function ComparisonScreen() {
   const validComparisonForDisplay = validComparisonAvailable && comparisonForDisplay
     ? comparisonForDisplay
     : undefined;
+  const comparisonPublicSummary = validComparisonForDisplay
+    ? deriveComparisonPublicSummary({
+      improved: validComparisonForDisplay.improved,
+      worsened: validComparisonForDisplay.worsened,
+      evidenceQuality: validComparisonForDisplay.evidenceQuality,
+      metrics: validComparisonForDisplay.metrics,
+      materiality: validComparisonForDisplay.materiality
+    })
+    : undefined;
 
   const comparisonAvailabilityTitle = showCandidateNotComparableState
     ? "Test candidate cannot be compared yet"
@@ -317,14 +327,14 @@ export function ComparisonScreen() {
             cards={[
               {
                 eyebrow: "What improved",
-                title: validComparisonForDisplay.improved[0] ?? "No material improvement returned",
+                title: comparisonPublicSummary?.improved ?? "No material improvement returned",
                 value: validComparisonForDisplay.metrics.find((metric) => metric.tone === "blue")?.direction,
                 description: "This is the strongest improvement signal to carry into the verdict step.",
                 tone: "blue"
               },
               {
                 eyebrow: "What worsened",
-                title: validComparisonForDisplay.worsened[0] ?? "No material worsening returned",
+                title: comparisonPublicSummary?.worsened ?? "No material worsening returned",
                 value: tradeoffDetail[0] ?? validComparisonForDisplay.materiality,
                 description: "This is the main cost or trade-off that could make an improvement less useful.",
                 tone: validComparisonForDisplay.worsened.length ? "amber" : "slate"
@@ -345,8 +355,8 @@ export function ComparisonScreen() {
             description="Only material comparison facts are promoted before the matrix."
             emptyMessage="Comparison evidence is not ready; generate one test candidate and complete a same-candidate comparison first."
             items={[
-              { label: "Improved", value: validComparisonForDisplay.improved[0] ?? "No material improvement returned" },
-              { label: "Trade-off", value: validComparisonForDisplay.worsened[0] ?? validComparisonForDisplay.materiality ?? "No main trade-off returned", tone: validComparisonForDisplay.worsened.length ? "amber" : "slate" },
+              { label: "Improved", value: comparisonPublicSummary?.improved ?? "No material improvement returned" },
+              { label: "Trade-off", value: comparisonPublicSummary?.worsened ?? comparisonPublicSummary?.materiality ?? "No main trade-off returned", tone: validComparisonForDisplay.worsened.length ? "amber" : "slate" },
               { label: "Evidence quality", value: validComparisonForDisplay.evidenceQuality, tone: /limited|insufficient|partial/i.test(validComparisonForDisplay.evidenceQuality) ? "amber" : "slate" }
             ]}
           />

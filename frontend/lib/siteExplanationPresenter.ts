@@ -1,4 +1,5 @@
 import type { SiteExplanationBundle, SiteExplanationTextItem, StatusTone } from "@/lib/types";
+import { containsPublicTechnicalText, sanitizePublicDisplayText } from "@/lib/displayLabels";
 
 type PublicEvidenceStatus = SiteExplanationTextItem["evidence_status"];
 
@@ -44,9 +45,9 @@ const evidenceStatusPresentation: Record<PublicEvidenceStatus, { label: string; 
 const unsafePublicTextPattern = /\b(?:stress_report|portfolio_xray|problem_classification|candidate_generation|current_vs_candidate|decision_verdict|site_explanation_bundle|schema_version|field_path|source_refs|artifact|frontend_review|trade now|must rebalance|best portfolio|suitability approved)\b|\.json\b|\bbuy\b|\bsell\b(?!-off)/i;
 
 function publicExplanationText(value: string) {
-  const normalized = value.replace(/\s+/g, " ").trim();
-  if (!normalized || unsafePublicTextPattern.test(normalized)) {
-    return "Evidence-backed explanation is available for this step; developer provenance stays separate from the public view.";
+  const normalized = sanitizePublicDisplayText(value, "Some supporting comparison evidence is incomplete.").replace(/\s+/g, " ").trim();
+  if (!normalized || unsafePublicTextPattern.test(normalized) || containsPublicTechnicalText(normalized)) {
+    return "Some supporting comparison evidence is incomplete.";
   }
   return normalized;
 }

@@ -30,7 +30,7 @@ Input Portfolio
 -> Monitoring / What Changed
 ```
 
-Current frontend route chain:
+Current frontend route reality:
 
 ```text
 /
@@ -48,7 +48,18 @@ Current frontend route chain:
 -> /report
 ```
 
+Returning signed-in users with completed onboarding and saved workspace, portfolio, draft, or
+review history may branch from sign-in/loading to `/workspace` before continuing or starting a new
+review at `/portfolio-input`. `/workspace` is an account home and history hub, not a product
+calculation stage.
+
+`/onboarding/goals` is a compatibility-only redirect to `/onboarding/investor-type`; do not promote
+it into current route maps. `/onboarding/name?dev_bypass=1` is a local preview shortcut, not the
+canonical product path.
+
 `/client-profile` is an advanced/manual Client Fit editor, not the normal onboarding entry step.
+`/sandbox/components` and developer/debug provenance surfaces are local review/debug surfaces, not
+canonical product journey routes.
 
 The implementation remains partly CLI/file-driven and still contains older optimizer/report/scorecard-heavy infrastructure. Treat that older infrastructure as support code unless a task explicitly targets it.
 
@@ -122,7 +133,8 @@ Candidate and robust portfolio commands are indexed in `docs/specs/candidate_por
 ## Production Stack Snapshot
 
 - Public domain: `portfolio-mri.com`.
-- DNS, domain, and frontend hosting: Cloudflare / Workers & Pages project `portfolio-xray`.
+- DNS, domain, and frontend hosting: Cloudflare / Workers & Pages project `portfolio-xray` (legacy
+  infrastructure project id; public product name remains Portfolio MRI).
 - Python API backend: Render web service `portfolio-mri-backend`, public health URL `https://portfolio-mri-backend.onrender.com/api/v1/health`.
 - Database/persistence: Supabase stores compact review records and stage summaries only; generated artifacts remain backend/run-local.
 - Frontend-to-backend bridge: Cloudflare Pages calls Render through `PMRI_FASTAPI_BASE_URL=https://portfolio-mri-backend.onrender.com`.

@@ -1,8 +1,0 @@
-Risk Budget by Asset Portfolio
-==================================================
-
-CAGR: 7.209%, Vol: 7.748%, MaxDD: -18.030%, Sharpe: 0.648, Sortino: 1.003, Beta: 0.388, Corr_base: 0.000
-
-Stress: DIAG_PASS_WITH_WARNING (—)
-Client-fit (MaxDD gate): PASS
-Solver: spinu_ccd (fallback: False)

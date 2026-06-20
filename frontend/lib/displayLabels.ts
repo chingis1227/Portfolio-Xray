@@ -12,6 +12,10 @@ const DISPLAY_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\bmonitor[_\s-]*or[_\s-]*resolve[_\s-]*data\b/gi, "Monitor or improve data quality"],
   [/\bcandidate[_\s-]*generation\b/gi, "Candidate generation"],
   [/\bfactory\b/gi, "candidate builder"],
+  [/\bfactory\s+step\s+status\s*:?\s*succeeded\b/gi, "Candidate setup completed"],
+  [/\bfactory\s+profile\s+id\s*:?\s*explicit\s+list\b/gi, "Selected candidate setup"],
+  [/\bcandidate\s+builder\s+step\s+status\s*:?\s*succeeded\b/gi, "Candidate setup completed"],
+  [/\bprofile\s+id\s*:?\s*explicit\s+list\b/gi, "Selected candidate setup"],
   [/\bimplementation\s+order\b/gi, "rebalance instruction"],
   [/\btrade\s+execution\b/gi, "rebalance instruction"],
   [/\bdecision[_\s-]*verdict\.json\b/gi, "decision-support verdict"],
@@ -21,10 +25,16 @@ const DISPLAY_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\bno[_\s-]*protection\b/gi, "Limited stress offset"],
   [/\bbaseline[_\s-]*or[_\s-]*candidate[_\s-]*metric[_\s-]*missing\b/gi, "Candidate metric unavailable"],
   [/\bno[_\s-]*available[_\s-]*comparison[_\s-]*metrics\b/gi, "Comparison metrics unavailable"],
-  [/\bstale[_\s-]*downstream[_\s-]*artifact[_\s-]*ignored\b/gi, "Previous result ignored because it is outdated"],
+  [/\bstale[_\s-]*downstream[_\s-]*artifact[_\s-]*ignored\b/gi, "Earlier evidence was skipped because it did not match the active review"],
+  [/\bprevious\s+result\s+ignored\s+because\s+it\s+is\s+outdated\b/gi, "Earlier evidence was skipped because it did not match the active review"],
+  [/\bmonitoring\s+diff\.supporting\s+data\b/gi, "monitoring evidence"],
+  [/\bdiff\.supporting\s+data\b/gi, "supporting comparison evidence"],
+  [/\bstatus\s+degraded\s+across\s+\d+\s+dimension(?:\(s\)|s)?\b/gi, "Some comparison evidence is incomplete"],
+  [/\bsuccess\s+criteria\s*:?\s+unavailable\b/gi, "Success criteria were not returned for this test"],
+  [/\bevidence\s+is\s+not\s+available\s+yet\s+for\s+this\s+screen\b/gi, "Evidence for this step is summarized in the cards above"],
   [/\bartifacts?\b/gi, "supporting evidence"],
-  [/\bdiagnostic sections?\s*2(?:\.\d+)?(?:\s*[вЂ“-]\s*2(?:\.\d+)?)?\b/gi, "portfolio behavior and factor evidence"],
-  [/\bblocks?\s*2(?:\.\d+)?(?:\s*[вЂ“-]\s*2(?:\.\d+)?)?\b/gi, "portfolio behavior and factor evidence"],
+  [/\bdiagnostic sections?\s*2(?:\.\d+)?(?:\s*[-\u2013\u2014]\s*2(?:\.\d+)?)?\b/gi, "portfolio behavior and factor evidence"],
+  [/\bblocks?\s*2(?:\.\d+)?(?:\s*[-\u2013\u2014]\s*2(?:\.\d+)?)?\b/gi, "portfolio behavior and factor evidence"],
   [/\bRC_vol\b/g, "risk contribution"],
   [/\brc[_\s-]*pct\b/gi, "risk contribution"],
   [/\bbeta[_\s-]*rr\b/gi, "interest-rate sensitivity"],
@@ -113,7 +123,7 @@ const EXACT_LABELS: Record<string, string> = {
   credit_liquidity_fragility: "Credit / liquidity fragility",
   baseline_or_candidate_metric_missing: "Candidate metric unavailable",
   no_available_comparison_metrics: "Comparison metrics unavailable",
-  stale_downstream_artifact_ignored: "Previous result ignored because it is outdated",
+  stale_downstream_artifact_ignored: "Earlier evidence was skipped because it did not match the active review",
   no_material_rebalance_recommended: "No material rebalance recommended",
   evidence_insufficient: "Evidence insufficient",
   candidate_failed_or_infeasible: "Candidate failed or infeasible",
@@ -175,6 +185,27 @@ function looksLikeArtifactFilename(value: string) {
   return /(?:^|[\\/])[\w.-]+\.json$/i.test(value) || /(?:^|[\\/])(?:output|cache|runs|results_csv)[\\/]/i.test(value);
 }
 
+const PUBLIC_TECHNICAL_TEXT_PATTERNS: RegExp[] = [
+  /\bfactory\b/i,
+  /\bartifacts?\b/i,
+  /\bjson\b/i,
+  /\bdiff\.supporting\b/i,
+  /\bexplicit\s+list\b/i,
+  /\bstatus\s*:\s*succeeded\b/i,
+  /\bprevious\s+result\s+ignored\b/i,
+  /\bcandidate\s+builder\s+step\s+status\b/i,
+  /\b(?:source_refs?|field_path|schema_version|frontend_review|run_id)\b/i,
+  /\b[a-z]+_[a-z0-9_]*\b/i
+];
+
+const PUBLIC_TECHNICAL_FALLBACK = "Some supporting comparison evidence is incomplete.";
+
+export function containsPublicTechnicalText(value?: unknown) {
+  if (value === null || value === undefined) return false;
+  const text = String(value);
+  return PUBLIC_TECHNICAL_TEXT_PATTERNS.some((pattern) => pattern.test(text));
+}
+
 export function formatUnknownValue(value?: unknown, fallback = "Not available yet") {
   if (value === null || value === undefined) return fallback;
   if (typeof value === "boolean") return value ? "Available" : "Not available";
@@ -196,6 +227,38 @@ export function normalizeDisplaySentence(value?: unknown, fallback = "Supporting
     .replace(/\bn\/a\b/gi, "Unavailable")
     .replace(/\bEquity Linked\b/g, "Equity-linked")
     .replace(/\bRisk On\b/g, "Risk-on");
+}
+
+export function sanitizePublicDisplayText(value?: unknown, fallback = PUBLIC_TECHNICAL_FALLBACK) {
+  const raw = value === null || value === undefined ? fallback : String(value);
+  let cleaned = normalizeDisplaySentence(raw, fallback)
+    .replace(/\b(?:Candidate generation|Candidate builder)\s*:?\s*Candidate setup completed\b/gi, "Candidate setup completed")
+    .replace(/\bSupporting evidence\s*:?\s*Selected candidate setup\b/gi, "Selected candidate setup")
+    .replace(/\bSupporting data\b/gi, "supporting evidence")
+    .replace(/\bUnavailable\s+Unavailable\b/gi, "Unavailable")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleaned || containsPublicTechnicalText(cleaned)) {
+    cleaned = fallback;
+  }
+
+  return preserveAcronyms(sentenceCase(cleaned));
+}
+
+export function sanitizePublicDisplayList(items: unknown[] | undefined, fallback?: string) {
+  const seen = new Set<string>();
+  const sanitized = (items ?? [])
+    .map((item) => sanitizePublicDisplayText(item, ""))
+    .filter((item) => item && !containsPublicTechnicalText(item))
+    .filter((item) => {
+      const key = item.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  if (!sanitized.length && fallback) return [sanitizePublicDisplayText(fallback)];
+  return sanitized;
 }
 
 export function evidenceQualityLabel(value?: unknown) {

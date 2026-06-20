@@ -1,8 +1,0 @@
-Hierarchical Risk Parity Portfolio
-==================================================
-
-CAGR: 4.111%, Vol: 5.847%, MaxDD: -15.733%, Sharpe: 0.334, Sortino: 0.479, Beta: 0.240, Corr_base: 0.000
-
-Stress: DIAG_PASS_WITH_WARNING (—)
-Client-fit (MaxDD gate): PASS
-HRP linkage: ward (ward_fallback=False)

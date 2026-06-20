@@ -17,7 +17,7 @@ Landing
 -> required email sign-in
 -> Onboarding
 -> Loading / setup
-Portfolio Input
+-> Portfolio Input
 -> Diagnosis
 -> Evidence
 -> Hypothesis / Builder prepare and Candidate Generation
@@ -25,6 +25,13 @@ Portfolio Input
 -> Decision Verdict
 -> Report / AI Commentary grounding
 ```
+
+Returning signed-in users with completed onboarding and saved workspace/history may branch to
+`/workspace` before opening Portfolio Input or continuing a same-run review. That branch is account
+recovery only; it must not run diagnosis or regenerate downstream artifacts automatically.
+`/onboarding/goals` is a compatibility redirect to `/onboarding/investor-type`, not part of the demo
+path. `/client-profile` is advanced/manual Client Fit editing, and `/sandbox/components` is local
+component QA, not a product journey route.
 
 The product boundary is strict:
 
@@ -128,7 +135,13 @@ intentionally does not call FastAPI routes.
 ## Manual click-through guide
 
 Start at `http://localhost:3000`. Confirm the public page shows `Diagnose portfolio risk before you
-change it` and does not show the platform sidebar or platform step rail. Click **Enter Platform** and confirm it opens `/onboarding/sign-in`. Enter an email, then enter the email code when the verification step appears. If local email auth is unavailable, use the localhost fallback on the sign-in page or open `http://localhost:3000/onboarding/name?dev_bypass=1` for preview only. After sign-in or local fallback, complete the short onboarding screens and let the setup screen redirect to Portfolio Input.
+change it` and does not show the platform sidebar or platform step rail. Click **Enter Platform**
+and confirm it opens `/onboarding/sign-in`. Enter an email, then enter the email code when the
+verification step appears. If local email auth is unavailable, use the localhost fallback on the
+sign-in page or open `http://localhost:3000/onboarding/name?dev_bypass=1` for preview only. After
+sign-in or local fallback, complete the short onboarding screens and let the setup screen redirect
+to Portfolio Input for a new user, or to `/workspace` only when saved workspace/history exists for a
+returning user.
 
 After onboarding, use a simple portfolio that sums to 100%. A stable smoke portfolio is:
 

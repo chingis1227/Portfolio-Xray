@@ -1,6 +1,7 @@
 # WORKFLOW.md
 
-This file defines the practical task workflow for Portfolio MRI / Optimization Terminal.
+This file defines the practical task workflow for Portfolio MRI. `Optimization Terminal` is an old
+compatibility name for legacy CLI and optimizer-era references only.
 
 It explains how work moves from request to implementation, verification, documentation sync, project-memory updates, and commit. It does not replace `RULES.md`, `SPEC.md`, `TESTING.md`, `PLANS.md`, or detailed specs; it connects them into one operating process.
 

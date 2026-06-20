@@ -1,9 +1,0 @@
-{
-  "timestamp": "2026-05-19T14:44:39.845519",
-  "snapshots": {
-    "assets": "snapshot_assets.json",
-    "3y": "snapshot_3y.json",
-    "5y": "snapshot_5y.json",
-    "10y": "snapshot_10y.json"
-  }
-}

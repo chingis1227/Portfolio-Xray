@@ -1,6 +1,7 @@
 # RULES.md
 
-This file is the high-level rule map for Portfolio MRI / Optimization Terminal.
+This file is the high-level rule map for Portfolio MRI. `Optimization Terminal` is an old
+compatibility name for legacy CLI and optimizer-era references only.
 
 It defines the project-wide principles, boundaries, and required working discipline. Detailed formulas, scenario definitions, optimizer rules, data handling, UI rules, and agent workflow rules live in their canonical documents listed below. Do not duplicate those details here.
 

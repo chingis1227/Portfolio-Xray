@@ -1,6 +1,7 @@
 # GLOSSARY.md
 
-This file is the living glossary for Portfolio MRI / Optimization Terminal.
+This file is the living glossary for Portfolio MRI. `Optimization Terminal` is an old compatibility
+name for legacy CLI and optimizer-era references only.
 
 It keeps project terminology consistent across documentation, specs, code comments, reports, outputs, and future UI/API surfaces. It does not replace formulas, policy rules, data rules, or detailed specs.
 

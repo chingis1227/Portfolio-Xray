@@ -151,7 +151,7 @@ automatic trades.
 
 ## Current Frontend Route Reality
 
-The current frontend route chain is:
+The canonical new-user frontend route chain is:
 
 ```text
 /
@@ -169,7 +169,15 @@ The current frontend route chain is:
 -> /report
 ```
 
-`/client-profile` is an advanced/manual Client Fit editor, not the normal onboarding entry step.
+Returning signed-in users with completed onboarding and saved workspace, portfolio, draft, or
+review history may branch from sign-in/loading to `/workspace`. `/workspace` restores saved account
+context and compact history without running diagnosis, refreshing market data, generating
+candidates, comparing portfolios, or producing verdict/report artifacts automatically.
+
+`/onboarding/goals` is a compatibility-only redirect to `/onboarding/investor-type`, retained for
+older links and not part of the current product journey. `/client-profile` is an advanced/manual
+Client Fit editor, not the normal onboarding entry step. `/sandbox/components` and developer/debug
+provenance views are local review/debug surfaces, not product journey routes.
 Route responsibilities are owned by
 [`docs/contracts/SCREEN_CONTRACTS.md`](docs/contracts/SCREEN_CONTRACTS.md) and
 [`frontend/README.md`](frontend/README.md).

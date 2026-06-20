@@ -1,6 +1,7 @@
 # TESTING.md
 
-This file is the quality and verification framework for Portfolio MRI / Optimization Terminal.
+This file is the quality and verification framework for Portfolio MRI. `Optimization Terminal` is an
+old compatibility name for legacy CLI and optimizer-era references only.
 
 It defines what to verify for different change types, which risks the checks cover, when focused `pytest` is enough, when CLI smoke runs are needed, and when generated artifacts or Markdown links must be inspected. It does not define formulas, scenarios, optimizer policy, or data rules; those remain in `SPEC.md`, `DATA.md`, and `docs/specs/`.
 
@@ -82,37 +83,44 @@ Use these PowerShell shortcuts for routine local verification when a full test s
 
 | Gate | Command | Use when | Excludes |
 | --- | --- | --- | --- |
-| Fast daily QA | `.\scripts\qa_fast.ps1` (`.\scripts\qa_fast.cmd` if PowerShell policy blocks scripts) | Default local gate for docs consistency, staged Run Diagnosis route compatibility, core offline workflow smoke, product-bundle adapters, frontend typecheck, and frontend API routes. Target runtime is roughly 3 minutes on the Windows desktop setup. | Full `python -m pytest`, live E2E, frontend build, frontend smoke, Playwright/browser visual QA. |
-| Contract QA | `.\scripts\qa_contracts.ps1` (`.\scripts\qa_contracts.cmd` if PowerShell policy blocks scripts) | Runtime contract, candidate factory, comparison JSON, or golden fixture changes. It runs the candidate factory/comparison suites while excluding the still-open KI-2026-05-26-001 drift test. | Networked/live checks and full `python -m pytest`. |
+| Fast daily QA | `.\scripts\qa_fast.ps1` (`.\scripts\qa_fast.cmd` if PowerShell policy blocks scripts) | Default local gate for docs consistency, staged Run Diagnosis route compatibility, FastAPI/frontend contract governance, core offline workflow smoke, product-bundle adapters, frontend typecheck, and frontend API routes. Target runtime is roughly 3 minutes on the Windows desktop setup. | Full `python -m pytest`, live E2E, frontend lint, frontend build, frontend smoke, Playwright/browser visual QA. |
+| Contract QA | `.\scripts\qa_contracts.ps1` (`.\scripts\qa_contracts.cmd` if PowerShell policy blocks scripts) | Runtime contract, candidate factory, comparison JSON, or golden fixture changes. It runs the candidate factory/comparison suites as a faster alternative to full pytest. | Networked/live checks and full `python -m pytest`. |
 | Exhaustive local QA | `.\scripts\qa_exhaustive.cmd -LocalOnly -SkipLive` | Release-candidate local static gate. It writes `output/qa_runs/<timestamp>/qa-summary.*`, per-step logs, `qa-findings.*`, and `qa-release-readiness.*`; runs environment readiness, the staged Run Diagnosis OpenAPI guard, fast QA, contract QA, FastAPI governance, full pytest, frontend typecheck/build/API/smoke, docs verification, and Supabase compact/privacy checks. | Browser vertical QA and staging readiness are skipped by `-SkipLive` / `-LocalOnly`; use the release commands below before declaring release readiness. Known baseline failures are classified as `known_failure`; unexpected failures are `new_failure`. |
 | Exhaustive local + browser vertical QA | `.\scripts\qa_exhaustive.cmd -LocalOnly` | Local release-readiness gate that adds `npm.cmd run qa:vertical -- --scenario-limit 5` after the local static gate. It records active `reviewId` lineage, selected Launchpad card, Builder/Candidate/Comparison/Verdict/Report ids, screenshots or DOM fallbacks, and stale selected-card HTTP 409 evidence in `qa-findings.*`. | Staging readiness is skipped because `-LocalOnly` is supplied. |
 | Exhaustive staging release readiness | `.\scripts\qa_exhaustive.cmd -Staging` with `PMRI_QA_ALLOW_STAGING=1`, `PMRI_QA_FRONTEND_URL`, and `PMRI_QA_FASTAPI_URL` | Full release-readiness gate. It runs the local checks, local browser vertical QA, staging Run Diagnosis compatibility, and staging route-chain journey checks through Report. | Requires configured staging URLs and may create a normal demo QA staged review in staging. External provider outages may be classified as `blocked_external`. |
 
 Keep full `python -m pytest` as a manual/nightly or risk-based check, not the everyday fast gate. Run live core/full E2E only for demo, release, or explicit operator proof.
 
-Current exhaustive baseline note: the 2026-06-14 Session 02 run completed as
-`passed_with_known_failures`. `KNOWN_ISSUES.md` tracks the current full-pytest count and
-`KI-2026-06-14-001`, where `npm.cmd run build` can return exit `-1` inside the long exhaustive
-runner even though the same build passes standalone. Session 03 upgrades the same runner to
-`qa_exhaustive_session03_v1` and adds `qa-release-readiness.*`; known P0/P1/P2 failures remain
-release blockers in the readiness summary even when they are classified as known baselines.
-The previous browser vertical blocker `KI-2026-06-14-002` is resolved: downstream frontend bridge
-routes must stay deployment-safe by consuming FastAPI response payloads plus explicit lineage ids
-from frontend state, not by reading run-local files from Next.js route handlers. Demo QA mode uses
-fixed fixture diagnosis text across scenarios, so the vertical helper records that as a warning
-rather than a route-chain failure; release evidence is the same-run lineage and stale-card 409 proof.
+Frontend lint is configured as a non-interactive Next.js ESLint gate. Run
+`cd frontend; npm.cmd run lint` before the standard frontend implementation checks when frontend
+code, styles, route logic, or lint configuration changes. It is not part of `qa_fast` until the fast
+gate is explicitly expanded.
+
+Current exhaustive baseline note: on 2026-06-20, `scripts\qa_exhaustive.ps1` was updated so
+the frontend production build runs in an isolated `.next-qa-build` directory through a fresh child
+process instead of sharing the default `.next` directory with possible local Next.js dev servers.
+`PMRI_NEXT_DIST_DIR` is set only for that QA build step. `frontend/next.config.mjs` uses the
+variable as an opt-in `distDir`, `frontend/tsconfig.json` includes `.next-qa-build/types/**/*.ts`,
+and `.gitignore` excludes `.next-qa-build/` as generated output. After this change,
+`.\scripts\qa_exhaustive.cmd -LocalOnly -SkipLive` completed with status `passed`, release
+readiness `ready`, **0 P0/P1/P2 blockers**, full backend pytest **2094 passed, 3 skipped**, and
+`Frontend production build` passed on the first attempt. Evidence lives under
+`output/qa_runs/20260620T093133Z/`, especially `qa-summary.md`, `qa-release-readiness.md`, and
+`logs/frontend-production-build.log`. Browser vertical QA was still skipped because `-SkipLive` was
+supplied; run the release commands below before claiming browser or staging readiness.
+The previous browser vertical blocker `KI-2026-06-14-002` is resolved:
+downstream frontend bridge routes must stay
+deployment-safe by consuming FastAPI response payloads plus explicit lineage ids from frontend
+state, not by reading run-local files from Next.js route handlers. Demo QA mode uses fixed fixture
+diagnosis text across scenarios, so the vertical helper records that as a warning rather than a
+route-chain failure; release evidence is the same-run lineage and stale-card 409 proof.
 
 ### Known full-suite status
 
-As of the latest recorded full-suite audit on **2026-06-14**, `python -m pytest` reported
-**34 failed, 1887 passed, 3 skipped**. Treat this as the current full-suite status until a newer
-full run is recorded. The previous structured grouping came from
-[docs/audits/2026-06-12_full_pytest_failure_audit_after_client_fit.md](docs/audits/2026-06-12_full_pytest_failure_audit_after_client_fit.md);
-the current count and active drift index are summarized in [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
-
-Until the remaining rows are closed: use focused pytest for the changed layer and the fast QA gates
-above; do not claim full-suite green or make it a release gate without rerunning and reconciling the
-full suite.
+As of the latest recorded full-suite audit on **2026-06-20**, `python -m pytest` completed green
+inside `.\scripts\qa_exhaustive.cmd -LocalOnly -SkipLive`: **2094 passed, 3 skipped** in **830.96
+seconds**. Keep full `python -m pytest` as a manual/nightly or risk-based check rather than the
+everyday fast gate, but do not cite the older 2026-06-14 failure count as the current baseline.
 
 ### Block 2.4 Hidden Exposure institutional upgrade (Sessions 01-13, **closed**)
 

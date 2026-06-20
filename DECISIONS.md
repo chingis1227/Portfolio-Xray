@@ -1,6 +1,7 @@
 # DECISIONS.md
 
-This file is the concise living decision log for Portfolio MRI / Optimization Terminal.
+This file is the concise living decision log for Portfolio MRI. `Optimization Terminal` is an old
+compatibility name for legacy CLI and optimizer-era references only.
 
 It records important decisions, why they were made, what alternatives were rejected, and which assumptions existed at the time. It is not a changelog, roadmap, issue tracker, implementation spec, or ExecPlan.
 

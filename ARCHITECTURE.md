@@ -12,6 +12,33 @@ and preserves compact active-review state across browser refreshes. The source o
 wrapper is `docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md`. The additive synchronous FastAPI and
 CLI/file-driven paths remain valid compatibility behavior.
 
+The staged review wrapper now has a small internal Review Case boundary in `src/review_case/`. It
+owns the canonical staged-review order, safe run-local artifact reference validation, a narrow
+artifact manifest for the existing public `artifacts` map, a narrow stage state machine for status
+transitions, a downstream stage-readiness helper for explicit candidate/comparison/verdict/report
+gates, a downstream artifact-lineage helper for candidate/comparison/verdict consistency over
+existing generated dictionaries, a downstream evidence-chain context helper for bounded
+comparison/verdict/report display context over existing generated dictionaries, an internal Evidence
+Graph for relating stages, manifest entries, and source evidence, a narrow screen read-model
+projection for future UI/API migration, a
+MarketDataSnapshot metadata seam that summarizes existing run metadata/provider/data-policy
+evidence, an opt-in Review Case execution queue seam with an RQ/Redis prototype and default
+in-process fallback, an
+inactive-by-default artifact storage seam that keeps run-local files as the source of truth while
+validating future S3/R2 object keys, and a run-local repository seam for loading and saving
+`ReviewCase` objects as the existing `review_state_v1` file. The FastAPI
+adapter also has a narrow staged-state helper in `src/api/staged_review_state.py` for run-local
+state IO, owner checks, public status projection, legacy raw-ref sanitization, and internal
+projection of sanitized staged status into the Review Case screen read model. That helper now builds
+the existing public status envelope and the internal screen read model as one Review Case status
+projection bundle while `src/api/reviews.py` still returns only the public envelope and continues to
+own routes and execution. The frontend has a matching additive client-state helper in
+`frontend/lib/review/reviewCaseClientState.ts` that projects staged status into screen-ready progress
+and artifact availability, and active-review compact progress now delegates staged status projection
+through that helper without changing public routes or response envelopes. These are
+architecture seams around existing artifacts, not replacements for generated artifact schemas or
+calculation logic.
+
 This document uses four labels:
 
 - **Current implementation:** supported by current specs/code and safe to describe as implemented only after verification.
@@ -103,8 +130,28 @@ Target responsibility:
 
 Current implementation mapping:
 
-- Target contract only until implemented. The current synchronous FastAPI diagnosis endpoint and
-  CLI/file-driven run-local artifacts remain the current runtime truth.
+- `src/api/reviews.py` implements the staged endpoints and still writes the public
+  `review_state_v1` shape.
+- `src/api/staged_review_state.py` provides the FastAPI-adjacent state adapter for
+  `review_state.json` reads/writes, owner checks, safe public status envelopes, and legacy raw-ref
+  sanitization while preserving the existing route contracts. It can also project the sanitized
+  public staged status into the internal Review Case screen read model as a paired status projection
+  bundle for future API migration tests without adding fields to the public status envelope.
+- `src/review_case/` provides the Review Case domain model and run-local repository for canonical
+  stage order, safe run-local artifact references, the existing artifact manifest map, narrow
+  stage/status transitions, downstream stage readiness checks, downstream artifact-lineage checks
+  for candidate/comparison/verdict consistency, downstream evidence-chain display context for
+  comparison/verdict/report responses, internal evidence graph links, screen read models for stage
+  progress and artifact/evidence availability, MarketDataSnapshot metadata over existing run
+  evidence, an inactive-by-default RQ/Redis execution-queue prototype with validated internal
+  configuration, bounded operational metadata, local fallback semantics, an
+  inactive-by-default artifact storage adapter that falls back to run-local files and validates
+  future S3/R2 object keys, and typed load/save of the existing `review_state.json` file.
+- `frontend/lib/review/reviewCaseClientState.ts` provides the matching browser/client projection
+  for staged progress, safe artifact availability, progress counts, and diagnosis-chain readiness;
+  `frontend/lib/reviewState.tsx` uses it when compacting staged status and checking stage readiness.
+- The current synchronous FastAPI diagnosis endpoint and CLI/file-driven run-local artifacts remain
+  valid compatibility behavior.
 
 Architecture boundary:
 

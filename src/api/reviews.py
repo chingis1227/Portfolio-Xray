@@ -16,8 +16,6 @@ import os
 import re
 import threading
 import uuid
-from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -94,11 +92,39 @@ from src.api.models import (
     StagedReviewStatusResponse,
     StagedSafeError,
     StagedStageName,
-    StagedStageState,
     VerdictData,
     VerdictIdRequest,
     VerdictResponse,
     VerdictSummary,
+)
+from src.api.staged_review_state import (
+    ReviewAccessError,
+    StagedReviewStateStore,
+    read_json_file,
+    review_case_status_projection_from_state,
+    safe_staged_ref,
+    staged_safe_error,
+    staged_status_not_found,
+    utc_now_iso,
+)
+from src.review_case import (
+    REVIEW_CASE_STAGE_NAMES,
+    ReviewCase,
+    ReviewCaseDownstreamLineageError,
+    ReviewCaseStageMachine,
+    ReviewCaseStageReadinessError,
+    ReviewCaseExecutionJob,
+    RunLocalReviewCaseRepository,
+    StageTransition,
+    enqueue_with_optional_rq,
+    review_case_candidate_lineage,
+    review_case_comparison_has_displayable_evidence,
+    review_case_comparison_id_for_candidate,
+    review_case_comparison_lineage,
+    review_case_downstream_evidence_chain_context,
+    review_case_stage_readiness_from_state,
+    review_case_verdict_lineage,
+    run_local_review_case_artifact_storage,
 )
 
 
@@ -115,19 +141,8 @@ PAYLOAD_DIR = PROJECT_ROOT / "runs" / "fastapi_review_payloads"
 SAFE_REF_RE = re.compile(r"^[A-Za-z]:[\\/]|^/(...:Users|home|var|tmp|mnt)/")
 STAGED_REVIEW_STARTED_SCHEMA_VERSION = "review_started_v1"
 STAGED_REVIEW_STATE_SCHEMA_VERSION = "review_state_v1"
-STAGED_STAGE_NAMES: tuple[StagedStageName, ...] = (
-    "input",
-    "data_load",
-    "xray",
-    "stress",
-    "client_fit",
-    "problem_classification",
-    "launchpad_builder",
-    "candidate",
-    "comparison",
-    "verdict",
-    "report",
-)
+STAGED_STATE_STORE = StagedReviewStateStore(schema_version=STAGED_REVIEW_STATE_SCHEMA_VERSION)
+STAGED_STAGE_NAMES: tuple[StagedStageName, ...] = REVIEW_CASE_STAGE_NAMES  # type: ignore[assignment]
 STAGED_INITIAL_PROVIDER_STATUS = {
     "live": StagedProviderStatus(
         source="live_provider",
@@ -221,15 +236,6 @@ _staged_worker_lock = threading.Lock()
 _staged_worker_condition = threading.Condition(_staged_worker_lock)
 _staged_worker_active = 0
 _staged_worker_queued = 0
-
-
-@dataclass(frozen=True)
-class ReviewAccessError(Exception):
-    """Public-safe authorization or lineage failure for a run-local review."""
-
-    status_code: int
-    code: str
-    message: str
 
 
 def _record(value: Any) -> dict[str, Any]:
@@ -432,26 +438,39 @@ def _stage_artifact_ref(kind: str, ref: str, scope: str = "run_local") -> Artifa
 
 
 def _read_json_file(path: Path) -> dict[str, Any]:
-    data = json.loads(path.read_text(encoding="utf-8-sig"))
-    if not isinstance(data, dict):
-        raise ValueError(f"{path.name} is not a JSON object.")
-    return data
+    return read_json_file(path)
 
 
 def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return utc_now_iso()
 
 
 def _staged_state_path(run_dir: Path) -> Path:
-    return run_dir / "review_state.json"
+    return STAGED_STATE_STORE.path(run_dir)
 
 
 def _safe_staged_ref(value: Any, *, fallback: str) -> str:
-    ref = _safe_ref(value, fallback=fallback)
-    normalized = ref.replace("\\", "/")
-    if Path(normalized).is_absolute() or normalized.startswith("/") or SAFE_REF_RE.search(normalized):
-        return fallback
-    return normalized
+    return safe_staged_ref(value, fallback=fallback)
+
+
+def _review_case_repository(run_dir: Path) -> RunLocalReviewCaseRepository:
+    return RunLocalReviewCaseRepository(run_dir, schema_version=STAGED_REVIEW_STATE_SCHEMA_VERSION)
+
+
+def _initial_review_case(
+    review_id: str,
+    *,
+    mode: StagedReviewMode,
+    owner_id: str | None = None,
+) -> ReviewCase:
+    now = _utc_now_iso()
+    return ReviewCase.initial(
+        review_id,
+        mode=mode,
+        owner_id=owner_id,
+        now=now,
+        provider_status=STAGED_INITIAL_PROVIDER_STATUS[mode].model_dump(mode="json"),
+    )
 
 
 def _initial_staged_state(
@@ -460,88 +479,44 @@ def _initial_staged_state(
     mode: StagedReviewMode,
     owner_id: str | None = None,
 ) -> dict[str, Any]:
-    now = _utc_now_iso()
-    stages = {
-        stage: {"status": "pending", "started_at": None, "completed_at": None, "artifact_refs": []}
-        for stage in STAGED_STAGE_NAMES
-    }
-    stages["input"] = {
-        "status": "running",
-        "started_at": now,
-        "completed_at": None,
-        "artifact_refs": ["payload.json"],
-    }
-    return {
-        "schema_version": STAGED_REVIEW_STATE_SCHEMA_VERSION,
-        "review_id": review_id,
-        "status": "running",
-        "current_stage": "input",
-        "mode": mode,
-        "owner_id": owner_id or "local-dev-user",
-        "created_at": now,
-        "updated_at": now,
-        "stages": stages,
-        "artifacts": {},
-        "provider_status": STAGED_INITIAL_PROVIDER_STATUS[mode].model_dump(mode="json"),
-        "warnings": [],
-        "safe_error": None,
-    }
+    return _initial_review_case(
+        review_id,
+        mode=mode,
+        owner_id=owner_id,
+    ).to_staged_state_dict(schema_version=STAGED_REVIEW_STATE_SCHEMA_VERSION)
 
 
 def _write_staged_state(run_dir: Path, state: dict[str, Any]) -> None:
-    state["updated_at"] = _utc_now_iso()
-    temp_path = run_dir / "review_state.json.tmp"
-    write_json(temp_path, state)
-    temp_path.replace(_staged_state_path(run_dir))
+    STAGED_STATE_STORE.write(run_dir, state)
 
 
 def _read_staged_state(run_dir: Path) -> dict[str, Any]:
-    state = _read_json_file(_staged_state_path(run_dir))
-    if state.get("schema_version") != STAGED_REVIEW_STATE_SCHEMA_VERSION:
-        raise ValueError("Run-local review_state.json is not review_state_v1.")
-    return state
+    return STAGED_STATE_STORE.read(run_dir)
 
 
 def _read_optional_staged_state(run_dir: Path) -> dict[str, Any] | None:
-    try:
-        if not _staged_state_path(run_dir).is_file():
-            return None
-        return _read_staged_state(run_dir)
-    except (FileNotFoundError, ValueError):
-        return None
+    return STAGED_STATE_STORE.read_optional(run_dir)
 
 
 def _assert_review_owner(state: dict[str, Any] | None, owner_id: str | None) -> None:
-    stored_owner = _text(_record(state or {}).get("owner_id"))
-    if not stored_owner:
-        raise ReviewAccessError(
-            403,
-            "review_forbidden",
-            "Review owner is missing; restart the review.",
-        )
-    if not owner_id or stored_owner != owner_id:
-        raise ReviewAccessError(
-            403,
-            "review_forbidden",
-            "Review belongs to a different authenticated user.",
-        )
+    STAGED_STATE_STORE.assert_owner(state, owner_id)
 
 
 def _read_authorized_staged_state(review_id: str, owner_id: str | None) -> tuple[Path, dict[str, Any]]:
     run_dir = safe_review_run_dir(review_id)
-    state = _read_staged_state(run_dir)
-    _assert_review_owner(state, owner_id)
+    state = STAGED_STATE_STORE.read(run_dir)
+    STAGED_STATE_STORE.assert_owner(state, owner_id)
     return run_dir, state
 
 
 def _authorize_review_owner(review_id: str, owner_id: str | None) -> None:
     run_dir = safe_review_run_dir(review_id)
-    state = _read_optional_staged_state(run_dir)
-    _assert_review_owner(state, owner_id)
+    state = STAGED_STATE_STORE.read_optional(run_dir)
+    STAGED_STATE_STORE.assert_owner(state, owner_id)
 
 
 def _is_stage_completed(state: dict[str, Any], stage: StagedStageName) -> bool:
-    return _text(_record(_record(state.get("stages")).get(stage)).get("status")) == "completed"
+    return review_case_stage_readiness_from_state(state).is_stage_completed(stage)
 
 
 def _assert_downstream_stage_ready(
@@ -550,18 +525,17 @@ def _assert_downstream_stage_ready(
     *,
     required_previous: StagedStageName | None = None,
 ) -> None:
-    if required_previous and not _is_stage_completed(state, required_previous):
+    try:
+        review_case_stage_readiness_from_state(state).assert_downstream_stage_ready(
+            stage,
+            required_previous=required_previous,
+        )
+    except ReviewCaseStageReadinessError as exc:
         raise ReviewAccessError(
             409,
-            "stage_not_ready",
-            f"{stage} is not ready because {required_previous} has not completed for this review.",
-        )
-    if stage == "candidate" and not _is_stage_completed(state, "launchpad_builder"):
-        raise ReviewAccessError(
-            409,
-            "stage_not_ready",
-            "Candidate generation is not ready until diagnosis and Builder setup are complete.",
-        )
+            exc.issue.code,
+            exc.issue.message,
+        ) from exc
 
 
 def _worker_limit(name: str, default: int) -> int:
@@ -638,21 +612,20 @@ def _set_stage_status(
     *,
     artifact_refs: list[str] | None = None,
 ) -> None:
-    now = _utc_now_iso()
-    stages = _record(state.setdefault("stages", {}))
-    row = _record(stages.get(stage))
-    if not row.get("started_at") and status in {"running", "completed", "partial", "blocked", "failed"}:
-        row["started_at"] = now
-    if status in {"completed", "partial", "blocked", "failed", "skipped"}:
-        row["completed_at"] = now
-    row["status"] = status
-    if artifact_refs is not None:
-        row["artifact_refs"] = [
-            _safe_staged_ref(ref, fallback=f"logical://{stage}") for ref in artifact_refs
-        ]
-    stages[stage] = row
-    state["stages"] = stages
-    state["current_stage"] = stage
+    ReviewCaseStageMachine(
+        clock=_utc_now_iso,
+        artifact_ref_sanitizer=lambda ref, stage_name: _safe_staged_ref(
+            ref,
+            fallback=f"logical://{stage_name}",
+        ),
+    ).apply_to_staged_state(
+        state,
+        StageTransition(
+            stage=stage,
+            status=status,  # type: ignore[arg-type]
+            artifact_refs=artifact_refs,
+        ),
+    )
 
 
 def _staged_safe_error(
@@ -663,10 +636,10 @@ def _staged_safe_error(
     retryable: bool,
     stage: StagedStageName | None,
 ) -> StagedSafeError:
-    return StagedSafeError(
-        code=code,  # type: ignore[arg-type]
-        message=scrub_failure_text(message),
-        user_action=user_action,  # type: ignore[arg-type]
+    return staged_safe_error(
+        code=code,
+        message=message,
+        user_action=user_action,
         retryable=retryable,
         stage=stage,
     )
@@ -742,11 +715,10 @@ def _missing_stage_refs(run_dir: Path, refs: list[str]) -> list[str]:
 
 
 def _refresh_staged_artifact_map(state: dict[str, Any], run_dir: Path) -> None:
-    state["artifacts"] = {
-        key: _safe_staged_ref(ref, fallback=f"logical://{key}")
-        for key, ref in STAGED_ARTIFACT_REFS.items()
-        if (run_dir / ref).exists()
-    }
+    state["artifacts"] = run_local_review_case_artifact_storage().manifest_from_existing_refs(
+        run_dir,
+        STAGED_ARTIFACT_REFS,
+    ).to_public_artifacts_map()
 
 
 def _sync_diagnosis_stage_artifacts(
@@ -1494,80 +1466,19 @@ def _write_demo_qa_report_context(review_id: str, verdict_id: str) -> dict[str, 
 
 
 def _public_staged_status_from_state(state: dict[str, Any]) -> StagedReviewStatusResponse:
-    raw_mode = _text(state.get("mode"), "live") or "live"
-    mode: StagedReviewMode = "demo_qa" if raw_mode == "demo_qa" else "live"
-    stages: dict[str, StagedStageState] = {}
-    for stage, raw_row in _record(state.get("stages")).items():
-        row = _record(raw_row)
-        refs = [
-            _safe_staged_ref(ref, fallback=f"logical://{stage}")
-            for ref in _list(row.get("artifact_refs"))
-        ]
-        stages[str(stage)] = StagedStageState(
-            status=_text(row.get("status"), "pending") or "pending",  # type: ignore[arg-type]
-            started_at=_text(row.get("started_at")),
-            completed_at=_text(row.get("completed_at")),
-            artifact_refs=refs,
-        )
-    artifacts = {
-        str(key): _safe_staged_ref(value, fallback=f"logical://{key}")
-        for key, value in _record(state.get("artifacts")).items()
-    }
-    provider_status = StagedProviderStatus(
-        **_record(state.get("provider_status") or STAGED_INITIAL_PROVIDER_STATUS[mode].model_dump(mode="json"))
-    )
-    safe_error = None
-    if isinstance(state.get("safe_error"), dict):
-        raw_error = _record(state.get("safe_error"))
-        safe_error = _staged_safe_error(
-            code=_text(raw_error.get("code"), "PYTHON_STAGE_FAILED") or "PYTHON_STAGE_FAILED",
-            message=_text(raw_error.get("message"), "Staged review failed.") or "Staged review failed.",
-            user_action=_text(raw_error.get("user_action"), "retry") or "retry",
-            retryable=bool(raw_error.get("retryable")),
-            stage=_text(raw_error.get("stage")) or None,  # type: ignore[arg-type]
-        )
-    current_stage = _text(state.get("current_stage"), "input") or "input"
-    return StagedReviewStatusResponse(
-        api_version=API_VERSION,
+    return review_case_status_projection_from_state(
+        state,
         schema_version=STAGED_REVIEW_STATE_SCHEMA_VERSION,
-        review_id=_text(state.get("review_id"), "unknown") or "unknown",
-        stage="diagnosis",
-        status=_text(state.get("status"), "running") or "running",  # type: ignore[arg-type]
-        current_stage=current_stage,  # type: ignore[arg-type]
-        mode=mode,
-        created_at=_text(state.get("created_at")),
-        updated_at=_text(state.get("updated_at")),
-        stages=stages,
-        artifacts=artifacts,
-        provider_status=provider_status,
-        warnings=_string_list(state.get("warnings")),
-        safe_error=safe_error,
-    )
+        initial_provider_status=STAGED_INITIAL_PROVIDER_STATUS,
+    ).public_status
 
 
 def _staged_status_not_found(review_id: str, message: str) -> StagedReviewStatusResponse:
-    now = _utc_now_iso()
-    return StagedReviewStatusResponse(
-        api_version=API_VERSION,
+    return staged_status_not_found(
+        review_id,
+        message,
         schema_version=STAGED_REVIEW_STATE_SCHEMA_VERSION,
-        review_id=review_id,
-        stage="diagnosis",
-        status="failed",
-        current_stage="input",
-        mode="live",
-        created_at=None,
-        updated_at=now,
-        stages={},
-        artifacts={},
-        provider_status=STAGED_INITIAL_PROVIDER_STATUS["live"],
-        warnings=[],
-        safe_error=_staged_safe_error(
-            code="ARTIFACT_MISSING",
-            message=message,
-            user_action="none",
-            retryable=False,
-            stage="input",
-        ),
+        initial_provider_status=STAGED_INITIAL_PROVIDER_STATUS["live"],
     )
 
 
@@ -1684,16 +1595,33 @@ def _start_staged_background_worker(
     *,
     mode: StagedReviewMode,
 ) -> bool:
-    if not _try_reserve_staged_worker_slot():
-        return False
-    worker = threading.Thread(
-        target=_run_staged_review_background,
-        kwargs={"review_id": review_id, "payload_path": payload_path, "mode": mode},
-        name=f"staged-review-{review_id}",
-        daemon=True,
+    result = enqueue_with_optional_rq(
+        ReviewCaseExecutionJob(
+            review_id=review_id,
+            payload_path=payload_path,
+            mode=mode,
+        ),
+        runner=_run_staged_review_background,
+        reserve_slot=_try_reserve_staged_worker_slot,
     )
-    worker.start()
-    return True
+    if result.fallback_from is not None:
+        LOGGER.warning(
+            "staged review queue backend fallback review_id=%s requested_backend=%s fallback_backend=%s reason=%s metadata=%s",
+            review_id,
+            result.fallback_from,
+            result.backend,
+            result.reason,
+            result.metadata,
+        )
+    elif result.backend == "rq_redis":
+        LOGGER.info(
+            "staged review enqueued review_id=%s backend=%s job_id=%s metadata=%s",
+            review_id,
+            result.backend,
+            result.job_id,
+            result.metadata,
+        )
+    return result.accepted
 
 
 def _request_to_bridge_payload(request: CreateReviewRequest) -> dict[str, Any]:
@@ -2103,8 +2031,9 @@ def create_staged_review(request: CreateReviewRequest, *, owner_id: str | None =
     payload = _request_to_bridge_payload(request)
     payload_path = run_dir / "payload.json"
     write_json(payload_path, payload)
-    state = _initial_staged_state(review_id, mode=mode, owner_id=owner_id)
-    _write_staged_state(run_dir, state)
+    review_case = _initial_review_case(review_id, mode=mode, owner_id=owner_id)
+    _review_case_repository(run_dir).save(review_case)
+    state = review_case.to_staged_state_dict(schema_version=STAGED_REVIEW_STATE_SCHEMA_VERSION)
     if _start_staged_background_worker(review_id, payload_path, mode=mode) is False:
         state["status"] = "failed"
         state["warnings"] = ["Staged review worker queue is full; retry shortly."]
@@ -2748,75 +2677,45 @@ def _read_run_local_json_or_empty(review_id: str, artifact_name: str) -> dict[st
 
 def _candidate_lineage(review_id: str, candidate_id: str) -> tuple[str, str]:
     candidate_generation = _read_run_local_json(review_id, "candidate_generation.json")
-    candidate = _record(candidate_generation.get("candidate"))
-    actual_candidate_id = _text(candidate.get("candidate_id"))
-    if not actual_candidate_id:
-        raise CandidateBridgeError("candidate_generation.candidate.candidate_id is required.")
-    if actual_candidate_id != candidate_id:
-        raise CandidateBridgeError("Requested candidate_id does not match the active run-local candidate.")
-    selected_card_id = _text(candidate.get("source_card_id"), candidate_generation.get("selected_card_id"))
-    if not selected_card_id:
-        raise CandidateBridgeError("Active candidate does not contain a selected Launchpad card id.")
-    return selected_card_id, actual_candidate_id
+    try:
+        lineage = review_case_candidate_lineage(candidate_generation, candidate_id)
+    except ReviewCaseDownstreamLineageError as exc:
+        raise CandidateBridgeError(str(exc)) from exc
+    return lineage.selected_card_id, lineage.candidate_id
 
 
 def _comparison_id_for_candidate(candidate_id: str | None) -> str | None:
-    return f"current_vs_candidate:{candidate_id}" if candidate_id else None
+    return review_case_comparison_id_for_candidate(candidate_id)
 
 
 def _active_comparison_lineage(review_id: str, comparison_id: str) -> tuple[str, str, str]:
     current_vs_candidate = _read_run_local_json(review_id, "current_vs_candidate.json")
-    selected_ids = [
-        str(item).strip()
-        for item in _list(current_vs_candidate.get("selected_candidate_ids"))
-        if str(item).strip()
-    ]
-    rows = [_record(item) for item in _list(current_vs_candidate.get("comparisons"))]
-    row_ids = [
-        str(row.get("candidate_id") or "").strip()
-        for row in rows
-        if str(row.get("candidate_id") or "").strip()
-    ]
-    candidate_id = (selected_ids or row_ids or [""])[0]
-    if not candidate_id:
-        raise ComparisonBridgeError("current_vs_candidate.json does not contain an active selected candidate.")
-    valid_comparison_ids = {
-        candidate_id,
-        _comparison_id_for_candidate(candidate_id),
-        f"comparison:{candidate_id}",
-        f"comparison_{candidate_id}",
-    }
-    if comparison_id not in valid_comparison_ids:
-        raise ComparisonBridgeError("Requested comparison_id does not match the active run-local comparison.")
-    selected_card_id, actual_candidate_id = _candidate_lineage(review_id, candidate_id)
-    if not _comparison_has_displayable_evidence(current_vs_candidate, actual_candidate_id):
-        raise ComparisonBridgeError(
-            "Active current-vs-candidate comparison does not contain displayable evidence for the selected candidate."
+    candidate_generation = _read_run_local_json(review_id, "candidate_generation.json")
+    try:
+        lineage = review_case_comparison_lineage(
+            candidate_generation=candidate_generation,
+            current_vs_candidate=current_vs_candidate,
+            requested_comparison_id=comparison_id,
         )
-    return selected_card_id, actual_candidate_id, _comparison_id_for_candidate(actual_candidate_id) or comparison_id
+    except ReviewCaseDownstreamLineageError as exc:
+        raise ComparisonBridgeError(str(exc)) from exc
+    return lineage.selected_card_id, lineage.candidate_id, lineage.comparison_id
 
 
 def _active_verdict_lineage(review_id: str, verdict_id: str) -> tuple[str, str, str, str]:
     verdict = _read_run_local_json(review_id, "decision_verdict.json")
-    actual_verdict_id = _text(verdict.get("verdict_id"))
-    if not actual_verdict_id:
-        raise VerdictBridgeError("decision_verdict.json does not contain a verdict_id.")
-    if actual_verdict_id != verdict_id:
-        raise VerdictBridgeError("Requested verdict_id does not match the active run-local Decision Verdict.")
-    candidate_id = _text(verdict.get("reviewed_candidate_id"), verdict.get("selected_candidate_id"))
-    if not candidate_id:
-        raise VerdictBridgeError("decision_verdict.json does not contain a reviewed candidate id.")
-    selected_card_id, actual_candidate_id = _candidate_lineage(review_id, candidate_id)
-    comparison_id = _comparison_id_for_candidate(actual_candidate_id) or actual_candidate_id
-    _selected_card_id, comparison_candidate_id, actual_comparison_id = _active_comparison_lineage(
-        review_id,
-        comparison_id,
-    )
-    if comparison_candidate_id != actual_candidate_id:
-        raise VerdictBridgeError(
-            "Active current-vs-candidate comparison does not match the active Decision Verdict candidate."
+    candidate_generation = _read_run_local_json(review_id, "candidate_generation.json")
+    current_vs_candidate = _read_run_local_json(review_id, "current_vs_candidate.json")
+    try:
+        lineage = review_case_verdict_lineage(
+            candidate_generation=candidate_generation,
+            current_vs_candidate=current_vs_candidate,
+            verdict=verdict,
+            requested_verdict_id=verdict_id,
         )
-    return selected_card_id, actual_candidate_id, actual_comparison_id, actual_verdict_id
+    except ReviewCaseDownstreamLineageError as exc:
+        raise VerdictBridgeError(str(exc)) from exc
+    return lineage.selected_card_id, lineage.candidate_id, lineage.comparison_id, lineage.verdict_id
 
 
 def _as_text_list(items: Any, *, fallback_field: str = "label") -> list[str]:
@@ -2867,71 +2766,13 @@ def _candidate_evidence_chain_context(
 ) -> DownstreamEvidenceChainContext:
     """Build a bounded display context linking downstream stages to diagnosis evidence."""
 
-    candidate = _record(candidate_generation.get("candidate"))
-    row = _record(comparison_row)
-    verdict_row = _record(verdict)
-    ai_row = _record(ai_context)
-    source_artifacts = _dedupe_text(
-        _string_list(candidate_generation.get("source_artifacts"))
-        + _string_list(row.get("source_artifacts"))
-        + list(_record(ai_row.get("source_artifacts")).keys())
+    context = review_case_downstream_evidence_chain_context(
+        _record(candidate_generation),
+        comparison_row=_record(comparison_row),
+        verdict=_record(verdict),
+        ai_context=_record(ai_context),
     )
-    if not source_artifacts:
-        source_artifacts = [
-            "problem_classification.json",
-            "candidate_generation.json",
-            "current_vs_candidate.json",
-        ]
-        if verdict_row:
-            source_artifacts.append("decision_verdict.json")
-        if ai_row:
-            source_artifacts.append("ai_commentary_context.json")
-
-    return DownstreamEvidenceChainContext(
-        selected_diagnosis_id=_text(
-            candidate.get("source_diagnosis_id"),
-            row.get("source_diagnosis_id"),
-            row.get("diagnosis_id"),
-            verdict_row.get("source_diagnosis_id"),
-        ),
-        selected_diagnosis_label=_text(
-            candidate.get("source_diagnosis_label"),
-            row.get("source_diagnosis_label"),
-            row.get("diagnosis_label"),
-        ),
-        selected_diagnosis_role=_text(
-            candidate.get("source_diagnosis_role"),
-            row.get("source_diagnosis_role"),
-        ),
-        diagnosis_statement=_text(
-            candidate.get("source_diagnosis_statement"),
-            row.get("diagnosis_statement"),
-            verdict_row.get("diagnosis_statement"),
-        ),
-        tested_hypothesis=_text(
-            candidate.get("hypothesis_to_test"),
-            row.get("hypothesis_to_test"),
-            verdict_row.get("hypothesis_tested"),
-        ),
-        success_criteria=_dedupe_text(
-            _string_list(candidate.get("success_criteria"))
-            + _as_text_list(row.get("success_criteria"), fallback_field="criterion")
-            + _as_text_list(row.get("success_criteria_result"), fallback_field="criterion")
-        )[:8],
-        tradeoff_to_watch=_text(candidate.get("tradeoff_to_watch"), row.get("tradeoff_to_watch")),
-        candidate_boundary=_text(
-            candidate.get("decision_boundary"),
-            candidate.get("candidate_boundary"),
-            row.get("candidate_boundary"),
-        ),
-        recommendation_boundary=_text(
-            candidate.get("decision_boundary"),
-            verdict_row.get("recommendation_boundary"),
-            verdict_row.get("decision_boundary"),
-        )
-        or "Decision Verdict is non-binding decision support and does not execute trades.",
-        source_artifacts=source_artifacts[:10],
-    )
+    return DownstreamEvidenceChainContext(**context.to_public_dict())
 
 
 def _success_result(value: Any) -> str:
@@ -2989,27 +2830,7 @@ def _comparison_data(
 
 
 def _comparison_has_displayable_evidence(current_vs_candidate: dict[str, Any], candidate_id: str | None) -> bool:
-    rows = [_record(item) for item in _list(current_vs_candidate.get("comparisons"))]
-    if candidate_id:
-        row = next((item for item in rows if _text(item.get("candidate_id")) == candidate_id), {})
-    else:
-        row = rows[0] if rows else {}
-    if not row:
-        return False
-    dimensions = [_record(item) for item in _list(row.get("dimensions"))]
-    for dimension in dimensions:
-        status = str(dimension.get("status") or "").strip().lower()
-        if status in {"unavailable", "not_available", "missing", "unknown"}:
-            continue
-        direction = str(dimension.get("direction") or "").strip().lower()
-        if (
-            dimension.get("baseline_value") is not None
-            or dimension.get("candidate_value") is not None
-            or dimension.get("delta") is not None
-            or (bool(direction) and direction != "unknown")
-        ):
-            return True
-    return False
+    return review_case_comparison_has_displayable_evidence(current_vs_candidate, candidate_id)
 
 
 def run_current_vs_candidate(
