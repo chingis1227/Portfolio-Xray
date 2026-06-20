@@ -21,6 +21,73 @@ FORBIDDEN_REFERENCES: tuple[str, ...] = (
     "docs/data_policy_nan_young_etfs.md",
 )
 
+# Common mojibake fragments that must not appear in current source-of-truth Markdown.
+MOJIBAKE_MARKERS: tuple[str, ...] = (
+    "вЂ",
+    "В§",
+    "в†",
+    "Â",
+    "Г—",
+    "в€",
+    "В«",
+    "В»",
+    "вњ",
+    "в—",
+)
+
+# Historical-memory folders can preserve snapshot-at-time wording and encoding defects. Current
+# docs should stay clean and route readers away from old product truth.
+HISTORICAL_DOC_PARTS: frozenset[str] = frozenset(
+    {
+        "audits",
+        "exec_plans",
+        "archive",
+    }
+)
+
+# Dangerous current-product claims. Negative guardrail wording is allowed; direct promotion is not.
+FORBIDDEN_CURRENT_PRODUCT_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (
+        re.compile(r"\bPortfolio MRI\s+is\s+(?:an?\s+)?optimizer-first\b", re.IGNORECASE),
+        "Portfolio MRI must not be described as optimizer-first",
+    ),
+    (
+        re.compile(
+            r"\bcurrent\s+(?:Core MVP\s+)?product\s+flow\s+is\s+(?:an?\s+)?optimizer-first\b",
+            re.IGNORECASE,
+        ),
+        "current product flow must not be described as optimizer-first",
+    ),
+    (
+        re.compile(
+            r"\bPortfolio Health Score\s+(?:is|serves as|becomes)\s+(?:the\s+)?(?:main|primary|core)\b",
+            re.IGNORECASE,
+        ),
+        "Portfolio Health Score must not be promoted as the main current product answer",
+    ),
+    (
+        re.compile(
+            r"\bRobustness Scorecard\s+(?:is|serves as|becomes)\s+(?:the\s+)?(?:main|primary|core)\b",
+            re.IGNORECASE,
+        ),
+        "Robustness Scorecard must not be promoted as the main current product answer",
+    ),
+    (
+        re.compile(
+            r"\bMacro Dashboard\s+(?:is|serves as|becomes)\s+(?:the\s+)?(?:current|main|primary|core)\b",
+            re.IGNORECASE,
+        ),
+        "Macro Dashboard must not be promoted as current Core MVP product truth",
+    ),
+    (
+        re.compile(
+            r"\bClient Fit\s+(?:is|serves as|becomes)\s+(?:the\s+)?(?:suitability approval|trade advice)\b",
+            re.IGNORECASE,
+        ),
+        "Client Fit must not be described as suitability approval or trade advice",
+    ),
+)
+
 # Optional or not-yet-created paths that may appear in roadmap/exec-plan prose.
 ALLOW_MISSING_PATHS: frozenset[str] = frozenset(
     {
@@ -144,6 +211,8 @@ OPERATIONAL_RUNBOOK_FORBIDDEN_PATTERNS: tuple[tuple[str, str], ...] = (
 class DocsVerifyResult:
     broken_links: list[str] = field(default_factory=list)
     forbidden_refs: list[str] = field(default_factory=list)
+    mojibake_markers: list[str] = field(default_factory=list)
+    current_product_language: list[str] = field(default_factory=list)
     removed_fields: list[str] = field(default_factory=list)
     architecture_doc_violations: list[str] = field(default_factory=list)
 
@@ -152,6 +221,8 @@ class DocsVerifyResult:
         return not (
             self.broken_links
             or self.forbidden_refs
+            or self.mojibake_markers
+            or self.current_product_language
             or self.removed_fields
             or self.architecture_doc_violations
         )
@@ -160,6 +231,8 @@ class DocsVerifyResult:
         return [
             *self.broken_links,
             *self.forbidden_refs,
+            *self.mojibake_markers,
+            *self.current_product_language,
             *self.removed_fields,
             *self.architecture_doc_violations,
         ]
@@ -228,6 +301,28 @@ def collect_cursor_markdown_files() -> list[Path]:
     return files
 
 
+def _repo_relative(path: Path) -> str:
+    try:
+        return str(path.relative_to(REPO_ROOT)).replace("\\", "/")
+    except ValueError:
+        return str(path)
+
+
+def _is_historical_doc(path: Path) -> bool:
+    try:
+        rel = path.relative_to(REPO_ROOT)
+    except ValueError:
+        return False
+    parts = set(rel.parts)
+    return "docs" in parts and bool(parts & HISTORICAL_DOC_PARTS)
+
+
+def collect_current_markdown_files(paths: list[Path] | None = None) -> list[Path]:
+    """Return source Markdown files that represent current docs, excluding history folders."""
+    candidates = collect_source_markdown_files() if paths is None else paths
+    return [path for path in candidates if not _is_historical_doc(path)]
+
+
 REPO_RELATIVE_PREFIXES: tuple[str, ...] = (
     "docs/",
     "src/",
@@ -293,6 +388,59 @@ def find_forbidden_references(
     return failures
 
 
+def find_mojibake_markers(
+    paths: list[Path],
+    markers: tuple[str, ...] = MOJIBAKE_MARKERS,
+) -> list[str]:
+    failures: list[str] = []
+    for path in collect_current_markdown_files(paths):
+        text = path.read_text(encoding="utf-8")
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            for marker in markers:
+                if marker in line:
+                    failures.append(
+                        f"{_repo_relative(path)}:{line_number} contains mojibake marker {marker!r}"
+                    )
+                    break
+    return failures
+
+
+def _line_allows_guardrail_language(line: str) -> bool:
+    lowered = line.lower()
+    return any(
+        token in lowered
+        for token in (
+            "do not",
+            "does not",
+            "must not",
+            "not ",
+            "not as",
+            "unless",
+            "non-goal",
+            "do-not",
+            "forbidden",
+            "must never",
+        )
+    )
+
+
+def find_forbidden_current_product_language(
+    paths: list[Path],
+    patterns: tuple[tuple[re.Pattern[str], str], ...] = FORBIDDEN_CURRENT_PRODUCT_PATTERNS,
+) -> list[str]:
+    failures: list[str] = []
+    for path in collect_current_markdown_files(paths):
+        text = path.read_text(encoding="utf-8")
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            if _line_allows_guardrail_language(line):
+                continue
+            for pattern, message in patterns:
+                if pattern.search(line):
+                    failures.append(f"{_repo_relative(path)}:{line_number}: {message}")
+                    break
+    return failures
+
+
 def find_operational_runbook_architecture_violations(
     runbook_path: Path = OPERATIONAL_RUNBOOK_PATH,
 ) -> list[str]:
@@ -332,6 +480,8 @@ def verify_docs(
     return DocsVerifyResult(
         broken_links=find_broken_local_links(paths),
         forbidden_refs=find_forbidden_references(paths),
+        mojibake_markers=find_mojibake_markers(paths),
+        current_product_language=find_forbidden_current_product_language(paths),
         removed_fields=find_removed_config_ui_fields() if not include_cursor_only else [],
         architecture_doc_violations=(
             find_operational_runbook_architecture_violations()

@@ -2,7 +2,17 @@
 
 Portfolio MRI is a diagnosis-first, current-portfolio-first investment decision-support product.
 
-It helps an advisor or sophisticated investor answer:
+## Product In One Minute
+
+Portfolio MRI helps an advisor or sophisticated investor review the portfolio they already own
+before deciding whether any change is worth testing.
+
+The core problem it solves is not "find the mathematically optimal portfolio." The core problem is:
+current portfolios often contain hidden concentration, fragile stress behavior, unclear fit with the
+client context, and confusing trade-offs. Portfolio MRI turns that evidence into a structured
+diagnosis and one explicit candidate test when a test is justified.
+
+It helps the user answer:
 
 - What risks are hidden in the portfolio I already own?
 - How would this portfolio behave under stress?
@@ -97,17 +107,18 @@ For the full runtime command map, use [docs/runtime_entrypoints.md](docs/runtime
 
 ## Documentation Map
 
-Use these documents as the maintained source of truth:
+Start with [docs/README.md](docs/README.md) for the maintained documentation index,
+current-vs-historical boundaries, and update guidance.
 
-- [PRODUCT.md](PRODUCT.md) - product direction, user goals, Core MVP boundaries, and non-goals.
+Core source-of-truth entry points:
+
+- [PRODUCT.md](PRODUCT.md) - product direction, Core MVP boundaries, and non-goals.
 - [SPEC.md](SPEC.md) - current implementation contract and detailed spec index.
-- [docs/contracts/PRODUCT_FLOW_CONTRACT.md](docs/contracts/PRODUCT_FLOW_CONTRACT.md) - step order, allowed behavior, and product boundaries.
-- [docs/contracts/SCREEN_CONTRACTS.md](docs/contracts/SCREEN_CONTRACTS.md) - frontend route responsibilities.
-- [docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md](docs/contracts/STAGED_REVIEW_STATE_CONTRACT.md) - staged web review state and progress semantics.
-- [DATA.md](DATA.md) - data sources, assumptions, quality rules, and data-layer ownership.
-- [OUTPUTS.md](OUTPUTS.md) - generated artifacts, output folders, and generated-vs-source policy.
-- [TESTING.md](TESTING.md) and [docs/contracts/QA_CONTRACT.md](docs/contracts/QA_CONTRACT.md) - verification strategy.
-- [RULES.md](RULES.md), [WORKFLOW.md](WORKFLOW.md), and [AGENTS.md](AGENTS.md) - agent and contributor operating rules.
+- [docs/contracts/](docs/contracts/) - product, screen, staged-review, artifact, copy, doc-sync,
+  and QA contracts.
+- [docs/specs/README.md](docs/specs/README.md) - detailed module specs.
+- [DATA.md](DATA.md), [OUTPUTS.md](OUTPUTS.md), [TESTING.md](TESTING.md), and
+  [WORKFLOW.md](WORKFLOW.md) - data, generated outputs, verification, and workflow.
 
 ## README Maintenance Rule
 

@@ -9,6 +9,10 @@ optimizer-first framing, recommendation wording, Macro Dashboard, Selection Engi
 Score, or Robustness Scorecard emphasis. Preserve those files as snapshot-at-time evidence; do not
 treat them as current product direction unless an active canonical doc or current spec confirms it.
 
+Read this register through [../README.md](../README.md): audits are evidence and traceability. They
+can explain why a change happened, but current product and implementation claims must be checked
+against canonical contracts, specs, source docs, and code.
+
 Use this register to understand which audits exist, what each audit produced, and which plan followed
 from it. When a new audit is created, add it here with its date, status, related plan, and short
 outcome.

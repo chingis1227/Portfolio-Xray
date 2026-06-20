@@ -61,6 +61,9 @@ git diff --check
 git status --short
 ```
 
+`scripts/verify_docs.py` checks local Markdown links, stale canonical references, active-doc
+mojibake markers, and forbidden current-product language outside historical memory folders.
+
 Add a targeted stale-language or command/path search when the edit renames concepts, moves files, or
 changes documented commands. Do not run `python run_portfolio_review.py`, frontend builds, full
 pytest, or generated-output refreshes for docs-only cleanup unless the edited docs change executable

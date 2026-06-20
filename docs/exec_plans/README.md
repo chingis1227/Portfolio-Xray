@@ -14,6 +14,10 @@ wording as planning memory at the time it was written, not as current product di
 product positioning is governed by active canonical docs; current implementation truth remains
 governed by `SPEC.md`, `OUTPUTS.md`, detailed specs, and code.
 
+Read this register through [../README.md](../README.md): an `Active` pointer identifies the current
+work plan, but even active plans do not override canonical contracts, specs, code, or generated-output
+policy.
+
 ## Status Values
 
 | Status | Meaning |
